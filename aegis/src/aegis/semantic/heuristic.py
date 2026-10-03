@@ -369,7 +369,8 @@ _INJ_PATTERNS: list[tuple[str, float, re.Pattern[str]]] = [
 _META_CUES = re.compile(
     r"\b(?:explain|what is|what are|what does|definition|example|examples|detect|detection|"
     r"classif\w+|pytest|unit test|test case|assert\w*|phrase|awareness|training|research|paper|"
-    r"wyjasnij|czym jest|przyklad)\b"
+    r"regex\w*|signature\w*|rule|rules|filter\w*|"
+    r"wyjasnij|czym jest|przyklad\w*|regul\w*|wykryw\w*|fraz\w*|filtr\w*|sygnatur\w*)\b"
 )
 _QUOTED = re.compile(
     r"'[^'\n]{3,200}'|\"[^\"\n]{3,200}\"|`[^`\n]{3,200}`|“[^”\n]{3,200}”|„[^”\n]{3,200}”"

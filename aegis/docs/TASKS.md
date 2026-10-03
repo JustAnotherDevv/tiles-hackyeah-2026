@@ -51,9 +51,9 @@ Plus **INT-01…16** integration/submission tasks and **KI-01…05** known issue
   - [ ] `uv run --frozen python -c "from aegis.app import create_app; create_app()"` boots with every discovered module
   - [ ] `/healthz` lists components; no plugin import errors (`components.plugins` not degraded)
 - [ ] **INT-04** Launch wave 2 as wave-1 slots free (order: B21, B23, B24, B22, B25) — `must` · **[DEMO]** · → `INT`
-- [ ] **INT-05** Snippet merge into config/policy.yaml (policy-engine POL-16 tool) — `must` · **[DEMO]** · → `INT`
-  - [ ] merge every `config/snippets/*.yaml`; resolve conflicts; keep comments
-  - [ ] `python -m aegis selftest` green or every failure triaged (owner + reason)
+- [x] **INT-05** Snippet merge into config/policy.yaml (policy-engine POL-16 tool) — `must` · **[DEMO]** · → `INT`
+  - [x] merge every `config/snippets/*.yaml`; resolve conflicts; keep comments
+  - [x] `python -m aegis selftest` green or every failure triaged (owner + reason)
 - [ ] **INT-06** Whole stack up: `make up` + `demo/preflight.py` READY — `must` · **[DEMO]** · → `INT`
   - [ ] feed keygen → feed service :8790 → mocks :8791–8794 → gateway :8787; Ollama warm
 - [ ] **INT-07** Headline flow acceptance (CONTRACTS §8) — `must` · **[DEMO]** · → `INT`
@@ -70,7 +70,7 @@ Plus **INT-01…16** integration/submission tasks and **KI-01…05** known issue
 - [ ] **INT-08** Dashboard build served at /ui against the live stack — `must` · **[DEMO]** · → `INT`
   - [ ] `cd web && npm run build`; gateway serves `/ui`; no MockBadge on headline pages
   - [ ] view-as switch member → admin → owner changes approvability
-- [ ] **INT-09** `make test` + `make test-unit` green (xfails explained) — `must` · **[DEMO]** · → `INT`
+- [x] **INT-09** `make test` + `make test-unit` green (xfails explained) — `must` · **[DEMO]** · → `INT`
 - [ ] **INT-10** Commit at every green checkpoint (integrator only); push public repo — `must` · **[DEMO]** · → `INT`
 - [ ] **INT-11** Feature freeze 06:00 → demo rehearsal ×2 with runbook timing + fallback drills — `must` · **[DEMO]** · → `INT`
   - [ ] gateway down → Claude Code fails closed

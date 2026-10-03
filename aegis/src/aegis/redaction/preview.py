@@ -155,7 +155,13 @@ def _scrub(chunk: str) -> str:
     if not chunk:
         return chunk
     chunk = _DIGITS4.sub(lambda m: "*" * len(m.group(0)), chunk)
-    return chunk.replace("@", "(at)")
+    # agent ids (`trading-copilot@trading`, no dotted domain) are not PII: keep their '@'
+    return _AT.sub(lambda m: m.group(0) if _AGENT_ID.fullmatch(m.group(0)) else
+                   m.group(0).replace("@", "(at)"), chunk)
+
+
+_AT = re.compile(r"[\w\-.+]*@[\w\-]*(?:\.[\w\-]+)*")
+_AGENT_ID = re.compile(r"[A-Za-z0-9][\w\-]{0,63}@[A-Za-z0-9][\w\-]{0,63}")
 
 
 def mask_digits(s: str) -> str:

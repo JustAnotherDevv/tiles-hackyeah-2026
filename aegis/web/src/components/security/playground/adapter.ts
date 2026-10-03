@@ -32,6 +32,9 @@ export function kindOf(surface: Surface): Kind {
 export function closestCall(decisions: { control_id: string; action: string; mode: string; score: number | null; threshold: number | null }[] | undefined) {
   const scored = (decisions ?? []).filter((d) => d.mode === 'enforce' && d.action === 'allow' && typeof d.score === 'number' && d.score > 0 && typeof d.threshold === 'number' && d.threshold > 0);
   if (!scored.length) return null;
+  // INJ-02 is the tunable classifier score (scene 4 lever) — show it when it ran; else the nearest miss.
+  const inj02 = scored.find((d) => d.control_id === 'INJ-02');
+  if (inj02) return inj02;
   return scored.sort((a, b) => (b.score as number) / (b.threshold as number) - (a.score as number) / (a.threshold as number))[0];
 }
 

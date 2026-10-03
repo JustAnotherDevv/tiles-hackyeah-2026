@@ -76,7 +76,7 @@ GIT_AUTHOR = re.compile(
 GIT_CONFIG = re.compile(r"(?m)\buser\.(name|email)[ \t]*=[ \t]*\"?([^\n\"]{1,120}?)\"?[ \t]*$")
 MAC = re.compile(
     r"(?<![0-9A-Fa-f:\-.])((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}|(?:[0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}"
-    r"|[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4})(?![0-9A-Fa-f:\-.])")
+    r"|[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4}\.[0-9A-Fa-f]{4})(?![0-9A-Fa-f:\-]|\.[0-9A-Fa-f])")
 EMAILISH = re.compile(r"^[^\s@]{1,64}@[^\s@]{1,190}$")
 
 
@@ -95,6 +95,14 @@ def _private_ip(s: str, *, loopback: bool) -> bool:
 
 
 _CGNAT = ipaddress.ip_network("100.64.0.0/10")
+
+
+def _public_ip(s: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(s)
+    except ValueError:
+        return False
+    return bool(ip.is_global and not ip.is_multicast)
 
 
 def _alnum(c: str) -> bool:
@@ -177,8 +185,10 @@ def find_hostnames(text: str, *, internal_domains: Iterable[str], suffixes: Iter
     return out
 
 
-def find_private_ips(text: str, *, style: str = "placeholder", loopback: bool = False
-                     ) -> list[MetaSpan]:
+def find_private_ips(text: str, *, style: str = "placeholder", loopback: bool = False,
+                     public: bool = False) -> list[MetaSpan]:
+    """Private / link-local / CGNAT IPs; with `public=True` also routable public addresses
+    (client IPs in tickets and logs are personal data; opt-in, set by strict/paranoid)."""
     out: list[MetaSpan] = []
     repl = GENERALIZED["IP_ADDRESS"] if style == "generalize" else None
     n = len(text)
@@ -191,7 +201,7 @@ def find_private_ips(text: str, *, style: str = "placeholder", loopback: bool = 
                 continue
             if VERSION_TAIL.search(text, max(0, a - 16), a):
                 continue
-            if _private_ip(m.group(0), loopback=loopback):
+            if _private_ip(m.group(0), loopback=loopback) or (public and _public_ip(m.group(0))):
                 out.append(MetaSpan(a, b, "IP_ADDRESS", "meta.private_ip", m.group(0), repl, 0.9))
     if text.count(":") >= 2:
         for m in IPV6.finditer(text):
@@ -205,7 +215,7 @@ def find_private_ips(text: str, *, style: str = "placeholder", loopback: bool = 
                 continue
             if b < n and (_alnum(text[b]) or text[b] == ":"):
                 continue
-            if _private_ip(s, loopback=loopback):
+            if _private_ip(s, loopback=loopback) or (public and _public_ip(s)):
                 out.append(MetaSpan(a, b, "IP_ADDRESS", "meta.private_ip", s, repl, 0.85))
     return out
 
@@ -334,7 +344,8 @@ def scan_text(text: str, *, internal_domains: Iterable[str] = (), params: Any = 
                                 suffixes=p.internal_suffixes, style=style)
     if p.private_ips:
         spans += find_private_ips(text, style=style,
-                                  loopback=bool(getattr(p, "loopback", False)))
+                                  loopback=bool(getattr(p, "loopback", False)),
+                                  public=bool(getattr(p, "public_ips", False)))
     if getattr(p, "mac_addresses", True):
         spans += find_macs(text, style=style)
     if p.git:

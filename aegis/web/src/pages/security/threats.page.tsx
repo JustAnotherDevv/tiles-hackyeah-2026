@@ -67,7 +67,11 @@ export default function ThreatsPage() {
   const s = status.data;
   const statusReject: RejectInfo | null =
     s && (s.status === 'rejected' || s.status === 'unreachable' || s.last_error) && dismissedAt !== (s.last_error ?? s.status)
-      ? { reason: s.last_error ?? s.status, serial_attempted: s.serial !== null ? s.serial + 1 : null, kept_serial: s.serial, at: 0 }
+      ? (() => {
+          const reason = s.last_error ?? s.status;
+          const unreachable = s.status === 'unreachable' || /^unreachable/i.test(reason);
+          return { reason, serial_attempted: unreachable ? null : s.serial !== null ? s.serial + 1 : null, kept_serial: s.serial, at: 0, unreachable };
+        })()
       : null;
   const banner = reject ?? statusReject;
   const steps = useMemo(() => deriveFeedSteps(s ?? null, reject?.reason ?? null), [s, reject]);

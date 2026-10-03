@@ -504,10 +504,18 @@ class PolicyStoreImpl:
             teams = await org.list_teams()
             members = await org.list_members()
             agents = await org.list_agents()
+            if not teams and not members:
+                # org not started yet (policy starts first): unknown != empty -> skip id checks
+                self._org_ids = None
+                return
             self._org_ids = {"teams": {t.id for t in teams}, "members": {m.id for m in members},
                              "agents": {a.id for a in agents}}
         except Exception:
             self._org_ids = None
+
+    async def _ensure_org_ids(self) -> None:
+        if self._org_ids is None:
+            await self._refresh_org_ids()
 
     # ------------------------------------------------------------ protocol: reads
     def snapshot(self) -> PolicySnapshot:
@@ -589,6 +597,7 @@ class PolicyStoreImpl:
         return diff_docs(cur.doc, v.doc)
 
     async def validate(self, yaml_text: str) -> ValidationReport:
+        await self._ensure_org_ids()
         cur = self.snapshot()
         cand, v, _ = self.build_candidate(yaml_text, version=cur.version + 1, source="validate", actor=None)
         if cand is None:
@@ -834,6 +843,7 @@ class PolicyStoreImpl:
     async def apply_yaml(self, yaml_text: str, *, actor: Identity | None, source: str, reason: str | None = None,
                          base_version: int | None = None, _proposal_id: str | None = None,
                          _approval_id: str | None = None) -> ApplyResult:
+        await self._ensure_org_ids()
         t0 = time.perf_counter()
         async with self._lk():
             cur = self.snapshot()
@@ -952,6 +962,7 @@ class PolicyStoreImpl:
     async def propose(self, actor: Identity, *, yaml_text: str | None = None, patch: list[PatchOp] | None = None,
                       reason: str | None = None, base_version: int | None = None, source: str = "dashboard",
                       apply_source: str = "api") -> ApplyResult:
+        await self._ensure_org_ids()
         from aegis.policy.governance import propose as _propose
 
         return await _propose(self, actor, yaml_text=yaml_text, patch=patch, reason=reason,
@@ -962,6 +973,7 @@ class PolicyStoreImpl:
         return sha in self._own_writes
 
     async def reload_from_file(self, reason: str | None = None) -> ApplyResult:
+        await self._ensure_org_ids()
         cur = self.snapshot()
         try:
             text = self.policy_path.read_text(encoding="utf-8")

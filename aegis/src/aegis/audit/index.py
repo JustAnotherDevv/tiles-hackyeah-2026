@@ -391,13 +391,17 @@ def query_decisions(
     if not include_synthetic:
         where.append("synthetic = 0")
     cur_parts = decode_cursor(cursor)
-    if cur_parts and len(cur_parts) == 2:
+    # tie-break same-ms rows by insertion order (rowid), not by the random tail of the id
+    if cur_parts and len(cur_parts) == 2 and cur_parts[1].isdigit():
+        where.append("(ts < ? OR (ts = ? AND rowid < ?))")
+        args.extend([cur_parts[0], cur_parts[0], int(cur_parts[1])])
+    elif cur_parts and len(cur_parts) == 2:  # legacy ts|id cursor
         where.append("(ts < ? OR (ts = ? AND id < ?))")
         args.extend([cur_parts[0], cur_parts[0], cur_parts[1]])
-    sql = "SELECT id, ts, summary_json, synthetic FROM decisions"
+    sql = "SELECT id, ts, summary_json, synthetic, rowid FROM decisions"
     if where:
         sql += " WHERE " + " AND ".join(where)
-    sql += " ORDER BY ts DESC, id DESC LIMIT ?"
+    sql += " ORDER BY ts DESC, rowid DESC LIMIT ?"
     args.append(limit + 1)
     rows = conn.execute(sql, args).fetchall()
     items: list[dict[str, Any]] = []
@@ -406,7 +410,7 @@ def query_decisions(
             items.append(json.loads(r[2]))
         except ValueError:
             continue
-    nxt = encode_cursor(rows[limit - 1][1], rows[limit - 1][0]) if len(rows) > limit else None
+    nxt = encode_cursor(rows[limit - 1][1], rows[limit - 1][4]) if len(rows) > limit else None
     return items, nxt
 
 

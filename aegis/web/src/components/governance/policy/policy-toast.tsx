@@ -134,6 +134,8 @@ export function toastApplyResult(
     case 'rejected': {
       const e = r.errors[0];
       toast.error(r.message || `Rejected — still on v${r.previous_version ?? r.version ?? '?'}`, {
+        // same sonner id as the shell's policy.rejected SSE toast → one toast on screen, not two
+        id: 'policy-rejected',
         description: e ? `${e.line ? `line ${e.line}${e.col ? `:${e.col}` : ''} — ` : ''}${e.message}` : undefined,
         duration: 9000,
       });

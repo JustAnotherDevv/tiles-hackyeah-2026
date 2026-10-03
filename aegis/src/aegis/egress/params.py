@@ -30,6 +30,7 @@ class TextParams(_P):
     paths: bool = True
     hostnames: bool = True
     private_ips: bool = True
+    public_ips: bool = False  # opt-in (strict/paranoid): routable client IPs are personal data
     mac_addresses: bool = True
     loopback: bool = False  # 127.0.0.0/8, ::1 reveal nothing about the user; off by default
     git: bool = False

@@ -24,7 +24,7 @@ controls:
   ACT-01: {params: {auto_allow_max_usd: 0, hard_block_above_usd: 500}}
   DLP-01: {params: {redaction_ratio_block: 0.3, matrix_overrides: {RESTRICTED: {local: redact, remote: block}, CONFIDENTIAL: {remote: block, third_party: block}}}}
   DLP-02: {action: block, params: {allow_doc_examples: false, local_action: block}}
-  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}}}
+  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}, text: {public_ips: true}}}
   DLP-07: {threshold: 0.5, fail_mode: closed}
   INJ-01: {params: {untrusted_action: redact}}       # [SF-05] quarantine, never block on mcp.list
   INJ-02: {threshold: 0.60, params: {untrusted_threshold: 0.50}}

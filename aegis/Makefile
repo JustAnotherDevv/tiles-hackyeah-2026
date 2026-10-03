@@ -15,7 +15,8 @@ todo_or = if [ ! -e "$(1)" ]; then echo "TODO: $(2) ($(1) not implemented yet)";
 
 .DEFAULT_GOAL := help
 .PHONY: help setup gateway run dev web web-dev typecheck lint feed feed-keys feed-reseed mocks up demo \
-        demo-scene demo-preflight demo-reset stack-check test test-unit test-e2e test-sem test-live selftest eval bench redteam \
+        demo-scene demo-preflight demo-reset stack-check warmup chaos demo-copilot demo-runaway \
+        demo-tail ambient test test-unit test-e2e test-sem test-live selftest eval bench redteam \
         verify-audit audit-verify fetch-models models reset claude
 
 help: ## list targets
@@ -83,6 +84,24 @@ demo-preflight: ## READY / DEGRADED / NOT READY (ARGS=--reset|--quick|--json)
 
 demo-reset: ## reset demo state between judges (ARGS=--stop-ambient|--policy-golden)
 	@$(PY) demo/scenarios/reset.py $(ARGS)
+
+warmup: ## dashboard history + approvals, 0 pending (needs the stack)
+	@$(PY) demo/scenarios/warmup.py $(ARGS)
+
+chaos: ## red-team sweep over every control family (needs the stack)
+	@$(PY) demo/agents/chaos_agent.py $(ARGS)
+
+demo-copilot: ## F1/F4 trading copilot: make demo-copilot S=pii-draft|subscribe
+	@$(PY) demo/agents/trading_copilot.py $(or $(S),subscribe) $(ARGS)
+
+demo-runaway: ## F6 runaway agent (budget raise approval, then kill switch)
+	@$(PY) demo/agents/runaway.py $(ARGS)
+
+demo-tail: ## CLI live decision feed (fallback for the dashboard)
+	@$(PY) demo/scenarios/tail.py $(ARGS)
+
+ambient: ## background demo traffic until Ctrl-C
+	@$(PY) demo/agents/ambient.py $(ARGS)
 
 claude: ## Claude Code through Aegis (demo settings profile, never machine-wide)
 	@if [ -x demo/claude/run.sh ] || [ -f demo/claude/run.sh ]; then bash demo/claude/run.sh $(ARGS); \

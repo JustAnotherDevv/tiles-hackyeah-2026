@@ -346,7 +346,8 @@ def _semantic_checks(doc: PolicyDoc, raw: Any, index: LineIndex | None,
         if org is not None:
             scope_type, _, sid = lim.scope.partition(":")
             key = {"team": "teams", "member": "members", "agent": "agents"}.get(scope_type)
-            if key and sid and "*" not in sid and sid not in org.get(key, set()):
+            if (key and sid and "*" not in sid and not sid.startswith("selftest")
+                    and sid not in org.get(key, set())):
                 warn((*base, "scope"), f"budget scope {lim.scope}: unknown {scope_type} id '{sid}'")
     if org is not None:
         for key in ("teams", "members", "agents"):
@@ -355,7 +356,8 @@ def _semantic_checks(doc: PolicyDoc, raw: Any, index: LineIndex | None,
                     warn(("budgets", "kill_switch", key, i), f"kill switch: unknown {key[:-1]} id '{sid}'")
         for ci, c in enumerate(doc.controls):
             for ti, t in enumerate(c.tests):
-                if t.agent and t.agent not in org.get("agents", set()) and t.agent != "selftest":
+                if (t.agent and t.agent not in org.get("agents", set())
+                        and not t.agent.startswith("selftest")):
                     warn(("controls", ci, "tests", ti, "agent"), f"test '{t.name}': unknown agent '{t.agent}'")
 
     # selftest gate knob

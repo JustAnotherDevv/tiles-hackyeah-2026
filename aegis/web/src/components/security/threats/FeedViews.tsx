@@ -16,23 +16,30 @@ export interface RejectInfo {
   serial_attempted: number | null;
   kept_serial: number | null;
   at: number;
+  /** Feed server could not be reached (not a rejected bundle) → amber, calmer copy. */
+  unreachable?: boolean;
 }
 
 export function FeedBanner({ info, onDismiss }: { info: RejectInfo; onDismiss: () => void }) {
+  const tone = info.unreachable ? 'redact' : 'block';
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-block/40 bg-block/10 px-4 py-3"
+      className={cn('relative flex items-start gap-3 overflow-hidden rounded-xl border px-4 py-3', tone === 'block' ? 'border-block/40 bg-block/10' : 'border-redact/40 bg-redact/10')}
     >
-      <span className="absolute inset-y-0 left-0 w-1 bg-block" />
-      <ShieldAlert className="mt-0.5 size-5 shrink-0 text-block" />
+      <span className={cn('absolute inset-y-0 left-0 w-1', tone === 'block' ? 'bg-block' : 'bg-redact')} />
+      <ShieldAlert className={cn('mt-0.5 size-5 shrink-0', tone === 'block' ? 'text-block' : 'text-redact')} />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-semibold text-text-1">
-          Feed bundle {info.serial_attempted !== null ? `#${info.serial_attempted} ` : ''}rejected — still enforcing #{info.kept_serial ?? '—'}
+          {info.unreachable
+            ? `Feed server unreachable — still enforcing #${info.kept_serial ?? '—'}`
+            : `Feed bundle ${info.serial_attempted !== null ? `#${info.serial_attempted} ` : ''}rejected — still enforcing #${info.kept_serial ?? '—'}`}
         </div>
-        <div className="mt-0.5 break-words font-mono text-xs text-block">{info.reason}</div>
-        <div className="mt-1 text-xs text-text-3">Nothing was applied. A tampered or unsigned bundle can never replace the active signatures.</div>
+        <div className={cn('mt-0.5 break-words font-mono text-xs', tone === 'block' ? 'text-block' : 'text-redact')}>{info.reason}</div>
+        <div className="mt-1 text-xs text-text-3">
+          {info.unreachable ? 'The last verified bundle stays active; the gateway keeps polling.' : 'Nothing was applied. A tampered or unsigned bundle can never replace the active signatures.'}
+        </div>
       </div>
       <button type="button" onClick={onDismiss} className="text-text-3 hover:text-text-1" aria-label="Dismiss">
         <X className="size-4" />

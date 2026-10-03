@@ -28,7 +28,7 @@ controls:
   ACT-01: {params: {auto_allow_max_usd: 0, hard_block_above_usd: 1000}}
   DLP-01: {params: {redaction_ratio_block: 0.4, matrix_overrides: {RESTRICTED: {local: redact, remote: block}, CONFIDENTIAL: {third_party: block}}}}
   DLP-02: {action: block, params: {allow_doc_examples: false}}
-  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}}}
+  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}, text: {public_ips: true}}}
   DLP-07: {threshold: 0.5, fail_mode: deterministic_only}
   INJ-01: {params: {untrusted_action: redact}}
   INJ-02: {threshold: 0.75, params: {untrusted_threshold: 0.60}}
