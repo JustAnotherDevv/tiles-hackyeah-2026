@@ -156,3 +156,4 @@ Requirements & product vision: `docs/BRIEF.md`.
 - [23:16] [B20-demo-stack] DEMO-01 SDK surface importable: aegis.sdk {AegisClient(guard/chat/messages/ollama_chat/mcp_call/mcp_list/egress/complete/wait_for_approval), AegisAdmin, DEMO_AGENTS/DEMO_MEMBERS, typed errors, GuardResult/ChatResult/McpResult/EgressResult}; mocks/__init__ helpers (PORTS, RequestLog, run_cli, serve_many). next: mock_llm
 - [23:16] [B08-budgets-ledger] BUD-02..09 code landed (pricing.yaml, ledger reserve/settle/AND, SQLite write-behind + demo seed, BUD-01/BUD-02/EXE-04 controls per Addendum A-07 kill=429, /api/budgets* + /api/killswitch); next: snippet + unit tests
 - [23:19] [orchestrator] ALL AGENTS STOPPED (user request). Wave 1 partial (~565 files), health: import ok, compileall ok, web build ok. Committed as WIP. Resume per 'How to continue — with parallel agents'.
+- [23:20] [orchestrator] WIP commit 7da66a9 (tree clean). Huawei side handoff: ../HUAWEI_HANDOFF.md.
