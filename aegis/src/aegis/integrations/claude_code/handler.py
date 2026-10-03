@@ -119,6 +119,8 @@ class _Call:
     deadline_s: float
     safe_headers: dict[str, str]
     pipeline_s: float = 0.0
+    #: Addendum A-06: X-Aegis-Decision-Id + control-requested headers for the hook response
+    response_headers: dict[str, str] = field(default_factory=dict)
 
 
 def _parse_body(raw: bytes | str | None) -> dict[str, Any]:
@@ -227,9 +229,53 @@ async def _complete_abandoned(rt: Any, entries: list[PendingEntry], why: str) ->
 async def _evaluate(c: _Call, ctx: RequestContext, interaction: Interaction) -> Verdict:
     t = time.perf_counter()
     try:
-        return await c.rt.pipeline.evaluate(ctx, interaction)
+        verdict = await c.rt.pipeline.evaluate(ctx, interaction)
     finally:
         c.pipeline_s += time.perf_counter() - t
+    _note_headers(c, verdict)
+    return verdict
+
+
+_ALLOWED_HEADER = re.compile(r"^(x-aegis-[a-z0-9-]+|retry-after|x-should-retry)$")
+
+
+def _note_headers(c: _Call, verdict: Verdict) -> None:
+    """Addendum A-06: hook responses carry `X-Aegis-Decision-Id` and the control-requested
+    `response_headers` of enforce-mode decisions (primary first)."""
+    try:
+        if verdict.id:
+            c.response_headers["x-aegis-decision-id"] = str(verdict.id)
+        decisions = list(verdict.decisions)
+        if verdict.primary is not None:
+            decisions = [verdict.primary, *[d for d in decisions if d is not verdict.primary]]
+        for d in decisions:
+            if d.mode != "enforce":
+                continue
+            for k, v in (d.meta.get("response_headers") or {}).items():
+                k = str(k).lower()
+                if _ALLOWED_HEADER.match(k):
+                    c.response_headers.setdefault(k, str(v))
+        p = verdict.primary
+        if p is not None and p.retry_after_s and "retry-after" not in c.response_headers:
+            c.response_headers["retry-after"] = str(p.retry_after_s)
+        if verdict.approval is not None:
+            c.response_headers.setdefault("x-aegis-approval-id", verdict.approval.id)
+    except Exception:
+        log.debug("response header collection failed", exc_info=True)
+
+
+def gov06_active(c: _Call) -> bool:
+    """GOV-06 (Addendum A-48) is registered and enabled -> integration guards become real
+    pipeline decisions; otherwise `guards.py` runs and only audit/bus `system` events appear."""
+    if c.snap is None:
+        return False
+    cfg = c.snap.controls.get(guards.HARNESS_CONTROL)
+    if cfg is None or not cfg.enabled or cfg.mode == "off":
+        return False
+    try:
+        return c.rt.controls.get(guards.HARNESS_CONTROL) is not None
+    except Exception:
+        return False
 
 
 def _new_ctx(c: _Call, *, hold: float = 0.0) -> RequestContext:
@@ -271,12 +317,12 @@ def _bump(c: _Call, **inc: int) -> None:
     data["agent_id"] = c.agent_id
 
 
-def _label_pre(out: dict[str, Any]) -> str:
+def _label_pre(out: dict[str, Any], verdict: Verdict | None = None) -> str:
     hso = out.get("hookSpecificOutput") or {}
     d = hso.get("permissionDecision")
     if d == "deny":
-        reason = str(hso.get("permissionDecisionReason", ""))
-        return "pending" if reason.startswith("AEGIS-APPROVAL-REQUIRED") else "deny"
+        pending = verdict is not None and verdict.action == "require_approval"
+        return "pending" if pending else "deny"
     if d == "allow":
         return "modify" if "updatedInput" in hso else "allow"
     return d or "noop"
@@ -285,7 +331,7 @@ def _label_pre(out: dict[str, Any]) -> str:
 # ---------------------------------------------------------------- event handlers
 async def _pre_tool_use(c: _Call) -> tuple[dict[str, Any], str]:
     ev = parse_event(c.body, "PreToolUse")
-    g = guards.bypass_mode(ev.permission_mode, c.params)
+    g = None if gov06_active(c) else guards.bypass_mode(ev.permission_mode, c.params)
     if g is not None and g.blocks:
         await _audit(c, {"event": "claude_code.bypass_denied", "tool": ev.tool_name})
         _bus(c, "warning", "Claude Code tool call denied: bypassPermissions mode (GOV-06)")
@@ -328,7 +374,7 @@ async def _pre_tool_use(c: _Call) -> tuple[dict[str, Any], str]:
         status = (verdict.primary.http_status if verdict.primary else None) or 403
         await _complete(c.rt, ctx, mapped.interaction, verdict,
                         Outcome(status_code=status, usage=Usage(requests=0)))
-    label = _label_pre(out)
+    label = _label_pre(out, verdict)
     _bump(c, tool_calls=1, denied=1 if label in ("deny", "pending") else 0,
           redactions=len(verdict.redactions))
     return out, label
@@ -339,6 +385,17 @@ def _rehydrate(rt: Any, ctx: RequestContext, mapped: mapping.Mapped) -> tuple[An
     import copy
 
     root = copy.deepcopy(mapped.interaction.raw if mapped.interaction.raw is not None else {})
+    obj_fn = getattr(rt.redactor, "rehydrate_obj", None)
+    if callable(obj_fn):  # Addendum A-40: preferred, shape-preserving
+        try:
+            before = len(_PLACEHOLDER.findall(json.dumps(root, ensure_ascii=False)))
+            new_root = obj_fn(ctx, root)
+            after = len(_PLACEHOLDER.findall(json.dumps(new_root, ensure_ascii=False)))
+            if new_root != root:
+                return new_root, max(before - after, 1)
+            return root, 0
+        except Exception:
+            log.warning("rehydrate_obj failed; falling back to per-string rehydrate")
     restored = 0
     for path, keys in mapped.leaves.items():
         if path in mapped.truncated:
@@ -376,6 +433,7 @@ async def _post_tool_use(c: _Call) -> tuple[dict[str, Any], str]:
                 status_code=200,
                 usage=Usage(requests=0, tool_calls=0 if routed else 1, spend_usd=spend),
                 upstream_ms=ev.duration_ms,
+                error="tool_error" if _tool_errored(ev.tool_response) else None,
             ),
         )
         parent_id = it.id
@@ -402,13 +460,20 @@ async def _post_tool_use(c: _Call) -> tuple[dict[str, Any], str]:
     return out, label
 
 
+def _tool_errored(resp: Any) -> bool:
+    """MCP `isError` / generic `is_error` / Bash `interrupted` (Addendum A-13: tool_error)."""
+    if not isinstance(resp, dict):
+        return False
+    return bool(resp.get("isError") or resp.get("is_error") or resp.get("interrupted"))
+
+
 async def _post_tool_use_failure(c: _Call) -> tuple[dict[str, Any], str]:
     ev = parse_event(c.body, "PostToolUseFailure")
     entry = c.state.pending.pop(c.session_id, ev.tool_use_id)
     if entry is not None:
         await _complete(
             c.rt, entry.ctx, entry.interaction, entry.verdict,
-            Outcome(status_code=500, error="tool failed",
+            Outcome(status_code=200, error="tool_error",
                     usage=Usage(requests=0, tool_calls=0 if entry.routed_mcp else 1),
                     upstream_ms=getattr(ev, "duration_ms", None)),
         )
@@ -421,7 +486,8 @@ async def _user_prompt_submit(c: _Call) -> tuple[dict[str, Any], str]:
     g = await guards.budget_precheck(
         c.rt, c.identity, c.session_id, c.snap, c.params, base_url=c.base_url
     )
-    if g is not None and g.blocks:
+    gov06 = gov06_active(c)
+    if g is not None and g.blocks and not gov06:
         await _audit(c, {"event": "claude_code.prompt_blocked", "control_id": g.control_id,
                          **{k: v for k, v in g.data.items() if k != "used"}})
         _bus(c, "warning", f"Claude Code prompt blocked: {g.reason[:140]}")
@@ -434,7 +500,10 @@ async def _user_prompt_submit(c: _Call) -> tuple[dict[str, Any], str]:
         }, "block"
     doc = c.snap.doc if c.snap is not None else None
     mapped = mapping.map_prompt(ev, doc, c.agent)
-    if not mapped.interaction.segments:
+    if g is not None and g.blocks:  # GOV-06 turns the budget pre-check into a real decision
+        mapped.interaction.meta["claude_code"]["budget_exhausted"] = {
+            k: v for k, v in g.data.items() if k != "used"} | {"guard_control": g.control_id}
+    elif not mapped.interaction.segments:
         return {}, "noop"
     ctx = _new_ctx(c)
     verdict = await _evaluate(c, ctx, mapped.interaction)
@@ -487,6 +556,8 @@ async def _session_start(c: _Call) -> tuple[dict[str, Any], str]:
 async def _config_change(c: _Call) -> tuple[dict[str, Any], str]:
     ev = parse_event(c.body, "ConfigChange")
     g = guards.config_change(ev.source, ev.file_path, c.params)
+    if gov06_active(c):
+        return await _config_change_pipeline(c, ev, g)
     enforce = g.blocks and c.params.guard_mode == "enforce"
     await _audit(c, {
         "event": "claude_code.config_change",
@@ -501,6 +572,27 @@ async def _config_change(c: _Call) -> tuple[dict[str, Any], str]:
     if enforce:
         _bump(c, denied=1)
         return respond.config_change_block(g.reason), "block"
+    return {}, "log"
+
+
+async def _config_change_pipeline(c: _Call, ev: Any, g: guards.GuardResult) -> tuple[dict[str, Any], str]:
+    """ConfigChange as a `config.change` interaction decided by GOV-06 (Addendum A-48)."""
+    mapped = mapping.map_config_change(ev, g.data, problem=None if g.data.get("changed_keys")
+                                       else (g.reason if g.blocks else None))
+    ctx = _new_ctx(c)
+    verdict = await _evaluate(c, ctx, mapped.interaction)
+    blocked = verdict.action in ("block", "require_approval")
+    await _complete(c.rt, ctx, mapped.interaction, verdict,
+                    Outcome(status_code=(verdict.primary.http_status if verdict.primary else None)
+                            or 403 if blocked else 200, usage=Usage(requests=0)))
+    if blocked:
+        _bus(c, "warning", f"Claude Code settings change blocked ({ev.source or 'unknown'}) by "
+                           f"{_primary_id(verdict) or 'policy'}")
+        _bump(c, denied=1)
+        return respond.config_change_block(
+            respond.deny_reason(verdict, base_url=c.base_url,
+                                control_name=_control_name(c, _primary_id(verdict)))
+        ), "block"
     return {}, "log"
 
 
@@ -539,6 +631,18 @@ async def handle_hook(
     base_url: str = DEFAULT_BASE_URL,
 ) -> dict[str, Any]:
     """Evaluate one Claude Code hook event and return the hook-output JSON. Never raises."""
+    out, _ = await handle_hook_ex(rt, raw, headers, base_url)
+    return out
+
+
+async def handle_hook_ex(
+    rt: Any,
+    raw: bytes | str | None,
+    headers: Mapping[str, str] | None,
+    base_url: str = DEFAULT_BASE_URL,
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Like `handle_hook`, plus the HTTP response headers (Addendum A-06:
+    `X-Aegis-Decision-Id`, `x-should-retry`, `retry-after`, `x-aegis-*`). Never raises."""
     t0 = time.perf_counter()
     hdr = {str(k).lower(): str(v) for k, v in (headers or {}).items()}
     hint = (hdr.get("x-aegis-hook-event") or "").strip()
@@ -547,11 +651,12 @@ async def handle_hook(
     except ValueError as exc:
         log.warning("claude code hook payload rejected event=%s why=%s", hint or "?", exc)
         _metric(rt, hint or "unknown", "malformed")
-        return respond.fail_closed_output(hint, "malformed hook payload") if hint in BLOCKING_EVENTS else {}
+        out = respond.fail_closed_output(hint, "malformed hook payload") if hint in BLOCKING_EVENTS else {}
+        return out, {}
     event = str(body.get("hook_event_name") or hint or "unknown")
     if rt is None:
         _metric(None, event, "no_runtime")
-        return respond.fail_closed_output(event, "gateway runtime not started")
+        return respond.fail_closed_output(event, "gateway runtime not started"), {}
 
     state = state_for(rt)
     state.events[event] += 1
@@ -559,8 +664,10 @@ async def handle_hook(
     label = "error"
     try:
         expired = state.pending.sweep_expired()
-        if expired:
-            await _complete_abandoned(rt, expired, "PostToolUse never arrived (expired)")
+        for e in expired:  # Addendum A-13: no PostToolUse within 600 s -> complete as executed
+            await _complete(rt, e.ctx, e.interaction, e.verdict,
+                            Outcome(status_code=200,
+                                    usage=Usage(requests=0, tool_calls=0 if e.routed_mcp else 1)))
         snap = _snapshot(rt)
         identity, agent, agent_id = await _resolve(rt, hdr, body)
         session_id = hdr.get("x-aegis-session") or str(body.get("session_id") or "") or "default"
@@ -594,7 +701,7 @@ async def handle_hook(
         rt.metrics.observe_overhead("hook", max(0.0, elapsed - (c.pipeline_s if c else 0.0)))
     except Exception:
         pass
-    return out
+    return out, (dict(c.response_headers) if c is not None else {})
 
 
 def _metric(rt: Any, event: str, result: str) -> None:
@@ -613,4 +720,5 @@ def hook_status(rt: Any) -> dict[str, Any]:
     return {"runtime": True, **state_for(rt).status()}
 
 
-__all__ = ["DEFAULT_AGENT", "HookState", "handle_hook", "hook_status", "state_for"]
+__all__ = ["DEFAULT_AGENT", "HookState", "gov06_active", "handle_hook", "handle_hook_ex",
+           "hook_status", "state_for"]

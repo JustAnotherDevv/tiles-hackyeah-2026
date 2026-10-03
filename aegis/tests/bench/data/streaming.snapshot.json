@@ -1,0 +1,15 @@
+{
+  "source": "snapshot: staging/spikes/streaming README §Performance (bench.py; 131 tests)",
+  "machine": "M-series Mac, Python 3.13",
+  "method": "worst case: one SSE event per network chunk, 1-2-word deltas, a placeholder split every ~40 deltas",
+  "note": "Labelled snapshot - NOT this bench run's numbers.",
+  "per_chunk_us": {
+    "sse_parse_baseline": {"mean": 3.1, "p99": 7.8},
+    "anthropic_passthrough": {"mean": 4.1, "p99": 10.6},
+    "anthropic_rehydrate": {"mean": 4.5, "p99": 9.6},
+    "anthropic_rehydrate_scan": {"mean": 10.0, "p99": 24.9},
+    "openai_rehydrate_scan": {"mean": 14.1, "p99": 30.4},
+    "ollama_rehydrate_scan": {"mean": 8.8, "p99": 14.6}
+  },
+  "budget_us_per_chunk": 100
+}

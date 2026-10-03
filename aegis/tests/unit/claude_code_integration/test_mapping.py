@@ -38,7 +38,9 @@ def test_bash_segments_volatile_and_meta():
     cc = i.meta["claude_code"]
     assert cc["tool_use_id"] == "toolu_1" and cc["raw_tool_name"] == "Bash"
     assert cc["prompt_id"] == "p1" and cc["permission_mode"] == "default"
-    assert cc["cwd_hash"] and "/Users/dev" not in str(i.meta)
+    assert cc["cwd_hash"] and "/Users/dev" not in str(cc)
+    assert i.meta["cwd"] == "/Users/dev/acme" and i.meta["client"] == "claude-code"  # A-13
+    assert cc["session_id"] == "s1"
     assert i.id.startswith("int_")
 
 

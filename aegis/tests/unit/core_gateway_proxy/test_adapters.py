@@ -83,7 +83,7 @@ def test_anthropic_parse_request_claude_code() -> None:
     assert not any("image" in s.path or "tools" in s.path for s in i.segments)
     assert i.est_input_tokens and i.est_input_tokens > 0
     # body order
-    assert [s.path for s in i.segments][0] == "system[0].text"
+    assert next(s.path for s in i.segments) == "system[0].text"
 
 
 def test_anthropic_non_claude_code_system_redactable() -> None:
@@ -226,7 +226,7 @@ def test_ollama_adapter() -> None:
                        "prompt_eval_duration": 2_000_000, "eval_duration": 7_000_000,
                        "total_duration": 99_000_000_000})
     assert (u.input_tokens, u.output_tokens) == (26, 282) and abs(u.compute_s - 0.01) < 1e-9
-    status, raw, hdrs = a.blocked_response(_verdict(), model="m", stream=True, style="message",
+    status, raw, _hdrs = a.blocked_response(_verdict(), model="m", stream=True, style="message",
                                            op="chat")
     acc = accumulate_ollama(raw)
     assert status == 200 and acc["done"] and acc["content"].startswith("[Aegis] Blocked")

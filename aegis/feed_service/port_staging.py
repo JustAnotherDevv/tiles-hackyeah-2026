@@ -23,73 +23,133 @@ OUT = ROOT / "feed_service" / "signatures"
 DEMO_OUT = ROOT / "feed_service" / "demo"
 
 ALL_SURFACES = [
-    "prompt.user", "model.request", "model.response", "model.admin", "tool.input", "tool.output",
-    "artifact.file", "mcp.init", "mcp.list", "mcp.call", "mcp.result", "egress.request",
-    "egress.response", "a2a.message", "a2a.result",
+    "prompt.user",
+    "model.request",
+    "model.response",
+    "model.admin",
+    "tool.input",
+    "tool.output",
+    "artifact.file",
+    "mcp.init",
+    "mcp.list",
+    "mcp.call",
+    "mcp.result",
+    "egress.request",
+    "egress.response",
+    "a2a.message",
+    "a2a.result",
 ]
 
 # id -> surfaces, action (None = keep), overrides, extra keys, example surface map
 TABLE: dict[str, dict[str, Any]] = {
-    "AEGIS-TI-000": {"surfaces": ALL_SURFACES,
-                     "ex": {"model_call": "model.request", "tool_call": "tool.input",
-                            "output": "model.response", "mcp": "mcp.call", "egress": "egress.request",
-                            "model_download": "artifact.file"}},
+    "AEGIS-TI-000": {
+        "surfaces": ALL_SURFACES,
+        "ex": {
+            "model_call": "model.request",
+            "tool_call": "tool.input",
+            "output": "model.response",
+            "mcp": "mcp.call",
+            "egress": "egress.request",
+            "model_download": "artifact.file",
+        },
+    },
     "AEGIS-TI-001": {"surfaces": ["artifact.file"], "ex": {"model_download": "artifact.file"}},
     "AEGIS-TI-002": {"surfaces": ["artifact.file"], "ex": {"model_download": "artifact.file"}},
-    "AEGIS-TI-003": {"surfaces": ["egress.request", "model.admin", "model.response", "tool.output"],
-                     "overrides": {"model.response": "log", "tool.output": "log"},
-                     "ex": {"model_download": "egress.request", "output": "model.response"}},
+    "AEGIS-TI-003": {
+        "surfaces": ["egress.request", "model.admin", "model.response", "tool.output"],
+        "overrides": {"model.response": "log", "tool.output": "log"},
+        "ex": {"model_download": "egress.request", "output": "model.response"},
+    },
     "AEGIS-TI-004": {"surfaces": ["artifact.file"], "ex": {"model_download": "artifact.file"}},
-    "AEGIS-TI-005": {"surfaces": ["artifact.file", "model.admin", "egress.request"],
-                     "ex": {"model_download": "artifact.file", "egress": "egress.request"}},
+    "AEGIS-TI-005": {
+        "surfaces": ["artifact.file", "model.admin", "egress.request"],
+        "ex": {"model_download": "artifact.file", "egress": "egress.request"},
+    },
     "AEGIS-TI-006": {"surfaces": ["egress.request"], "ex": {"egress": "egress.request"}},
-    "AEGIS-TI-007": {"surfaces": ["egress.request", "tool.input", "mcp.call"],
-                     "ex": {"egress": "egress.request", "tool_call": "tool.input"}},
+    "AEGIS-TI-007": {
+        "surfaces": ["egress.request", "tool.input", "mcp.call"],
+        "ex": {"egress": "egress.request", "tool_call": "tool.input"},
+    },
     "AEGIS-TI-008": {"surfaces": ["egress.request"], "ex": {"egress": "egress.request"}},
-    "AEGIS-TI-009": {"surfaces": ["tool.input", "mcp.call", "model.response"],
-                     "overrides": {"model.response": "log"},
-                     "ex": {"tool_call": "tool.input", "output": "model.response"}},
-    "AEGIS-TI-010": {"surfaces": ["mcp.init", "mcp.result", "egress.response"],
-                     "ex": {"mcp": "mcp.result"}},
-    "AEGIS-TI-011": {"surfaces": ["egress.request", "mcp.call", "tool.input"],
-                     "ex": {"egress": "egress.request", "mcp": "mcp.call", "tool_call": "tool.input"}},
-    "AEGIS-TI-012": {"surfaces": ["mcp.list", "tool.output", "mcp.result"], "action": "redact",
-                     "extra": {"redact_scope": "tool"}, "ex": {"tool_call": "mcp.list"}},
-    "AEGIS-TI-013": {"surfaces": ["prompt.user", "model.request", "model.response", "mcp.list",
-                                  "tool.input", "mcp.call"],
-                     "action": "redact",
-                     "overrides": {"mcp.list": "block", "tool.input": "block", "mcp.call": "block"},
-                     "extra": {"redact_with": ""},
-                     "ex": {"model_call": "model.request", "tool_call": "mcp.list",
-                            "output": "model.response"}},
-    "AEGIS-TI-014": {"surfaces": ["model.response", "tool.output", "mcp.result", "tool.input",
-                                  "mcp.call"],
-                     "ex": {"output": "model.response", "tool_call": "tool.input"}},
+    "AEGIS-TI-009": {
+        "surfaces": ["tool.input", "mcp.call", "model.response"],
+        "overrides": {"model.response": "log"},
+        "ex": {"tool_call": "tool.input", "output": "model.response"},
+    },
+    "AEGIS-TI-010": {
+        "surfaces": ["mcp.init", "mcp.result", "egress.response"],
+        "ex": {"mcp": "mcp.result"},
+    },
+    "AEGIS-TI-011": {
+        "surfaces": ["egress.request", "mcp.call", "tool.input"],
+        "ex": {"egress": "egress.request", "mcp": "mcp.call", "tool_call": "tool.input"},
+    },
+    "AEGIS-TI-012": {
+        "surfaces": ["mcp.list", "tool.output", "mcp.result"],
+        "action": "redact",
+        "extra": {"redact_scope": "tool"},
+        "ex": {"tool_call": "mcp.list"},
+    },
+    "AEGIS-TI-013": {
+        "surfaces": [
+            "prompt.user",
+            "model.request",
+            "model.response",
+            "mcp.list",
+            "tool.input",
+            "mcp.call",
+        ],
+        "action": "redact",
+        "overrides": {"mcp.list": "block", "tool.input": "block", "mcp.call": "block"},
+        "extra": {"redact_with": ""},
+        "ex": {"model_call": "model.request", "tool_call": "mcp.list", "output": "model.response"},
+    },
+    "AEGIS-TI-014": {
+        "surfaces": ["model.response", "tool.output", "mcp.result", "tool.input", "mcp.call"],
+        "ex": {"output": "model.response", "tool_call": "tool.input"},
+    },
     "AEGIS-TI-015": {"surfaces": ["tool.input", "mcp.call"], "ex": {"tool_call": "tool.input"}},
-    "AEGIS-TI-016": {"surfaces": ["tool.input", "mcp.call", "model.response"],
-                     "overrides": {"model.response": "log"},
-                     "ex": {"tool_call": "tool.input", "output": "model.response"}},
-    "AEGIS-TI-017": {"surfaces": ["tool.input", "mcp.call", "mcp.init", "model.response",
-                                  "egress.request"],
-                     "ex": {"tool_call": "tool.input", "egress": "egress.request",
-                            "output": "model.response", "mcp": "mcp.init"}},
-    "AEGIS-TI-018": {"surfaces": ["egress.request", "model.admin"],
-                     "ex": {"model_download": "egress.request"}},
-    "AEGIS-TI-019": {"surfaces": ["prompt.user", "model.request", "tool.output", "mcp.result",
-                                  "model.response"],
-                     "overrides": {"tool.output": "redact", "mcp.result": "redact",
-                                   "model.response": "log"},
-                     "extra": {"redact_scope": "segment"},
-                     "ex": {"model_call": "model.request", "tool_call": "tool.output",
-                            "output": "model.response"}},
-    "AEGIS-TI-022": {"surfaces": ["model.response", "tool.output", "mcp.result", "tool.input",
-                                  "mcp.call"],
-                     "extra": {"enabled": False},
-                     "ex": {"output": "model.response", "tool_call": "tool.input"}},
+    "AEGIS-TI-016": {
+        "surfaces": ["tool.input", "mcp.call", "model.response"],
+        "overrides": {"model.response": "log"},
+        "ex": {"tool_call": "tool.input", "output": "model.response"},
+    },
+    "AEGIS-TI-017": {
+        "surfaces": ["tool.input", "mcp.call", "mcp.init", "model.response", "egress.request"],
+        "ex": {
+            "tool_call": "tool.input",
+            "egress": "egress.request",
+            "output": "model.response",
+            "mcp": "mcp.init",
+        },
+    },
+    "AEGIS-TI-018": {
+        "surfaces": ["egress.request", "model.admin"],
+        "ex": {"model_download": "egress.request"},
+    },
+    "AEGIS-TI-019": {
+        "surfaces": ["prompt.user", "model.request", "tool.output", "mcp.result", "model.response"],
+        "overrides": {"tool.output": "redact", "mcp.result": "redact", "model.response": "log"},
+        "extra": {"redact_scope": "segment"},
+        "ex": {
+            "model_call": "model.request",
+            "tool_call": "tool.output",
+            "output": "model.response",
+        },
+    },
+    "AEGIS-TI-022": {
+        "surfaces": ["model.response", "tool.output", "mcp.result", "tool.input", "mcp.call"],
+        "extra": {"enabled": False},
+        "ex": {"output": "model.response", "tool_call": "tool.input"},
+    },
 }
 
-LEAF_ALIASES = {"literal": "literal_set", "pickle_opcode": "pickle_globals",
-                "jsonpath": "json_path", "semantic_exemplar": "semantic"}
+LEAF_ALIASES = {
+    "literal": "literal_set",
+    "pickle_opcode": "pickle_globals",
+    "jsonpath": "json_path",
+    "semantic_exemplar": "semantic",
+}
 ACTION_ALIASES = {"quarantine": "redact", "strip_tool": "redact", "alert": "log"}
 OLD_HOST, NEW_HOST = "aegis-corp.example", "acme-capital.example"
 
@@ -169,7 +229,9 @@ def _contract_example_keys(ex: Any) -> None:
         _rename_key(ex, "body", "raw")
     meta = CommentedMap()
     if "bytes_hex" in ex:
-        meta["artifact_b64"] = base64.b64encode(bytes.fromhex("".join(str(ex.pop("bytes_hex")).split()))).decode()
+        meta["artifact_b64"] = base64.b64encode(
+            bytes.fromhex("".join(str(ex.pop("bytes_hex")).split()))
+        ).decode()
     elif "bytes_b64" in ex:
         meta["artifact_b64"] = "".join(str(ex.pop("bytes_b64")).split())
     if "filename" in ex:
@@ -229,10 +291,14 @@ def convert(sig_path: Path) -> tuple[str, str]:
             _contract_example_keys(ex)
     if (spec.get("extra") or {}).get("enabled") is False:
         _set_after(doc, "id", "enabled", False)
-        doc.yaml_add_eol_comment("draft: authoring-only flag, enable + Publish to ship it", "enabled")
+        doc.yaml_add_eol_comment(
+            "draft: authoring-only flag, enable + Publish to ship it", "enabled"
+        )
     buf = io.StringIO()
-    header = (f"# {sid} - ported from staging/feed-seed by feed_service/port_staging.py "
-              "(contract shape, CONTRACTS 4.7)\n")
+    header = (
+        f"# {sid} - ported from staging/feed-seed by feed_service/port_staging.py "
+        "(contract shape, CONTRACTS 4.7)\n"
+    )
     y.dump(doc, buf)
     return sid, header + buf.getvalue()
 
@@ -246,8 +312,9 @@ def port() -> int:
         sid, text = convert(p)
         (OUT / f"{sid}.yaml").write_text(text, encoding="utf-8")
     payload = (STAGING / "demo" / "echoleak-proxy-payload.md").read_text(encoding="utf-8")
-    (DEMO_OUT / "echoleak-proxy-payload.md").write_text(payload.replace(OLD_HOST, NEW_HOST),
-                                                        encoding="utf-8")
+    (DEMO_OUT / "echoleak-proxy-payload.md").write_text(
+        payload.replace(OLD_HOST, NEW_HOST), encoding="utf-8"
+    )
     print(f"ported {len(paths)} signatures -> {OUT.relative_to(ROOT)}")
     return len(paths)
 
@@ -275,12 +342,17 @@ def check() -> int:
     payload = (DEMO_OUT / "echoleak-proxy-payload.md").read_text(encoding="utf-8")
     before, _ = scan_event(published, Event(surface="model.response", text=payload))
     after, hits = scan_event(published + drafts, Event(surface="model.response", text=payload))
-    demo_ok = before == "allow" and after == "block" and any(
-        h["signature_id"] == "AEGIS-TI-022" for h in hits)
+    demo_ok = (
+        before == "allow"
+        and after == "block"
+        and any(h["signature_id"] == "AEGIS-TI-022" for h in hits)
+    )
     ok = len(files) == 21 and failures == 0 and demo_ok
-    print(f"{'OK' if ok else 'FAILED'}: {len(files)} signatures ({len(drafts)} draft), {total} vectors, "
-          f"{failures} failures; demo invariant {'PASS' if demo_ok else 'FAIL'} "
-          f"(before={before}, after={after})")
+    print(
+        f"{'OK' if ok else 'FAILED'}: {len(files)} signatures ({len(drafts)} draft), {total} vectors, "
+        f"{failures} failures; demo invariant {'PASS' if demo_ok else 'FAIL'} "
+        f"(before={before}, after={after})"
+    )
     return 0 if ok else 1
 
 

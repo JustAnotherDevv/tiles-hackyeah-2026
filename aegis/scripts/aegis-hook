@@ -32,11 +32,11 @@ fail() {
   why=$(printf '%s' "$1" | LC_ALL=C tr -cd 'A-Za-z0-9 .,:;_/()=-' | cut -c1-160)
   case "$EVENT" in
     PreToolUse|UserPromptSubmit|ConfigChange|unknown)
-      printf 'Aegis gateway unreachable at %s (%s); %s denied (fail-closed). Do not retry or work around this; tell the user to start Aegis (make up).\n' \
+      printf '[Aegis] FAIL-CLOSED: Aegis gateway unreachable at %s (%s); %s denied (fail-closed). Do not retry or work around this; tell the user to start Aegis (make up).\n' \
         "$URL" "$why" "$EVENT" >&2
       exit 2 ;;
     PermissionRequest)
-      printf '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"Aegis gateway unreachable at %s (%s); permission denied (fail-closed)."}}}\n' \
+      printf '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"[Aegis] FAIL-CLOSED: Aegis gateway unreachable at %s (%s); permission denied (fail-closed)."}}}\n' \
         "$URL" "$why"
       exit 0 ;;
     SessionStart)

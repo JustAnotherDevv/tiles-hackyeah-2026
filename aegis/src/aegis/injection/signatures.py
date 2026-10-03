@@ -79,7 +79,9 @@ class ScanOptions:
     only_families: frozenset[str] | None = None
     exclude_families: frozenset[str] = frozenset()
     disabled_signatures: frozenset[str] = frozenset()
-    extra_signatures: tuple[tuple[str, str, str, float, str], ...] = ()  # id,pattern,family,w,applies
+    extra_signatures: tuple[
+        tuple[str, str, str, float, str], ...
+    ] = ()  # id,pattern,family,w,applies
     mention_discount: bool = True
     fuzzy: bool = True
     fuzzy_distance: int = 2
@@ -141,7 +143,7 @@ def _expand(pattern: str, variables: dict[str, str]) -> str:
 
 
 def _load_yaml(name: str) -> dict[str, Any]:
-    import yaml  # noqa: PLC0415 - lazy: no import-time I/O
+    import yaml
 
     return yaml.safe_load((DATA / name).read_text(encoding="utf-8")) or {}
 
@@ -168,11 +170,15 @@ def _catalog() -> Catalog:
             sig = Signature(
                 id=str(raw["id"]),
                 family=str(raw.get("family", "custom")),
-                weight=float(raw.get("weight", families.get(raw.get("family", ""), {}).get("weight", 0.9))),
+                weight=float(
+                    raw.get("weight", families.get(raw.get("family", ""), {}).get("weight", 0.9))
+                ),
                 pattern=pat,
                 applies=str(raw.get("applies", "any")),
                 weight_untrusted=(
-                    float(raw["weight_untrusted"]) if raw.get("weight_untrusted") is not None else None
+                    float(raw["weight_untrusted"])
+                    if raw.get("weight_untrusted") is not None
+                    else None
                 ),
                 langs=tuple(raw.get("langs") or ()),
                 unless_trusted=compile_pattern(fold_diacritics(str(unless)))[0] if unless else None,
@@ -191,7 +197,9 @@ def _catalog() -> Catalog:
     _self_test(cat)
     log.info(
         "injection catalog loaded signatures=%d disabled=%d engine=%s",
-        len(cat.signatures), len(cat.disabled), cat.engine,
+        len(cat.signatures),
+        len(cat.disabled),
+        cat.engine,
     )
     return cat
 
@@ -243,8 +251,14 @@ def _extra_compiled(extras: tuple[tuple[str, str, str, float, str], ...]) -> tup
             log.warning("extra_signature compiled with stdlib re (not RE2) id=%s", sid)
         out.append(
             Signature(
-                id=f"custom.{sid}", family=family or "custom", weight=float(weight), pattern=pattern,
-                applies=applies or "any", compiled=compiled, engine=engine, builtin=False,
+                id=f"custom.{sid}",
+                family=family or "custom",
+                weight=float(weight),
+                pattern=pattern,
+                applies=applies or "any",
+                compiled=compiled,
+                engine=engine,
+                builtin=False,
             )
         )
     return tuple(out)
@@ -275,7 +289,10 @@ def _in_quotes(view_text: str, a: int, b: int) -> bool:
                 for i, c in enumerate(before)
                 if c == "'"
                 and not (
-                    i > 0 and before[i - 1].isalpha() and i + 1 < len(before) and before[i + 1].isalpha()
+                    i > 0
+                    and before[i - 1].isalpha()
+                    and i + 1 < len(before)
+                    and before[i + 1].isalpha()
                 )
             )
         else:
@@ -329,8 +346,17 @@ def _iter_sig_hits(
             continue
         mentioned = trust == "trusted" and view.whole is None and _in_quotes(view.text, a, b)
         yield ScanHit(
-            sig_id=sig.id, family=sig.family, weight=sig.weight, view=view.name, start=s, end=e,
-            text_start=ta, text_end=tb, carrier=carrier, mentioned=mentioned, matched=matched,
+            sig_id=sig.id,
+            family=sig.family,
+            weight=sig.weight,
+            view=view.name,
+            start=s,
+            end=e,
+            text_start=ta,
+            text_end=tb,
+            carrier=carrier,
+            mentioned=mentioned,
+            matched=matched,
         )
     for layer in norm.layers:
         lviews = build_views(layer.text, fuzzy_on=opts.fuzzy, fuzzy_distance=opts.fuzzy_distance)
@@ -338,9 +364,14 @@ def _iter_sig_hits(
             if sig.applies == "user" and trust != "trusted":
                 continue
             yield ScanHit(
-                sig_id=sig.id, family=sig.family, weight=sig.weight,
-                view=f"layer:{layer.kind}@{layer.depth}", start=layer.start, end=layer.end,
-                carrier=layer.kind, matched=matched,
+                sig_id=sig.id,
+                family=sig.family,
+                weight=sig.weight,
+                view=f"layer:{layer.kind}@{layer.depth}",
+                start=layer.start,
+                end=layer.end,
+                carrier=layer.kind,
+                matched=matched,
             )
 
 
@@ -363,7 +394,9 @@ def _active_signatures(opts: ScanOptions) -> list[Signature]:
     return sigs
 
 
-def scan(norm: Normalized, *, trust: Trust = "untrusted", opts: ScanOptions | None = None) -> ScanResult:
+def scan(
+    norm: Normalized, *, trust: Trust = "untrusted", opts: ScanOptions | None = None
+) -> ScanResult:
     """Score one normalized unit. Never raises (errors -> empty result, logged)."""
     opts = opts or ScanOptions()
     try:
@@ -411,8 +444,14 @@ def _scan(norm: Normalized, trust: Trust, opts: ScanOptions) -> ScanResult:
     if carrier and score > 0:
         score = min(1.0, score + opts.carrier_boost)
     return ScanResult(
-        score=round(score, 4), hits=hits, families=families, flags=set(norm.flags), trust=trust,
-        norm=norm, carrier=carrier, mention_discount=any(h.mentioned for h in hits),
+        score=round(score, 4),
+        hits=hits,
+        families=families,
+        flags=set(norm.flags),
+        trust=trust,
+        norm=norm,
+        carrier=carrier,
+        mention_discount=any(h.mentioned for h in hits),
     )
 
 
@@ -424,7 +463,9 @@ def _scan_text_cached(text: str, trust: Trust, opts: ScanOptions) -> ScanResult:
     return scan(norm, trust=trust, opts=opts)
 
 
-def scan_text(text: str, *, trust: Trust = "untrusted", opts: ScanOptions | None = None) -> ScanResult:
+def scan_text(
+    text: str, *, trust: Trust = "untrusted", opts: ScanOptions | None = None
+) -> ScanResult:
     """Normalize + scan with an LRU result cache (results are shared: treat as read-only)."""
     opts = opts or ScanOptions()
     if len(text) <= 32_768:

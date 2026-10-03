@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -14,14 +14,13 @@ log = logging.getLogger("aegis.controls.signatures")
 
 SEVERITY_RANK = {"info": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 _WARNED: set[tuple[str, str]] = set()
-P = TypeVar("P", bound=BaseModel)
 
 
 class Params(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
-def params(control_id: str, model: type[P], cfg: Any) -> P:
+def params[P: BaseModel](control_id: str, model: type[P], cfg: Any) -> P:
     """Validate `cfg.params` with defaults; unknown keys / bad values -> one WARNING, never raise."""
     raw = dict(getattr(cfg, "params", None) or {})
     try:
@@ -30,8 +29,11 @@ def params(control_id: str, model: type[P], cfg: Any) -> P:
         key = (control_id, str(e.errors()[0].get("loc")))
         if key not in _WARNED:
             _WARNED.add(key)
-            log.warning("invalid params control=%s error=%s (defaults used)", control_id,
-                        e.errors()[0].get("msg"))
+            log.warning(
+                "invalid params control=%s error=%s (defaults used)",
+                control_id,
+                e.errors()[0].get("msg"),
+            )
         p = model()
     extra = set((p.model_extra or {}).keys())
     for k in extra:
@@ -115,9 +117,25 @@ def sanitize_evidence(evidence: list[dict]) -> list[dict]:
     """Keep matcher/at/kind/offsets; mask snippet-like values (they may contain PII/IOCs)."""
     out = []
     for e in evidence[:8]:
-        item: dict[str, Any] = {k: e[k] for k in ("matcher", "at", "kind", "field", "start", "end",
-                                                  "score", "mode", "magic", "sha256", "member",
-                                                  "package", "path") if k in e}
+        item: dict[str, Any] = {
+            k: e[k]
+            for k in (
+                "matcher",
+                "at",
+                "kind",
+                "field",
+                "start",
+                "end",
+                "score",
+                "mode",
+                "magic",
+                "sha256",
+                "member",
+                "package",
+                "path",
+            )
+            if k in e
+        }
         for k in ("snippet", "url", "value", "exemplar"):
             if e.get(k):
                 item[k] = mask(str(e[k]), 120)

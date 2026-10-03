@@ -307,7 +307,7 @@ async def test_create_manual_org_change_runs_action_executor(svc, h) -> None:
     assert done.execution == {"status": "applied", "org_change_id": "och_1", "executor": "registered"}
     assert seen == [req.id]
     # a plain data-plane action approval is untouched by the org executor
-    r2, i2, _ = await _spend(svc, h)
+    r2, _i2, _ = await _spend(svc, h)
     d2 = await svc.vote(r2.id, h.member("u_emily"), "approve")
     assert d2.execution is None and d2.uses == 0
 

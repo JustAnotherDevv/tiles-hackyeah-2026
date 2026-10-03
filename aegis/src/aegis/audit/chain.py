@@ -40,6 +40,7 @@ FILE_PREFIX = "audit-"
 FILE_SUFFIX = ".jsonl"
 HEAD_NAME = "HEAD.json"
 LOCK_NAME = ".lock"
+HEAD_EVERY = 100  # with deferred HEAD writes: rewrite HEAD.json at least every N records
 
 
 def canonical_json(obj: Any) -> str:
@@ -131,6 +132,12 @@ class ChainWriter:
         self._fh_name: str | None = None
         self._lines: dict[str, int] = {}
         self._sizes: dict[str, int] = {}
+        # HEAD.json lags the chain by at most HEAD_EVERY records / one deferred flush when
+        # defer_head is set (AuditService flushes ~250 ms after the last append and on close).
+        # A lagging HEAD never fails verify; only a HEAD *ahead* of the log does.
+        self.defer_head = False
+        self.head_dirty = False
+        self._head_written_seq = 0
 
     # ------------------------------------------------------------------ lifecycle
     def open(self) -> bool:
@@ -141,9 +148,11 @@ class ChainWriter:
         if self.locked:
             with contextlib.suppress(OSError):
                 write_head(self.audit_dir, self.seq, self.head, self.file)
+                self._head_written_seq = self.seq
         return self.locked
 
     def close(self, fsync: bool = True) -> None:
+        self.flush_head()
         if self._fh is not None:
             try:
                 self._fh.flush()
@@ -257,7 +266,9 @@ class ChainWriter:
         if name not in self._lines:
             try:
                 with path.open("rb") as rf:
-                    self._lines[name] = sum(chunk.count(b"\n") for chunk in iter(lambda: rf.read(1 << 20), b""))
+                    self._lines[name] = sum(
+                        chunk.count(b"\n") for chunk in iter(lambda: rf.read(1 << 20), b"")
+                    )
             except OSError:
                 self._lines[name] = 0
         self._sizes[name] = fh.tell()
@@ -284,11 +295,21 @@ class ChainWriter:
         self.seq = rec["seq"]
         self.head = rec["hash"]
         self.file = name
+        self.head_dirty = True
+        if not self.defer_head or self.seq - self._head_written_seq >= HEAD_EVERY:
+            self.flush_head()
+        return rec, Appended(file=name, line=self._lines[name], offset=offset, length=len(data))
+
+    def flush_head(self) -> None:
+        """Rewrite HEAD.json (atomic) if it lags the chain. Callers serialize with appends."""
+        if not self.head_dirty or not self.locked:
+            return
         try:
-            write_head(self.audit_dir, self.seq, self.head, name)
+            write_head(self.audit_dir, self.seq, self.head, self.file)
+            self._head_written_seq = self.seq
+            self.head_dirty = False
         except OSError:
             log.warning("audit HEAD.json update failed seq=%s", self.seq)
-        return rec, Appended(file=name, line=self._lines[name], offset=offset, length=len(data))
 
 
 __all__ = [

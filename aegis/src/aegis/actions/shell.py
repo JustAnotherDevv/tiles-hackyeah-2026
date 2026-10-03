@@ -29,22 +29,104 @@ import unicodedata
 from dataclasses import dataclass, field
 
 # ------------------------------------------------------------------ vocabularies
-DOWNLOADERS = frozenset({
-    "curl", "wget", "fetch", "iwr", "invoke-webrequest", "irm", "invoke-restmethod", "http", "https",
-    "aria2c", "lwp-download", "lwp-request", "get", "nc", "ncat", "netcat", "socat", "tftp",
-})
-SHELLS = frozenset({"sh", "bash", "zsh", "dash", "ksh", "mksh", "fish", "ash", "csh", "tcsh", "busybox"})
-INTERPRETERS = SHELLS | frozenset({
-    "python", "python2", "python3", "pypy", "pypy3", "perl", "ruby", "node", "nodejs", "deno", "bun",
-    "php", "pwsh", "powershell", "iex", "invoke-expression", "osascript", "lua", "tclsh", "source", ".",
-})
-CODE_INTERPRETERS = frozenset({"python", "python2", "python3", "pypy", "pypy3", "node", "nodejs", "deno",
-                               "bun", "perl", "ruby", "php", "lua"})
-WRAPPERS = frozenset({
-    "sudo", "doas", "command", "env", "xargs", "busybox", "nohup", "time", "nice", "ionice", "timeout",
-    "exec", "builtin", "stdbuf", "unbuffer", "setsid", "caffeinate", "chronic", "torsocks", "proxychains",
-    "proxychains4", "chroot", "runuser", "watch", "strace", "ltrace", "gtimeout",
-})
+DOWNLOADERS = frozenset(
+    {
+        "curl",
+        "wget",
+        "fetch",
+        "iwr",
+        "invoke-webrequest",
+        "irm",
+        "invoke-restmethod",
+        "http",
+        "https",
+        "aria2c",
+        "lwp-download",
+        "lwp-request",
+        "get",
+        "nc",
+        "ncat",
+        "netcat",
+        "socat",
+        "tftp",
+    }
+)
+SHELLS = frozenset(
+    {"sh", "bash", "zsh", "dash", "ksh", "mksh", "fish", "ash", "csh", "tcsh", "busybox"}
+)
+INTERPRETERS = SHELLS | frozenset(
+    {
+        "python",
+        "python2",
+        "python3",
+        "pypy",
+        "pypy3",
+        "perl",
+        "ruby",
+        "node",
+        "nodejs",
+        "deno",
+        "bun",
+        "php",
+        "pwsh",
+        "powershell",
+        "iex",
+        "invoke-expression",
+        "osascript",
+        "lua",
+        "tclsh",
+        "source",
+        ".",
+    }
+)
+CODE_INTERPRETERS = frozenset(
+    {
+        "python",
+        "python2",
+        "python3",
+        "pypy",
+        "pypy3",
+        "node",
+        "nodejs",
+        "deno",
+        "bun",
+        "perl",
+        "ruby",
+        "php",
+        "lua",
+    }
+)
+WRAPPERS = frozenset(
+    {
+        "sudo",
+        "doas",
+        "command",
+        "env",
+        "xargs",
+        "busybox",
+        "nohup",
+        "time",
+        "nice",
+        "ionice",
+        "timeout",
+        "exec",
+        "builtin",
+        "stdbuf",
+        "unbuffer",
+        "setsid",
+        "caffeinate",
+        "chronic",
+        "torsocks",
+        "proxychains",
+        "proxychains4",
+        "chroot",
+        "runuser",
+        "watch",
+        "strace",
+        "ltrace",
+        "gtimeout",
+    }
+)
 _WRAPPER_ARG_FLAGS = {
     "sudo": {"-u", "-g", "-h", "-p", "-C", "-D", "-r", "-t", "-U"},
     "doas": {"-u", "-C"},
@@ -58,13 +140,67 @@ _WRAPPER_ARG_FLAGS = {
     "runuser": {"-u", "-g"},
 }
 _WRAPPER_POSITIONAL = {"timeout": 1, "gtimeout": 1, "chroot": 1}
-SQL_CLIENTS = frozenset({"psql", "mysql", "mariadb", "sqlite3", "sqlcmd", "clickhouse-client", "duckdb",
-                         "snowsql", "bq", "cockroach", "pgcli", "mycli", "litecli", "usql"})
-TEXT_TOOLS = frozenset({"echo", "printf", "grep", "egrep", "fgrep", "rg", "ag", "ack", "git-grep", "man",
-                        "less", "more", "cat", "head", "tail", "wc", "sort", "uniq", "tr", "cut", "jq", "yq"})
+SQL_CLIENTS = frozenset(
+    {
+        "psql",
+        "mysql",
+        "mariadb",
+        "sqlite3",
+        "sqlcmd",
+        "clickhouse-client",
+        "duckdb",
+        "snowsql",
+        "bq",
+        "cockroach",
+        "pgcli",
+        "mycli",
+        "litecli",
+        "usql",
+    }
+)
+TEXT_TOOLS = frozenset(
+    {
+        "echo",
+        "printf",
+        "grep",
+        "egrep",
+        "fgrep",
+        "rg",
+        "ag",
+        "ack",
+        "git-grep",
+        "man",
+        "less",
+        "more",
+        "cat",
+        "head",
+        "tail",
+        "wc",
+        "sort",
+        "uniq",
+        "tr",
+        "cut",
+        "jq",
+        "yq",
+    }
+)
 WRITE_PROGS_LAST = frozenset({"cp", "mv", "install", "ln", "rsync", "scp", "ditto"})
-WRITE_PROGS_ALL = frozenset({"tee", "touch", "truncate", "chmod", "chown", "chgrp", "rm", "rmdir", "shred",
-                             "unlink", "mkdir", "dd"})
+WRITE_PROGS_ALL = frozenset(
+    {
+        "tee",
+        "touch",
+        "truncate",
+        "chmod",
+        "chown",
+        "chgrp",
+        "rm",
+        "rmdir",
+        "shred",
+        "unlink",
+        "mkdir",
+        "dd",
+    }
+)
 
 _ZERO_WIDTH_RX = re.compile("[​-‏⁠-⁤﻿­᠎]|[\U000e0000-\U000e007f]")
 _IFS_RX = re.compile(r"\$\{IFS(?:[^}]*)\}|\$IFS\b")
@@ -82,14 +218,40 @@ _UNSAFE_DESER_RX = re.compile(
     r"yaml\.load\s*\([^)]*Loader\s*=\s*(yaml\.)?(Unsafe)?Loader\b|yaml\.unsafe_load\s*\(|"
     r"jsonpickle\.decode\s*\(|shelve\.open\s*\()"
 )
-_REVSHELL_CODE_RX = re.compile(r"(?is)socket.*(subprocess|pty\.spawn|dup2|/bin/(ba)?sh)|fsockopen\s*\(")
+_REVSHELL_CODE_RX = re.compile(
+    r"(?is)socket.*(subprocess|pty\.spawn|dup2|/bin/(ba)?sh)|fsockopen\s*\("
+)
 AI_BYPASS_FLAGS = (
-    "--dangerously-skip-permissions", "--allow-dangerously-skip-permissions", "--yolo", "--trust-all-tools",
-    "--dangerously-bypass-approvals-and-sandbox", "--full-auto",
+    "--dangerously-skip-permissions",
+    "--allow-dangerously-skip-permissions",
+    "--yolo",
+    "--trust-all-tools",
+    "--dangerously-bypass-approvals-and-sandbox",
+    "--full-auto",
 )
 _BROAD_RM_EXACT = {
-    "/", "~", "$home", "${home}", "..", "../..", "/etc", "/usr", "/var", "/bin", "/sbin", "/lib", "/opt",
-    "/boot", "/root", "/system", "/library", "/applications", "/users", "/home", "/private", "/dev",
+    "/",
+    "~",
+    "$home",
+    "${home}",
+    "..",
+    "../..",
+    "/etc",
+    "/usr",
+    "/var",
+    "/bin",
+    "/sbin",
+    "/lib",
+    "/opt",
+    "/boot",
+    "/root",
+    "/system",
+    "/library",
+    "/applications",
+    "/users",
+    "/home",
+    "/private",
+    "/dev",
 }
 SEPARATORS = {"|", "|&", "||", "&&", ";", "&", ";;", "(", ")", "&;", ";&", "{", "}"}
 _SUB_RX = re.compile(r"__AEGISSUB(\d+)__")
@@ -250,7 +412,12 @@ def _extract_subs(text: str) -> tuple[str, list[str]]:
             out.append(c)
             i += 1
             continue
-        if (c == "$" or (c in "<>" and quote is None)) and i + 1 < n and text[i + 1] == "(" and not text.startswith("$((", i):
+        if (
+            (c == "$" or (c in "<>" and quote is None))
+            and i + 1 < n
+            and text[i + 1] == "("
+            and not text.startswith("$((", i)
+        ):
             depth, j = 1, i + 2
             while j < n and depth:
                 if text[j] == "(":
@@ -297,7 +464,12 @@ def _tokenize(text: str) -> tuple[list[str], str | None]:
 
 
 def _is_redirect(tok: str) -> bool:
-    return bool(tok) and set(tok) <= set("<>&|") and ("<" in tok or ">" in tok) and tok not in SEPARATORS
+    return (
+        bool(tok)
+        and set(tok) <= set("<>&|")
+        and ("<" in tok or ">" in tok)
+        and tok not in SEPARATORS
+    )
 
 
 def _strip_wrappers(argv: list[str]) -> tuple[list[str], list[str], list[str]]:
@@ -359,11 +531,29 @@ def _segments(tokens: list[str]) -> list[Segment]:
         if cur:
             argv, wrappers, assigns = _strip_wrappers(cur)
             if argv:
-                segs.append(Segment(argv=argv, prog=_prog_name(argv[0]), wrappers=wrappers, piped=piped,
-                                    pipeline=pipeline, redirects=redirects, assigns=assigns))
+                segs.append(
+                    Segment(
+                        argv=argv,
+                        prog=_prog_name(argv[0]),
+                        wrappers=wrappers,
+                        piped=piped,
+                        pipeline=pipeline,
+                        redirects=redirects,
+                        assigns=assigns,
+                    )
+                )
             elif wrappers or assigns:
-                segs.append(Segment(argv=[cur[0]], prog=_prog_name(cur[0]), wrappers=wrappers, piped=piped,
-                                    pipeline=pipeline, redirects=redirects, assigns=assigns))
+                segs.append(
+                    Segment(
+                        argv=[cur[0]],
+                        prog=_prog_name(cur[0]),
+                        wrappers=wrappers,
+                        piped=piped,
+                        pipeline=pipeline,
+                        redirects=redirects,
+                        assigns=assigns,
+                    )
+                )
         cur, redirects = [], []
 
     piped_cur = False
@@ -397,12 +587,56 @@ def _segments(tokens: list[str]) -> list[Segment]:
 
 
 # ------------------------------------------------------------------ per-segment extraction
-_CURL_FILE_FLAGS = {"-d", "--data", "--data-binary", "--data-raw", "--data-ascii", "--data-urlencode", "-F",
-                    "--form", "-T", "--upload-file", "-K", "--config"}
-_FLAG_WITH_VALUE = {"-o", "-O", "--output", "-H", "--header", "-X", "--request", "-u", "--user", "-A",
-                    "--user-agent", "-e", "--referer", "-b", "--cookie", "-c", "--cookie-jar", "-m",
-                    "--max-time", "-w", "--write-out", "-x", "--proxy", "-p", "--port", "-i", "-l", "-k",
-                    "-n", "-C", "--connect-timeout", "--retry", "-P", "--directory-prefix"}
+_CURL_FILE_FLAGS = {
+    "-d",
+    "--data",
+    "--data-binary",
+    "--data-raw",
+    "--data-ascii",
+    "--data-urlencode",
+    "-F",
+    "--form",
+    "-T",
+    "--upload-file",
+    "-K",
+    "--config",
+}
+_FLAG_WITH_VALUE = {
+    "-o",
+    "-O",
+    "--output",
+    "-H",
+    "--header",
+    "-X",
+    "--request",
+    "-u",
+    "--user",
+    "-A",
+    "--user-agent",
+    "-e",
+    "--referer",
+    "-b",
+    "--cookie",
+    "-c",
+    "--cookie-jar",
+    "-m",
+    "--max-time",
+    "-w",
+    "--write-out",
+    "-x",
+    "--proxy",
+    "-p",
+    "--port",
+    "-i",
+    "-l",
+    "-k",
+    "-n",
+    "-C",
+    "--connect-timeout",
+    "--retry",
+    "-P",
+    "--directory-prefix",
+}
 
 
 def _looks_like_path(tok: str) -> bool:
@@ -431,7 +665,11 @@ def _segment_urls(seg: Segment) -> list[str]:
             if re.match(r"^[\w.\-\[\]:]+(:\d+)?(/\S*)?$", t) and ("." in t or ":" in t):
                 urls.append(f"http://{t}")
     if seg.prog in ("nc", "ncat", "netcat", "telnet", "socat"):
-        pos = [t for t in seg.args if not t.startswith("-") and not t.lower().startswith(("exec:", "system:"))]
+        pos = [
+            t
+            for t in seg.args
+            if not t.startswith("-") and not t.lower().startswith(("exec:", "system:"))
+        ]
         if seg.prog == "socat":
             for t in seg.args:
                 m = re.match(r"(?i)tcp[46]?(?:-connect)?:([^:,]+):(\d+)", t)
@@ -479,15 +717,39 @@ def _segment_paths(seg: Segment) -> list[tuple[str, str]]:
                     out.append((t[3:], "read"))
             return out
         return out + [(c, "write") for c in cands]
-    if prog in ("git",) and args[:1] and args[0] in ("push", "pull", "fetch", "clone", "remote", "commit", "log",
-                                                      "status", "diff", "checkout", "switch", "branch"):
+    if (
+        prog in ("git",)
+        and args[:1]
+        and args[0]
+        in (
+            "push",
+            "pull",
+            "fetch",
+            "clone",
+            "remote",
+            "commit",
+            "log",
+            "status",
+            "diff",
+            "checkout",
+            "switch",
+            "branch",
+        )
+    ):
         return out
     return out + [(c, "read") for c in cands]
 
 
 # ------------------------------------------------------------------ analysis
-def analyze_command(cmd: str, *, depth: int = 0, max_depth: int = 3, decode_depth: int = 2,
-                    max_chars: int = 20_000, use_external: bool = True) -> CommandAnalysis:
+def analyze_command(
+    cmd: str,
+    *,
+    depth: int = 0,
+    max_depth: int = 3,
+    decode_depth: int = 2,
+    max_chars: int = 20_000,
+    use_external: bool = True,
+) -> CommandAnalysis:
     """Analyze one shell command line (see module docstring)."""
     if not isinstance(cmd, str):
         cmd = str(cmd or "")
@@ -504,8 +766,16 @@ def analyze_command(cmd: str, *, depth: int = 0, max_depth: int = 3, decode_dept
         subs = []
     if depth < max_depth:
         for s in subs:
-            res.inner.append(analyze_command(s, depth=depth + 1, max_depth=max_depth, decode_depth=decode_depth,
-                                             max_chars=max_chars, use_external=False))
+            res.inner.append(
+                analyze_command(
+                    s,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                    decode_depth=decode_depth,
+                    max_chars=max_chars,
+                    use_external=False,
+                )
+            )
         _nested_from_args(res, depth, max_depth, decode_depth, max_chars)
     for seg in res.segments:
         res.urls.extend(u for u in _segment_urls(seg) if u not in res.urls)
@@ -518,11 +788,21 @@ def analyze_command(cmd: str, *, depth: int = 0, max_depth: int = 3, decode_dept
     return res
 
 
-def _nested_from_args(res: CommandAnalysis, depth: int, max_depth: int, decode_depth: int, max_chars: int) -> None:
+def _nested_from_args(
+    res: CommandAnalysis, depth: int, max_depth: int, decode_depth: int, max_chars: int
+) -> None:
     def sub(text: str) -> None:
         if text and text.strip():
-            res.inner.append(analyze_command(text, depth=depth + 1, max_depth=max_depth,
-                                             decode_depth=decode_depth, max_chars=max_chars, use_external=False))
+            res.inner.append(
+                analyze_command(
+                    text,
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                    decode_depth=decode_depth,
+                    max_chars=max_chars,
+                    use_external=False,
+                )
+            )
 
     for seg in res.segments:
         args = seg.args
@@ -545,7 +825,7 @@ def _nested_from_args(res: CommandAnalysis, depth: int, max_depth: int, decode_d
                     if _EXEC_CALL_RX.search(code):
                         for lit in _STR_LIT_RX.findall(code):
                             body = lit.strip("'\"")
-                            if re.search(r"[a-z]", body) and " " in body or "|" in body:
+                            if (re.search(r"[a-z]", body) and " " in body) or "|" in body:
                                 sub(body)
                         for m in re.finditer(r"`([^`]+)`", code):
                             sub(m.group(1))
@@ -554,11 +834,22 @@ def _nested_from_args(res: CommandAnalysis, depth: int, max_depth: int, decode_d
 
 def _resolve_subs(text: str, res: CommandAnalysis) -> str:
     """Placeholders back to their source text (for re-analysis of -c / eval strings)."""
-    return _SUB_RX.sub(lambda m: f"$({res.inner[int(m.group(1))].raw})" if int(m.group(1)) < len(res.inner) else "", text)
+    return _SUB_RX.sub(
+        lambda m: (
+            f"$({res.inner[int(m.group(1))].raw})" if int(m.group(1)) < len(res.inner) else ""
+        ),
+        text,
+    )
 
 
-def _decoded_variants(res: CommandAnalysis, depth: int, max_depth: int, decode_depth: int, max_chars: int,
-                      use_external: bool) -> None:
+def _decoded_variants(
+    res: CommandAnalysis,
+    depth: int,
+    max_depth: int,
+    decode_depth: int,
+    max_chars: int,
+    use_external: bool,
+) -> None:
     seen: set[str] = set()
     cands: list[str] = []
     for tok in _B64_TOKEN_RX.findall(res.text):
@@ -572,17 +863,25 @@ def _decoded_variants(res: CommandAnalysis, depth: int, max_depth: int, decode_d
                 seen.add(v)
                 cands.append(v)
     for dec in cands[:6]:
-        a = analyze_command(dec, depth=depth + 1, max_depth=max_depth, decode_depth=decode_depth - 1,
-                            max_chars=max_chars, use_external=False)
+        a = analyze_command(
+            dec,
+            depth=depth + 1,
+            max_depth=max_depth,
+            decode_depth=decode_depth - 1,
+            max_chars=max_chars,
+            use_external=False,
+        )
         res.decoded.append((dec, a))
         hits = a.all_hits()
         if hits:
             first = hits[0]
             executes = any(h.id == "base64_exec" for h in res.hits)
             res.hits = [h for h in res.hits if h.id != "base64_exec"]
-            detail = (f"base64 payload decodes to `{_short(dec)}`"
-                      + (" and is piped into a shell" if executes else "")
-                      + f" ({first.detail})")
+            detail = (
+                f"base64 payload decodes to `{_short(dec)}`"
+                + (" and is piped into a shell" if executes else "")
+                + f" ({first.detail})"
+            )
             res.hits.insert(0, Hit("base64_exec", detail, _short(dec), "decoded", dec))
 
 
@@ -601,7 +900,9 @@ def _executes_stdin(seg: Segment) -> bool:
             return False
         args = args[1:]
     for a in args:
-        if a in ("-c", "-e", "-m", "-E", "--command", "-r") or re.fullmatch(r"-[a-zA-Z]*c", a) and seg.prog in SHELLS:
+        if a in ("-c", "-e", "-m", "-E", "--command", "-r") or (
+            re.fullmatch(r"-[a-zA-Z]*c", a) and seg.prog in SHELLS
+        ):
             return False
     positional = next((a for a in args if not a.startswith("-") or a == "-"), None)
     if positional is None or positional == "-" or "-s" in args:
@@ -640,20 +941,28 @@ def _detect(res: CommandAnalysis, subs: list[str]) -> None:
             if not (s.piped and _executes_stdin(s)):
                 continue
             if dl is not None and chain.index(dl) < chain.index(s):
-                add("pipe_to_shell", f"{dl.prog} output piped into {s.prog} executes a remote script",
-                    f"{dl.prog} … | {s.prog}")
+                add(
+                    "pipe_to_shell",
+                    f"{dl.prog} output piped into {s.prog} executes a remote script",
+                    f"{dl.prog} … | {s.prog}",
+                )
             if b64 is not None and chain.index(b64) < chain.index(s):
-                add("base64_exec", f"decodes a hidden base64 payload and pipes it into {s.prog}",
-                    f"{b64.prog} -d | {s.prog}")
+                add(
+                    "base64_exec",
+                    f"decodes a hidden base64 payload and pipes it into {s.prog}",
+                    f"{b64.prog} -d | {s.prog}",
+                )
     for s in segs:
         # bash <(curl …) / source <(curl …) / sh -c "$(curl …)" / eval "$(curl …)"
         if s.prog in INTERPRETERS or s.prog == "eval":
             for a in s.args:
                 inner = _sub_has(res, a, DOWNLOADERS)
                 if inner is not None:
-                    add("pipe_to_shell",
+                    add(
+                        "pipe_to_shell",
                         f"{_first_prog(inner, DOWNLOADERS)} output executed by {s.prog} via command substitution",
-                        f"{s.prog} <({_first_prog(inner, DOWNLOADERS)} …)")
+                        f"{s.prog} <({_first_prog(inner, DOWNLOADERS)} …)",
+                    )
     # download-then-execute
     downloaded: set[str] = set()
     for s in segs:
@@ -679,8 +988,11 @@ def _detect(res: CommandAnalysis, subs: list[str]) -> None:
                 if pos and posixpath.basename(pos) in downloaded:
                     target = pos
             if target:
-                add("pipe_to_shell", f"downloads a script and then executes it ({posixpath.basename(target)})",
-                    f"curl -o … && {s.prog} {posixpath.basename(target)}")
+                add(
+                    "pipe_to_shell",
+                    f"downloads a script and then executes it ({posixpath.basename(target)})",
+                    f"curl -o … && {s.prog} {posixpath.basename(target)}",
+                )
 
     for s in segs:
         args = s.args
@@ -690,7 +1002,9 @@ def _detect(res: CommandAnalysis, subs: list[str]) -> None:
             "/dev/tcp/" in t or "/dev/udp/" in t for _, t in s.redirects
         ):
             add("reverse_shell", "opens a shell over /dev/tcp to a remote host", "/dev/tcp/…")
-        if s.prog in ("nc", "ncat", "netcat") and any(re.fullmatch(r"-[a-zA-Z]*[ec][a-zA-Z]*", a) for a in args):
+        if s.prog in ("nc", "ncat", "netcat") and any(
+            re.fullmatch(r"-[a-zA-Z]*[ec][a-zA-Z]*", a) for a in args
+        ):
             add("reverse_shell", f"{s.prog} -e hands a shell to a remote host", f"{s.prog} -e …")
         if s.prog == "socat" and any(a.startswith(("exec:", "system:")) for a in lower):
             add("reverse_shell", "socat exec: hands a shell to a remote host", "socat … exec:")
@@ -698,35 +1012,64 @@ def _detect(res: CommandAnalysis, subs: list[str]) -> None:
             add("reverse_shell", "interactive shell with redirected I/O", f"{s.prog} -i >& …")
         # --- destructive deletes
         if s.prog == "rm":
-            rec = any(re.fullmatch(r"-[a-zA-Z]*[rR][a-zA-Z]*", a) for a in args) or "--recursive" in args
+            rec = (
+                any(re.fullmatch(r"-[a-zA-Z]*[rR][a-zA-Z]*", a) for a in args)
+                or "--recursive" in args
+            )
             targets = [a for a in args if not a.startswith("-")]
             broad = next((t for t in targets if _is_broad_target(t)), None)
             if "--no-preserve-root" in args or (rec and broad is not None):
                 add("rm_rf_broad", f"recursive delete of {broad or '/'}", f"rm -rf {broad or '/'}")
-        if s.prog == "find" and ("-delete" in args or "-exec" in args and "rm" in args):
+        if s.prog == "find" and ("-delete" in args or ("-exec" in args and "rm" in args)):
             start = next((a for a in args if not a.startswith("-")), None)
             if start and _is_broad_target(start):
-                add("rm_rf_broad", f"find {start} -delete wipes a broad tree", f"find {start} -delete")
+                add(
+                    "rm_rf_broad",
+                    f"find {start} -delete wipes a broad tree",
+                    f"find {start} -delete",
+                )
         # --- chmod 777
         if s.prog == "chmod":
-            mode = next((a for a in args if re.fullmatch(r"0?777|a\+rwx|ugo\+rwx|o\+w|a\+w|\+rwx", a)), None)
-            rec = any(re.fullmatch(r"-[a-zA-Z]*R[a-zA-Z]*", a) for a in args) or "--recursive" in args
+            mode = next(
+                (a for a in args if re.fullmatch(r"0?777|a\+rwx|ugo\+rwx|o\+w|a\+w|\+rwx", a)), None
+            )
+            rec = (
+                any(re.fullmatch(r"-[a-zA-Z]*R[a-zA-Z]*", a) for a in args) or "--recursive" in args
+            )
             targets = [a for a in args if not a.startswith("-") and a != mode]
-            sysdir = next((t for t in targets if _is_broad_target(t) or t.startswith(("/etc", "/usr", "/var"))), None)
+            sysdir = next(
+                (
+                    t
+                    for t in targets
+                    if _is_broad_target(t) or t.startswith(("/etc", "/usr", "/var"))
+                ),
+                None,
+            )
             if mode and (rec or sysdir):
-                add("chmod_world", f"world-writable permissions ({mode}) on {sysdir or targets[0] if targets else '?'}",
-                    f"chmod {mode} …")
+                add(
+                    "chmod_world",
+                    f"world-writable permissions ({mode}) on {sysdir or targets[0] if targets else '?'}",
+                    f"chmod {mode} …",
+                )
         # --- privilege escalation
-        if any(w in ("sudo", "doas") for w in s.wrappers) or s.prog in ("sudo", "doas") or (
-            s.prog == "su" and ("-c" in args or not args)
+        if (
+            any(w in ("sudo", "doas") for w in s.wrappers)
+            or s.prog in ("sudo", "doas")
+            or (s.prog == "su" and ("-c" in args or not args))
         ):
             add("sudo", "privilege escalation via sudo", "sudo …")
         # --- AI CLI permission bypass (not when merely echoed/grepped)
         if s.prog not in TEXT_TOOLS:
-            flag = next((a for a in s.argv for f in AI_BYPASS_FLAGS if a == f or a.startswith(f + "=")), None)
+            flag = next(
+                (a for a in s.argv for f in AI_BYPASS_FLAGS if a == f or a.startswith(f + "=")),
+                None,
+            )
             if flag is None and "--permission-mode" in args:
                 i = args.index("--permission-mode")
-                if i + 1 < len(args) and args[i + 1].lower() in ("bypasspermissions", "acceptedits"):
+                if i + 1 < len(args) and args[i + 1].lower() in (
+                    "bypasspermissions",
+                    "acceptedits",
+                ):
                     flag = f"--permission-mode {args[i + 1]}"
             if flag:
                 add("ai_cli_bypass", f"AI CLI permission-bypass flag {flag}", f"{s.prog} {flag}")
@@ -735,7 +1078,11 @@ def _detect(res: CommandAnalysis, subs: list[str]) -> None:
             add("crontab_write", "modifies the crontab (persistence)", "crontab …")
         # --- ollama registry admin
         if s.prog == "ollama" and args and args[0] in ("push", "create", "cp", "rm"):
-            add("ollama_admin", f"model registry admin command (ollama {args[0]})", f"ollama {args[0]}")
+            add(
+                "ollama_admin",
+                f"model registry admin command (ollama {args[0]})",
+                f"ollama {args[0]}",
+            )
     # --- SQL clients: DROP / TRUNCATE TABLE anywhere in the pipeline or heredoc
     if any(s.prog in SQL_CLIENTS for s in segs):
         from aegis.actions.sql import mask_sql
@@ -743,22 +1090,34 @@ def _detect(res: CommandAnalysis, subs: list[str]) -> None:
         unquoted = " ; ".join(seg.text() for seg in segs)  # shlex already removed shell quoting
         m = _DROP_RX.search(mask_sql(unquoted))
         if m:
-            add("drop_table", f"destructive SQL ({m.group(1).upper()} TABLE) via a database client",
-                f"{m.group(1).upper()} TABLE …")
+            add(
+                "drop_table",
+                f"destructive SQL ({m.group(1).upper()} TABLE) via a database client",
+                f"{m.group(1).upper()} TABLE …",
+            )
     # --- code bodies: unsafe deserialization, socket reverse shells
     for code in res.code:
         m = _UNSAFE_DESER_RX.search(code)
         if m:
-            add("unsafe_deser", f"unsafe deserialization ({m.group(1).rstrip('(').strip()}) executes attacker-controlled code",
-                m.group(1))
+            add(
+                "unsafe_deser",
+                f"unsafe deserialization ({m.group(1).rstrip('(').strip()}) executes attacker-controlled code",
+                m.group(1),
+            )
         if _REVSHELL_CODE_RX.search(code):
-            add("reverse_shell", "socket + shell spawn in inline code (reverse shell)", "socket … subprocess")
+            add(
+                "reverse_shell",
+                "socket + shell spawn in inline code (reverse shell)",
+                "socket … subprocess",
+            )
     _ = subs
 
 
 def _is_decoder(s: Segment) -> bool:
     a = s.args
-    if s.prog in ("base64", "gbase64", "b64decode") and any(x in ("-d", "--decode", "-D", "-di") for x in a):
+    if s.prog in ("base64", "gbase64", "b64decode") and any(
+        x in ("-d", "--decode", "-D", "-di") for x in a
+    ):
         return True
     if s.prog == "openssl" and "base64" in a and "-d" in a:
         return True
@@ -768,13 +1127,13 @@ def _is_decoder(s: Segment) -> bool:
 
 
 def _is_broad_target(t: str) -> bool:
-    x = t.strip().strip('"\'').lower()
+    x = t.strip().strip("\"'").lower()
     if not x:
         return False
     x = re.sub(r"(/\*|/\.|/)+$", "", x) or "/"
     if x in ("*", ".*"):
         return False
-    if x in _BROAD_RM_EXACT or x in ("~/*", "~/.") or x.startswith("~") and "/" not in x:
+    if x in _BROAD_RM_EXACT or x in ("~/*", "~/.") or (x.startswith("~") and "/" not in x):
         return True
     if x in ("$home/*", "${home}/*"):
         return True
@@ -789,7 +1148,13 @@ def sql_hits(sql: str) -> list[Hit]:
     m = _DROP_RX.search(mask_sql(sql or ""))
     if not m:
         return []
-    return [Hit("drop_table", f"destructive SQL ({m.group(1).upper()} TABLE)", f"{m.group(1).upper()} TABLE …")]
+    return [
+        Hit(
+            "drop_table",
+            f"destructive SQL ({m.group(1).upper()} TABLE)",
+            f"{m.group(1).upper()} TABLE …",
+        )
+    ]
 
 
 def code_hits(code: str) -> list[Hit]:
@@ -797,9 +1162,21 @@ def code_hits(code: str) -> list[Hit]:
     out: list[Hit] = []
     m = _UNSAFE_DESER_RX.search(code or "")
     if m:
-        out.append(Hit("unsafe_deser", f"unsafe deserialization ({m.group(1).rstrip('(').strip()})", m.group(1)))
+        out.append(
+            Hit(
+                "unsafe_deser",
+                f"unsafe deserialization ({m.group(1).rstrip('(').strip()})",
+                m.group(1),
+            )
+        )
     if _REVSHELL_CODE_RX.search(code or ""):
-        out.append(Hit("reverse_shell", "socket + shell spawn in inline code (reverse shell)", "socket … subprocess"))
+        out.append(
+            Hit(
+                "reverse_shell",
+                "socket + shell spawn in inline code (reverse shell)",
+                "socket … subprocess",
+            )
+        )
     if _EXEC_CALL_RX.search(code or ""):
         for lit in _STR_LIT_RX.findall(code):
             body = lit.strip("'\"")
@@ -810,8 +1187,17 @@ def code_hits(code: str) -> list[Hit]:
 
 
 DETECTOR_IDS = (
-    "pipe_to_shell", "base64_exec", "reverse_shell", "rm_rf_broad", "chmod_world", "sudo", "ai_cli_bypass",
-    "drop_table", "unsafe_deser", "crontab_write", "ollama_admin",
+    "pipe_to_shell",
+    "base64_exec",
+    "reverse_shell",
+    "rm_rf_broad",
+    "chmod_world",
+    "sudo",
+    "ai_cli_bypass",
+    "drop_table",
+    "unsafe_deser",
+    "crontab_write",
+    "ollama_admin",
 )
 DETECTOR_LABELS = {
     "pipe_to_shell": "pipe-to-shell",

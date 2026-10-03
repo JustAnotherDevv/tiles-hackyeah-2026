@@ -46,8 +46,12 @@ def verify_dir(audit_dir: Path | str) -> AuditVerifyResult:
             fh = path.open("rb")
         except OSError as exc:
             return AuditVerifyResult(
-                ok=False, records=records, head_hash=running, broken_at_seq=expected,
-                files=len(files), message=f"cannot read {path.name}: {exc}",
+                ok=False,
+                records=records,
+                head_hash=running,
+                broken_at_seq=expected,
+                files=len(files),
+                message=f"cannot read {path.name}: {exc}",
             )
         with fh:
             lineno = 0
@@ -65,17 +69,26 @@ def verify_dir(audit_dir: Path | str) -> AuditVerifyResult:
                 try:
                     rec = json.loads(line)
                 except ValueError:
-                    return _broken(records, running, expected, files, path, lineno, "unparseable record")
+                    return _broken(
+                        records, running, expected, files, path, lineno, "unparseable record"
+                    )
                 if not isinstance(rec, dict):
                     return _broken(records, running, expected, files, path, lineno, "not an object")
                 seq = rec.get("seq")
                 if seq != expected:
                     return _broken(
-                        records, running, expected, files, path, lineno,
+                        records,
+                        running,
+                        expected,
+                        files,
+                        path,
+                        lineno,
                         f"sequence gap (expected {expected}, found {seq})",
                     )
                 if rec.get("prev_hash") != running:
-                    return _broken(records, running, expected, files, path, lineno, "prev_hash mismatch")
+                    return _broken(
+                        records, running, expected, files, path, lineno, "prev_hash mismatch"
+                    )
                 if chain_hash(running, rec) != rec.get("hash"):
                     return _broken(records, running, expected, files, path, lineno, "hash mismatch")
                 running = rec["hash"]
@@ -85,21 +98,30 @@ def verify_dir(audit_dir: Path | str) -> AuditVerifyResult:
         hseq = int(head.get("seq") or 0)
         if hseq > records:
             return AuditVerifyResult(
-                ok=False, records=records, head_hash=running, broken_at_seq=records + 1,
+                ok=False,
+                records=records,
+                head_hash=running,
+                broken_at_seq=records + 1,
                 files=len(files),
                 message=f"HEAD ahead of log: HEAD seq {hseq}, log ends at seq {records} (tail truncated)",
             )
         if hseq == records and records and head.get("hash") != running:
             return AuditVerifyResult(
-                ok=False, records=records, head_hash=running, broken_at_seq=records,
-                files=len(files), message="HEAD hash does not match the last record",
+                ok=False,
+                records=records,
+                head_hash=running,
+                broken_at_seq=records,
+                files=len(files),
+                message="HEAD hash does not match the last record",
             )
     msg = (
         f"chain OK ({records} records, {len(files)} files, head {_short(running)})"
         if records
         else "chain OK (0 records)"
     )
-    return AuditVerifyResult(ok=True, records=records, head_hash=running, files=len(files), message=msg)
+    return AuditVerifyResult(
+        ok=True, records=records, head_hash=running, files=len(files), message=msg
+    )
 
 
 def _broken(
@@ -171,7 +193,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m aegis verify-audit", description="Verify the Aegis hash-chained audit log."
     )
-    parser.add_argument("--data-dir", type=Path, default=None, help="AEGIS_DATA_DIR (default: settings)")
+    parser.add_argument(
+        "--data-dir", type=Path, default=None, help="AEGIS_DATA_DIR (default: settings)"
+    )
     parser.add_argument("--json", action="store_true", help="print AuditVerifyResult JSON")
     parser.add_argument(
         "--tamper-demo",
@@ -202,7 +226,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         print(json.dumps(out, indent=2))
     else:
-        print(f"tamper demo: flipped one byte in record seq {target[0]} of a temp copy ({target[1]})")
+        print(
+            f"tamper demo: flipped one byte in record seq {target[0]} of a temp copy ({target[1]})"
+        )
         print(f"tampered copy: {human(tampered)}")
         print(f"original:      {human(result)}")
     return 0

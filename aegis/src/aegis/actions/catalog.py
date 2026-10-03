@@ -17,38 +17,123 @@ from aegis.actions.net import domain_match
 
 log = logging.getLogger(__name__)
 
-SENSITIVITY_RANK: dict[str, int] = {"PUBLIC": 0, "INTERNAL": 1, "CONFIDENTIAL": 2, "RESTRICTED": 3, "SECRET": 4}
+SENSITIVITY_RANK: dict[str, int] = {
+    "PUBLIC": 0,
+    "INTERNAL": 1,
+    "CONFIDENTIAL": 2,
+    "RESTRICTED": 3,
+    "SECRET": 4,
+}
 
 # Port of docs/seed-fixes/org.seed.yaml `resources:` + org.internal_domains (fallback only).
 FALLBACK_RESOURCES: dict[str, Any] = {
     "databases": [
-        {"id": "acme-prod-pg", "environment": "prod", "mcp_server": "acme-db", "tables": [
-            {"name": "customers", "sensitivity": "CONFIDENTIAL", "categories": ["pii"],
-             "contains": ["PERSON", "EMAIL", "PHONE", "PESEL", "IBAN", "ADDRESS", "DOB"]},
-            {"name": "payment_cards", "sensitivity": "RESTRICTED", "categories": ["pci"], "contains": ["PAN", "CARD_EXPIRY"]},
-            {"name": "trades", "sensitivity": "CONFIDENTIAL", "categories": ["mnpi"], "contains": []},
-            {"name": "positions", "sensitivity": "CONFIDENTIAL", "categories": ["mnpi"], "contains": []},
-            {"name": "research_notes", "sensitivity": "INTERNAL", "categories": [], "contains": []},
-            {"name": "market_prices", "sensitivity": "PUBLIC", "categories": [], "contains": []},
-        ]},
-        {"id": "acme-staging-pg", "environment": "staging", "mcp_server": "acme-db", "schema": "staging", "tables": [
-            {"name": "customers_synthetic", "sensitivity": "INTERNAL", "categories": ["synthetic"], "contains": []},
-            {"name": "trades_synthetic", "sensitivity": "INTERNAL", "categories": ["synthetic"], "contains": []},
-            {"name": "market_prices", "sensitivity": "PUBLIC", "categories": [], "contains": []},
-        ]},
+        {
+            "id": "acme-prod-pg",
+            "environment": "prod",
+            "mcp_server": "acme-db",
+            "tables": [
+                {
+                    "name": "customers",
+                    "sensitivity": "CONFIDENTIAL",
+                    "categories": ["pii"],
+                    "contains": ["PERSON", "EMAIL", "PHONE", "PESEL", "IBAN", "ADDRESS", "DOB"],
+                },
+                {
+                    "name": "payment_cards",
+                    "sensitivity": "RESTRICTED",
+                    "categories": ["pci"],
+                    "contains": ["PAN", "CARD_EXPIRY"],
+                },
+                {
+                    "name": "trades",
+                    "sensitivity": "CONFIDENTIAL",
+                    "categories": ["mnpi"],
+                    "contains": [],
+                },
+                {
+                    "name": "positions",
+                    "sensitivity": "CONFIDENTIAL",
+                    "categories": ["mnpi"],
+                    "contains": [],
+                },
+                {
+                    "name": "research_notes",
+                    "sensitivity": "INTERNAL",
+                    "categories": [],
+                    "contains": [],
+                },
+                {
+                    "name": "market_prices",
+                    "sensitivity": "PUBLIC",
+                    "categories": [],
+                    "contains": [],
+                },
+            ],
+        },
+        {
+            "id": "acme-staging-pg",
+            "environment": "staging",
+            "mcp_server": "acme-db",
+            "schema": "staging",
+            "tables": [
+                {
+                    "name": "customers_synthetic",
+                    "sensitivity": "INTERNAL",
+                    "categories": ["synthetic"],
+                    "contains": [],
+                },
+                {
+                    "name": "trades_synthetic",
+                    "sensitivity": "INTERNAL",
+                    "categories": ["synthetic"],
+                    "contains": [],
+                },
+                {
+                    "name": "market_prices",
+                    "sensitivity": "PUBLIC",
+                    "categories": [],
+                    "contains": [],
+                },
+            ],
+        },
     ],
     "vendors": [
-        {"id": "marketpulse", "name": "MarketPulse Pro", "approved": True, "host": "api.marketpulse.example",
-         "mcp_server": "marketpulse", "plans": [
-             {"id": "mp-pro-monthly", "usd": 50.0, "recurring": "monthly"},
-             {"id": "mp-enterprise-annual", "usd": 4800.0, "recurring": "yearly"}]},
-        {"id": "opendata-shop", "name": "OpenData Shop", "approved": True, "host": "shop.opendata.example",
-         "plans": [{"id": "eu-equities-2025-csv", "usd": 12.0, "recurring": "none"}]},
-        {"id": "gpucloud", "name": "BurstGPU Cloud", "approved": True, "host": "api.burstgpu.example", "plans": [
-            {"id": "a100-24h-reservation", "usd": 480.0, "recurring": "none"},
-            {"id": "a100-cluster-week", "usd": 1500.0, "recurring": "none"}]},
-        {"id": "shady-signals", "name": "Shady Signals Ltd", "approved": False, "host": "signals.shady.example",
-         "plans": [{"id": "alpha-signals", "usd": 15.0, "recurring": "monthly"}]},
+        {
+            "id": "marketpulse",
+            "name": "MarketPulse Pro",
+            "approved": True,
+            "host": "api.marketpulse.example",
+            "mcp_server": "marketpulse",
+            "plans": [
+                {"id": "mp-pro-monthly", "usd": 50.0, "recurring": "monthly"},
+                {"id": "mp-enterprise-annual", "usd": 4800.0, "recurring": "yearly"},
+            ],
+        },
+        {
+            "id": "opendata-shop",
+            "name": "OpenData Shop",
+            "approved": True,
+            "host": "shop.opendata.example",
+            "plans": [{"id": "eu-equities-2025-csv", "usd": 12.0, "recurring": "none"}],
+        },
+        {
+            "id": "gpucloud",
+            "name": "BurstGPU Cloud",
+            "approved": True,
+            "host": "api.burstgpu.example",
+            "plans": [
+                {"id": "a100-24h-reservation", "usd": 480.0, "recurring": "none"},
+                {"id": "a100-cluster-week", "usd": 1500.0, "recurring": "none"},
+            ],
+        },
+        {
+            "id": "shady-signals",
+            "name": "Shady Signals Ltd",
+            "approved": False,
+            "host": "signals.shady.example",
+            "plans": [{"id": "alpha-signals", "usd": 15.0, "recurring": "monthly"}],
+        },
     ],
     "external_hosts": [
         {"host": "smtp.acme-capital.example", "dest_class": "local"},
@@ -153,7 +238,9 @@ class ResourceCatalog:
                 return v
         return None
 
-    def plan(self, plan_ref: Any, vendor: Vendor | None = None) -> tuple[Vendor | None, Plan | None]:
+    def plan(
+        self, plan_ref: Any, vendor: Vendor | None = None
+    ) -> tuple[Vendor | None, Plan | None]:
         if not isinstance(plan_ref, str) or not plan_ref.strip():
             return vendor, None
         p = plan_ref.strip().lower()
@@ -167,7 +254,10 @@ class ResourceCatalog:
     def denylisted(self, host: str | None) -> bool:
         if not host:
             return False
-        return any(meta.get("denylisted") and domain_match(h, host) for h, meta in self.external_hosts.items())
+        return any(
+            meta.get("denylisted") and domain_match(h, host)
+            for h, meta in self.external_hosts.items()
+        )
 
 
 def _norm_plans(raw: Any) -> dict[str, Plan]:
@@ -191,8 +281,12 @@ def _norm_plans(raw: Any) -> dict[str, Plan]:
     return out
 
 
-def build_catalog(resources: dict[str, Any] | None, *, source: str = "org",
-                  overrides: dict[str, Any] | None = None) -> ResourceCatalog:
+def build_catalog(
+    resources: dict[str, Any] | None,
+    *,
+    source: str = "org",
+    overrides: dict[str, Any] | None = None,
+) -> ResourceCatalog:
     """Normalize ``rt.org.resources()`` (lists or dicts) into a :class:`ResourceCatalog`."""
     res = resources or {}
     cat = ResourceCatalog(source=source)
@@ -202,8 +296,12 @@ def build_catalog(resources: dict[str, Any] | None, *, source: str = "org",
     for d in dbs:
         if not isinstance(d, dict) or not d.get("id"):
             continue
-        db = Database(id=str(d["id"]), environment=str(d.get("environment", d.get("env", "prod"))),
-                      mcp_server=d.get("mcp_server"), schema=d.get("schema"))
+        db = Database(
+            id=str(d["id"]),
+            environment=str(d.get("environment", d.get("env", "prod"))),
+            mcp_server=d.get("mcp_server"),
+            schema=d.get("schema"),
+        )
         tables = d.get("tables") or []
         if isinstance(tables, dict):
             tables = [{"name": k, **(v if isinstance(v, dict) else {})} for k, v in tables.items()]
@@ -212,8 +310,11 @@ def build_catalog(resources: dict[str, Any] | None, *, source: str = "org",
                 continue
             name = str(t["name"]).lower()
             db.tables[name] = Table(
-                name=name, database=db.id, sensitivity=str(t.get("sensitivity", "CONFIDENTIAL")).upper(),
-                categories=list(t.get("categories") or []), contains=list(t.get("contains") or []),
+                name=name,
+                database=db.id,
+                sensitivity=str(t.get("sensitivity", "CONFIDENTIAL")).upper(),
+                categories=list(t.get("categories") or []),
+                contains=list(t.get("contains") or []),
             )
         cat.databases[db.id] = db
     vendors = res.get("vendors") or []
@@ -223,8 +324,14 @@ def build_catalog(resources: dict[str, Any] | None, *, source: str = "org",
         if not isinstance(v, dict) or not v.get("id"):
             continue
         vid = str(v["id"]).lower()
-        cat.vendors[vid] = Vendor(id=vid, name=str(v.get("name", vid)), approved=bool(v.get("approved", False)),
-                                  host=v.get("host"), mcp_server=v.get("mcp_server"), plans=_norm_plans(v.get("plans")))
+        cat.vendors[vid] = Vendor(
+            id=vid,
+            name=str(v.get("name", vid)),
+            approved=bool(v.get("approved", False)),
+            host=v.get("host"),
+            mcp_server=v.get("mcp_server"),
+            plans=_norm_plans(v.get("plans")),
+        )
     hosts = res.get("external_hosts") or []
     if isinstance(hosts, dict):
         hosts = [{"host": k, **v} for k, v in hosts.items() if isinstance(v, dict)]
@@ -279,7 +386,9 @@ async def _resources(rt: Any) -> tuple[dict[str, Any] | None, str]:
         except Exception as exc:
             log.warning("rt.org.resources() failed, using fallback catalog error=%s", exc)
     if res is None:
-        art.warn_once("catalog-fallback", "resource catalog unavailable; using built-in fallback (degraded)")
+        art.warn_once(
+            "catalog-fallback", "resource catalog unavailable; using built-in fallback (degraded)"
+        )
         res = FALLBACK_RESOURCES
     _CACHE[key] = (now, res, source)
     return res, source
@@ -302,7 +411,9 @@ async def get_catalog(rt: Any = None, overrides: dict[str, Any] | None = None) -
     return cat
 
 
-def internal_domains(snap: Any, cat: ResourceCatalog | None, extra: list[str] | None = None) -> list[str]:
+def internal_domains(
+    snap: Any, cat: ResourceCatalog | None, extra: list[str] | None = None
+) -> list[str]:
     """``destinations.internal_domains`` ∪ catalog ``internal_domains`` ∪ ``extra``."""
     out: list[str] = []
     try:

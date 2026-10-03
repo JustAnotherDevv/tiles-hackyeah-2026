@@ -151,9 +151,9 @@ function Crumbs() {
   const { pathname } = useLocation();
   const page = findPage(pathname);
   return (
-    <div className="flex min-w-0 shrink items-center gap-2 whitespace-nowrap text-[13px] text-text-3">
-      <span className="max-[1280px]:hidden">Acme Capital</span>
-      <span className="text-text-4 max-[1280px]:hidden">/</span>
+    <div className="flex min-w-[190px] shrink items-center gap-2 whitespace-nowrap text-[13px] text-text-3">
+      <span className="max-[1600px]:hidden">Acme Capital</span>
+      <span className="text-text-4 max-[1600px]:hidden">/</span>
       {page && page.meta.section !== 'Overview' ? (
         <>
           <span>{page.meta.section}</span>
@@ -177,7 +177,7 @@ export function Topbar() {
       <button
         type="button"
         onClick={() => setShellState({ paletteOpen: true })}
-        className="flex h-[30px] w-[260px] min-w-[150px] shrink items-center gap-2 rounded-md border border-border bg-surface-1 pl-2.5 pr-2 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:bg-surface-2 hover:text-text-2 max-[1500px]:w-[200px]"
+        className="flex h-[30px] w-[260px] min-w-[120px] shrink-[4] items-center gap-2 rounded-md border border-border bg-surface-1 pl-2.5 pr-2 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:bg-surface-2 hover:text-text-2 max-[1700px]:w-[190px]"
       >
         <Search className="size-3.5 shrink-0" />
         <span className="truncate">Search or jump to…</span>

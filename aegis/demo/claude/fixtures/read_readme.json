@@ -1,0 +1,52 @@
+{
+  "name": "read_readme",
+  "title": "Read README.md is allowed",
+  "steps": [
+    {
+      "event": "PreToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Read",
+        "tool_input": {
+          "file_path": "{{PROJECT}}/README.md"
+        },
+        "tool_use_id": "toolu_{{N}}_readme"
+      },
+      "expect": {
+        "result": "allow"
+      }
+    },
+    {
+      "event": "PostToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Read",
+        "tool_input": {
+          "file_path": "{{PROJECT}}/README.md"
+        },
+        "tool_use_id": "toolu_{{N}}_readme",
+        "tool_response": {
+          "type": "text",
+          "file": {
+            "filePath": "{{PROJECT}}/README.md",
+            "content": "{{FILE:README.md}}",
+            "numLines": 10,
+            "startLine": 1,
+            "totalLines": 10
+          }
+        }
+      },
+      "expect": {
+        "result": "allow"
+      }
+    }
+  ]
+}

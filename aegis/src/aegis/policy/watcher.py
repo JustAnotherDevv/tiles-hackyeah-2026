@@ -58,7 +58,8 @@ class PolicyWatcher:
             dirs = [str(policy.parent)]
             policy_name = policy.name
 
-            def keep(_change: Any, path: str) -> bool:
+            def keep(_change: Any, path: str, policy: Path = policy, policy_name: str = policy_name,
+                     profiles_dir: Path = profiles_dir) -> bool:
                 p = Path(path)
                 if p.name == policy_name and p.parent == policy.parent:
                     return True

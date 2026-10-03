@@ -25,8 +25,9 @@ _last_warning: dict[str, float] = {}
 def publish_tool_event(rt: Any, server: str, tool: str, status: str, reason: str) -> None:
     """SSE `mcp.tool` with exactly `{server, tool, status, reason}` (SseEventMap['mcp.tool'])."""
     try:
-        rt.bus.publish("mcp.tool", {"server": server, "tool": tool, "status": status,
-                                    "reason": reason})
+        rt.bus.publish(
+            "mcp.tool", {"server": server, "tool": tool, "status": status, "reason": reason}
+        )
     except Exception:
         log.warning("mcp.tool publish failed server=%s tool=%s", server, tool, exc_info=True)
 
@@ -48,17 +49,32 @@ async def audit_tool_change(
 ) -> None:
     """Audit `mcp.tool_changed` (data = {server, tool, from, to, pinned_hash, hash, approval_id, actor})."""
     data: dict[str, Any] = {
-        "event": event, "server": server, "tool": tool, "from": from_status, "to": to_status,
-        "reason": reason, "pinned_hash": pinned_hash, "hash": hash_, "approval_id": approval_id,
+        "event": event,
+        "server": server,
+        "tool": tool,
+        "from": from_status,
+        "to": to_status,
+        "reason": reason,
+        "pinned_hash": pinned_hash,
+        "hash": hash_,
+        "approval_id": approval_id,
         "actor": actor.principal if actor else None,
     }
     if extra:
         data.update(extra)
     try:
-        await rt.audit.record(AuditEvent(
-            event_id=new_id("evt"), event_type="mcp.tool_changed", actor=actor,
-            kind="mcp", tool_name=f"{server}.{tool}" if tool else None,
-            resource=f"mcp:{server}.{tool}" if tool else f"mcp:{server}", reason=reason, data=data))
+        await rt.audit.record(
+            AuditEvent(
+                event_id=new_id("evt"),
+                event_type="mcp.tool_changed",
+                actor=actor,
+                kind="mcp",
+                tool_name=f"{server}.{tool}" if tool else None,
+                resource=f"mcp:{server}.{tool}" if tool else f"mcp:{server}",
+                reason=reason,
+                data=data,
+            )
+        )
     except Exception:
         log.warning("mcp.tool_changed audit failed server=%s tool=%s", server, tool, exc_info=True)
 
@@ -78,9 +94,18 @@ async def tool_transition(
 ) -> None:
     """Publish + audit one pin-state transition."""
     publish_tool_event(rt, server, tool, to_status, reason)
-    await audit_tool_change(rt, server=server, tool=tool, from_status=from_status, to_status=to_status,
-                            reason=reason, pinned_hash=pinned_hash, hash_=hash_,
-                            approval_id=approval_id, actor=actor)
+    await audit_tool_change(
+        rt,
+        server=server,
+        tool=tool,
+        from_status=from_status,
+        to_status=to_status,
+        reason=reason,
+        pinned_hash=pinned_hash,
+        hash_=hash_,
+        approval_id=approval_id,
+        actor=actor,
+    )
 
 
 def system_warning(rt: Any, server: str, message: str, *, level: str = "warning") -> bool:
@@ -110,4 +135,10 @@ class JsonlSink:
             self.stream.flush()
 
 
-__all__ = ["JsonlSink", "audit_tool_change", "publish_tool_event", "system_warning", "tool_transition"]
+__all__ = [
+    "JsonlSink",
+    "audit_tool_change",
+    "publish_tool_event",
+    "system_warning",
+    "tool_transition",
+]

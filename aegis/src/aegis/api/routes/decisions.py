@@ -51,10 +51,19 @@ async def list_decisions(
         try:
             idx.ensure_schema(conn)
             return idx.query_decisions(
-                conn, action=action, control_id=control_id, kind=kind, surface=surface,
-                agent_id=agent_id, team_id=team_id, member_id=member_id,
-                since=iso_z(since_dt) if since_dt else None, q=q, include_synthetic=include_synth,
-                limit=limit, cursor=cursor,
+                conn,
+                action=action,
+                control_id=control_id,
+                kind=kind,
+                surface=surface,
+                agent_id=agent_id,
+                team_id=team_id,
+                member_id=member_id,
+                since=iso_z(since_dt) if since_dt else None,
+                q=q,
+                include_synthetic=include_synth,
+                limit=limit,
+                cursor=cursor,
             )
         finally:
             conn.close()

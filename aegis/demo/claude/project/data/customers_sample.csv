@@ -1,0 +1,7 @@
+# FAKE demo data (Aegis demo workspace). Checksum-valid but not real people.
+customer_id,first_name,last_name,pesel,iban,email,last_refund_pln
+C-1001,Anna,Nowak,82031501233,PL1210901014000000012345678901,anna.nowak@example.com,249.00
+C-1002,Piotr,Wiśniewski,75112304562,PL9211402004000000023456789012,p.wisniewski@example.org,89.90
+C-1003,Jan,Kowalski,44051401359,PL8512401005000000034567890123,jan.kowalski@example.com,1250.00
+C-1004,Maria,Zielińska,90022807899,PL6910501070000000045678901234,maria.z@example.net,15.49
+C-1005,Tomasz,Lewandowski,68070703122,PL1216102000000000056789012345,t.lewandowski@example.com,430.00

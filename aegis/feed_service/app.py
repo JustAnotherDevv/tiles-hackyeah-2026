@@ -43,8 +43,14 @@ log = logging.getLogger("feed_service")
 UI_DIR = Path(__file__).resolve().parent / "ui"
 _BUNDLE_RE = re.compile(r"^(?:bundle-)?0*(\d{1,9})\.json(\.sig)?$")
 _NO_STORE = {"Cache-Control": "no-store"}
-_UI_TYPES = {".html": "text/html", ".js": "text/javascript", ".css": "text/css",
-             ".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon"}
+_UI_TYPES = {
+    ".html": "text/html",
+    ".js": "text/javascript",
+    ".css": "text/css",
+    ".svg": "image/svg+xml",
+    ".png": "image/png",
+    ".ico": "image/x-icon",
+}
 
 
 def _file_response(data: bytes | None, *, sig: bool) -> Response:
@@ -52,8 +58,9 @@ def _file_response(data: bytes | None, *, sig: bool) -> Response:
         raise HTTPException(404, "not found")
     headers = dict(_NO_STORE)
     headers["ETag"] = '"' + hashlib.sha256(data).hexdigest() + '"'
-    return Response(content=data, media_type="text/plain" if sig else "application/json",
-                    headers=headers)
+    return Response(
+        content=data, media_type="text/plain" if sig else "application/json", headers=headers
+    )
 
 
 def create_app(
@@ -62,22 +69,32 @@ def create_app(
     gateway_url: str | None = None,
     config_dir: str | Path | None = None,
 ) -> FastAPI:
-    svc = FeedService(Path(state_dir) if state_dir else None,
-                      Path(repo_root) if repo_root else None,
-                      Path(config_dir) if config_dir else None)
-    gw_url = (gateway_url or os.environ.get("AEGIS_GATEWAY_URL") or "http://127.0.0.1:8787").rstrip("/")
+    svc = FeedService(
+        Path(state_dir) if state_dir else None,
+        Path(repo_root) if repo_root else None,
+        Path(config_dir) if config_dir else None,
+    )
+    gw_url = (gateway_url or os.environ.get("AEGIS_GATEWAY_URL") or "http://127.0.0.1:8787").rstrip(
+        "/"
+    )
     gw_cache: dict[str, Any] = {"t": 0.0, "v": None}
 
-    app = FastAPI(title="Aegis Threat Intel feed", version="1.0", docs_url="/api/docs",
-                  redoc_url=None, openapi_url="/api/openapi.json")
+    app = FastAPI(
+        title="Aegis Threat Intel feed",
+        version="1.0",
+        docs_url="/api/docs",
+        redoc_url=None,
+        openapi_url="/api/openapi.json",
+    )
     app.state.svc = svc
     app.state.gateway_url = gw_url
     svc.ensure_ready()
 
     @app.exception_handler(FeedServiceError)
     async def _svc_error(_: Request, exc: FeedServiceError) -> JSONResponse:
-        return JSONResponse({"error": {"type": "feed_error", "message": str(exc)}},
-                            status_code=exc.status)
+        return JSONResponse(
+            {"error": {"type": "feed_error", "message": str(exc)}}, status_code=exc.status
+        )
 
     # ------------------------------------------------------------------ distribution
     @app.get("/feed/latest.json")
@@ -102,8 +119,11 @@ def create_app(
         if seed is None:
             raise HTTPException(404, "no key yet: run python -m feed_service keygen")
         pub = signing.public_key(seed)
-        return {"alg": "ed25519", "key_id": signing.key_id(pub),
-                "public_key": base64.b64encode(pub).decode("ascii")}
+        return {
+            "alg": "ed25519",
+            "key_id": signing.key_id(pub),
+            "public_key": base64.b64encode(pub).decode("ascii"),
+        }
 
     @app.get("/feed/events")
     async def feed_events(request: Request) -> Response:
@@ -160,8 +180,12 @@ def create_app(
         try:
             doc = parse_yaml(text)
         except FeedServiceError as e:
-            return {"id": sid, "yaml": text, "signature": None,
-                    "report": {"valid": False, "problems": [str(e)], "checks": [], "tests": []}}
+            return {
+                "id": sid,
+                "yaml": text,
+                "signature": None,
+                "report": {"valid": False, "problems": [str(e)], "checks": [], "tests": []},
+            }
         rep = await asyncio.to_thread(validate_signature, doc, svc.workspace.lists())
         return {"id": sid, "yaml": text, "signature": doc, "report": rep}
 
@@ -184,8 +208,13 @@ def create_app(
         doc = svc.workspace.put(sid, text)
         rep = await asyncio.to_thread(validate_signature, doc, svc.workspace.lists())
         svc.event("saved", id=sid, valid=rep["valid"])
-        return {"saved": True, "valid": rep["valid"], "problems": rep["problems"],
-                "tests": rep["tests"], "report": rep}
+        return {
+            "saved": True,
+            "valid": rep["valid"],
+            "problems": rep["problems"],
+            "tests": rep["tests"],
+            "report": rep,
+        }
 
     @app.delete("/api/signatures/{sid}")
     async def api_withdraw(sid: str) -> dict[str, Any]:
@@ -210,9 +239,14 @@ def create_app(
         try:
             doc = parse_yaml(text)
         except FeedServiceError as e:
-            return {"valid": False, "problems": [str(e)], "warnings": [], "tests": [],
-                    "checks": [{"name": "Schema", "ok": False, "detail": str(e)}],
-                    "vectors": {"passed": 0, "total": 0}}
+            return {
+                "valid": False,
+                "problems": [str(e)],
+                "warnings": [],
+                "tests": [],
+                "checks": [{"name": "Schema", "ok": False, "detail": str(e)}],
+                "vectors": {"passed": 0, "total": 0},
+            }
         return await asyncio.to_thread(validate_signature, doc, svc.workspace.lists())
 
     @app.post("/api/scan")
@@ -231,12 +265,20 @@ def create_app(
         body = body if isinstance(body, dict) else {}
         async with svc.lock:
             try:
-                res = await asyncio.to_thread(svc.publish, force=bool(body.get("force")),
-                                              note=body.get("note"))
+                res = await asyncio.to_thread(
+                    svc.publish, force=bool(body.get("force")), note=body.get("note")
+                )
             except PublishRefused as e:
-                return JSONResponse({"error": {"type": "invalid_signatures",
-                                               "message": "validation failed; fix or force-publish"},
-                                     "problems": e.problems}, status_code=422)
+                return JSONResponse(
+                    {
+                        "error": {
+                            "type": "invalid_signatures",
+                            "message": "validation failed; fix or force-publish",
+                        },
+                        "problems": e.problems,
+                    },
+                    status_code=422,
+                )
         return JSONResponse(res)
 
     @app.post("/api/tamper")
@@ -267,11 +309,21 @@ def create_app(
     async def api_events(limit: int = 50) -> dict[str, Any]:
         return {"items": svc.events(min(max(limit, 1), 200))}
 
+    @app.get("/api/demo/echoleak")
+    async def demo_echoleak() -> Response:
+        p = svc.src_root / "demo" / "echoleak-proxy-payload.md"
+        text = p.read_text(encoding="utf-8") if p.exists() else ""
+        return Response(content=text, media_type="text/plain; charset=utf-8", headers=_NO_STORE)
+
     @app.get("/healthz")
     async def healthz() -> dict[str, Any]:
         latest = svc.latest() or {}
-        return {"status": "ok", "service": "aegis-threat-intel", "serial": latest.get("serial"),
-                "key_id": svc.key_id()}
+        return {
+            "status": "ok",
+            "service": "aegis-threat-intel",
+            "serial": latest.get("serial"),
+            "key_id": svc.key_id(),
+        }
 
     # ------------------------------------------------------------------ UI
     @app.get("/")
@@ -288,7 +340,8 @@ def create_app(
         p = UI_DIR / asset
         if not p.is_file():
             raise HTTPException(404, "not found")
-        return FileResponse(p, media_type=_UI_TYPES.get(p.suffix, "application/octet-stream"),
-                            headers=_NO_STORE)
+        return FileResponse(
+            p, media_type=_UI_TYPES.get(p.suffix, "application/octet-stream"), headers=_NO_STORE
+        )
 
     return app

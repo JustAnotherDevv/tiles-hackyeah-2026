@@ -12,8 +12,16 @@ from pathlib import Path
 
 from aegis.feed.verify import FeedRejected, key_id, parse_pubkey, verify_detached
 
-__all__ = ["FeedRejected", "generate", "key_id", "load_signing_key", "public_key", "sign_detached",
-           "verify_detached", "write_keypair"]
+__all__ = [
+    "FeedRejected",
+    "generate",
+    "key_id",
+    "load_signing_key",
+    "public_key",
+    "sign_detached",
+    "verify_detached",
+    "write_keypair",
+]
 
 PRIVATE_NAME = "feed_signing.key"
 PUBLIC_NAME = "feed_public.b64"

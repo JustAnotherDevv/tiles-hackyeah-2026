@@ -24,8 +24,18 @@ from aegis.feed.matchers.core import (
     Matcher,
 )
 
-PICKLE_EXTENSIONS = (".pkl", ".pickle", ".pt", ".pth", ".bin", ".ckpt", ".joblib", ".dat",
-                     ".npy", ".npz")
+PICKLE_EXTENSIONS = (
+    ".pkl",
+    ".pickle",
+    ".pt",
+    ".pth",
+    ".bin",
+    ".ckpt",
+    ".joblib",
+    ".dat",
+    ".npy",
+    ".npz",
+)
 SAFE_MAGIC = (b"GGUF", b"\x89HDF", b"PK\x03\x04", b"7z\xbc\xaf\x27\x1c")
 
 
@@ -71,8 +81,15 @@ def m_bytes(node: dict, where: str, depth: int = 0, lists: dict | None = None) -
 
 
 # --------------------------------------------------------------------------- pickle analysis
-_STRING_OPS = {"STRING", "BINSTRING", "SHORT_BINSTRING", "UNICODE", "BINUNICODE",
-               "SHORT_BINUNICODE", "BINUNICODE8"}
+_STRING_OPS = {
+    "STRING",
+    "BINSTRING",
+    "SHORT_BINSTRING",
+    "UNICODE",
+    "BINUNICODE",
+    "SHORT_BINUNICODE",
+    "BINUNICODE8",
+}
 _PROTO0_GLOBAL = re.compile(rb"c[A-Za-z_][\w.]*\n[A-Za-z_][\w.]*\n")
 
 
@@ -140,9 +157,7 @@ def scan_pickle_stream(data: bytes, max_ops: int = MAX_PICKLE_OPS) -> tuple[list
     return found, None
 
 
-def zip_members(
-    data: bytes, *, want: str = "pickle"
-) -> tuple[list[tuple[str, bytes]], str | None]:
+def zip_members(data: bytes, *, want: str = "pickle") -> tuple[list[tuple[str, bytes]], str | None]:
     """Pickle-looking members regardless of extension (want="pickle") or every member up to
     the cap (want="all"); flags header tricks (central/local name mismatch, bad headers)."""
     out: list[tuple[str, bytes]] = []
@@ -195,8 +210,14 @@ def m_pickle_globals(node: dict, where: str, depth: int = 0, lists: dict | None 
         if bad:
             return [{"matcher": "pickle_globals", "at": where, "member": label, "globals": bad[:8]}]
         if err and on_err == "match":
-            return [{"matcher": "pickle_globals", "at": where, "member": label,
-                     "parse_error": err[:160]}]
+            return [
+                {
+                    "matcher": "pickle_globals",
+                    "at": where,
+                    "member": label,
+                    "parse_error": err[:160],
+                }
+            ]
         return None
 
     def m(ev: Event) -> list[dict] | None:
@@ -212,8 +233,14 @@ def m_pickle_globals(node: dict, where: str, depth: int = 0, lists: dict | None 
                 if r:
                     return r
             if err and on_err == "match":
-                return [{"matcher": "pickle_globals", "at": where, "member": "<zip>",
-                         "parse_error": err[:160]}]
+                return [
+                    {
+                        "matcher": "pickle_globals",
+                        "at": where,
+                        "member": "<zip>",
+                        "parse_error": err[:160],
+                    }
+                ]
             return None
         ext_hint = (ev.filename or "").lower().endswith(PICKLE_EXTENSIONS)
         if looks_like_pickle(data) or (

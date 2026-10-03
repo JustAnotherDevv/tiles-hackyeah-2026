@@ -1,0 +1,12 @@
+# Harness tunables (read by tests/lib/cases.harness_settings; not a case file).
+timeouts:
+  boot_s: 15            # /healthz must answer within this after the gateway thread starts
+  http_s: 20            # per-request client timeout
+  reload_max_ms: 1000   # API-path policy apply (hot-reload suite)
+  feed_activation_max_s: 2.0
+perf:
+  guard_p95_ms_max: 50  # TEST-23 perf smoke (slow marker)
+semantic:
+  k_of_n: [2, 3]        # semantic core cases: pass if 2 of 3 attempts agree
+  min_tpr: 0.80
+  max_fpr: 0.10

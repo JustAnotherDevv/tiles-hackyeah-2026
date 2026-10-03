@@ -104,6 +104,9 @@ const TABLE_SENSITIVITY: Record<string, string> = {
   'db:market_prices': 'PUBLIC',
 };
 const ACTION_ROUTES: MockRoute[] = [
+  { id: 'org-owner-grants', approver: 'owner', ttl_s: 3600, match: (r) => ['org.role.promote_owner', 'org.role.demote_owner', 'org.member.create_owner'].includes(r.action) },
+  { id: 'org-privileged', approver: 'owner', ttl_s: 3600, match: (r) => anyGlob(['org.role.*', 'org.member.create_admin', 'org.agent.widen_destination'], r.action) },
+  { id: 'org-routine', approver: 'admin', match: (r) => anyGlob(['org.member.*', 'org.agent.*'], r.action) },
   { id: 'spend-owner-2p', approver: 'owner', two_person: true, ttl_s: 7200, match: (r) => anyGlob(['spend.*'], r.action) && (r.amount === null || r.amount > 1000) },
   { id: 'spend-owner', approver: 'owner', match: (r) => anyGlob(['spend.*'], r.action) && (r.amount ?? Infinity) > 200 },
   { id: 'spend-admin', approver: 'admin', match: (r) => anyGlob(['spend.*'], r.action) && (r.amount ?? Infinity) > 20 },
@@ -117,11 +120,14 @@ const ACTION_ROUTES: MockRoute[] = [
   { id: 'db-internal-read', approver: 'self', match: (r) => r.action === 'db.read' && r.labels.sensitivity === 'INTERNAL' },
   { id: 'db-read', approver: 'auto', match: (r) => r.action === 'db.read' && ['PUBLIC', 'INTERNAL'].includes(r.labels.sensitivity ?? '') },
   { id: 'send-restricted', approver: 'deny', match: (r) => ['email.external', 'egress.post'].includes(r.action) && ['RESTRICTED', 'SECRET'].includes(r.labels.data_class ?? '') },
+  { id: 'send-tainted', approver: 'admin', match: (r) => (anyGlob(['email.*'], r.action) || r.action === 'egress.post') && (r.labels.signals ?? '').split(',').includes('lethal_trifecta') },
   { id: 'send-confidential', approver: 'admin', match: (r) => ['email.external', 'egress.post'].includes(r.action) && r.labels.data_class === 'CONFIDENTIAL' },
   { id: 'send-internal', approver: 'auto', match: (r) => r.action === 'email.internal' },
   { id: 'external-send', approver: 'self', match: (r) => ['email.external', 'egress.post'].includes(r.action) },
+  { id: 'code-exec-remote-shell', approver: 'admin', match: (r) => r.action === 'code.exec' && r.labels.pattern === 'remote_shell' },
   { id: 'pkg-install', approver: 'self', match: (r) => r.action === 'package.install' },
   { id: 'deploy-prod', approver: 'owner', match: (r) => r.action === 'code.deploy' && r.labels.env === 'prod' },
+  { id: 'deploy-mainline', approver: 'admin', match: (r) => r.action === 'code.deploy' && r.labels.env === 'mainline' },
   { id: 'deploy', approver: 'admin', match: (r) => r.action === 'code.deploy' },
   { id: 'budget-override', approver: 'admin', match: (r) => r.kind === 'budget_raise' },
   { id: 'mcp-repin', approver: 'admin', match: (r) => r.kind === 'mcp_pin' },
@@ -160,6 +166,16 @@ function routeOne(input: RouteInput): ApprovalRoute {
     ttl_s: hit?.ttl_s ?? RULES.defaults.ttl_s,
     max_uses: 1,
   };
+}
+
+function roleChangeAction(from: Member['role'], to: Member['role']): string {
+  if (to === 'owner') return 'org.role.promote_owner';
+  if (from === 'owner') return 'org.role.demote_owner';
+  if (to === 'admin') return 'org.role.promote_admin';
+  return 'org.role.demote_admin';
+}
+function roleVerb(action: string): string {
+  return action.includes('promote') ? 'Promote' : 'Demote';
 }
 
 // ------------------------------------------------------------------ store
@@ -386,6 +402,7 @@ class GovMockStore {
   }
 
   private execute(req: ApprovalRequest): Record<string, unknown> | null {
+    if (req.action_type.startsWith('org.')) return this.executeOrgChange(req);
     for (const fn of this.executors) {
       try {
         const r = fn(req);
@@ -414,18 +431,60 @@ class GovMockStore {
     if (!target) throw new MockApiError(404, 'not_found', `Member ${id} not found`);
     const v = this.viewerOf(viewerId);
     if (!roleSatisfies(v.role, 'admin')) throw new MockApiError(403, 'forbidden', 'Managing members requires an admin.', { required_role: 'admin' });
-    const touchesOwner = patch.role !== undefined && (patch.role === 'owner' || target.role === 'owner');
+    const roleChange = patch.role !== undefined && patch.role !== target.role;
+    const touchesOwner = roleChange && (patch.role === 'owner' || target.role === 'owner');
     if (touchesOwner && v.role !== 'owner') throw new MockApiError(403, 'forbidden', 'Only owners can grant or remove the owner role.', { required_role: 'owner' });
-    if (patch.role && target.id === v.member_id && patch.role !== target.role) {
+    if (roleChange && target.id === v.member_id) {
       throw new MockApiError(403, 'forbidden', 'You cannot change your own role (separation of duties).');
     }
-    if (patch.role === 'member' && target.role === 'owner' && this.members.filter((m) => m.role === 'owner').length <= 1) {
+    if (roleChange && target.role === 'owner' && this.members.filter((m) => m.role === 'owner').length <= 1) {
       throw new MockApiError(409, 'conflict', 'The organization needs at least one owner.');
+    }
+    if (roleChange && patch.role) {
+      // Governed change (CONTRACTS A-37): route org.role.* like the server; below the level → approval.
+      const action = roleChangeAction(target.role, patch.role);
+      const route = routeOne({ kind: 'action', action, amount: null, labels: {}, scope_type: null, increase_pct: null, resource: `member:${id}` });
+      if (!roleSatisfies(v.role, route.required_role) || route.two_person) {
+        const pending = this.getApprovals().find(
+          (a) => a.status === 'pending' && a.resource === `member:${id}` && (a.payload as { patch?: { role?: string } }).patch?.role === patch.role,
+        );
+        const apr =
+          pending ??
+          this.createApproval({
+            kind: 'action',
+            action_type: action,
+            title: `${roleVerb(action)} ${target.name} to ${patch.role}`,
+            summary: `Role change requested by ${this.member(v.member_id)?.name ?? v.member_id}`,
+            requester_member_id: v.member_id,
+            resource: `member:${id}`,
+            labels: { category: 'org', op: action.replace(/^org\./, ''), to_role: patch.role },
+            payload: {
+              org_change_id: `och_${Date.now().toString(36)}`,
+              op: 'member.update',
+              target: { type: 'member', id, name: target.name },
+              patch: { role: patch.role },
+              before: { role: target.role },
+            },
+          });
+        throw new MockApiError(403, 'approval_required', `${roleVerb(action)} ${target.name} to ${patch.role} needs ${route.required_role} approval (rule ${route.rule_id ?? 'default'}).`, {
+          required_role: route.required_role,
+          approval_id: apr.id,
+        });
+      }
     }
     const next: Member = { ...target, ...patch };
     this.members = this.members.map((m) => (m.id === id ? next : m));
     this.emit();
     return next;
+  }
+
+  private executeOrgChange(req: ApprovalRequest): Record<string, unknown> | null {
+    const p = req.payload as { target?: { type?: string; id?: string }; patch?: Partial<Member> };
+    if (p.target?.type !== 'member' || !p.target.id || !p.patch) return null;
+    const id = p.target.id;
+    const patch = p.patch;
+    this.members = this.members.map((m) => (m.id === id ? { ...m, ...patch } : m));
+    return { status: 'applied', org_change_id: (req.payload as { org_change_id?: string }).org_change_id ?? null };
   }
 
   patchAgent(id: string, patch: { active?: boolean }, viewerId: string | null | undefined): Agent {

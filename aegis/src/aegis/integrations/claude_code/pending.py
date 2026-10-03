@@ -1,9 +1,10 @@
 """In-memory registry of allowed PreToolUse evaluations awaiting their PostToolUse.
 
-Keyed `(session_id, tool_use_id)`; LRU-bounded (2000) with a TTL (15 min). Expired entries are
+Keyed `(session_id, tool_use_id)`; LRU-bounded (2000) with a TTL (600 s, Addendum A-13). Expired entries are
 swept lazily on every call (no background tasks, so `AEGIS_TEST_MODE` is honoured). The handler
 guarantees `rt.pipeline.complete()` runs exactly once per PreToolUse: on PostToolUse /
-PostToolUseFailure (pop), on Stop / SessionEnd (sweep_session) or on expiry (sweep_expired).
+PostToolUseFailure (pop), on Stop / SessionEnd (sweep_session) or on expiry (sweep_expired,
+completed with `Outcome(status_code=200)`).
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from typing import Any
 from aegis.core.types import Interaction, RequestContext, Verdict
 
 MAX_ENTRIES = 2000
-TTL_S = 15 * 60
+TTL_S = 600
 
 
 @dataclass

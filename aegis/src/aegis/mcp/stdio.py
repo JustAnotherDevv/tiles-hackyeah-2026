@@ -38,8 +38,15 @@ def _write(stream: Any, msg: Any) -> None:
 
 
 class StdioBridge:
-    def __init__(self, server: str, gateway: str, agent: str | None, key: str | None,
-                 sink: JsonlSink, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        server: str,
+        gateway: str,
+        agent: str | None,
+        key: str | None,
+        sink: JsonlSink,
+        client: httpx.AsyncClient | None = None,
+    ) -> None:
         self.server = server
         self.url = f"{gateway.rstrip('/')}/mcp/{server}/_stdio"
         self.session = f"stdio-{uuid.uuid4().hex[:12]}"
@@ -48,14 +55,18 @@ class StdioBridge:
             headers["X-Aegis-Agent"] = agent
         if key:
             headers["Authorization"] = f"Bearer {key}"
-        self.http = client or httpx.AsyncClient(timeout=httpx.Timeout(120.0, connect=5.0), headers=headers)
+        self.http = client or httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=5.0), headers=headers
+        )
         self.sink = sink
         self.pending: dict[Any, dict[str, Any]] = {}
 
     async def inspect(self, direction: str, message: dict[str, Any]) -> dict[str, Any] | None:
         try:
-            resp = await self.http.post(self.url, json={"direction": direction, "message": message,
-                                                        "session_id": self.session})
+            resp = await self.http.post(
+                self.url,
+                json={"direction": direction, "message": message, "session_id": self.session},
+            )
             if resp.status_code != 200:
                 self.sink({"event": "gateway_error", "status": resp.status_code})
                 return None
@@ -65,8 +76,15 @@ class StdioBridge:
             return None
 
     async def launch_check(self, command: list[str]) -> tuple[bool, str]:
-        reply = await self.inspect("out", {"jsonrpc": "2.0", "id": "aegis-launch",
-                                           "method": "aegis/launch", "params": {"command": command}})
+        reply = await self.inspect(
+            "out",
+            {
+                "jsonrpc": "2.0",
+                "id": "aegis-launch",
+                "method": "aegis/launch",
+                "params": {"command": command},
+            },
+        )
         if reply is None:
             return False, FAIL_CLOSED
         if reply.get("action") != "forward":
@@ -125,8 +143,13 @@ async def run(bridge: StdioBridge, command: list[str]) -> int:
     env = dict(os.environ)
     env.setdefault("PYTHONPATH", os.pathsep.join(p for p in sys.path if p))
     child = await asyncio.create_subprocess_exec(
-        *_resolve(command), stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE,
-        stderr=None, limit=LINE_LIMIT, env=env)
+        *_resolve(command),
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=None,
+        limit=LINE_LIMIT,
+        env=env,
+    )
     assert child.stdin and child.stdout
 
     async def client_to_server() -> None:
@@ -182,8 +205,10 @@ async def run(bridge: StdioBridge, command: list[str]) -> int:
 def main(argv: list[str] | None = None) -> None:
     argv = list(sys.argv[1:] if argv is None else argv)
     if "--" not in argv:
-        sys.exit("usage: python -m aegis.mcp.stdio --server NAME [--gateway URL] [--agent ID] "
-                 "[--key-env VAR] [--events-file F] -- CMD ...")
+        sys.exit(
+            "usage: python -m aegis.mcp.stdio --server NAME [--gateway URL] [--agent ID] "
+            "[--key-env VAR] [--events-file F] -- CMD ..."
+        )
     split = argv.index("--")
     ap = argparse.ArgumentParser(prog="python -m aegis.mcp.stdio")
     ap.add_argument("--server", required=True)
@@ -193,8 +218,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--events-file", type=Path)
     ns = ap.parse_args(argv[:split])
     stream = ns.events_file.open("a", encoding="utf-8") if ns.events_file else sys.stderr
-    bridge = StdioBridge(ns.server, ns.gateway, ns.agent, os.environ.get(ns.key_env), JsonlSink(stream))
-    sys.exit(asyncio.run(run(bridge, argv[split + 1:])))
+    bridge = StdioBridge(
+        ns.server, ns.gateway, ns.agent, os.environ.get(ns.key_env), JsonlSink(stream)
+    )
+    sys.exit(asyncio.run(run(bridge, argv[split + 1 :])))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,8 @@
-// Global SSE → toast bridge (docs/plan/15 §2.8). The shell OWNS toasts for policy.*, feed.*,
-// approval.created/updated, budget.threshold, killswitch and system — pages must not duplicate them.
+// Global SSE → toast bridge (docs/plan/15 §2.8 + Addendum A-55). The shell toasts feed.*, budget.threshold,
+// mcp.tool and system. It ALSO keeps the plain policy.* / approval.* / killswitch toasts because the
+// governance <GovernanceToaster/> (mounted once in AppShell) only adds the "verdicts flipped" variant and
+// relies on these: the policy toast uses sonner id `policy-v<version>`, so governance updates it in place
+// (never two toasts for one version). Pages must not duplicate any of these.
 // Dedupe: same kind + subject within 2 s (sonner id); at most 4 visible (Toaster visibleToasts).
 // Replayed messages (first ~1.5 s after (re)connect) never toast.
 import { useRef } from 'react';
@@ -20,6 +23,7 @@ const NAMES: SseEventName[] = [
   'approval.updated',
   'budget.threshold',
   'killswitch',
+  'mcp.tool',
   'system',
 ];
 
@@ -76,7 +80,7 @@ export function EventToasts() {
           .join(' · ');
         const more = changes.length > 2 ? ` (+${changes.length - 2} more)` : '';
         toast.success(`Policy v${d.version} applied in ${fmtMs(d.latency_ms)}`, {
-          id: `policy-${d.version}`,
+          id: `policy-v${d.version}`,
           className: 'aegis-toast',
           duration: 7000,
           description: (
@@ -201,6 +205,31 @@ export function EventToasts() {
           id: `kill-${d.scope}`,
           className: 'aegis-toast',
           description: <Meta>killswitch · by {actorName(d.actor)}</Meta>,
+        });
+        return;
+      }
+      case 'mcp.tool': {
+        const d = data as SseEventMap['mcp.tool'];
+        if (d.status === 'approved') return;
+        if (dedupe(`mcp:${d.server}:${d.tool}:${d.status}`)) return;
+        const title =
+          d.status === 'changed'
+            ? `MCP tool changed · ${d.server}/${d.tool}`
+            : d.status === 'quarantined'
+              ? `MCP tool quarantined · ${d.server}/${d.tool}`
+              : `New MCP tool awaiting pin · ${d.server}/${d.tool}`;
+        const fn = d.status === 'pending' ? toast.info : toast.warning;
+        fn(title, {
+          id: `mcp-${d.server}-${d.tool}`,
+          className: 'aegis-toast',
+          duration: 7000,
+          description: (
+            <>
+              <div>{d.reason || (d.status === 'changed' ? 'Description/schema hash differs from the pinned version — calls blocked until re-approved' : 'Blocked until an admin approves it')}</div>
+              <Meta>mcp.tool · {d.status}</Meta>
+            </>
+          ),
+          action: { label: 'MCP', onClick: () => navigate('/security/mcp') },
         });
         return;
       }

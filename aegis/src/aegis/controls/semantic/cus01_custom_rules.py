@@ -28,8 +28,8 @@ from aegis.controls.semantic import _common as c
 from aegis.core.policy_schema import ControlConfig
 from aegis.core.protocols import BaseControl
 from aegis.core.types import (
-    ApprovalDraft,
     AppliesTo,
+    ApprovalDraft,
     Decision,
     Finding,
     Interaction,
@@ -85,7 +85,12 @@ class CustomRules(BaseControl):
             for i, term in enumerate(rule.terms):
                 try:
                     pats.append(
-                        (i, _term_pattern(term, folded=folded, whole_word=p.whole_word, ci=p.case_insensitive))
+                        (
+                            i,
+                            _term_pattern(
+                                term, folded=folded, whole_word=p.whole_word, ci=p.case_insensitive
+                            ),
+                        )
                     )
                 except re.error:
                     c.log.warning("CUS-01 term failed to compile rule=%s index=%d", rule.id, i)

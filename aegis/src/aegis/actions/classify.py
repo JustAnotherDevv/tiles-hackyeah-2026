@@ -41,7 +41,6 @@ NETWORK_TOOLS = frozenset({"WebFetch", "WebSearch"})
 SHELL_TOOLS = frozenset({"Bash", "BashOutput", "KillShell"})
 
 
-
 def glob_match(pattern: str, value: str | None) -> bool:
     if value is None:
         return False
@@ -126,7 +125,11 @@ def tool_kind(interaction: Interaction) -> str:
         return "file_read"
     if tool in FILE_WRITE_TOOLS or re.search(r"(?i)\.(write|edit|create|delete|move)_?file", tool):
         return "file_write"
-    if tool in NETWORK_TOOLS or interaction.surface == "egress.request" or tool.endswith(".fetch_url"):
+    if (
+        tool in NETWORK_TOOLS
+        or interaction.surface == "egress.request"
+        or tool.endswith(".fetch_url")
+    ):
         return "network"
     if tool in SHELL_TOOLS:
         return "shell"
@@ -245,13 +248,13 @@ def ensure_classified(interaction: Interaction, rules: list[ActionRule]) -> Acti
         rid = meta.get(META_RULE)
         return next((r for r in rules if r.id == rid), None) if rid else None
     meta[META_CALLER] = [
-        f
-        for f in ("action_type", "amount_usd", "resource")
-        if getattr(interaction, f) is not None
+        f for f in ("action_type", "amount_usd", "resource") if getattr(interaction, f) is not None
     ]
     rule = match_rule(interaction, rules)
     if rule is None:
-        interaction.labels.setdefault("capability", capability_of(interaction.action_type, None, interaction))
+        interaction.labels.setdefault(
+            "capability", capability_of(interaction.action_type, None, interaction)
+        )
         meta[META_RULE] = None
         return None
     action_type, amount, resource, labels = classify(interaction, [rule])
@@ -264,7 +267,9 @@ def ensure_classified(interaction: Interaction, rules: list[ActionRule]) -> Acti
     for k, v in labels.items():
         interaction.labels.setdefault(k, v)
     if "capability" in labels and interaction.action_type != action_type:
-        interaction.labels["capability"] = capability_of(interaction.action_type, rule.category, interaction)
+        interaction.labels["capability"] = capability_of(
+            interaction.action_type, rule.category, interaction
+        )
     meta[META_RULE] = rule.id
     return rule
 
@@ -273,8 +278,14 @@ def caller_supplied(interaction: Interaction, field: str) -> bool:
     return field in (interaction.meta.get(META_CALLER) or [])
 
 
-def refine(interaction: Interaction, *, action_type: str | None = None, resource: str | None = None,
-           amount_usd: float | None = None, labels: dict[str, Any] | None = None) -> None:
+def refine(
+    interaction: Interaction,
+    *,
+    action_type: str | None = None,
+    resource: str | None = None,
+    amount_usd: float | None = None,
+    labels: dict[str, Any] | None = None,
+) -> None:
     """Refine classification from a control's analysis (never overrides caller-supplied fields)."""
     if action_type and not caller_supplied(interaction, "action_type"):
         interaction.action_type = action_type
@@ -292,8 +303,9 @@ def refine(interaction: Interaction, *, action_type: str | None = None, resource
 _PLACEHOLDER_RX = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_.\[\]]*)\}")
 
 
-def render_title(template: str | None, values: dict[str, Any], interaction: Interaction,
-                 mask: Any = None) -> str | None:
+def render_title(
+    template: str | None, values: dict[str, Any], interaction: Interaction, mask: Any = None
+) -> str | None:
     """Fill ``{agent} {member} {amount} {resource} {tool} {args.<path>}`` (+ extra ``values``).
 
     ``args.*`` values are passed through ``mask`` (privacy: titles are broadcast).
@@ -321,8 +333,8 @@ def render_title(template: str | None, values: dict[str, Any], interaction: Inte
 
 __all__ = [
     "approval_category",
-    "capability_of",
     "caller_supplied",
+    "capability_of",
     "classify",
     "ensure_classified",
     "glob_match",

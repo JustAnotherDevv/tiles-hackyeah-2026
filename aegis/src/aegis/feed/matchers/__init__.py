@@ -123,9 +123,12 @@ def _get(obj: Any, name: str, default: Any = None) -> Any:
 
 def _model_name(i: Any) -> str | None:
     args = _get(i, "tool_args") or {}
-    for v in (_get(i, "model"), args.get("model") if isinstance(args, dict) else None,
-              args.get("name") if isinstance(args, dict) else None,
-              args.get("from") if isinstance(args, dict) else None):
+    for v in (
+        _get(i, "model"),
+        args.get("model") if isinstance(args, dict) else None,
+        args.get("name") if isinstance(args, dict) else None,
+        args.get("from") if isinstance(args, dict) else None,
+    ):
         if isinstance(v, str) and v:
             return v
     return None
@@ -164,7 +167,10 @@ def _under_roots(path: str, roots: Iterable[str] | None, base: Path | None) -> P
 
 
 def artifact_bytes(
-    i: Any, *, artifact_roots: Iterable[str] | None = None, base_dir: Path | None = None,
+    i: Any,
+    *,
+    artifact_roots: Iterable[str] | None = None,
+    base_dir: Path | None = None,
     max_bytes: int = ARTIFACT_B64_MAX,
 ) -> bytes | None:
     """Byte sources in order: raw bytes -> meta.artifact_b64 -> tool_args.artifact_b64 ->
@@ -174,7 +180,10 @@ def artifact_bytes(
         return bytes(raw)
     meta = _get(i, "meta") or {}
     args = _get(i, "tool_args") or {}
-    for src in (meta.get("artifact_b64"), args.get("artifact_b64") if isinstance(args, dict) else None):
+    for src in (
+        meta.get("artifact_b64"),
+        args.get("artifact_b64") if isinstance(args, dict) else None,
+    ):
         if isinstance(src, str) and src:
             if len(src) > (max_bytes * 4) // 3 + 8:
                 raise FeedError("artifact_b64 larger than the scan cap")
@@ -257,14 +266,21 @@ def event_from_interaction(
                 break
 
     return Event(
-        surface=surface, text=text, json=js, url=url if isinstance(url, str) else None,
-        method=_get(i, "http_method"), body=body,
-        filename=filename if isinstance(filename, str) else None, data=data,
+        surface=surface,
+        text=text,
+        json=js,
+        url=url if isinstance(url, str) else None,
+        method=_get(i, "http_method"),
+        body=body,
+        filename=filename if isinstance(filename, str) else None,
+        data=data,
     )
 
 
 # --------------------------------------------------------------------------- matching
-def match(compiled: CompiledSignature | Iterable[CompiledSignature], interaction: Any) -> list[dict]:
+def match(
+    compiled: CompiledSignature | Iterable[CompiledSignature], interaction: Any
+) -> list[dict]:
     """Evaluate one or many compiled signatures against an interaction; return the hits."""
     sigs = [compiled] if isinstance(compiled, CompiledSignature) else list(compiled)
     surface = str(_get(interaction, "surface", ""))
@@ -292,8 +308,13 @@ def vector_results(c: CompiledSignature) -> list[dict]:
     tests = c.sig.get("tests") or {}
     for kind, want in (("positive", True), ("negative", False)):
         for idx, ex in enumerate(tests.get(kind) or []):
-            row: dict[str, Any] = {"kind": kind, "index": idx, "name": ex.get("name", f"{kind}[{idx}]"),
-                                   "surface": ex.get("surface"), "expected": "match" if want else "no match"}
+            row: dict[str, Any] = {
+                "kind": kind,
+                "index": idx,
+                "name": ex.get("name", f"{kind}[{idx}]"),
+                "surface": ex.get("surface"),
+                "expected": "match" if want else "no match",
+            }
             try:
                 got = c.match(event_from_example(ex))
             except Exception as e:  # a broken vector must never crash the caller
@@ -326,8 +347,22 @@ def run_tests(c: CompiledSignature) -> tuple[int, list[str]]:
 
 
 __all__ = [
-    "MATCHERS", "CompiledSignature", "Event", "FeedError", "artifact_bytes", "canonical_json",
-    "compile_matcher", "compile_signature", "decide", "event_from_example",
-    "event_from_interaction", "hf_url_for_model", "iter_regexes", "match", "run_tests",
-    "scan_event", "strongest", "vector_results",
+    "MATCHERS",
+    "CompiledSignature",
+    "Event",
+    "FeedError",
+    "artifact_bytes",
+    "canonical_json",
+    "compile_matcher",
+    "compile_signature",
+    "decide",
+    "event_from_example",
+    "event_from_interaction",
+    "hf_url_for_model",
+    "iter_regexes",
+    "match",
+    "run_tests",
+    "scan_event",
+    "strongest",
+    "vector_results",
 ]

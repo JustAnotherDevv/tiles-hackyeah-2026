@@ -103,7 +103,11 @@ class ExploitSignatureEngine(BaseControl):
         feed = C.feed()
         if feed is None or not hasattr(feed, "scan"):
             return None
-        snap = feed.snapshot_for(ctx) if hasattr(feed, "snapshot_for") else getattr(feed, "active", None)
+        snap = (
+            feed.snapshot_for(ctx)
+            if hasattr(feed, "snapshot_for")
+            else getattr(feed, "active", None)
+        )
         if snap is None or not snap.by_surface.get(surface):
             return None
         p = C.params(self.id, SIG01Params, cfg)
@@ -111,14 +115,24 @@ class ExploitSignatureEngine(BaseControl):
         segs = [s for _, s in selected]
         size = sum(len(getattr(s, "text", "") or "") for s in segs)
         if size > THREAD_THRESHOLD:
-            hits = await asyncio.to_thread(feed.scan, interaction, ctx=ctx, segments=segs, snapshot=snap)
+            hits = await asyncio.to_thread(
+                feed.scan, interaction, ctx=ctx, segments=segs, snapshot=snap
+            )
         else:
             hits = feed.scan(interaction, ctx=ctx, segments=segs, snapshot=snap)
         degraded = any(h.get("degraded") for h in hits)
         hits = [h for h in hits if not h.get("degraded")]
         if not hits:
-            return Decision(action="allow", control_id=self.id, degraded=True,
-                            reason="signature evaluation error") if degraded else None
+            return (
+                Decision(
+                    action="allow",
+                    control_id=self.id,
+                    degraded=True,
+                    reason="signature evaluation error",
+                )
+                if degraded
+                else None
+            )
         ovs = C.overrides(ctx)
         resolved: list[dict] = []
         for h in hits:
@@ -134,64 +148,117 @@ class ExploitSignatureEngine(BaseControl):
             except Exception:
                 log.debug("record_hits failed", exc_info=True)
         for h in resolved:
-            log.info("signature hit id=%s surface=%s action=%s mode=%s", h["signature_id"], surface,
-                     h["action"], h["mode"])
+            log.info(
+                "signature hit id=%s surface=%s action=%s mode=%s",
+                h["signature_id"],
+                surface,
+                h["action"],
+                h["mode"],
+            )
         return self._decide(cfg, interaction, snap, selected, resolved, degraded)
 
-    def _decide(self, cfg: Any, interaction: Any, snap: Any, selected: list[tuple[int, Any]],
-                hits: list[dict], degraded: bool) -> Decision:
+    def _decide(
+        self,
+        cfg: Any,
+        interaction: Any,
+        snap: Any,
+        selected: list[tuple[int, Any]],
+        hits: list[dict],
+        degraded: bool,
+    ) -> Decision:
         enforce = [h for h in hits if h["mode"] == "enforce" and h["action"] != "allow"]
         ranked = sorted(
             enforce or hits,
-            key=lambda h: (-C.ACTION_PRECEDENCE.get(h["action"], 0),
-                           -C.SEVERITY_RANK.get(str(h.get("severity")), 0), h["signature_id"]),
+            key=lambda h: (
+                -C.ACTION_PRECEDENCE.get(h["action"], 0),
+                -C.SEVERITY_RANK.get(str(h.get("severity")), 0),
+                h["signature_id"],
+            ),
         )
         primary = ranked[0]
         cves = [a for a in primary.get("aliases") or [] if str(a).startswith("CVE-")]
         reason = " · ".join([primary["signature_id"], *(cves[:1]), str(primary.get("title", ""))])
         owasp = sorted({t for h in hits for t in owasp_tags(h.get("tags") or [])}) or list(
-            getattr(cfg, "owasp", None) or self.owasp)
+            getattr(cfg, "owasp", None) or self.owasp
+        )
         findings: list[Finding] = []
         mutations: list[Mutation] = []
         surface = str(getattr(interaction, "surface", ""))
         for h in hits:
             ev = h.get("evidence") or []
-            snippet = next((e.get("snippet") or e.get("url") for e in ev
-                            if e.get("snippet") or e.get("url")), None)
-            findings.append(Finding(
-                control_id=self.id, detector=h["signature_id"], category="signature",
-                severity=h.get("severity", "medium"), excerpt=C.mask(snippet, 120),
-                meta={"signature_id": h["signature_id"], "title": h.get("title"),
-                      "aliases": h.get("aliases") or [], "tags": h.get("tags") or [],
-                      "mode": h["mode"], "action": h["action"],
-                      "evidence": C.sanitize_evidence(ev)},
-            ))
+            snippet = next(
+                (e.get("snippet") or e.get("url") for e in ev if e.get("snippet") or e.get("url")),
+                None,
+            )
+            findings.append(
+                Finding(
+                    control_id=self.id,
+                    detector=h["signature_id"],
+                    category="signature",
+                    severity=h.get("severity", "medium"),
+                    excerpt=C.mask(snippet, 120),
+                    meta={
+                        "signature_id": h["signature_id"],
+                        "title": h.get("title"),
+                        "aliases": h.get("aliases") or [],
+                        "tags": h.get("tags") or [],
+                        "mode": h["mode"],
+                        "action": h["action"],
+                        "evidence": C.sanitize_evidence(ev),
+                    },
+                )
+            )
         final = primary["action"] if enforce else "log"
         if enforce and final == "redact":
-            red_findings, red_mut = self._redactions(snap, surface, selected,
-                                                     [h for h in enforce if h["action"] == "redact"])
+            red_findings, red_mut = self._redactions(
+                snap, surface, selected, [h for h in enforce if h["action"] == "redact"]
+            )
             findings.extend(red_findings)
             mutations.extend(red_mut)
-        sig_meta = [{"id": h["signature_id"], "action": h["action"], "mode": h["mode"],
-                     "severity": h.get("severity"), "title": h.get("title"),
-                     "aliases": h.get("aliases") or []} for h in hits]
-        meta: dict[str, Any] = {"signatures": sig_meta, "feed_serial": snap.serial,
-                                "feed_version": snap.version}
+        sig_meta = [
+            {
+                "id": h["signature_id"],
+                "action": h["action"],
+                "mode": h["mode"],
+                "severity": h.get("severity"),
+                "title": h.get("title"),
+                "aliases": h.get("aliases") or [],
+            }
+            for h in hits
+        ]
+        meta: dict[str, Any] = {
+            "signatures": sig_meta,
+            "feed_serial": snap.serial,
+            "feed_version": snap.version,
+        }
         if not enforce:
             meta["would_action"] = C.strongest([h["action"] for h in hits])
-            return Decision(action="log", control_id=self.id, mode="monitor",
-                            reason="monitor: " + reason, severity=C.max_severity(
-                                [str(h.get("severity", "medium")) for h in hits]),
-                            findings=findings, owasp=owasp, degraded=degraded, meta=meta)
+            return Decision(
+                action="log",
+                control_id=self.id,
+                mode="monitor",
+                reason="monitor: " + reason,
+                severity=C.max_severity([str(h.get("severity", "medium")) for h in hits]),
+                findings=findings,
+                owasp=owasp,
+                degraded=degraded,
+                meta=meta,
+            )
         return Decision(
             action=final,  # type: ignore[arg-type]
-            control_id=self.id, reason=reason,
+            control_id=self.id,
+            reason=reason,
             severity=C.max_severity([str(h.get("severity", "medium")) for h in enforce]),  # type: ignore[arg-type]
-            findings=findings, mutations=mutations, owasp=owasp, degraded=degraded, meta=meta,
+            findings=findings,
+            mutations=mutations,
+            owasp=owasp,
+            degraded=degraded,
+            meta=meta,
         )
 
-    def _redactions(self, snap: Any, surface: str, selected: list[tuple[int, Any]],
-                    hits: list[dict]) -> tuple[list[Finding], list[Mutation]]:
+    def _redactions(
+        self, snap: Any, surface: str, selected: list[tuple[int, Any]], hits: list[dict]
+    ) -> tuple[list[Finding], list[Mutation]]:
         findings: list[Finding] = []
         mutations: list[Mutation] = []
         for h in hits:
@@ -201,8 +268,9 @@ class ExploitSignatureEngine(BaseControl):
             scope = c.redact_scope
             repl = c.redact_with if c.redact_with is not None else f"[REDACTED:{c.id}]"
             if scope == "tool" and surface == "mcp.list":
-                mutations.append(Mutation(op="remove", path="tool",
-                                          reason=f"{c.id}: {h.get('title', '')}"[:200]))
+                mutations.append(
+                    Mutation(op="remove", path="tool", reason=f"{c.id}: {h.get('title', '')}"[:200])
+                )
                 continue
             for idx, seg in selected:
                 if not getattr(seg, "redactable", True):
@@ -216,13 +284,25 @@ class ExploitSignatureEngine(BaseControl):
                 if scope in ("segment", "tool"):
                     spans = [(0, len(text))]
                 for s, e in spans:
-                    findings.append(Finding(
-                        control_id=self.id, detector=c.id, category="signature", entity="SIGNATURE",
-                        severity=h.get("severity", "medium"), segment_index=idx, start=s, end=e,
-                        replacement=repl,
-                        meta={"signature_id": c.id, "title": h.get("title"),
-                              "aliases": h.get("aliases") or [], "redact_scope": scope},
-                    ))
+                    findings.append(
+                        Finding(
+                            control_id=self.id,
+                            detector=c.id,
+                            category="signature",
+                            entity="SIGNATURE",
+                            severity=h.get("severity", "medium"),
+                            segment_index=idx,
+                            start=s,
+                            end=e,
+                            replacement=repl,
+                            meta={
+                                "signature_id": c.id,
+                                "title": h.get("title"),
+                                "aliases": h.get("aliases") or [],
+                                "redact_scope": scope,
+                            },
+                        )
+                    )
         return findings, mutations
 
 

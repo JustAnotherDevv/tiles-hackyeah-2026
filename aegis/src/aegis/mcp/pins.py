@@ -65,9 +65,16 @@ def diff_tools(old: dict[str, Any], new: dict[str, Any]) -> dict[str, Any]:
     changed = sorted(k for k in set(old) | set(new) if old.get(k) != new.get(k))
     out: dict[str, Any] = {"changed_fields": changed}
     if "description" in changed:
-        out["description_diff"] = list(difflib.unified_diff(
-            (old.get("description") or "").splitlines(), (new.get("description") or "").splitlines(),
-            "pinned", "current", lineterm="", n=0))[2:]
+        out["description_diff"] = list(
+            difflib.unified_diff(
+                (old.get("description") or "").splitlines(),
+                (new.get("description") or "").splitlines(),
+                "pinned",
+                "current",
+                lineterm="",
+                n=0,
+            )
+        )[2:]
     old_props = set((old.get("inputSchema") or {}).get("properties", {}) or {})
     new_props = set((new.get("inputSchema") or {}).get("properties", {}) or {})
     if old_props != new_props:
@@ -122,8 +129,12 @@ class PinCheck:
 
     def as_meta(self) -> dict[str, Any]:
         return {
-            "status": self.status, "hash": self.hash, "pinned_hash": self.pinned_hash,
-            "baseline": self.baseline, "reason": self.reason, "approval_id": self.approval_id,
+            "status": self.status,
+            "hash": self.hash,
+            "pinned_hash": self.pinned_hash,
+            "baseline": self.baseline,
+            "reason": self.reason,
+            "approval_id": self.approval_id,
             "approved_by": self.approved_by,
         }
 
@@ -139,8 +150,13 @@ class CallableStatus:
     hash: str | None = None
 
     def as_meta(self) -> dict[str, Any]:
-        return {"status": self.status, "reason": self.reason, "approval_id": self.approval_id,
-                "pinned_hash": self.pinned_hash, "hash": self.hash}
+        return {
+            "status": self.status,
+            "reason": self.reason,
+            "approval_id": self.approval_id,
+            "pinned_hash": self.pinned_hash,
+            "hash": self.hash,
+        }
 
 
 @dataclass
@@ -187,19 +203,32 @@ class PinStore:
                 self.last_seen[(server, tool)] = r["last_seen"]
                 if r["approved_by"]:
                     self.pins.setdefault(server, {})[tool] = PinRecord(
-                        r["hash"], json.loads(r["definition_json"]), r["approved_by"],
-                        r["first_seen"], r["last_seen"])
+                        r["hash"],
+                        json.loads(r["definition_json"]),
+                        r["approved_by"],
+                        r["first_seen"],
+                        r["last_seen"],
+                    )
             for r in con.execute("SELECT * FROM mcp_tool_candidates"):
                 self.candidates.setdefault(r["server"], {})[r["tool"]] = Candidate(
-                    r["reason"], r["hash"], json.loads(r["definition_json"]),
-                    json.loads(r["findings_json"] or "[]"), json.loads(r["diff_json"] or "{}"),
-                    r["approval_id"], r["detected_at"])
+                    r["reason"],
+                    r["hash"],
+                    json.loads(r["definition_json"]),
+                    json.loads(r["findings_json"] or "[]"),
+                    json.loads(r["diff_json"] or "{}"),
+                    r["approval_id"],
+                    r["detected_at"],
+                )
                 self.first_seen.setdefault((r["server"], r["tool"]), r["detected_at"])
                 self.last_seen.setdefault((r["server"], r["tool"]), r["detected_at"])
             for r in con.execute("SELECT * FROM mcp_server_state"):
                 self.servers[r["server"]] = ServerState(
-                    r["baseline_at"], r["last_list_at"], r["last_error"], r["last_error_at"],
-                    bool(r["stale"]))
+                    r["baseline_at"],
+                    r["last_list_at"],
+                    r["last_error"],
+                    r["last_error_at"],
+                    bool(r["stale"]),
+                )
         finally:
             con.close()
 
@@ -231,8 +260,15 @@ class PinStore:
         approval = cand.approval_id if cand else None
         approved_by = pin.approved_by if pin else None
         if cand and cand.reason == "manual":
-            return PinCheck("quarantined", h, pin.hash if pin else None, baseline, "manual",
-                            approval, approved_by)
+            return PinCheck(
+                "quarantined",
+                h,
+                pin.hash if pin else None,
+                baseline,
+                "manual",
+                approval,
+                approved_by,
+            )
         if pin:
             status = "match" if pin.hash == h else "changed"
             reason = cand.reason if cand else None
@@ -248,8 +284,9 @@ class PinStore:
     def callable_status(self, server: str, name: str) -> CallableStatus:
         pin, cand = self.get(server, name)
         if cand and cand.reason == "manual":
-            return CallableStatus("quarantined", "manual", cand.approval_id,
-                                  pin.hash if pin else None, cand.hash)
+            return CallableStatus(
+                "quarantined", "manual", cand.approval_id, pin.hash if pin else None, cand.hash
+            )
         if pin and cand and cand.reason == "changed":
             return CallableStatus("changed", "changed", cand.approval_id, pin.hash, cand.hash)
         if pin and cand and cand.reason == "poisoned":
@@ -284,8 +321,11 @@ class PinStore:
         pin, cand = self.get(server, name)
         out: list[str] = []
         if cand is None and pin is not None:
-            out.append("pinned (trust on first use)" if pin.approved_by == "tofu"
-                       else f"approved by {pin.approved_by}")
+            out.append(
+                "pinned (trust on first use)"
+                if pin.approved_by == "tofu"
+                else f"approved by {pin.approved_by}"
+            )
         if cand is not None:
             if cand.reason == "poisoned":
                 rules = sorted({str(f.get("rule")) for f in cand.findings if f.get("rule")})
@@ -296,9 +336,14 @@ class PinStore:
             elif cand.reason == "new_after_baseline":
                 out.append("tool appeared after the server's tool set was pinned")
             elif cand.reason == "manual":
-                out.append("quarantined by admin" + (f": {cand.findings[0].get('reason')}"
-                                                     if cand.findings and cand.findings[0].get("reason")
-                                                     else ""))
+                out.append(
+                    "quarantined by admin"
+                    + (
+                        f": {cand.findings[0].get('reason')}"
+                        if cand.findings and cand.findings[0].get("reason")
+                        else ""
+                    )
+                )
             if cand.approval_id:
                 out.append(f"approval {cand.approval_id} pending")
         return out
@@ -338,11 +383,18 @@ class PinStore:
         self.first_seen.setdefault((server, name), now)
         self.last_seen[(server, name)] = now
 
-    async def pin(self, server: str, tool: dict[str, Any], *, approved_by: str = "tofu") -> PinRecord:
+    async def pin(
+        self, server: str, tool: dict[str, Any], *, approved_by: str = "tofu"
+    ) -> PinRecord:
         name = str(tool["name"])
         self._seen(server, name)
-        rec = PinRecord(tool_hash(tool), copy.deepcopy(tool), approved_by,
-                        self.first_seen[(server, name)], self.last_seen[(server, name)])
+        rec = PinRecord(
+            tool_hash(tool),
+            copy.deepcopy(tool),
+            approved_by,
+            self.first_seen[(server, name)],
+            self.last_seen[(server, name)],
+        )
         self.pins.setdefault(server, {})[name] = rec
         self.candidates.get(server, {}).pop(name, None)
         await self._persist(server, name)
@@ -364,8 +416,9 @@ class PinStore:
         prev = self.candidates.get(server, {}).get(name)
         h = tool_hash(tool)
         keep_approval = approval_id or (prev.approval_id if prev and prev.hash == h else None)
-        cand = Candidate(reason, h, copy.deepcopy(tool), list(findings or []), dict(diff or {}),
-                         keep_approval)
+        cand = Candidate(
+            reason, h, copy.deepcopy(tool), list(findings or []), dict(diff or {}), keep_approval
+        )
         if prev and prev.hash == h:
             cand.detected_at = prev.detected_at
         self.candidates.setdefault(server, {})[name] = cand
@@ -384,7 +437,9 @@ class PinStore:
         """Quarantine a listed definition (poisoned) or, by name, an existing tool (manual)."""
         if isinstance(tool, str):
             pin, cand = self.get(server, tool)
-            definition = (cand.definition if cand else None) or (pin.definition if pin else {"name": tool})
+            definition = (cand.definition if cand else None) or (
+                pin.definition if pin else {"name": tool}
+            )
         else:
             definition = tool
         return await self.set_candidate(server, definition, reason=reason, findings=findings)
@@ -402,7 +457,12 @@ class PinStore:
             self._changed(server, name)
 
     async def approve(
-        self, server: str, name: str, *, expected_hash: str | None = None, approved_by: str = "admin"
+        self,
+        server: str,
+        name: str,
+        *,
+        expected_hash: str | None = None,
+        approved_by: str = "admin",
     ) -> PinRecord:
         """Accept the candidate (latest seen) definition as the new pin. With `expected_hash`,
         refuse if the candidate changed meanwhile (approval was for a different definition)."""
@@ -465,24 +525,44 @@ class PinStore:
             return None
         definition = pin.definition if pin else cand.definition  # type: ignore[union-attr]
         h = pin.hash if pin else cand.hash  # type: ignore[union-attr]
-        return (server, name, h, canonical_json(definition), self.view_status(server, name),
-                json.dumps(self.reasons(server, name)), self.first_seen.get((server, name), _now()),
-                self.last_seen.get((server, name), _now()), pin.approved_by if pin else None)
+        return (
+            server,
+            name,
+            h,
+            canonical_json(definition),
+            self.view_status(server, name),
+            json.dumps(self.reasons(server, name)),
+            self.first_seen.get((server, name), _now()),
+            self.last_seen.get((server, name), _now()),
+            pin.approved_by if pin else None,
+        )
 
     async def _persist(self, server: str, name: str) -> None:
         if self._connect is None:
             return
         row = self._row(server, name)
         cand = self.candidates.get(server, {}).get(name)
-        crow = None if cand is None else (
-            server, name, cand.hash, canonical_json(cand.definition), cand.reason,
-            json.dumps(cand.findings, default=str), json.dumps(cand.diff, default=str),
-            cand.approval_id, cand.detected_at)
+        crow = (
+            None
+            if cand is None
+            else (
+                server,
+                name,
+                cand.hash,
+                canonical_json(cand.definition),
+                cand.reason,
+                json.dumps(cand.findings, default=str),
+                json.dumps(cand.diff, default=str),
+                cand.approval_id,
+                cand.detected_at,
+            )
+        )
         async with self._lock:
             await asyncio.to_thread(self._persist_sync, server, name, row, crow)
 
-    def _persist_sync(self, server: str, name: str, row: tuple[Any, ...] | None,
-                      crow: tuple[Any, ...] | None) -> None:
+    def _persist_sync(
+        self, server: str, name: str, row: tuple[Any, ...] | None, crow: tuple[Any, ...] | None
+    ) -> None:
         assert self._connect is not None
         con = self._connect()
         try:
@@ -491,9 +571,13 @@ class PinStore:
             else:
                 con.execute("INSERT OR REPLACE INTO mcp_tools VALUES (?,?,?,?,?,?,?,?,?)", row)
             if crow is None:
-                con.execute("DELETE FROM mcp_tool_candidates WHERE server=? AND tool=?", (server, name))
+                con.execute(
+                    "DELETE FROM mcp_tool_candidates WHERE server=? AND tool=?", (server, name)
+                )
             else:
-                con.execute("INSERT OR REPLACE INTO mcp_tool_candidates VALUES (?,?,?,?,?,?,?,?,?)", crow)
+                con.execute(
+                    "INSERT OR REPLACE INTO mcp_tool_candidates VALUES (?,?,?,?,?,?,?,?,?)", crow
+                )
             con.commit()
         except sqlite3.Error:
             log.exception("pin persist failed server=%s tool=%s", server, name)
@@ -504,7 +588,14 @@ class PinStore:
         if self._connect is None:
             return
         st = self.servers.get(server) or ServerState()
-        row = (server, st.baseline_at, st.last_list_at, st.last_error, st.last_error_at, int(st.stale))
+        row = (
+            server,
+            st.baseline_at,
+            st.last_list_at,
+            st.last_error,
+            st.last_error_at,
+            int(st.stale),
+        )
         async with self._lock:
             await asyncio.to_thread(self._persist_server_sync, row)
 
@@ -534,6 +625,14 @@ class PinStore:
 
 
 __all__ = [
-    "CallableStatus", "Candidate", "PinCheck", "PinRecord", "PinStore", "ServerState",
-    "canonical_json", "diff_summary", "diff_tools", "tool_hash",
+    "CallableStatus",
+    "Candidate",
+    "PinCheck",
+    "PinRecord",
+    "PinStore",
+    "ServerState",
+    "canonical_json",
+    "diff_summary",
+    "diff_tools",
+    "tool_hash",
 ]

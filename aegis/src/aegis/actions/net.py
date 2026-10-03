@@ -268,9 +268,13 @@ def check_url(
         return NetCheck(True, "unparseable")
     scheme = parsed.scheme
     if scheme in ALWAYS_BLOCKED_SCHEMES:
-        return NetCheck(False, "scheme", f"{scheme}: URLs are never allowed", parsed.host, parsed.port)
+        return NetCheck(
+            False, "scheme", f"{scheme}: URLs are never allowed", parsed.host, parsed.port
+        )
     if allowed_schemes and scheme not in {s.lower() for s in allowed_schemes}:
-        return NetCheck(False, "scheme", f"scheme {scheme} is not allowed", parsed.host, parsed.port)
+        return NetCheck(
+            False, "scheme", f"scheme {scheme} is not allowed", parsed.host, parsed.port
+        )
     meta = {m.lower() for m in metadata_hosts}
     meta_ips = {canonical_ip(m) for m in metadata_hosts} - {None}
     for host in parsed.hosts:
@@ -278,14 +282,27 @@ def check_url(
         allowed = any(host_port_match(a, host, parsed.port, ip) for a in allow_hosts)
         if host in meta or (ip is not None and ip in meta_ips):
             if not allowed:
-                return NetCheck(False, "metadata", "cloud metadata endpoint", host, parsed.port, str(ip) if ip else None)
+                return NetCheck(
+                    False,
+                    "metadata",
+                    "cloud metadata endpoint",
+                    host,
+                    parsed.port,
+                    str(ip) if ip else None,
+                )
         if block_private_ranges and not allowed:
             if ip is not None:
                 cls = ip_class(ip)
                 if cls:
                     note = "" if str(ip) == host else f" (decodes to {ip})"
-                    return NetCheck(False, cls if cls in ("loopback", "link-local") else "private",
-                                    f"{cls} address{note}", host, parsed.port, str(ip))
+                    return NetCheck(
+                        False,
+                        cls if cls in ("loopback", "link-local") else "private",
+                        f"{cls} address{note}",
+                        host,
+                        parsed.port,
+                        str(ip),
+                    )
             elif host in _LOOPBACK_NAMES or host.endswith(".localhost"):
                 return NetCheck(False, "loopback", "loopback host name", host, parsed.port)
         if any(domain_match(d, host) for d in deny_hosts):
@@ -293,9 +310,18 @@ def check_url(
         if egress_allowlist and not allowed:
             internal = any(domain_match(d, host) for d in internal_domains)
             local = ip is not None and ip_class(ip) is not None
-            if not internal and not local and not any(domain_match(a, host) for a in egress_allowlist):
-                return NetCheck(False, "not_allowlisted", "host is not on destinations.egress_allowlist",
-                                host, parsed.port)
+            if (
+                not internal
+                and not local
+                and not any(domain_match(a, host) for a in egress_allowlist)
+            ):
+                return NetCheck(
+                    False,
+                    "not_allowlisted",
+                    "host is not on destinations.egress_allowlist",
+                    host,
+                    parsed.port,
+                )
     return NetCheck(True, "", "", parsed.host, parsed.port)
 
 

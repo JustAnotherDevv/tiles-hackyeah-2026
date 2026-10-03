@@ -64,7 +64,7 @@ class DecisionStats:
         if not dq:
             return 0, 0, None
         lats = sorted(x[2] for x in dq)
-        p95 = lats[min(len(lats) - 1, int(round(0.95 * (len(lats) - 1))))]
+        p95 = lats[min(len(lats) - 1, round(0.95 * (len(lats) - 1)))]
         return len(dq), sum(1 for x in dq if x[1] == "block"), round(p95, 2)
 
     async def _backfill(self) -> None:

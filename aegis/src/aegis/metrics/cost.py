@@ -33,7 +33,11 @@ LOCAL_COMPUTE_PER_S = 0.0002
 
 
 def fallback_price(model: str | None, usage: Usage) -> float:
-    name = (model or "*").split("/", 1)[-1] if model and model.startswith(("anthropic/", "openai/", "ollama/")) else (model or "*")
+    name = (
+        (model or "*").split("/", 1)[-1]
+        if model and model.startswith(("anthropic/", "openai/", "ollama/"))
+        else (model or "*")
+    )
     for pat, pin, pout in FALLBACK_PRICES:
         if fnmatch.fnmatchcase(name, pat):
             usd = (usage.input_tokens * pin + usage.output_tokens * pout) / 1_000_000
@@ -92,7 +96,13 @@ def estimate(
             )
             usd = price(model, usage)
             cid = control_id or ""
-            reason = "budget" if cid in {"BUD-01", "BUD-02"} else "loop" if cid == "EXE-04" else "policy_block"
+            reason = (
+                "budget"
+                if cid in {"BUD-01", "BUD-02"}
+                else "loop"
+                if cid == "EXE-04"
+                else "policy_block"
+            )
             return round(usd, 6), reason if usd > 0 else None
         if amount_usd and action_type and action_type.startswith("spend"):
             return round(float(amount_usd), 6), "spend_blocked"

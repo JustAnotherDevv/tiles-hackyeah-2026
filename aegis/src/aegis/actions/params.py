@@ -31,7 +31,9 @@ class PatternSpec(_P):
 # ------------------------------------------------------------------ GOV-03
 class Gov03Params(_P):
     deny_tools: list[str] = Field(default_factory=list)  # global tool globs -> block
-    arg_rules: dict[str, dict[str, str]] = Field(default_factory=dict)  # tool glob -> {arg: deny RE2}
+    arg_rules: dict[str, dict[str, str]] = Field(
+        default_factory=dict
+    )  # tool glob -> {arg: deny RE2}
     check_action_types: bool = True  # agent may only request its Agent.meta.action_types
     enforce_agent_allowlists: bool = True
 
@@ -41,7 +43,9 @@ class Gov04Params(_P):
     approve_tools: list[str] = Field(
         default_factory=lambda: ["*.delete_*", "*.drop_*", "acme-crm.export_*"]
     )
-    max_pending_per_agent: int = 3  # anti human-in-the-loop flooding (shared by every soft decision)
+    max_pending_per_agent: int = (
+        3  # anti human-in-the-loop flooding (shared by every soft decision)
+    )
     flood_check: bool = True
 
 
@@ -54,13 +58,27 @@ class Act01Params(_P):
     unapproved_vendor: Literal["require_approval", "block", "allow"] = "require_approval"
     price_check: bool = True
     amount_args: list[str] = Field(
-        default_factory=lambda: ["amount_usd", "price.usd", "amount", "price", "total", "value", "cost"]
+        default_factory=lambda: [
+            "amount_usd",
+            "price.usd",
+            "amount",
+            "price",
+            "total",
+            "value",
+            "cost",
+        ]
     )
     currency_args: list[str] = Field(default_factory=lambda: ["currency", "ccy", "price.currency"])
-    vendor_args: list[str] = Field(default_factory=lambda: ["vendor", "vendor_id", "merchant", "provider", "payee"])
-    plan_args: list[str] = Field(default_factory=lambda: ["plan", "plan_id", "sku", "product", "product_id"])
+    vendor_args: list[str] = Field(
+        default_factory=lambda: ["vendor", "vendor_id", "merchant", "provider", "payee"]
+    )
+    plan_args: list[str] = Field(
+        default_factory=lambda: ["plan", "plan_id", "sku", "product", "product_id"]
+    )
     amount_from_text: bool = False
-    text_args: list[str] = Field(default_factory=lambda: ["description", "text", "request", "note", "memo"])
+    text_args: list[str] = Field(
+        default_factory=lambda: ["description", "text", "request", "note", "memo"]
+    )
 
 
 # ------------------------------------------------------------------ ACT-02
@@ -75,16 +93,32 @@ class Act02Params(_P):
     # tool glob -> {table, rows (int | "all"), database?}; applies only to calls classified db.*
     # (SF-27: CRM lookups are not db.read by default)
     tool_tables: dict[str, dict[str, object]] = Field(default_factory=dict)
-    server_databases: dict[str, str] = Field(default_factory=lambda: {"acme-db": "acme-prod-pg", "acme-crm": "acme-prod-pg"})
+    server_databases: dict[str, str] = Field(
+        default_factory=lambda: {"acme-db": "acme-prod-pg", "acme-crm": "acme-prod-pg"}
+    )
     default_database: str = "acme-prod-pg"
-    tables: dict[str, TableOverride] = Field(default_factory=dict)  # judge lever: per-table overrides
+    tables: dict[str, TableOverride] = Field(
+        default_factory=dict
+    )  # judge lever: per-table overrides
     sensitive_columns: dict[str, Sensitivity] = Field(
         default_factory=lambda: {
-            "pan": "RESTRICTED", "card_number": "RESTRICTED", "*card_no*": "RESTRICTED", "cvv": "RESTRICTED",
-            "cvc": "RESTRICTED", "track*": "RESTRICTED", "pesel": "CONFIDENTIAL", "*email*": "CONFIDENTIAL",
-            "*phone*": "CONFIDENTIAL", "iban": "CONFIDENTIAL", "*address*": "CONFIDENTIAL",
-            "dob": "CONFIDENTIAL", "date_of_birth": "CONFIDENTIAL", "*passport*": "CONFIDENTIAL",
-            "*password*": "SECRET", "*api_key*": "SECRET", "*secret*": "SECRET",
+            "pan": "RESTRICTED",
+            "card_number": "RESTRICTED",
+            "*card_no*": "RESTRICTED",
+            "cvv": "RESTRICTED",
+            "cvc": "RESTRICTED",
+            "track*": "RESTRICTED",
+            "pesel": "CONFIDENTIAL",
+            "*email*": "CONFIDENTIAL",
+            "*phone*": "CONFIDENTIAL",
+            "iban": "CONFIDENTIAL",
+            "*address*": "CONFIDENTIAL",
+            "dob": "CONFIDENTIAL",
+            "date_of_birth": "CONFIDENTIAL",
+            "*passport*": "CONFIDENTIAL",
+            "*password*": "SECRET",
+            "*api_key*": "SECRET",
+            "*secret*": "SECRET",
         }
     )
     unknown_table_sensitivity: Sensitivity = "CONFIDENTIAL"
@@ -102,26 +136,56 @@ class Act02Params(_P):
 # ------------------------------------------------------------------ ACT-03
 class Act03Params(_P):
     send_tools: list[str] = Field(
-        default_factory=lambda: ["mailer.send_email", "*.send_email", "*.post_message", "*.send_message",
-                                 "*.upload*", "*.webhook*", "slack.*", "http.post", "http.put", "http.patch"]
+        default_factory=lambda: [
+            "mailer.send_email",
+            "*.send_email",
+            "*.post_message",
+            "*.send_message",
+            "*.upload*",
+            "*.webhook*",
+            "slack.*",
+            "http.post",
+            "http.put",
+            "http.patch",
+        ]
     )
-    recipient_args: list[str] = Field(default_factory=lambda: ["to", "cc", "bcc", "recipient", "recipients", "channel"])
-    body_args: list[str] = Field(default_factory=lambda: ["body", "text", "message", "content", "subject", "html",
-                                                          "json", "data", "payload", "attachment"])
+    recipient_args: list[str] = Field(
+        default_factory=lambda: ["to", "cc", "bcc", "recipient", "recipients", "channel"]
+    )
+    body_args: list[str] = Field(
+        default_factory=lambda: [
+            "body",
+            "text",
+            "message",
+            "content",
+            "subject",
+            "html",
+            "json",
+            "data",
+            "payload",
+            "attachment",
+        ]
+    )
     url_args: list[str] = Field(default_factory=lambda: ["url", "webhook_url", "endpoint", "uri"])
     max_recipients: int = 10
     deny_recipients: list[str] = Field(default_factory=list)  # domain globs -> block
     denylisted_hosts_action: Literal["block", "require_approval"] = "block"
     deny_hosts: list[str] = Field(default_factory=list)
     block_data_classes: list[Sensitivity] = Field(default_factory=lambda: ["RESTRICTED", "SECRET"])
-    internal_domains: list[str] = Field(default_factory=list)  # extra, on top of destinations.internal_domains
+    internal_domains: list[str] = Field(
+        default_factory=list
+    )  # extra, on top of destinations.internal_domains
 
 
 # ------------------------------------------------------------------ ACT-04
 class Act04Params(_P):
     deploy_tools: list[str] = Field(default_factory=lambda: ["deploy.*", "*.deploy", "*.deploy_*"])
-    shell_tools: list[str] = Field(default_factory=lambda: ["Bash", "*.run_command", "*.exec_command", "*.shell"])
-    protected_branches: list[str] = Field(default_factory=lambda: ["main", "master", "release/*", "prod", "production"])
+    shell_tools: list[str] = Field(
+        default_factory=lambda: ["Bash", "*.run_command", "*.exec_command", "*.shell"]
+    )
+    protected_branches: list[str] = Field(
+        default_factory=lambda: ["main", "master", "release/*", "prod", "production"]
+    )
     env_aliases: dict[str, list[str]] = Field(
         default_factory=lambda: {
             "prod": ["prod", "production", "live", "prd"],
@@ -131,7 +195,11 @@ class Act04Params(_P):
         }
     )
     category_actions: dict[str, SoftAction] = Field(
-        default_factory=lambda: {"code.deploy": "require_approval", "package.install": "log", "code.exec": "log"}
+        default_factory=lambda: {
+            "code.deploy": "require_approval",
+            "package.install": "log",
+            "code.exec": "log",
+        }
     )
     feature_branch_push: SoftAction = "allow"
 
@@ -139,11 +207,24 @@ class Act04Params(_P):
 # ------------------------------------------------------------------ EXE-01
 class Exe01Params(_P):
     shell_tools: list[str] = Field(
-        default_factory=lambda: ["Bash", "*.run_command", "*.exec_command", "*.execute_command", "*.shell",
-                                 "terminal.*", "*.run_shell", "*.exec", "shell.*"]
+        default_factory=lambda: [
+            "Bash",
+            "*.run_command",
+            "*.exec_command",
+            "*.execute_command",
+            "*.shell",
+            "terminal.*",
+            "*.run_shell",
+            "*.exec",
+            "shell.*",
+        ]
     )
-    code_tools: list[str] = Field(default_factory=lambda: ["*.run_python", "*.execute_code", "*.run_code", "code.*"])
-    command_args: list[str] = Field(default_factory=lambda: ["command", "cmd", "script", "code", "commands"])
+    code_tools: list[str] = Field(
+        default_factory=lambda: ["*.run_python", "*.execute_code", "*.run_code", "code.*"]
+    )
+    command_args: list[str] = Field(
+        default_factory=lambda: ["command", "cmd", "script", "code", "commands"]
+    )
     sql_args: list[str] = Field(default_factory=lambda: ["sql", "query", "statement"])
     deny_patterns: list[PatternSpec] = Field(default_factory=list)
     approve_patterns: list[PatternSpec] = Field(default_factory=list)
@@ -161,34 +242,103 @@ class Exe01Params(_P):
 # ------------------------------------------------------------------ EXE-02
 class Exe02Params(_P):
     path_args: list[str] = Field(
-        default_factory=lambda: ["file_path", "path", "notebook_path", "file", "filename", "source",
-                                 "destination", "target", "dir", "directory", "src", "dst"]
+        default_factory=lambda: [
+            "file_path",
+            "path",
+            "notebook_path",
+            "file",
+            "filename",
+            "source",
+            "destination",
+            "target",
+            "dir",
+            "directory",
+            "src",
+            "dst",
+        ]
     )
     url_args: list[str] = Field(
-        default_factory=lambda: ["url", "uri", "endpoint", "href", "webhook", "webhook_url", "link", "base_url"]
+        default_factory=lambda: [
+            "url",
+            "uri",
+            "endpoint",
+            "href",
+            "webhook",
+            "webhook_url",
+            "link",
+            "base_url",
+        ]
     )
     write_tools: list[str] = Field(
-        default_factory=lambda: ["Write", "Edit", "MultiEdit", "NotebookEdit", "*.write_*", "*.edit_*",
-                                 "*.create_file", "*.delete_file", "*.move_file"]
+        default_factory=lambda: [
+            "Write",
+            "Edit",
+            "MultiEdit",
+            "NotebookEdit",
+            "*.write_*",
+            "*.edit_*",
+            "*.create_file",
+            "*.delete_file",
+            "*.move_file",
+        ]
     )
     fs_allow_exceptions: list[str] = Field(
-        default_factory=lambda: ["**/.env.example", "**/.env.sample", "**/.env.template", "**/.env.dist", "**/*.pub"]
+        default_factory=lambda: [
+            "**/.env.example",
+            "**/.env.sample",
+            "**/.env.template",
+            "**/.env.dist",
+            "**/*.pub",
+        ]
     )
     fs_deny: list[str] = Field(
         default_factory=lambda: [
-            "~/.ssh/**", "~/.aws/**", "~/.gnupg/**", "~/.config/gcloud/**", "~/.kube/config", "~/.docker/config.json",
-            "~/.netrc", "~/.npmrc", "~/.pypirc", "**/.env", "**/.env.*", "**/*.pem", "**/*.key", "**/id_rsa",
-            "**/id_ed25519", "**/id_ecdsa", "~/.claude/**", "~/.cursor/mcp.json", "**/.mcp.json",
-            "~/Library/Keychains/**", "/etc/shadow", "/etc/sudoers", "**/demo/claude/settings*.json",
-            "**/demo/claude/mcp.json", "**/demo/claude/.agent_key", "**/.claude/settings*.json",
+            "~/.ssh/**",
+            "~/.aws/**",
+            "~/.gnupg/**",
+            "~/.config/gcloud/**",
+            "~/.kube/config",
+            "~/.docker/config.json",
+            "~/.netrc",
+            "~/.npmrc",
+            "~/.pypirc",
+            "**/.env",
+            "**/.env.*",
+            "**/*.pem",
+            "**/*.key",
+            "**/id_rsa",
+            "**/id_ed25519",
+            "**/id_ecdsa",
+            "~/.claude/**",
+            "~/.cursor/mcp.json",
+            "**/.mcp.json",
+            "~/Library/Keychains/**",
+            "/etc/shadow",
+            "/etc/sudoers",
+            "**/demo/claude/settings*.json",
+            "**/demo/claude/mcp.json",
+            "**/demo/claude/.agent_key",
+            "**/.claude/settings*.json",
             "**/scripts/aegis-hook",
         ]
     )
     fs_write_deny: list[str] = Field(
         default_factory=lambda: [
-            "~/.zshrc", "~/.bashrc", "~/.bash_profile", "~/.profile", "~/.zprofile", "~/.zshenv",
-            "**/.git/hooks/**", "**/.git/config", "~/Library/LaunchAgents/**", "/Library/LaunchDaemons/**",
-            "**/.claude/settings*.json", "**/.mcp.json", "~/.cursor/**", "/etc/**", "~/.ssh/authorized_keys",
+            "~/.zshrc",
+            "~/.bashrc",
+            "~/.bash_profile",
+            "~/.profile",
+            "~/.zprofile",
+            "~/.zshenv",
+            "**/.git/hooks/**",
+            "**/.git/config",
+            "~/Library/LaunchAgents/**",
+            "/Library/LaunchDaemons/**",
+            "**/.claude/settings*.json",
+            "**/.mcp.json",
+            "~/.cursor/**",
+            "/etc/**",
+            "~/.ssh/authorized_keys",
         ]
     )
     fs_allow: list[str] = Field(default_factory=list)  # non-empty -> everything else is blocked
@@ -197,7 +347,12 @@ class Exe02Params(_P):
     block_private_ranges: bool = True
     metadata_hosts: list[str] = Field(default_factory=lambda: list(DEFAULT_METADATA_HOSTS))
     allow_hosts: list[str] = Field(
-        default_factory=lambda: ["127.0.0.1:8790-8799", "localhost:8790-8799", "127.0.0.1:11434", "localhost:11434"]
+        default_factory=lambda: [
+            "127.0.0.1:8790-8799",
+            "localhost:8790-8799",
+            "127.0.0.1:11434",
+            "localhost:11434",
+        ]
     )
     deny_hosts: list[str] = Field(default_factory=list)
     use_catalog_denylist: bool = False  # DLP-04 / ACT-03 own the seed external-host denylist
@@ -206,14 +361,27 @@ class Exe02Params(_P):
 
 # ------------------------------------------------------------------ EXE-03
 class Exe03Params(_P):
-    private_sources: list[str] = Field(default_factory=lambda: ["acme-crm.*", "*.lookup_customer", "*.get_customer"])
+    private_sources: list[str] = Field(
+        default_factory=lambda: ["acme-crm.*", "*.lookup_customer", "*.get_customer"]
+    )
     private_min_sensitivity: Sensitivity = "CONFIDENTIAL"
     untrusted_sources: list[str] = Field(
-        default_factory=lambda: ["web.*", "WebFetch", "WebSearch", "*.fetch_url", "http.get", "browser.*"]
+        default_factory=lambda: [
+            "web.*",
+            "WebFetch",
+            "WebSearch",
+            "*.fetch_url",
+            "http.get",
+            "browser.*",
+        ]
     )
     untrusted_destinations: list[str] = Field(default_factory=lambda: ["third_party"])
-    exfil_actions: list[str] = Field(default_factory=lambda: ["email.external", "egress.post", "code.deploy"])
-    exfil_tools: list[str] = Field(default_factory=lambda: ["*.upload*", "*.webhook*", "slack.*", "http.post"])
+    exfil_actions: list[str] = Field(
+        default_factory=lambda: ["email.external", "egress.post", "code.deploy"]
+    )
+    exfil_tools: list[str] = Field(
+        default_factory=lambda: ["*.upload*", "*.webhook*", "slack.*", "http.post"]
+    )
     taint_ttl_turns: int = 20
     taint_ttl_s: float = 3600.0
 

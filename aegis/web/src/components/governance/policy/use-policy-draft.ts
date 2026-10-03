@@ -306,6 +306,9 @@ export function usePolicyDraft() {
     },
     replaceDraft,
     handle,
+    attachHandle: (h: PolicyEditorHandle) => {
+      handle.current = h;
+    },
     engine,
     setEngine,
     dirty,

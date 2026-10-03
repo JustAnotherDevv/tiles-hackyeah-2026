@@ -1,10 +1,10 @@
 """`python -m feed_service [serve|keygen|publish|reset|verify]` - Aegis threat-intel feed service.
 
-    serve   [--host 127.0.0.1] [--port 8790] [--state DIR]   (default; --port 0 = ephemeral)
-    keygen  [--force | --if-missing]   keys + config/feeds/feed_pubkey.b64 + seed bundle (serial 1)
-    publish [--enable ID ...] [--force] [--note TEXT]
-    reset   [--hard]                   soft = workspace from repo + republish; hard = back to serial 1
-    verify                             schema, RE2, vectors, ReDoS smoke, EchoLeak demo invariant
+serve   [--host 127.0.0.1] [--port 8790] [--state DIR]   (default; --port 0 = ephemeral)
+keygen  [--force | --if-missing]   keys + config/feeds/feed_pubkey.b64 + seed bundle (serial 1)
+publish [--enable ID ...] [--force] [--note TEXT]
+reset   [--hard]                   soft = workspace from repo + republish; hard = back to serial 1
+verify                             schema, RE2, vectors, ReDoS smoke, EchoLeak demo invariant
 """
 
 from __future__ import annotations
@@ -28,15 +28,19 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
     from feed_service.app import create_app
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-5s %(name)s | %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)-5s %(name)s | %(message)s"
+    )
     port = args.port
     if port == 0:
         with socket.socket() as s:
             s.bind((args.host, 0))
             port = s.getsockname()[1]
     app = create_app(state_dir=args.state)
-    print(f"aegis threat-intel feed on http://{args.host}:{port}/  (key {app.state.svc.key_id()})",
-          flush=True)
+    print(
+        f"aegis threat-intel feed on http://{args.host}:{port}/  (key {app.state.svc.key_id()})",
+        flush=True,
+    )
     uvicorn.run(app, host=args.host, port=port, log_level="warning", access_log=False)
     return 0
 
@@ -51,8 +55,10 @@ def cmd_keygen(args: argparse.Namespace) -> int:
         print(f"feed keypair already present (key_id {res['key_id']}); nothing to do")
     else:
         print(f"generated feed signing key  key_id {res['key_id']}")
-        print(f"  config/feeds/feed_pubkey.b64 + seed_bundle.json(.sig): serial 1, "
-              f"{res['signatures']} signatures")
+        print(
+            f"  config/feeds/feed_pubkey.b64 + seed_bundle.json(.sig): serial 1, "
+            f"{res['signatures']} signatures"
+        )
         print("  restart the gateway to pin the new key")
     return 0
 
@@ -68,7 +74,9 @@ def _remote_publish(args: argparse.Namespace) -> int | None:
         with httpx.Client(timeout=10.0) as c:
             c.get(f"{base}/healthz", timeout=0.5).raise_for_status()
             for sid in args.enable or []:
-                c.post(f"{base}/api/signatures/{sid}/enabled", json={"enabled": True}).raise_for_status()
+                c.post(
+                    f"{base}/api/signatures/{sid}/enabled", json={"enabled": True}
+                ).raise_for_status()
             r = c.post(f"{base}/api/publish", json={"force": args.force, "note": args.note})
     except httpx.HTTPError:
         return None
@@ -82,8 +90,10 @@ def _remote_publish(args: argparse.Namespace) -> int | None:
         print(f"publish: HTTP {r.status_code}: {r.text[:200]}", file=sys.stderr)
         return 1
     res = r.json()
-    print(f"published serial #{res['serial']} ({res['version']}) via {base}: {res['signatures']} "
-          f"signatures, {res['vectors']} vectors, sha256 {res['sha256'][:12]}…")
+    print(
+        f"published serial #{res['serial']} ({res['version']}) via {base}: {res['signatures']} "
+        f"signatures, {res['vectors']} vectors, sha256 {res['sha256'][:12]}…"
+    )
     return 0
 
 
@@ -107,8 +117,10 @@ def cmd_publish(args: argparse.Namespace) -> int:
     except FeedServiceError as e:
         print(f"publish: {e}", file=sys.stderr)
         return 1
-    print(f"published serial #{res['serial']} ({res['version']}): {res['signatures']} signatures, "
-          f"{res['vectors']} vectors, sha256 {res['sha256'][:12]}…")
+    print(
+        f"published serial #{res['serial']} ({res['version']}): {res['signatures']} signatures, "
+        f"{res['vectors']} vectors, sha256 {res['sha256'][:12]}…"
+    )
     return 0
 
 
@@ -135,8 +147,11 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m feed_service", description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        prog="python -m feed_service",
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     ap.add_argument("--state", default=None, help="state dir (default feed_service/state)")
     sub = ap.add_subparsers(dest="cmd")
     p = sub.add_parser("serve")
@@ -159,13 +174,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--workspace", action="store_true", help="(default) verify the workspace")
     argv = list(sys.argv[1:] if argv is None else argv)
     # `python -m feed_service --port 0` == serve
-    if not argv or argv[0].startswith("--") and argv[0] not in ("--state", "-h", "--help"):
+    if not argv or (argv[0].startswith("--") and argv[0] not in ("--state", "-h", "--help")):
         argv = ["serve", *argv]
     elif argv[0] == "--state" and (len(argv) < 3 or argv[2].startswith("--")):
         argv = [*argv[:2], "serve", *argv[2:]]
     args = ap.parse_args(argv)
-    handlers = {"serve": cmd_serve, "keygen": cmd_keygen, "publish": cmd_publish,
-                "reset": cmd_reset, "verify": cmd_verify}
+    handlers = {
+        "serve": cmd_serve,
+        "keygen": cmd_keygen,
+        "publish": cmd_publish,
+        "reset": cmd_reset,
+        "verify": cmd_verify,
+    }
     if args.cmd is None:
         args = ap.parse_args(["serve"])
     return handlers[args.cmd](args)

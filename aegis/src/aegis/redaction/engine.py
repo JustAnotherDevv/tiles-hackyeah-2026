@@ -307,8 +307,10 @@ class RedactionEngineImpl:
             text = seg.text
             valid = [f for f in fs if 0 <= (f.start or 0) < (f.end or 0) <= len(text)]
             chosen = _select(valid)
-            new = text
-            for f in sorted(chosen, key=lambda x: x.start or 0, reverse=True):
+            # placeholders are issued left-to-right (numbering by first appearance, stable for
+            # Claude Code's prompt cache); the text is then rewritten right-to-left.
+            planned: list[tuple[Finding, str, bool]] = []
+            for f in sorted(chosen, key=lambda x: x.start or 0):
                 s, e = int(f.start or 0), int(f.end or 0)
                 ent = f.entity or "GENERIC_SECRET"
                 raw = text[s:e]
@@ -328,6 +330,11 @@ class RedactionEngineImpl:
                         rep = irreversible(ent)
                     except ValueError:
                         rep = irreversible(ent)
+                planned.append((f, rep, reversible))
+            new = text
+            for f, rep, reversible in reversed(planned):
+                s, e = int(f.start or 0), int(f.end or 0)
+                ent = f.entity or "GENERIC_SECRET"
                 new = new[:s] + rep + new[e:]
                 redactions.append(
                     Redaction(

@@ -42,3 +42,7 @@ models:
     - {match: "*",            provider: ollama-anthropic, wire: anthropic}   # Claude Code offline fallback (slow)
   default_local: aegis-judge
   # Models ending in ":cloud" are always classified `remote` (they leave the machine), even via Ollama.
+
+# Control timeouts (plan 01 section 4.3 #8): deterministic controls run in-process / via
+# asyncio.to_thread, so their `timeout_ms` must be >= 50 (2-5 ms values time out under load).
+# A control task that already completed is always used, even if it finished past its timeout.

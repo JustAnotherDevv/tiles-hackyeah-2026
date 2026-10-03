@@ -37,8 +37,14 @@ def m_regex(node: dict, where: str, depth: int = 0, lists: dict | None = None) -
                 if hit.end() == hit.start():
                     continue
                 out.append(
-                    {"matcher": "regex", "at": where, "field": fld, "start": hit.start(),
-                     "end": hit.end(), "snippet": snippet(text, hit.start(), hit.end())}
+                    {
+                        "matcher": "regex",
+                        "at": where,
+                        "field": fld,
+                        "start": hit.start(),
+                        "end": hit.end(),
+                        "snippet": snippet(text, hit.start(), hit.end()),
+                    }
                 )
                 if len(out) >= MAX_SPANS:
                     break
@@ -47,13 +53,29 @@ def m_regex(node: dict, where: str, depth: int = 0, lists: dict | None = None) -
             hit = rx.search(text)
             if hit is None:
                 return None
-            return [{"matcher": "regex", "at": where, "field": fld, "start": hit.start(),
-                     "end": hit.end(), "snippet": snippet(text, hit.start(), hit.end())}]
+            return [
+                {
+                    "matcher": "regex",
+                    "at": where,
+                    "field": fld,
+                    "start": hit.start(),
+                    "end": hit.end(),
+                    "snippet": snippet(text, hit.start(), hit.end()),
+                }
+            ]
         hit = rx.search(text)
         if hit is None:
             return None
-        return [{"matcher": "regex", "at": where, "field": fld, "start": hit.start(),
-                 "end": hit.end(), "snippet": snippet(text, hit.start(), hit.end())}]
+        return [
+            {
+                "matcher": "regex",
+                "at": where,
+                "field": fld,
+                "start": hit.start(),
+                "end": hit.end(),
+                "snippet": snippet(text, hit.start(), hit.end()),
+            }
+        ]
 
     return m
 
@@ -90,8 +112,13 @@ def m_literal_set(node: dict, where: str, depth: int = 0, lists: dict | None = N
         for v in values:
             i = hay.find(v)
             while i >= 0:
-                ev_item: dict = {"matcher": "literal_set", "at": where, "field": fld,
-                                 "value": v, "snippet": snippet(text, i, i + len(v))}
+                ev_item: dict = {
+                    "matcher": "literal_set",
+                    "at": where,
+                    "field": fld,
+                    "value": v,
+                    "snippet": snippet(text, i, i + len(v)),
+                }
                 if exact:
                     ev_item["start"], ev_item["end"] = i, i + len(v)
                 out.append(ev_item)
@@ -148,8 +175,15 @@ def m_semantic(node: dict, where: str, depth: int = 0, lists: dict | None = None
             if s > best:
                 best, best_ex = s, ex
         if best >= thr:
-            return [{"matcher": "semantic", "at": where, "score": round(best, 3),
-                     "mode": "lexical-reference", "exemplar": best_ex[:80]}]
+            return [
+                {
+                    "matcher": "semantic",
+                    "at": where,
+                    "score": round(best, 3),
+                    "mode": "lexical-reference",
+                    "exemplar": best_ex[:80],
+                }
+            ]
         return None
 
     return m

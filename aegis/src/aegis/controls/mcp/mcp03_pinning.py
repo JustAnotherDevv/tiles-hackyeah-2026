@@ -81,11 +81,17 @@ class McpPinning(BaseControl):
             return _Params()
 
     def _finding(self, detector: str, pin: dict[str, Any], **meta: Any) -> Finding:
-        return Finding(control_id=self.id, detector=detector, category="mcp", severity="high",
-                       meta={"pinned_hash": pin.get("pinned_hash"), "hash": pin.get("hash"), **meta})
+        return Finding(
+            control_id=self.id,
+            detector=detector,
+            category="mcp",
+            severity="high",
+            meta={"pinned_hash": pin.get("pinned_hash"), "hash": pin.get("hash"), **meta},
+        )
 
-    async def evaluate(self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
-                       ) -> Decision | None:
+    async def evaluate(
+        self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
+    ) -> Decision | None:
         pin = interaction.meta.get("mcp.pin")
         if not isinstance(pin, dict):
             return None
@@ -100,23 +106,45 @@ class McpPinning(BaseControl):
             return None
         return self._on_call(cfg, p, pin, status, on_change, server, tool)
 
-    def _on_list(self, cfg: ControlConfig, p: _Params, pin: dict[str, Any], status: Any,
-                 on_change: str, server: str, tool: str, interaction: Interaction) -> Decision | None:
+    def _on_list(
+        self,
+        cfg: ControlConfig,
+        p: _Params,
+        pin: dict[str, Any],
+        status: Any,
+        on_change: str,
+        server: str,
+        tool: str,
+        interaction: Interaction,
+    ) -> Decision | None:
         if status == "changed":
             if on_change in ("log", "allow"):
-                return self.decide(cfg, action="log", findings=[self._finding("mcp.definition_changed", pin)],
-                                   reason="definition changed since pinned (on_tool_change=log: old pin kept)")
+                return self.decide(
+                    cfg,
+                    action="log",
+                    findings=[self._finding("mcp.definition_changed", pin)],
+                    reason="definition changed since pinned (on_tool_change=log: old pin kept)",
+                )
             return self.decide(
-                cfg, action=_act(cfg),
+                cfg,
+                action=_act(cfg),
                 reason="definition changed since pinned (possible rug pull); re-approval required",
-                findings=[self._finding("mcp.definition_changed", pin, diff=pin.get("diff"))])
+                findings=[self._finding("mcp.definition_changed", pin, diff=pin.get("diff"))],
+            )
         if status == "new" and pin.get("baseline") and p.new_tool_after_baseline == "quarantine":
-            return self.decide(cfg, action=_act(cfg),
-                               reason="tool appeared after the server's tool set was pinned; approval required",
-                               findings=[self._finding("mcp.new_after_baseline", pin)])
+            return self.decide(
+                cfg,
+                action=_act(cfg),
+                reason="tool appeared after the server's tool set was pinned; approval required",
+                findings=[self._finding("mcp.new_after_baseline", pin)],
+            )
         if status == "quarantined" and pin.get("reason") == "manual":
-            return self.decide(cfg, action=_act(cfg), reason="tool quarantined by admin",
-                               findings=[self._finding("mcp.quarantined", pin)])
+            return self.decide(
+                cfg,
+                action=_act(cfg),
+                reason="tool quarantined by admin",
+                findings=[self._finding("mcp.quarantined", pin)],
+            )
         if status == "new" and p.collision_action != "allow":
             return self._collision(cfg, p, server, tool)
         return None
@@ -136,44 +164,84 @@ class McpPinning(BaseControl):
                 continue
             for name in tools:
                 exact = name == tool
-                near = len(tool) >= 5 and len(name) >= 5 and _levenshtein(name, tool) <= p.collision_distance
+                near = (
+                    len(tool) >= 5
+                    and len(name) >= 5
+                    and _levenshtein(name, tool) <= p.collision_distance
+                )
                 if exact or near:
                     return self.decide(
-                        cfg, action=p.collision_action if p.collision_action in ("log", "block") else "block",
+                        cfg,
+                        action=p.collision_action
+                        if p.collision_action in ("log", "block")
+                        else "block",
                         reason=f"tool name collides with pinned {other}.{name} (possible shadowing)",
-                        findings=[Finding(control_id=self.id, detector="mcp.tool_collision",
-                                          category="mcp", severity="medium",
-                                          meta={"other": f"{other}.{name}", "exact": exact})])
+                        findings=[
+                            Finding(
+                                control_id=self.id,
+                                detector="mcp.tool_collision",
+                                category="mcp",
+                                severity="medium",
+                                meta={"other": f"{other}.{name}", "exact": exact},
+                            )
+                        ],
+                    )
         return None
 
-    def _on_call(self, cfg: ControlConfig, p: _Params, pin: dict[str, Any], status: Any,
-                 on_change: str, server: str, tool: str) -> Decision | None:
+    def _on_call(
+        self,
+        cfg: ControlConfig,
+        p: _Params,
+        pin: dict[str, Any],
+        status: Any,
+        on_change: str,
+        server: str,
+        tool: str,
+    ) -> Decision | None:
         apr = pin.get("approval_id")
         if status == "changed":
             if on_change in ("log", "allow"):
-                return self.decide(cfg, action="log",
-                                   reason="definition changed since pinned (on_tool_change=log)",
-                                   findings=[self._finding("mcp.definition_changed", pin)])
-            pending = f"; approval {apr} pending (admin)" if apr else "; re-approval required (admin)"
-            return self.decide(cfg, action=_act(cfg),
-                               reason=f"tool definition changed since pinned (possible rug pull){pending}",
-                               findings=[self._finding("mcp.definition_changed", pin)],
-                               meta={"approval_id": apr})
+                return self.decide(
+                    cfg,
+                    action="log",
+                    reason="definition changed since pinned (on_tool_change=log)",
+                    findings=[self._finding("mcp.definition_changed", pin)],
+                )
+            pending = (
+                f"; approval {apr} pending (admin)" if apr else "; re-approval required (admin)"
+            )
+            return self.decide(
+                cfg,
+                action=_act(cfg),
+                reason=f"tool definition changed since pinned (possible rug pull){pending}",
+                findings=[self._finding("mcp.definition_changed", pin)],
+                meta={"approval_id": apr},
+            )
         if status == "quarantined":
             why = "admin" if pin.get("reason") == "manual" else "MCP-02 poisoning scan"
-            return self.decide(cfg, action=_act(cfg), reason=f"tool quarantined ({why})",
-                               findings=[self._finding("mcp.quarantined", pin)])
+            return self.decide(
+                cfg,
+                action=_act(cfg),
+                reason=f"tool quarantined ({why})",
+                findings=[self._finding("mcp.quarantined", pin)],
+            )
         if status == "pending":
             pending = f"; approval {apr} pending (admin)" if apr else ""
-            return self.decide(cfg, action=_act(cfg),
-                               reason=f"tool appeared after the server's tool set was pinned{pending}",
-                               findings=[self._finding("mcp.new_after_baseline", pin)])
+            return self.decide(
+                cfg,
+                action=_act(cfg),
+                reason=f"tool appeared after the server's tool set was pinned{pending}",
+                findings=[self._finding("mcp.new_after_baseline", pin)],
+            )
         if status == "unvetted":
             if p.unvetted_call == "allow":
                 return None
-            return self.decide(cfg, action=_act(cfg),
-                               reason=f"tool '{server}.{tool}' was never vetted in a tools/list through Aegis",
-                               findings=[self._finding("mcp.unvetted", pin)])
+            return self.decide(
+                cfg,
+                action=_act(cfg),
+                reason=f"tool '{server}.{tool}' was never vetted in a tools/list through Aegis",
+                findings=[self._finding("mcp.unvetted", pin)],
+            )
         return None
 
 

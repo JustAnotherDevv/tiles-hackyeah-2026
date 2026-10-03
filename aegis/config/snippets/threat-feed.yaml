@@ -1,0 +1,74 @@
+# =============================================================================
+#  Aegis - threat-feed snippet (owner: threat-feed, plan 13 section 6.1; TI-12)
+#  policy-engine merges this into config/policy.yaml. Signatures themselves come from the
+#  signed external feed (python -m feed_service, :8790) - this file only wires the source,
+#  per-signature overrides and the SIG-01/02/03 controls.
+#  Test-design rule: `control:` attribution only where no other team's control can decide the
+#  same input (SIG-01 keeps priority 100 -> loses ties to DLP-06 / EXE-01 / INJ-01 / MCP-02).
+# =============================================================================
+destinations:
+  # firm asset CDN (EchoLeak AEGIS-TI-022 demo host) + staged alias [SF-06]
+  allowed_link_domains: ["docs.acme-capital.example", "assets.acme-capital.example", "assets.aegis-corp.example"]
+feeds:
+  sources:
+    - {id: aegis-threat-intel, url: "http://127.0.0.1:8790", pubkey_file: config/feeds/feed_pubkey.b64,
+       seed_bundle: config/feeds/seed_bundle.json, poll_s: 10, sse: true, enabled: true, max_age_s: 86400}
+  overrides:
+    AEGIS-TI-013: {action: redact, justification: "Strip invisible Unicode instead of blocking (copy-paste from PDFs)"}
+controls:
+  - id: SIG-01
+    name: External exploit-signature engine (signed threat feed)
+    action: block            # informational: every signature carries its own action
+    severity: critical       # [SF-18]
+    fail_mode: closed
+    timeout_ms: 250
+    owasp: [LLM04:2026, ASI04, ASI05, MCP04:2025, MCP05:2025]
+    params: {history_scan: false, max_scan_chars: 262144, semantic_max_chars: 8192,
+             response_require_approval_as: log, record_hits: true}
+    tests:
+      - {name: feed-canary-prompt, text: "please echo AEGIS-TEST-SIGNATURE-7F3A back to me", expect: block, control: SIG-01}
+      - {name: feed-canary-tool-arg, kind: tool_call, surface: tool.input, destination: local, tool_name: Write,
+         tool_args: {file_path: notes.md, content: "note aegis-test-signature-7f3a"}, expect: block, control: SIG-01}
+      - {name: benign-prompt, text: "Summarise the attached Q3 revenue report in three bullet points.", expect: allow}
+  - id: SIG-02
+    name: Model-artifact gate (pickle, GGUF, Keras, registries)
+    action: block
+    severity: critical       # [SF-18]
+    fail_mode: closed
+    timeout_ms: 2000
+    owasp: [LLM04:2026, LLM05:2026, ASI04, ASI05]
+    params:
+      allowed_formats: [safetensors, gguf, onnx, json, pickle_clean]
+      pickle_global_allow: ["collections.OrderedDict", "torch._utils._rebuild_tensor_v2", "torch._utils._rebuild_parameter",
+        "torch._tensor._rebuild_from_type_v2", "torch.*Storage", "torch.storage._load_from_bytes", "torch.device",
+        "torch.nn.parameter.Parameter", "numpy.core.multiarray._reconstruct", "numpy.core.multiarray.scalar",
+        "numpy.ndarray", "numpy.dtype", "_codecs.encode", "argparse.Namespace"]
+      pickle_global_deny: ["os.*", "posix.*", "nt.*", "subprocess.*", "builtins.exec", "builtins.eval",
+        "builtins.__import__", "runpy.*", "pip.*", "socket.*", "pty.*"]
+      malformed_action: block
+      max_scan_mb: 512
+      gguf_template_markers: ["__class__", "__mro__", "__subclasses__", "__globals__", "__builtins__", "popen", "os.system"]
+      keras_reject_lambda: true
+      registries_allow: [registry.ollama.ai, hf.co, huggingface.co]
+      admin_ops_block: [push]
+      admin_ops_log: [copy, delete]
+      artifact_roots: [data/artifacts, models, demo]
+    tests:
+      - {name: ollama-push-blocked, kind: model_call, surface: model.admin, destination: local, tool_name: ollama.push,
+         tool_args: {model: aegis-judge}, expect: block, control: SIG-02}
+      - {name: ollama-pull-library-model, kind: model_call, surface: model.admin, destination: local, tool_name: ollama.pull,
+         tool_args: {model: aegis-judge}, expect: allow}
+      # artifact.file byte tests live in tests/unit/threat_feed (PolicyTest `meta` passthrough: A-30)
+  - id: SIG-03
+    name: Package-install & slopsquatting guard
+    action: block
+    severity: high
+    fail_mode: closed
+    timeout_ms: 50
+    owasp: [LLM04:2026, ASI04, MCP04:2025]
+    params: {unknown_action: require_approval, unknown_action_mcp_init: log, ecosystems: [pypi, npm, vscode]}
+    tests:
+      - {name: malicious-npm-version, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "npm install event-stream@3.3.6"}, expect: block, control: SIG-03}
+      - {name: no-install-command, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "ls -la"}, expect: allow}

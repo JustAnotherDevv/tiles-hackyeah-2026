@@ -6,8 +6,9 @@ Field placement was checked against the Claude Code 2.1.271 hook-output schema:
 `suppressOriginalPrompt` (UserPromptSubmit) all live inside `hookSpecificOutput`; `decision`,
 `reason` and `systemMessage` are top-level.
 
-Reason prefixes (stable, grep-able, shown verbatim to the model and the user):
-`AEGIS-DENY`, `AEGIS-APPROVAL-REQUIRED`, `AEGIS-BUDGET`, `AEGIS-KILLED`, `AEGIS-LOOP`.
+Reason prefix (Addendum A-06, stable, grep-able, shown verbatim to the model and the user):
+every deny reason starts with `[Aegis] <CONTROL-ID>: ` (Blocked / Approval apr_... pending /
+Budget exhausted / Kill switch active / Loop/rate limit).
 """
 
 from __future__ import annotations
@@ -37,6 +38,15 @@ def _clip(text: str, limit: int = MAX_REASON) -> str:
 def _sentence(text: str | None) -> str:
     t = (text or "").strip()
     return t[:-1] if t.endswith(".") else t
+
+
+def _strip_blocked(text: str) -> str:
+    """Controls often start reasons with "Blocked: "; avoid "Blocked by X: Blocked: ..."."""
+    t = text.strip()
+    for lead in ("Blocked: ", "Blocked - ", "Blocked — ", "blocked: "):
+        if t.startswith(lead):
+            return t[len(lead):].strip()
+    return t
 
 
 def approval_link(base_url: str, approval_id: str) -> str:
@@ -106,37 +116,47 @@ def is_rehydrate(verdict: Verdict) -> bool:
 
 
 # ---------------------------------------------------------------- reasons
+#: Addendum A-39 role aliases (fallback names for "needs <role>: <names>")
+ROLE_NAMES: dict[str, str] = {"owner": "u_katarzyna", "admin": "u_emily", "member": "u_piotr"}
+
+
+def prefix(control_id: str | None) -> str:
+    """Addendum A-06: hook deny reasons always start with `[Aegis] <CONTROL-ID>: `."""
+    return f"[Aegis] {control_id or 'POLICY'}: "
+
+
 def deny_reason(
     verdict: Verdict,
     *,
     base_url: str,
     control_name: str | None = None,
+    approver_names: Iterable[str] | None = None,
 ) -> str:
     """Reason text for a blocked or still-pending verdict (shown to Claude verbatim)."""
     p = verdict.primary
-    ctl = (p.control_id if p else None) or "policy"
-    if verdict.action == "require_approval" and verdict.approval is not None:
-        apr = verdict.approval
+    apr = verdict.approval
+    ctl = (p.control_id if p else None) or (apr.control_id if apr else None) or "POLICY"
+    head = prefix(ctl)
+    if verdict.action == "require_approval" and apr is not None:
+        names = ", ".join(approver_names or []) or ROLE_NAMES.get(str(apr.required_role), "")
+        needs = f"{apr.required_role}: {names}" if names else str(apr.required_role)
+        title = _sentence(apr.title) or "this action needs approval"
         return _clip(
-            f"AEGIS-APPROVAL-REQUIRED {ctl}: {_sentence(apr.title) or 'this action needs approval'}. "
-            f"Needs {apr.required_role} approval"
+            f"{head}Approval {apr.id} pending (needs {needs}) — approve at "
+            f"{approval_link(base_url, apr.id)}, then retry the exact same call once. "
+            f"Action: {title}"
             + (f" (rule {apr.rule_id})" if apr.rule_id else "")
-            + f", request {apr.id}, expires {_hhmm_utc(apr.expires_at)}. "
-            f"Approve at {approval_link(base_url, apr.id)}, then retry the exact same call once. "
-            "Do not attempt alternatives.",
+            + f". Expires {_hhmm_utc(apr.expires_at)}. Do not attempt alternatives.",
             MAX_REASON + 200,
         )
-    if verdict.approval is not None and verdict.approval.status in ("denied", "expired", "cancelled"):
-        apr = verdict.approval
+    if apr is not None and apr.status in ("denied", "expired", "cancelled"):
         if apr.status == "expired":
             how = "expired before anyone approved it"
         elif apr.decided_by:
             how = f"was denied by {', '.join(apr.decided_by)}"
         else:
             how = f"was denied ({_sentence(p.reason) if p else 'approvals unavailable'})"
-        return _clip(
-            f"AEGIS-DENY approval {apr.id} {how}. {ctl}: {_sentence(apr.title)}. {DO_NOT_RETRY}"
-        )
+        return _clip(f"{head}Approval {apr.id} {how} — {_sentence(apr.title)}. {DO_NOT_RETRY}")
     err = (p.error_type if p else None) or ""
     status = p.http_status if p else None
     if err == "budget_exceeded" or status == 402:
@@ -145,23 +165,26 @@ def deny_reason(
         window = _decision_meta(p, "window") or "day"
         dim = _decision_meta(p, "dimension") or "usd"
         lim = f"{limit} {dim}/{window}" if limit is not None else f"{dim}/{window}"
+        bud = ctl if ctl != "POLICY" else "BUD-01"
         return _clip(
-            f"AEGIS-BUDGET {ctl if ctl != 'policy' else 'BUD-01'}: budget exhausted for {scope} "
-            f"({lim}). Stop now and summarise progress for the user; an admin can raise it at "
-            f"{budgets_link(base_url)}."
+            f"{prefix(bud)}Budget exhausted for {scope} ({lim}). Stop now and summarise progress "
+            f"for the user; an admin can raise it at {budgets_link(base_url)}."
         )
     if err == "killed":
         scope = _decision_meta(p, "scope") or "this agent"
-        return _clip(f"AEGIS-KILLED {ctl}: kill switch active for {scope}. Stop immediately.")
+        return _clip(f"{head}Kill switch active for {scope}. Stop immediately.")
     if err == "rate_limited" or status == 429:
         return _clip(
-            f"AEGIS-LOOP {ctl}: {_sentence(p.reason if p else '') or 'loop or rate limit detected'}. "
+            f"{head}Loop/rate limit: "
+            f"{_sentence(p.reason if p else '') or 'loop or rate limit detected'}. "
             "Change approach or stop and ask the user."
         )
-    name = f" ({control_name})" if control_name else ""
-    why = _sentence(p.reason if p else "") or "blocked by policy"
+    name = f" by {control_name}" if control_name else ""
+    why = _strip_blocked(_sentence(p.reason if p else "")) or "blocked by policy"
     pv = f", policy v{verdict.policy_version}" if verdict.policy_version else ""
-    return _clip(f"AEGIS-DENY {ctl}{name}: {why}. Decision {verdict.id}{pv}. {DO_NOT_RETRY}")
+    if "do not retry" in why.lower():  # the control already told the model
+        why = why[: why.lower().index("do not retry")].rstrip(" .;")
+    return _clip(f"{head}Blocked{name}: {why}. Decision {verdict.id}{pv}. {DO_NOT_RETRY}")
 
 
 # ---------------------------------------------------------------- write-back
@@ -289,10 +312,10 @@ def post_tool_use(
     """PostToolUse output: neutralised `updatedToolOutput` or withheld output."""
     response = mapped.interaction.raw
     is_mcp = mapped.interaction.kind == "mcp"
-    ctl = (verdict.primary.control_id if verdict.primary else None) or "policy"
+    ctl = (verdict.primary.control_id if verdict.primary else None) or "POLICY"
     if verdict.action in ("block", "require_approval"):
         why = _sentence(verdict.primary.reason if verdict.primary else "") or "blocked by policy"
-        msg = _clip(f"[Aegis] tool output withheld: {ctl} {why}")
+        msg = _clip(f"{prefix(ctl)}tool output withheld: {why}")
         withheld = withhold(response, msg)
         hso: dict[str, Any] = {
             "hookEventName": "PostToolUse",
@@ -326,17 +349,17 @@ def user_prompt_submit(
     control_name: str | None = None,
 ) -> dict[str, Any]:
     """UserPromptSubmit output: block (prompt suppressed) or a user-only redaction note."""
-    ctl = (verdict.primary.control_id if verdict.primary else None) or "policy"
+    ctl = (verdict.primary.control_id if verdict.primary else None) or "POLICY"
     if verdict.action in ("block", "require_approval"):
         p = verdict.primary
         if p is not None and (p.error_type == "budget_exceeded" or p.http_status == 402
                               or p.error_type == "killed"):
             reason = deny_reason(verdict, base_url=base_url, control_name=control_name)
         else:
-            name = f" ({control_name})" if control_name else ""
+            name = f" by {control_name}" if control_name else ""
             why = _sentence(p.reason if p else "") or "blocked by policy"
             reason = _clip(
-                f"Aegis blocked this prompt: {ctl}{name}: {why}. Decision {verdict.id}. "
+                f"{prefix(ctl)}Prompt blocked{name}: {why}. Decision {verdict.id}. "
                 "Remove the flagged content and try again."
             )
         return {
@@ -384,7 +407,7 @@ def session_start(banner: str, system_message: str | None) -> dict[str, Any]:
 
 def fail_closed_output(event: str | None, why: str = "decision unavailable") -> dict[str, Any]:
     """Gateway-side internal error (params.internal_error: deny). Never a non-200."""
-    msg = f"Aegis internal error (fail-closed): {why}"
+    msg = f"[Aegis] FAIL-CLOSED: {why} (gateway internal error; denied fail-closed)"
     if event == "PreToolUse":
         return _pre("deny", _clip(msg + ". Do not retry or work around this; tell the user."))
     if event == "UserPromptSubmit":
@@ -416,6 +439,7 @@ __all__ = [
     "permission_request_deny",
     "post_tool_use",
     "pre_tool_use",
+    "prefix",
     "session_start",
     "user_prompt_submit",
     "withhold",

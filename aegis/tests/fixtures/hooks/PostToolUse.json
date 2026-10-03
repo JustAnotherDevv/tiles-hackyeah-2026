@@ -1,0 +1,13 @@
+{
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "transcript_path": "/tmp/aegis-demo/t.jsonl",
+  "cwd": "/tmp/aegis-demo",
+  "permission_mode": "default",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "WebFetch",
+  "tool_input": {
+    "url": "https://docs.example/page"
+  },
+  "tool_use_id": "toolu_00000000000000000000002",
+  "tool_response": "page content"
+}

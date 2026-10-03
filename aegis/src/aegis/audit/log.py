@@ -28,7 +28,7 @@ from typing import Any, Literal
 
 from aegis.audit import index as idx
 from aegis.audit.chain import ChainWriter, audit_files
-from aegis.audit.privacy import redaction_spans, scrub_event
+from aegis.audit.privacy import elide_mutations, redaction_spans, scrub_event
 from aegis.audit.verify import verify_dir
 from aegis.core.types import AuditEvent, AuditVerifyResult, Identity, new_id
 from aegis.metrics.otel import genai_attributes
@@ -38,6 +38,8 @@ log = logging.getLogger(__name__)
 
 DETAIL_LRU = 500
 REVERIFY_S = 300.0
+HEAD_FLUSH_S = 0.25
+PROJECT_BATCH_S = 0.02
 
 
 def open_db(rt: Any, data_dir: Path) -> sqlite3.Connection:
@@ -68,10 +70,15 @@ class AuditService:
         self.audit_dir = Path(audit_dir) if audit_dir else self.data_dir / "audit"
         self.test_mode = bool(getattr(settings, "test_mode", False))
         self.writer = ChainWriter(self.audit_dir, clock)
+        self.writer.defer_head = True  # HEAD.json flushed HEAD_FLUSH_S after the last append
+        self._head_timer: asyncio.TimerHandle | None = None
         self.last_verify: AuditVerifyResult | None = None
         self.log_only = False
         self.errors = 0
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # chain writer (seq/hash/JSONL/HEAD)
+        self._db_lock = threading.Lock()  # SQLite writer connection
+        self._proj_q: list[tuple[dict[str, Any], Any]] = []
+        self._drain_task: asyncio.Task[Any] | None = None
         self._conn: sqlite3.Connection | None = None
         self._started = False
         self._details: OrderedDict[str, dict[str, Any]] = OrderedDict()
@@ -81,7 +88,7 @@ class AuditService:
 
     # ------------------------------------------------------------------ lifecycle
     def _start_sync(self) -> list[str]:
-        with self._lock:
+        with self._lock, self._db_lock:
             if self._started:
                 return []
             self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -106,27 +113,45 @@ class AuditService:
             )
         if self.writer.head_ahead:
             self.last_verify = AuditVerifyResult(
-                ok=False, records=self.writer.seq, head_hash=self.writer.head,
-                broken_at_seq=self.writer.seq + 1, message=self.writer.head_ahead,
+                ok=False,
+                records=self.writer.seq,
+                head_hash=self.writer.head,
+                broken_at_seq=self.writer.seq + 1,
+                message=self.writer.head_ahead,
             )
         if self.test_mode:
             return
         kind = "audit.resumed" if self.writer.seq else "audit.started"
-        await self.system(kind, f"audit log {kind.split('.')[1]} at seq {self.writer.seq}",
-                          notes=notes, log_only=self.log_only)
+        await self.system(
+            kind,
+            f"audit log {kind.split('.')[1]} at seq {self.writer.seq}",
+            notes=notes,
+            log_only=self.log_only,
+        )
         self._spawn(self._background())
 
     async def stop(self) -> None:
+        if self._head_timer is not None:
+            self._head_timer.cancel()
+            self._head_timer = None
         for t in list(self._tasks):
             t.cancel()
         for t in list(self._tasks):
             with contextlib.suppress(BaseException):
                 await t
         self._tasks.clear()
+        dt, self._drain_task = self._drain_task, None
+        if dt is not None:
+            dt.cancel()
+            with contextlib.suppress(BaseException):
+                await dt
+        self._drain_task = None
+        with contextlib.suppress(Exception):
+            await self._drain()
         await asyncio.to_thread(self._stop_sync)
 
     def _stop_sync(self) -> None:
-        with self._lock:
+        with self._lock, self._db_lock:
             self.writer.close(fsync=True)
             if self._conn is not None:
                 with contextlib.suppress(sqlite3.Error):
@@ -206,29 +231,95 @@ class AuditService:
                 spans = redaction_spans(d)
                 if spans:
                     data["redaction_spans"] = spans
+                elide_mutations(data.get("detail"))
                 summary = data.get("summary") if isinstance(data.get("summary"), dict) else None
-                data["otel"] = genai_attributes(summary or idx.summary_from_event(d), d.get("usage"))
+                data["otel"] = genai_attributes(
+                    summary or idx.summary_from_event(d), d.get("usage")
+                )
         scrub_event(d, self._redactor(), self._audit_content())
         return d
 
-    def _record_sync(self, event: AuditEvent) -> dict[str, Any] | None:
-        if not self._started:
-            self._start_sync()
-        d = self._prepare(event)
+    def _summary_detail(self, rec: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+        data = rec.get("data") or {}
+        summary = data.get("summary") if isinstance(data.get("summary"), dict) else None
+        summary = dict(summary) if summary else idx.summary_from_event(rec)
+        if not summary.get("id"):
+            summary["id"] = rec.get("decision_id") or rec.get("event_id")
+        detail = data.get("detail") if isinstance(data.get("detail"), dict) else None
+        detail = (
+            dict(detail)
+            if detail
+            else {
+                "decisions": [],
+                "redactions": rec.get("redactions") or [],
+                "mutations": [],
+                "usage": rec.get("usage"),
+            }
+        )
+        detail.pop("wire", None)
+        detail["audit_seq"] = rec.get("seq")
+        detail["audit_hash"] = rec.get("hash")
+        return summary, detail
+
+    def _remember(self, rec: dict[str, Any]) -> None:
+        """In-memory LRU so GET /api/decisions/{id} never misses a just-written decision."""
+        if rec.get("event_type") != "decision" or (rec.get("data") or {}).get("phase") == "outcome":
+            return
+        summary, detail = self._summary_detail(rec)
+        self._details[summary["id"]] = {**detail, **summary}
+        self._details.move_to_end(summary["id"])
+        while len(self._details) > DETAIL_LRU:
+            self._details.popitem(last=False)
+
+    def _append(self, d: dict[str, Any]) -> tuple[dict[str, Any], Any] | None:
+        """Chain append (seq/prev_hash/hash + JSONL line). Fast: page-cache write, no SQLite."""
         with self._lock:
             if self.log_only or not self.writer.locked:
-                log.info("audit (log-only) event_type=%s event_id=%s", d.get("event_type"), d.get("event_id"))
+                log.info(
+                    "audit (log-only) event_type=%s event_id=%s",
+                    d.get("event_type"),
+                    d.get("event_id"),
+                )
                 return None
-            rec, ap = self.writer.append_record(d)
-            if self._conn is not None:
-                try:
-                    self._project(rec, ap.file, ap.line, ap.offset, ap.length)
-                    self._conn.commit()
-                except sqlite3.Error:
-                    log.exception("audit index write failed seq=%s", rec.get("seq"))
-                    with contextlib.suppress(sqlite3.Error):
-                        self._conn.rollback()
-            return rec
+            return self.writer.append_record(d)
+
+    def _project_batch(self, items: list[tuple[dict[str, Any], Any]]) -> None:
+        """SQLite side (audit_index + decisions projection) for a batch, one transaction."""
+        with self._db_lock:
+            if self._conn is None or not items:
+                return
+            try:
+                if self._conn.isolation_level is None and not self._conn.in_transaction:
+                    self._conn.execute("BEGIN")
+                for rec, ap in items:
+                    try:
+                        self._project(rec, ap.file, ap.line, ap.offset, ap.length)
+                    except sqlite3.Error:
+                        log.exception("audit index write failed seq=%s", rec.get("seq"))
+                self._conn.commit()
+            except sqlite3.Error:
+                log.exception("audit index batch failed (%d records)", len(items))
+                with contextlib.suppress(sqlite3.Error):
+                    self._conn.rollback()
+
+    async def _drain(self) -> None:
+        """Flush queued projection rows (AUD-20 batching: SQLite stays off the hot path)."""
+        while self._proj_q:
+            items, self._proj_q = self._proj_q, []
+            await asyncio.to_thread(self._project_batch, items)
+
+    async def _drain_later(self) -> None:
+        try:
+            await asyncio.sleep(PROJECT_BATCH_S)
+            await self._drain()
+        except asyncio.CancelledError:
+            self._drain_task = None
+            raise
+        except Exception:
+            log.exception("audit projection drain failed")
+        self._drain_task = None
+        if self._proj_q and self._started:  # appended while the last batch was being written
+            self._drain_task = asyncio.get_running_loop().create_task(self._drain_later())
 
     def _project(self, rec: dict[str, Any], file: str, line: int, offset: int, length: int) -> None:
         assert self._conn is not None
@@ -249,20 +340,7 @@ class AuditService:
                 upstream_ms=data.get("upstream_ms"),
             )
             return
-        summary = data.get("summary") if isinstance(data.get("summary"), dict) else None
-        summary = dict(summary) if summary else idx.summary_from_event(rec)
-        if not summary.get("id"):
-            summary["id"] = rec.get("decision_id") or rec.get("event_id")
-        detail = data.get("detail") if isinstance(data.get("detail"), dict) else None
-        detail = dict(detail) if detail else {
-            "decisions": [],
-            "redactions": rec.get("redactions") or [],
-            "mutations": [],
-            "usage": rec.get("usage"),
-        }
-        detail.pop("wire", None)
-        detail["audit_seq"] = rec.get("seq")
-        detail["audit_hash"] = rec.get("hash")
+        summary, detail = self._summary_detail(rec)
         pending = self._pending_annot.pop(summary["id"], {})
         row = idx.decision_row(
             summary,
@@ -272,15 +350,17 @@ class AuditService:
             avoided_reason=pending.get("avoided_reason"),
         )
         idx.upsert_decision(self._conn, row)
-        self._details[summary["id"]] = {**detail, **summary}
-        self._details.move_to_end(summary["id"])
-        while len(self._details) > DETAIL_LRU:
-            self._details.popitem(last=False)
 
     async def record(self, event: AuditEvent) -> AuditEvent:
-        """Assign seq, chain hash, append JSONL, index in SQLite. Never raises to callers."""
+        """Assign seq, chain hash, append JSONL, index in SQLite. Never raises to callers.
+
+        The chain append happens inline (ordered, cheap); the SQLite projection is batched in a
+        worker thread every PROJECT_BATCH_S (synchronous in test mode)."""
         try:
-            rec = await asyncio.to_thread(self._record_sync, event)
+            if not self._started:
+                await asyncio.to_thread(self._start_sync)
+            d = self._prepare(event)
+            out = self._append(d)
         except Exception:
             self.errors += 1
             log.exception("audit record failed event_type=%s", getattr(event, "event_type", "?"))
@@ -290,8 +370,17 @@ class AuditService:
                     m.inc("aegis_audit_errors_total")
             self._publish_system("error", "audit write failed (see gateway log)")
             return event
-        if rec is None:
+        if out is None:
             return event
+        rec, ap = out
+        with contextlib.suppress(Exception):
+            self._remember(rec)
+        self._proj_q.append((rec, ap))
+        if self.test_mode:
+            await self._drain()
+        elif self._drain_task is None:
+            self._drain_task = asyncio.get_running_loop().create_task(self._drain_later())
+        self._schedule_head_flush()
         m = self._metrics()
         if m is not None:
             hook = getattr(m, "on_audit_event", None)
@@ -302,8 +391,32 @@ class AuditService:
             update={"seq": rec["seq"], "prev_hash": rec["prev_hash"], "hash": rec["hash"]}
         )
 
-    async def system(self, kind: str, message: str, *, level: str = "info",
-                     actor: Identity | None = None, publish: bool = False, **data: Any) -> AuditEvent:
+    def _schedule_head_flush(self) -> None:
+        if self._head_timer is not None:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.flush_head()
+            return
+        self._head_timer = loop.call_later(HEAD_FLUSH_S, self.flush_head)
+
+    def flush_head(self) -> None:
+        """Bring HEAD.json up to date with the chain (cheap; atomic tmp + rename)."""
+        self._head_timer = None
+        with self._lock:
+            self.writer.flush_head()
+
+    async def system(
+        self,
+        kind: str,
+        message: str,
+        *,
+        level: str = "info",
+        actor: Identity | None = None,
+        publish: bool = False,
+        **data: Any,
+    ) -> AuditEvent:
         """Record a `system` audit event (optionally also a bus `system` toast)."""
         ev = AuditEvent(
             event_id=new_id("evt"),
@@ -319,7 +432,7 @@ class AuditService:
 
     # ------------------------------------------------------------------ annotate / details
     def _annotate_sync(self, decision_id: str, cols: dict[str, Any]) -> None:
-        with self._lock:
+        with self._db_lock:
             if self._conn is None:
                 return
             try:
@@ -349,6 +462,8 @@ class AuditService:
 
     # ------------------------------------------------------------------ verify
     async def verify(self) -> AuditVerifyResult:
+        with contextlib.suppress(Exception):
+            await asyncio.to_thread(self.flush_head)
         try:
             res = await asyncio.to_thread(verify_dir, self.audit_dir)
         except Exception as exc:
@@ -356,8 +471,12 @@ class AuditService:
             res = AuditVerifyResult(ok=False, message=f"verify failed: {exc}")
         if res.ok and self.writer.head_ahead:
             res = AuditVerifyResult(
-                ok=False, records=res.records, head_hash=res.head_hash, files=res.files,
-                broken_at_seq=res.records + 1, message=self.writer.head_ahead,
+                ok=False,
+                records=res.records,
+                head_hash=res.head_hash,
+                files=res.files,
+                broken_at_seq=res.records + 1,
+                message=self.writer.head_ahead,
             )
         prev = self.last_verify
         self.last_verify = res
@@ -371,13 +490,26 @@ class AuditService:
         return res
 
     # ------------------------------------------------------------------ query
-    def _query_sync(self, event_type: str | None, since: str | None, decision_id: str | None,
-                    limit: int, cursor: str | None) -> tuple[list[dict[str, Any]], str | None]:
+    def _query_sync(
+        self,
+        event_type: str | None,
+        since: str | None,
+        decision_id: str | None,
+        limit: int,
+        cursor: str | None,
+        seq_from: int | None = None,
+    ) -> tuple[list[dict[str, Any]], str | None]:
         conn = self.connection()
         try:
+            idx.ensure_schema(conn)
             rows, nxt = idx.query_audit_rows(
-                conn, event_type=event_type, since=since, decision_id=decision_id,
-                limit=limit, cursor=cursor,
+                conn,
+                event_type=event_type,
+                since=since,
+                decision_id=decision_id,
+                limit=limit,
+                cursor=cursor,
+                seq_from=seq_from,
             )
         finally:
             conn.close()
@@ -417,6 +549,7 @@ class AuditService:
             kw.get("decision_id"),
             max(1, min(int(kw.get("limit") or 100), 1000)),
             kw.get("cursor"),
+            kw.get("seq_from"),
         )
 
     # ------------------------------------------------------------------ export
@@ -427,7 +560,7 @@ class AuditService:
 
     # ------------------------------------------------------------------ index rebuild
     def _maybe_rebuild_index(self) -> int:
-        with self._lock:
+        with self._db_lock:
             if self._conn is None:
                 return 0
             count = self._conn.execute("SELECT COUNT(*) FROM audit_index").fetchone()[0]
@@ -448,7 +581,7 @@ class AuditService:
                     except ValueError:
                         offset += length
                         continue
-                    with self._lock:
+                    with self._db_lock:
                         if self._conn is None:
                             return n
                         try:
@@ -459,7 +592,7 @@ class AuditService:
                         if n % 500 == 0:
                             self._conn.commit()
                     offset += length
-        with self._lock:
+        with self._db_lock:
             if self._conn is not None:
                 self._conn.commit()
         log.info("audit index rebuilt rows=%d", n)

@@ -740,7 +740,7 @@ const TEMPLATES: Record<string, Template> = {
     ],
   }),
 
-  echoleak: ({ rng }) => {
+  echoleak: () => {
     const wire = buildWire([
       {
         path: 'content[0].text',

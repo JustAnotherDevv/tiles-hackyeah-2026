@@ -41,7 +41,7 @@ class Reservoir:
         n = len(data)
         out = []
         for q in qs:
-            k = min(n - 1, max(0, int(round(q * (n - 1)))))
+            k = min(n - 1, max(0, round(q * (n - 1))))
             out.append(round(data[k], 3))
         return out
 
@@ -122,7 +122,9 @@ class PerfTracker:
         for cid, r in items:
             p50, p95 = r.pct(0.5, 0.95)
             kind = (kinds or {}).get(cid) or self.control_kind.get(cid) or "deterministic"
-            out.append({"control_id": cid, "kind": kind, "p50_ms": p50, "p95_ms": p95, "count": r.count})
+            out.append(
+                {"control_id": cid, "kind": kind, "p50_ms": p50, "p95_ms": p95, "count": r.count}
+            )
         out.sort(key=lambda x: (-x["p95_ms"], x["control_id"]))
         return out
 
@@ -179,12 +181,14 @@ def semantic_status(rt: Any) -> dict[str, Any]:
         if not isinstance(m, dict):
             continue
         p50 = m.get("p50_ms")
-        models.append({
-            "name": str(m.get("name") or "?"),
-            "backend": str(m.get("backend") or "?"),
-            "loaded": bool(m.get("loaded", False)),
-            "p50_ms": float(p50) if isinstance(p50, (int, float)) else None,
-        })
+        models.append(
+            {
+                "name": str(m.get("name") or "?"),
+                "backend": str(m.get("backend") or "?"),
+                "loaded": bool(m.get("loaded", False)),
+                "p50_ms": float(p50) if isinstance(p50, (int, float)) else None,
+            }
+        )
     out["models"] = models
     return out
 
@@ -202,12 +206,21 @@ def control_kinds(rt: Any) -> dict[str, str]:
     return kinds
 
 
-def bench_path(rt: Any) -> Path:
+def reports_dir(rt: Any) -> Path:
+    """Settings.reports_dir / AEGIS_REPORTS_DIR (A-53), relative paths resolved against the repo root."""
+    import os
+
     settings = getattr(rt, "settings", None)
     root = getattr(settings, "root", None)
     if root is None:
         root = Path(__file__).resolve().parents[3]
-    return Path(root) / "reports" / "bench.json"
+    rd = getattr(settings, "reports_dir", None) or os.environ.get("AEGIS_REPORTS_DIR") or "reports"
+    rd = Path(rd)
+    return rd if rd.is_absolute() else Path(root) / rd
+
+
+def bench_path(rt: Any) -> Path:
+    return reports_dir(rt) / "bench.json"
 
 
 def build_perf_response(rt: Any, tracker: PerfTracker | None = None) -> dict[str, Any]:
@@ -225,5 +238,13 @@ def build_perf_response(rt: Any, tracker: PerfTracker | None = None) -> dict[str
     }
 
 
-__all__ = ["ACTIONS", "PerfTracker", "Reservoir", "build_perf_response", "load_bench", "percentiles",
-           "semantic_status"]
+__all__ = [
+    "ACTIONS",
+    "PerfTracker",
+    "Reservoir",
+    "build_perf_response",
+    "load_bench",
+    "percentiles",
+    "reports_dir",
+    "semantic_status",
+]

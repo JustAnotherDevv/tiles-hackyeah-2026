@@ -77,7 +77,9 @@ def normalize_currency(ccy: Any) -> str | None:
     return _SYMBOLS.get(c, _SYMBOLS.get(c.lower(), c.upper()))
 
 
-def to_usd(amount: float | None, currency: str | None, fx: dict[str, float] | None = None) -> float | None:
+def to_usd(
+    amount: float | None, currency: str | None, fx: dict[str, float] | None = None
+) -> float | None:
     """Convert to USD with ``fx`` (USD per unit). Unknown currency -> None (amount unknown)."""
     if amount is None:
         return None
@@ -106,4 +108,11 @@ def fmt_usd(amount: float | None) -> str:
     return "unknown amount" if amount is None else f"${amount:,.2f}"
 
 
-__all__ = ["DEFAULT_FX", "amount_from_text", "fmt_usd", "normalize_currency", "parse_amount", "to_usd"]
+__all__ = [
+    "DEFAULT_FX",
+    "amount_from_text",
+    "fmt_usd",
+    "normalize_currency",
+    "parse_amount",
+    "to_usd",
+]

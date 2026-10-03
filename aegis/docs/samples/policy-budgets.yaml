@@ -1,0 +1,64 @@
+# =============================================================================
+#  Sample policy: BUDGET RULES                               docs/samples/
+# =============================================================================
+#  Hierarchical budgets: org -> team -> member / agent -> session. EVERY level
+#  must have room for a request to pass (the tightest one decides).
+#  Dimensions: usd (model spend), tokens, compute_s (local models, priced as
+#  shadow USD per compute-second in config/pricing.yaml), requests, tool_calls,
+#  spend_usd (money agents spend via tools, e.g. subscriptions).
+#  Windows: hour | day | week | month | session.
+#  At soft_pct (default 80 %) -> on_soft (warn | downgrade | require_approval);
+#  at 100 % -> on_hard (block = HTTP 402 | require_approval | downgrade).
+#
+#  Try it:  AEGIS_POLICY=docs/samples/policy-budgets.yaml make gateway
+#  Reference: docs/policy-reference.md#5-budgets
+# =============================================================================
+version: 1
+metadata:
+  name: sample-budgets
+  description: "Budget rules: org/team/agent/session limits, local compute pricing, loops, kill switch"
+profile: balanced
+
+models:
+  allowed: ["claude-*", "gpt-4.1-mini", "aegis-judge*", "qwen*", "mock-*"]
+  downgrade:                                    # what "downgrade" means at the soft limit (first match wins)
+    - {from: "claude-opus-*",   to: "claude-sonnet-4-5"}
+    - {from: "claude-sonnet-*", to: "claude-haiku-4-5"}
+    - {from: "*",               to: "aegis-judge"}      # finally: the free local model
+  default_local: "aegis-judge"
+
+budgets:
+  defaults: {soft_pct: 80, on_soft: downgrade, on_hard: block, local_concurrency: 1, max_output_tokens: 4096}
+  limits:
+    - {scope: "org:acme-capital",              window: day,     usd: 150, compute_s: 14400}
+    - {scope: "org:acme-capital",              window: month,   usd: 3000, spend_usd: 10000}
+    - {scope: "team:trading",                  window: day,     usd: 60, tokens: 4000000}
+    - {scope: "team:research",                 window: day,     usd: 15, compute_s: 7200}   # mostly local models
+    - {scope: "member:*",                      window: day,     usd: 5}                    # each human in the Playground
+    - {scope: "agent:trading-copilot@trading", window: day,     usd: 20}
+    - {scope: "agent:chaos-agent@platform",    window: day,     usd: 0.50, tokens: 100000,
+       on_soft: warn, on_hard: require_approval}                                         # runaway demo: ask an admin for more
+    - {scope: "session:*",                     window: session, usd: 5.0, tokens: 3000000}
+  loops:                                        # EXE-04 runaway-agent detector
+    repeat: 3                                   # same tool call (same args) 3x within `window` calls ...
+    window: 20
+    cycle_k: 3                                  # ... or an A-B-A-B cycle of length <= 3
+    error_streak: 5                             # 5 failing calls in a row
+    max_steps_per_session: 200
+    ladder: [tool_error, block, kill]           # 1st trip: tool error to the agent, 2nd: block, 3rd: kill switch
+  rate: {requests_per_min: 120, tool_calls_per_min: 60}        # HTTP 429 + Retry-After
+  kill_switch: {global: false, teams: [], members: [], agents: [], sessions: []}   # add an id -> 429 killed
+
+approvals:
+  rules:
+    - {id: budget-override, description: "Agent hit a hard limit with on_hard: require_approval", when: {kind: [budget_raise]}, approver: admin}
+  config_rules:                                 # who may RAISE a budget from the dashboard (GOV-05)
+    - {id: raise-large, description: "Team budget more than doubled", when: {action: ["budget.raise"], scope_type: [team], increase_pct_gt: 100}, approver: owner}
+    - {id: raise-team-small, description: "Team budget raised up to 2x (60 -> 75)", when: {action: ["budget.raise"], scope_type: [team]}, approver: admin}
+    - {id: raise-small, description: "Sponsor gives their own agent up to +50 %", when: {action: ["budget.raise"], scope_type: [agent], increase_pct_lte: 50}, approver: self}
+    - {id: budget-tighten, description: "Lowering a limit is always allowed", when: {action: ["budget.lower"]}, approver: auto}
+
+controls:
+  - {id: BUD-01, action: block, severity: high}          # token & cost budgets (402 budget_exceeded)
+  - {id: BUD-02, action: block, params: {max_concurrency: 1, max_model_gb: 3}}   # local compute & concurrency
+  - {id: EXE-04, action: block, severity: high}          # loops, rate limits, kill switch

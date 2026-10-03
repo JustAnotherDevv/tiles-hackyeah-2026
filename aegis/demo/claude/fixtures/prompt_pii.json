@@ -1,0 +1,22 @@
+{
+  "name": "prompt_pii",
+  "title": "PII in a prompt: user note, tokenized on the model hop (DLP-01)",
+  "steps": [
+    {
+      "event": "UserPromptSubmit",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "UserPromptSubmit",
+        "prompt_id": "{{SESSION}}-p1",
+        "prompt": "Refund customer Jan Kowalski, PESEL 44051401359, IBAN PL85 1240 1005 0000 0000 3456 7890 123, email jan.kowalski@example.com"
+      },
+      "expect": {
+        "result": "note|allow",
+        "contains": ""
+      }
+    }
+  ]
+}

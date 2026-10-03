@@ -196,7 +196,9 @@ class SemanticModelEngine:
             log.info("semantic breaker closed slot=%s", slot.name)
             self._publish("info", f"Semantic model {slot.name} recovered")
             self._audit({"slot": slot.name, "state": "breaker_closed", "reason": why})
-        self._update_health()
+        # the breaker message above already told the operator: one toast, not two
+        self._health = self.compute_health()
+        self._metric_gauges(self._health)
 
     # ================================================================ health
     def compute_health(self) -> str:

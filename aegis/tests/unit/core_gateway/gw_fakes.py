@@ -290,3 +290,19 @@ def route_app(rt: Any, *modules: Any) -> FastAPI:
     app.state.rt = rt
     app.state.settings = rt.settings
     return app
+
+
+# ------------------------------------------------------------------ runtime fallback factories
+def raising_create(rt: Any) -> Any:
+    """SERVICE_TABLE target whose `create` raises (→ Null fallback, status down)."""
+    raise RuntimeError("factory exploded")
+
+
+class _StartFails:
+    async def start(self) -> None:
+        raise RuntimeError("start exploded")
+
+
+def start_fails_create(rt: Any) -> Any:
+    """SERVICE_TABLE target whose `start()` raises (→ swapped for the Null at start)."""
+    return _StartFails()

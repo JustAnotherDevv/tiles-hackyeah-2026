@@ -63,13 +63,32 @@ SERVER_TO_CLIENT_REQUESTS = ("sampling/createMessage", "elicitation/create", "ro
 # Request headers passed upstream. Client credentials (Authorization, Cookie, x-api-key) and the
 # client Host are NEVER forwarded (token passthrough is a spec MUST NOT; upstream DNS-rebinding
 # guard). Per-server credentials are injected from `mcp.servers[s].headers_env`.
-FWD_REQUEST = {"accept", "content-type", "mcp-session-id", "mcp-protocol-version", "mcp-method",
-               "mcp-name", "last-event-id"}
-FWD_RESPONSE = {"content-type", "mcp-session-id", "mcp-protocol-version", "cache-control",
-                "x-accel-buffering"}
+FWD_REQUEST = {
+    "accept",
+    "content-type",
+    "mcp-session-id",
+    "mcp-protocol-version",
+    "mcp-method",
+    "mcp-name",
+    "last-event-id",
+}
+FWD_RESPONSE = {
+    "content-type",
+    "mcp-session-id",
+    "mcp-protocol-version",
+    "cache-control",
+    "x-accel-buffering",
+}
 SECRET_HEADERS = {"authorization", "cookie", "x-api-key", "proxy-authorization"}
-LOCAL_ORIGINS = ("http://localhost", "http://127.0.0.1", "https://localhost", "https://127.0.0.1",
-                 "http://[::1]", "vscode-file://", "app://")
+LOCAL_ORIGINS = (
+    "http://localhost",
+    "http://127.0.0.1",
+    "https://localhost",
+    "https://127.0.0.1",
+    "http://[::1]",
+    "vscode-file://",
+    "app://",
+)
 
 
 @dataclass
@@ -91,7 +110,10 @@ class McpCtx:
 
     def hop(self) -> ix.McpHopInfo:
         return ix.McpHopInfo(
-            server=self.server, transport=self.transport, era=self.era, session=self.session,
+            server=self.server,
+            transport=self.transport,
+            era=self.era,
+            session=self.session,
             url=getattr(self.cfg, "url", None),
             destination=getattr(self.cfg, "destination", None) or "third_party",
             result_destination=self.result_destination,
@@ -164,8 +186,12 @@ class McpGovernor:
         params = msg.get("params") or {}
         tool = str(params.get("name", ""))
         status = self.pins.callable_status(mctx.server, tool)
-        if (status.status == "unvetted" and mctx.cfg is not None and not mctx.dry_run
-                and _cfg_mcp03(mctx.snap).get("unvetted_call", "scan") == "scan"):
+        if (
+            status.status == "unvetted"
+            and mctx.cfg is not None
+            and not mctx.dry_run
+            and _cfg_mcp03(mctx.snap).get("unvetted_call", "scan") == "scan"
+        ):
             try:
                 await self.service.scan_server(mctx.server, mctx.identity, snap=mctx.snap)
             except Exception:
@@ -175,36 +201,63 @@ class McpGovernor:
         try:
             verdict = await self._evaluate(mctx, i)
         except Exception:
-            log.exception("mcp governance failed (fail-closed) server=%s tool=%s", mctx.server, tool)
-            text = (f"[Aegis] Blocked: governance unavailable (fail-closed) for "
-                    f"{mctx.server}.{tool}")
-            return GovVerdict("respond", blocked_result(msg.get("id"), mctx.era, text,
-                                                        {"action": "block", "controls": []}),
-                              final_action="block", interaction=i)
+            log.exception(
+                "mcp governance failed (fail-closed) server=%s tool=%s", mctx.server, tool
+            )
+            text = f"[Aegis] Blocked: governance unavailable (fail-closed) for {mctx.server}.{tool}"
+            return GovVerdict(
+                "respond",
+                blocked_result(msg.get("id"), mctx.era, text, {"action": "block", "controls": []}),
+                final_action="block",
+                interaction=i,
+            )
         self._observe("mcp.call", t0)
-        gv = GovVerdict("forward", msg, decision_id=verdict.id, final_action=verdict.action,
-                        interaction=i, verdict=verdict, redactions=len(verdict.redactions),
-                        input_schema=self.pins.input_schema(mctx.server, tool))
+        gv = GovVerdict(
+            "forward",
+            msg,
+            decision_id=verdict.id,
+            final_action=verdict.action,
+            interaction=i,
+            verdict=verdict,
+            redactions=len(verdict.redactions),
+            input_schema=self.pins.input_schema(mctx.server, tool),
+        )
         if verdict.action == "block":
             cid, reason = ix.primary_of(verdict)
             primary = verdict.primary
             text = f"[Aegis] Blocked by {cid}: {reason}. Decision {verdict.id}"
-            gv.action, gv.message = "respond", blocked_result(
-                msg.get("id"), mctx.era, text, ix.decision_meta(verdict))
-            code = (primary.http_status if primary is not None and primary.http_status else 403)
+            gv.action, gv.message = (
+                "respond",
+                blocked_result(msg.get("id"), mctx.era, text, ix.decision_meta(verdict)),
+            )
+            code = primary.http_status if primary is not None and primary.http_status else 403
             await self.complete(mctx, gv, Outcome(status_code=code, usage=Usage(requests=0)))
             return gv
         if verdict.action == "require_approval":
             cid, reason = ix.primary_of(verdict)
             apr = verdict.approval
-            apr_id = apr.id if apr is not None else (verdict.primary.approval_id if verdict.primary else None)
+            apr_id = (
+                apr.id
+                if apr is not None
+                else (verdict.primary.approval_id if verdict.primary else None)
+            )
             gv.approval_id = apr_id
             role = apr.required_role if apr is not None else "admin"
             title = apr.title if apr is not None else reason
             link = f"{mctx.public_url}/ui/governance/approvals?id={apr_id}"
-            gv.action, gv.message = "respond", approval_pending_result(
-                msg.get("id"), mctx.era, control_id=cid, title=title, required_role=role,
-                approval_id=apr_id or "apr_?", link=link, meta=ix.decision_meta(verdict))
+            gv.action, gv.message = (
+                "respond",
+                approval_pending_result(
+                    msg.get("id"),
+                    mctx.era,
+                    control_id=cid,
+                    title=title,
+                    required_role=role,
+                    approval_id=apr_id or "apr_?",
+                    link=link,
+                    meta=ix.decision_meta(verdict),
+                ),
+            )
             await self.complete(mctx, gv, Outcome(status_code=403, usage=Usage(requests=0)))
             return gv
         new_msg, changed = ix.apply_call_verdict(msg, i, verdict)
@@ -212,8 +265,13 @@ class McpGovernor:
         return gv
 
     # ------------------------------------------------------------------ server -> client
-    async def on_server_message(self, mctx: McpCtx, msg: Any, request: dict[str, Any] | None = None,
-                                gv: GovVerdict | None = None) -> Any:
+    async def on_server_message(
+        self,
+        mctx: McpCtx,
+        msg: Any,
+        request: dict[str, Any] | None = None,
+        gv: GovVerdict | None = None,
+    ) -> Any:
         if is_response(msg) and request is not None and "result" in msg:
             method = request.get("method")
             result = msg.get("result")
@@ -227,11 +285,14 @@ class McpGovernor:
         elif is_notification(msg) and msg.get("method") == "notifications/tools/list_changed":
             await self.service.mark_stale(mctx.server, mctx.identity)
         elif is_request(msg) and msg.get("method") in SERVER_TO_CLIENT_REQUESTS:
-            log.info("mcp server->client request server=%s method=%s", mctx.server, msg.get("method"))
+            log.info(
+                "mcp server->client request server=%s method=%s", mctx.server, msg.get("method")
+            )
         return msg
 
-    async def govern_result(self, mctx: McpCtx, msg: dict[str, Any], request: dict[str, Any],
-                            gv: GovVerdict | None) -> dict[str, Any]:
+    async def govern_result(
+        self, mctx: McpCtx, msg: dict[str, Any], request: dict[str, Any], gv: GovVerdict | None
+    ) -> dict[str, Any]:
         t0 = time.perf_counter()
         parent = gv.interaction if gv is not None else None
         i = ix.result_interaction(mctx.hop(), msg, request, parent)
@@ -241,9 +302,12 @@ class McpGovernor:
             verdict = await self._evaluate(mctx, i)
         except Exception:
             log.exception("mcp result governance failed (fail-closed) server=%s", mctx.server)
-            return blocked_result(msg.get("id"), mctx.era,
-                                  "[Aegis] Result withheld: governance unavailable (fail-closed)",
-                                  {"action": "block", "controls": []})
+            return blocked_result(
+                msg.get("id"),
+                mctx.era,
+                "[Aegis] Result withheld: governance unavailable (fail-closed)",
+                {"action": "block", "controls": []},
+            )
         self._observe("mcp.result", t0)
         out = ix.apply_result_verdict(msg, i, verdict, mctx.era)
         if gv is not None:
@@ -283,18 +347,33 @@ class McpGovernor:
 
         if todo:
             hop = mctx.hop()
-            items = [(idx, tool, check, key,
-                      ix.list_interaction(hop, tool, idx, check.as_meta(), msg.get("id")))
-                     for idx, tool, check, key in todo]
-            verdicts = await asyncio.gather(*(self._evaluate(mctx, it[4]) for it in items),
-                                            return_exceptions=True)
+            items = [
+                (
+                    idx,
+                    tool,
+                    check,
+                    key,
+                    ix.list_interaction(hop, tool, idx, check.as_meta(), msg.get("id")),
+                )
+                for idx, tool, check, key in todo
+            ]
+            verdicts = await asyncio.gather(
+                *(self._evaluate(mctx, it[4]) for it in items), return_exceptions=True
+            )
             for (idx, tool, check, key, inter), verdict in zip(items, verdicts, strict=True):
                 if isinstance(verdict, BaseException):
-                    log.error("mcp list governance failed (fail-closed) server=%s tool=%s err=%s",
-                              mctx.server, tool.get("name"), verdict)
+                    log.error(
+                        "mcp list governance failed (fail-closed) server=%s tool=%s err=%s",
+                        mctx.server,
+                        tool.get("name"),
+                        verdict,
+                    )
                     keep = check.status == "match"
-                    outcomes[idx] = ix.ListOutcome(not keep, tool if keep else None,
-                                                   reason="governance unavailable (fail-closed)")
+                    outcomes[idx] = ix.ListOutcome(
+                        not keep,
+                        tool if keep else None,
+                        reason="governance unavailable (fail-closed)",
+                    )
                     continue
                 outcome = ix.apply_list_outcome(tool, inter, verdict)
                 outcomes[idx] = outcome
@@ -302,8 +381,11 @@ class McpGovernor:
                     await self._bookkeep(mctx, tool, check, outcome, verdict)
                     self.service.list_cache[key] = outcome
 
-        visible = [outcomes[i].tool_out for i in range(len(tools))
-                   if i in outcomes and not outcomes[i].drop and outcomes[i].tool_out is not None]
+        visible = [
+            outcomes[i].tool_out
+            for i in range(len(tools))
+            if i in outcomes and not outcomes[i].drop and outcomes[i].tool_out is not None
+        ]
         if not mctx.dry_run and result.get("nextCursor") is None:
             await self.pins.mark_baseline(mctx.server)
         new_result = ix.modern_ttl_clamp(result, mctx.era)
@@ -311,11 +393,19 @@ class McpGovernor:
             return msg
         return {**msg, "result": {**new_result, "tools": visible}}
 
-    async def _bookkeep(self, mctx: McpCtx, tool: dict[str, Any], check: Any,
-                        outcome: ix.ListOutcome, verdict: Verdict) -> None:
+    async def _bookkeep(
+        self,
+        mctx: McpCtx,
+        tool: dict[str, Any],
+        check: Any,
+        outcome: ix.ListOutcome,
+        verdict: Verdict,
+    ) -> None:
         """Pin bookkeeping after the verdict (the transport does this so controls stay pure)."""
         server, name = mctx.server, str(tool.get("name", ""))
-        before = self.pins.view_status(server, name) if (server, name) in self.pins.first_seen else None
+        before = (
+            self.pins.view_status(server, name) if (server, name) in self.pins.first_seen else None
+        )
         pin, cand = self.pins.get(server, name)
         pinned_cfg = bool(getattr(mctx.cfg, "pinned", True))
         new_after_baseline = check.status == "new" and check.baseline
@@ -324,7 +414,11 @@ class McpGovernor:
                 await self.pins.pin(server, tool, approved_by="tofu")
             elif check.status == "quarantined" and check.reason == "poisoned":
                 await self.pins.pin(server, tool, approved_by=pin.approved_by if pin else "tofu")
-            elif check.status == "match" and cand is not None and cand.reason in ("poisoned", "changed"):
+            elif (
+                check.status == "match"
+                and cand is not None
+                and cand.reason in ("poisoned", "changed")
+            ):
                 await self.pins.clear_candidate(server, name)
             elif check.status == "changed":
                 diff = diff_tools(pin.definition, tool) if pin else {}
@@ -335,30 +429,52 @@ class McpGovernor:
         else:
             if check.status == "changed":
                 diff = diff_tools(pin.definition, tool) if pin else {}
-                c = await self.pins.set_candidate(server, tool, reason="changed", diff=diff,
-                                                  findings=outcome.findings)
-                await self.service.ensure_repin_approval(server, name, c, mctx.identity, cfg=mctx.cfg)
+                c = await self.pins.set_candidate(
+                    server, tool, reason="changed", diff=diff, findings=outcome.findings
+                )
+                await self.service.ensure_repin_approval(
+                    server, name, c, mctx.identity, cfg=mctx.cfg
+                )
             elif new_after_baseline:
-                c = await self.pins.set_candidate(server, tool, reason="new_after_baseline",
-                                                  findings=outcome.findings)
-                await self.service.ensure_repin_approval(server, name, c, mctx.identity, cfg=mctx.cfg)
+                c = await self.pins.set_candidate(
+                    server, tool, reason="new_after_baseline", findings=outcome.findings
+                )
+                await self.service.ensure_repin_approval(
+                    server, name, c, mctx.identity, cfg=mctx.cfg
+                )
             elif check.status == "quarantined" and check.reason == "manual":
                 await self.pins.touch(server, name)
             elif cand is None or cand.hash != check.hash or cand.reason != "poisoned":
-                await self.pins.quarantine(server, tool, reason="poisoned", findings=outcome.findings)
+                await self.pins.quarantine(
+                    server, tool, reason="poisoned", findings=outcome.findings
+                )
             else:
                 await self.pins.touch(server, name)
         after = self.pins.view_status(server, name)
         if after != before:
             p2, c2 = self.pins.get(server, name)
-            reason = outcome.reason if outcome.drop else ("pinned on first use" if after == "approved"
-                                                          else "; ".join(self.pins.reasons(server, name)))
+            reason = (
+                outcome.reason
+                if outcome.drop
+                else (
+                    "pinned on first use"
+                    if after == "approved"
+                    else "; ".join(self.pins.reasons(server, name))
+                )
+            )
             if c2 is not None and c2.reason == "changed":
                 reason = f"MCP-03: definition changed ({diff_summary(c2.diff)})"
-            await self.service.transition(server, name, before, after, reason,
-                                          pinned_hash=p2.hash if p2 else None,
-                                          hash_=check.hash, approval_id=c2.approval_id if c2 else None,
-                                          actor=mctx.identity)
+            await self.service.transition(
+                server,
+                name,
+                before,
+                after,
+                reason,
+                pinned_hash=p2.hash if p2 else None,
+                hash_=check.hash,
+                approval_id=c2.approval_id if c2 else None,
+                actor=mctx.identity,
+            )
 
     def _observe(self, phase: str, t0: float) -> None:
         try:
@@ -384,8 +500,11 @@ def lower_headers(request: Request) -> dict[str, str]:
 
 
 def forward_request_headers(request: Request) -> dict[str, str]:
-    return {k: v for k, v in lower_headers(request).items()
-            if k in FWD_REQUEST or k.startswith("mcp-param-")}
+    return {
+        k: v
+        for k, v in lower_headers(request).items()
+        if k in FWD_REQUEST or k.startswith("mcp-param-")
+    }
 
 
 def forward_response_headers(resp: httpx.Response) -> dict[str, str]:
@@ -400,8 +519,10 @@ def origin_ok(request: Request) -> bool:
     origin = request.headers.get("origin")
     if not origin or origin == "null":
         return True
-    return any(origin == o or origin.startswith(o + ":") or origin.startswith(o + "/")
-               for o in LOCAL_ORIGINS)
+    return any(
+        origin == o or origin.startswith(o + ":") or origin.startswith(o + "/")
+        for o in LOCAL_ORIGINS
+    )
 
 
 def upstream_headers(cfg: Any, headers: dict[str, str], settings: Any = None) -> dict[str, str]:
@@ -423,8 +544,13 @@ def upstream_headers(cfg: Any, headers: dict[str, str], settings: Any = None) ->
     return out
 
 
-def aegis_headers(mctx: McpCtx, gv: GovVerdict | None, *, t_total: float | None = None,
-                  upstream_s: float | None = None) -> dict[str, str]:
+def aegis_headers(
+    mctx: McpCtx,
+    gv: GovVerdict | None,
+    *,
+    t_total: float | None = None,
+    upstream_s: float | None = None,
+) -> dict[str, str]:
     h: dict[str, str] = {}
     if mctx.request_id:
         h["x-aegis-request-id"] = mctx.request_id
@@ -450,8 +576,9 @@ def aegis_headers(mctx: McpCtx, gv: GovVerdict | None, *, t_total: float | None 
     return h
 
 
-def rpc_response(msg: dict[str, Any], status: int = 200, headers: dict[str, str] | None = None
-                 ) -> JSONResponse:
+def rpc_response(
+    msg: dict[str, Any], status: int = 200, headers: dict[str, str] | None = None
+) -> JSONResponse:
     return JSONResponse(msg, status_code=status, headers=headers or {})
 
 
@@ -465,15 +592,18 @@ async def handle_post(service: McpService, request: Request, server: str) -> Res
     raw = await request.body()
     max_bytes = int(getattr(getattr(snap.doc, "defaults", None), "max_body_bytes", 8_000_000))
     if len(raw) > max_bytes:
-        return rpc_response(jsonrpc_error(None, INVALID_REQUEST,
-                                          f"[Aegis] request body exceeds {max_bytes} bytes"), 413)
+        return rpc_response(
+            jsonrpc_error(None, INVALID_REQUEST, f"[Aegis] request body exceeds {max_bytes} bytes"),
+            413,
+        )
     try:
         body = json.loads(raw) if raw else None
     except json.JSONDecodeError:
         return rpc_response(jsonrpc_error(None, PARSE_ERROR, "Parse error"), 400)
     if isinstance(body, list):
-        return rpc_response(jsonrpc_error(None, INVALID_REQUEST,
-                                          "[Aegis] JSON-RPC batches are not supported"), 400)
+        return rpc_response(
+            jsonrpc_error(None, INVALID_REQUEST, "[Aegis] JSON-RPC batches are not supported"), 400
+        )
     if not isinstance(body, dict):
         return rpc_response(jsonrpc_error(None, INVALID_REQUEST, "Invalid Request"), 400)
 
@@ -493,13 +623,21 @@ async def handle_post(service: McpService, request: Request, server: str) -> Res
         rejection = check_modern_request(body, headers_in, raw_pairs, schema)
         if rejection is not None:
             await service.record_header_mismatch(mctx, body, rejection.message)
-            return rpc_response(jsonrpc_error(body.get("id"), rejection.code,
-                                              f"[Aegis] request smuggling defense: {rejection.message}"),
-                                400, aegis_headers(mctx, None))
+            return rpc_response(
+                jsonrpc_error(
+                    body.get("id"),
+                    rejection.code,
+                    f"[Aegis] request smuggling defense: {rejection.message}",
+                ),
+                400,
+                aegis_headers(mctx, None),
+            )
 
     gv = await service.governor.on_client_message(mctx, body)
     if gv.action == "respond":
-        return rpc_response(gv.message, 200, aegis_headers(mctx, gv, t_total=time.perf_counter() - t_start))
+        return rpc_response(
+            gv.message, 200, aegis_headers(mctx, gv, t_total=time.perf_counter() - t_start)
+        )
 
     msg_out = gv.message
     content = json.dumps(msg_out, ensure_ascii=False).encode() if gv.rewritten else raw
@@ -511,40 +649,69 @@ async def handle_post(service: McpService, request: Request, server: str) -> Res
         resp = await service.send_upstream("POST", cfg.url, fwd, content)
     except httpx.HTTPError as e:
         await service.upstream_failed(mctx, f"{type(e).__name__}")
-        await service.governor.complete(mctx, gv, Outcome(status_code=502, usage=Usage(requests=0),
-                                                          error=type(e).__name__))
+        await service.governor.complete(
+            mctx, gv, Outcome(status_code=502, usage=Usage(requests=0), error=type(e).__name__)
+        )
         return rpc_response(
-            jsonrpc_error(body.get("id"), UPSTREAM_UNREACHABLE,
-                          f"[Aegis] upstream MCP server '{server}' unreachable ({type(e).__name__})"),
-            502, aegis_headers(mctx, gv))
+            jsonrpc_error(
+                body.get("id"),
+                UPSTREAM_UNREACHABLE,
+                f"[Aegis] upstream MCP server '{server}' unreachable ({type(e).__name__})",
+            ),
+            502,
+            aegis_headers(mctx, gv),
+        )
     service.upstream_ok(server)
-    return await relay(service, mctx, resp, msg_out if is_request(msg_out) else None, gv,
-                       t_start=t_start, t_up=t_up)
+    return await relay(
+        service,
+        mctx,
+        resp,
+        msg_out if is_request(msg_out) else None,
+        gv,
+        t_start=t_start,
+        t_up=t_up,
+    )
 
 
-async def relay(service: McpService, mctx: McpCtx, resp: httpx.Response,
-                request_msg: dict[str, Any] | None, gv: GovVerdict | None, *,
-                t_start: float, t_up: float) -> Response:
+async def relay(
+    service: McpService,
+    mctx: McpCtx,
+    resp: httpx.Response,
+    request_msg: dict[str, Any] | None,
+    gv: GovVerdict | None,
+    *,
+    t_start: float,
+    t_up: float,
+) -> Response:
     """Relay an upstream answer (JSON or SSE), governing each JSON-RPC message."""
     headers = forward_response_headers(resp)
     mctx.session = resp.headers.get("mcp-session-id") or mctx.session
     governor = service.governor
 
     async def transform(msg: Any) -> Any:
-        answers = request_msg is not None and is_response(msg) and msg.get("id") == request_msg.get("id")
+        answers = (
+            request_msg is not None and is_response(msg) and msg.get("id") == request_msg.get("id")
+        )
         return await governor.on_server_message(mctx, msg, request_msg if answers else None, gv)
 
     async def finish(status: int, upstream_s: float) -> None:
         service.observe_upstream(mctx.server, upstream_s)
         if gv is not None:
-            await governor.complete(mctx, gv, Outcome(
-                status_code=status, usage=Usage(requests=1, tool_calls=1),
-                upstream_ms=upstream_s * 1000))
+            await governor.complete(
+                mctx,
+                gv,
+                Outcome(
+                    status_code=status,
+                    usage=Usage(requests=1, tool_calls=1),
+                    upstream_ms=upstream_s * 1000,
+                ),
+            )
 
     if "text/event-stream" in resp.headers.get("content-type", ""):
         upstream_s = time.perf_counter() - t_up
-        headers.update(aegis_headers(mctx, gv, t_total=time.perf_counter() - t_start,
-                                     upstream_s=upstream_s))
+        headers.update(
+            aegis_headers(mctx, gv, t_total=time.perf_counter() - t_start, upstream_s=upstream_s)
+        )
         headers.setdefault("x-accel-buffering", "no")
         status = resp.status_code
 
@@ -576,8 +743,9 @@ async def relay(service: McpService, mctx: McpCtx, resp: httpx.Response,
             if new is not msg:
                 data = json.dumps(new, ensure_ascii=False).encode()
     await finish(resp.status_code, upstream_s)
-    headers.update(aegis_headers(mctx, gv, t_total=time.perf_counter() - t_start,
-                                 upstream_s=upstream_s))
+    headers.update(
+        aegis_headers(mctx, gv, t_total=time.perf_counter() - t_start, upstream_s=upstream_s)
+    )
     headers.pop("content-length", None)
     return Response(content=data, status_code=resp.status_code, headers=headers)
 
@@ -589,18 +757,26 @@ async def handle_get(service: McpService, request: Request, server: str) -> Resp
     snap = service.rt.policy.snapshot()
     headers_in = lower_headers(request)
     fwd = forward_request_headers(request)
-    mctx = await service.make_ctx(server, headers_in, era=detect_era(fwd, None), transport="http",
-                                  snap=snap)
+    mctx = await service.make_ctx(
+        server, headers_in, era=detect_era(fwd, None), transport="http", snap=snap
+    )
     if mctx.cfg is None or not getattr(mctx.cfg, "url", None):
         return await service.unknown_server(mctx, {})
     try:
-        resp = await service.send_upstream("GET", mctx.cfg.url,
-                                           upstream_headers(mctx.cfg, fwd, getattr(service.rt, "settings", None)),
-                                           None)
+        resp = await service.send_upstream(
+            "GET",
+            mctx.cfg.url,
+            upstream_headers(mctx.cfg, fwd, getattr(service.rt, "settings", None)),
+            None,
+        )
     except httpx.HTTPError as e:
         await service.upstream_failed(mctx, type(e).__name__)
-        return rpc_response(jsonrpc_error(None, UPSTREAM_UNREACHABLE,
-                                          f"[Aegis] upstream MCP server '{server}' unreachable"), 502)
+        return rpc_response(
+            jsonrpc_error(
+                None, UPSTREAM_UNREACHABLE, f"[Aegis] upstream MCP server '{server}' unreachable"
+            ),
+            502,
+        )
     t = time.perf_counter()
     return await relay(service, mctx, resp, None, None, t_start=t, t_up=t)
 
@@ -609,16 +785,23 @@ async def handle_delete(service: McpService, request: Request, server: str) -> R
     snap = service.rt.policy.snapshot()
     cfg = snap.doc.mcp.servers.get(server)
     if cfg is None or not getattr(cfg, "url", None):
-        return rpc_response(jsonrpc_error(None, UNKNOWN_SERVER,
-                                          f"[Aegis] unknown MCP server '{server}'"), 404)
-    fwd = upstream_headers(cfg, forward_request_headers(request), getattr(service.rt, "settings", None))
+        return rpc_response(
+            jsonrpc_error(None, UNKNOWN_SERVER, f"[Aegis] unknown MCP server '{server}'"), 404
+        )
+    fwd = upstream_headers(
+        cfg, forward_request_headers(request), getattr(service.rt, "settings", None)
+    )
     try:
         resp = await service.send_upstream("DELETE", cfg.url, fwd, None)
     except httpx.HTTPError:
-        return rpc_response(jsonrpc_error(None, UPSTREAM_UNREACHABLE, "[Aegis] upstream unreachable"), 502)
+        return rpc_response(
+            jsonrpc_error(None, UPSTREAM_UNREACHABLE, "[Aegis] upstream unreachable"), 502
+        )
     data = await resp.aread()
     await resp.aclose()
-    return Response(content=data, status_code=resp.status_code, headers=forward_response_headers(resp))
+    return Response(
+        content=data, status_code=resp.status_code, headers=forward_response_headers(resp)
+    )
 
 
 def host_of(url: str | None) -> str | None:
@@ -626,7 +809,18 @@ def host_of(url: str | None) -> str | None:
 
 
 __all__ = [
-    "FWD_REQUEST", "FWD_RESPONSE", "GovVerdict", "McpCtx", "McpGovernor", "aegis_headers",
-    "clean_ctx_headers", "forward_request_headers", "handle_delete", "handle_get", "handle_post",
-    "origin_ok", "relay", "upstream_headers",
+    "FWD_REQUEST",
+    "FWD_RESPONSE",
+    "GovVerdict",
+    "McpCtx",
+    "McpGovernor",
+    "aegis_headers",
+    "clean_ctx_headers",
+    "forward_request_headers",
+    "handle_delete",
+    "handle_get",
+    "handle_post",
+    "origin_ok",
+    "relay",
+    "upstream_headers",
 ]

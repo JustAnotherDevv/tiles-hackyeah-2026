@@ -97,8 +97,9 @@ class McpPoisoning(BaseControl):
             self._marker_cache[key] = detect.compile_markers(p.extra_markers)
         return self._marker_cache[key]
 
-    async def evaluate(self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
-                       ) -> Decision | None:
+    async def evaluate(
+        self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
+    ) -> Decision | None:
         p = self._params(cfg)
         server, tool = server_of(interaction)
         mcp = mcp_section(ctx)
@@ -106,18 +107,32 @@ class McpPoisoning(BaseControl):
         rt = _runtime()
 
         texts = [(s.path, s.text) for s in interaction.segments]
-        findings = detect.scan_segments(texts, url_allowlist=p.url_allowlist,
-                                        extra_markers=self._markers(p))
+        findings = detect.scan_segments(
+            texts, url_allowlist=p.url_allowlist, extra_markers=self._markers(p)
+        )
         raw = interaction.raw if isinstance(interaction.raw, dict) else None
-        desc = str((raw or {}).get("description") or "") if raw else \
-            "\n".join(s.text for s in interaction.segments if s.path in ("description", "text", ""))
+        desc = (
+            str((raw or {}).get("description") or "")
+            if raw
+            else "\n".join(
+                s.text for s in interaction.segments if s.path in ("description", "text", "")
+            )
+        )
         if not desc and interaction.segments and raw is None:
             desc = interaction.text()
         if len(desc) > max_len:
-            findings.append(detect.ToolFinding("tooldef.long_description", "medium", "description",
-                                               f"{len(desc)} chars > {max_len}"))
+            findings.append(
+                detect.ToolFinding(
+                    "tooldef.long_description",
+                    "medium",
+                    "description",
+                    f"{len(desc)} chars > {max_len}",
+                )
+            )
         if tool and not detect.NAME_RE.fullmatch(tool):
-            findings.append(detect.ToolFinding("tooldef.bad_name", "high", "name", detect.snippet(tool)))
+            findings.append(
+                detect.ToolFinding("tooldef.bad_name", "high", "name", detect.snippet(tool))
+            )
         if p.cross_server_reference and mcp is not None:
             known: dict[str, set[str]] = {s: set() for s in (getattr(mcp, "servers", {}) or {})}
             try:
@@ -139,15 +154,26 @@ class McpPoisoning(BaseControl):
             timeout = max(0.05, (cfg.timeout_ms - 50) / 1000.0)
             try:
                 res = await asyncio.wait_for(rt.semantic.injection_score(desc), timeout)
-                sem_meta = {"semantic_score": round(float(res.score), 3), "semantic_model": res.model,
-                            "semantic_degraded": bool(res.degraded)}
+                sem_meta = {
+                    "semantic_score": round(float(res.score), 3),
+                    "semantic_model": res.model,
+                    "semantic_degraded": bool(res.degraded),
+                }
                 threshold = cfg.threshold if cfg.threshold is not None else 0.9
                 if res.degraded:
-                    degraded = True  # heuristic fallback: recorded, not counted (deterministic leg rules)
+                    degraded = (
+                        True  # heuristic fallback: recorded, not counted (deterministic leg rules)
+                    )
                 elif res.score >= threshold:
-                    findings.append(detect.ToolFinding("sem.injection_score", "high", "description",
-                                                       f"score {res.score:.2f} >= {threshold}"))
-            except (TimeoutError, asyncio.TimeoutError):
+                    findings.append(
+                        detect.ToolFinding(
+                            "sem.injection_score",
+                            "high",
+                            "description",
+                            f"score {res.score:.2f} >= {threshold}",
+                        )
+                    )
+            except TimeoutError:
                 degraded = True
                 sem_meta = {"semantic_error": "timeout"}
             except Exception as e:
@@ -159,18 +185,34 @@ class McpPoisoning(BaseControl):
             return None
         rules = sorted({f.rule for f in findings})
         contract_findings = [
-            Finding(control_id=self.id, detector=f"mcp.{f.rule}", category="mcp", severity=f.severity,  # type: ignore[arg-type]
-                    score=float(detect.SEVERITY_SCORE.get(f.severity, 0)),
-                    excerpt=_mask(rt, f.evidence), meta={"path": f.path})
+            Finding(
+                control_id=self.id,
+                detector=f"mcp.{f.rule}",
+                category="mcp",
+                severity=f.severity,  # type: ignore[arg-type]
+                score=float(detect.SEVERITY_SCORE.get(f.severity, 0)),
+                excerpt=_mask(rt, f.evidence),
+                meta={"path": f.path},
+            )
             for f in findings
         ]
         pin = interaction.meta.get("mcp.pin") or {}
         approved_by = str(pin.get("approved_by") or "")
-        if score >= p.score_threshold and approved_by.startswith("override:") and pin.get("status") == "match":
-            return self.decide(cfg, action="log", score=float(score), findings=contract_findings,
-                               reason=f"tool poisoning indicators (score {score}) - admin override by "
-                                      f"{approved_by.split(':', 1)[1]}",
-                               degraded=degraded, meta={"rules": rules, **sem_meta})
+        if (
+            score >= p.score_threshold
+            and approved_by.startswith("override:")
+            and pin.get("status") == "match"
+        ):
+            return self.decide(
+                cfg,
+                action="log",
+                score=float(score),
+                findings=contract_findings,
+                reason=f"tool poisoning indicators (score {score}) - admin override by "
+                f"{approved_by.split(':', 1)[1]}",
+                degraded=degraded,
+                meta={"rules": rules, **sem_meta},
+            )
         if score >= p.score_threshold:
             idx = interaction.meta.get("mcp.list_index")
             path = f"result.tools[{idx}]" if isinstance(idx, int) else "tool"
@@ -180,21 +222,39 @@ class McpPoisoning(BaseControl):
                 kw["mutations"] = [Mutation(op="remove", path=path, reason="poisoned tool dropped")]
             if action == "require_approval":
                 kw["approval"] = ApprovalDraft(
-                    kind="mcp_pin", action_type="mcp.repin",
+                    kind="mcp_pin",
+                    action_type="mcp.repin",
                     title=f"Approve flagged MCP tool {server}.{tool}",
                     summary=f"tool poisoning indicators (score {score}): {', '.join(rules)}",
                     resource=f"mcp:{server}.{tool}",
                     labels={"reason": "poisoned", "server": server},
-                    payload={"server": server, "tool": tool, "rules": rules})
-            excerpt = next((f.evidence for f in findings if f.severity == "high"), findings[0].evidence)
+                    payload={"server": server, "tool": tool, "rules": rules},
+                )
+            excerpt = next(
+                (f.evidence for f in findings if f.severity == "high"), findings[0].evidence
+            )
             return self.decide(
-                cfg, action=action, score=float(score), findings=contract_findings,
-                reason=(f"tool poisoning indicators (score {score}): {', '.join(rules)} - "
-                        f"{_mask(rt, excerpt)}"),
-                degraded=degraded, meta={"rules": rules, "dropped": action != "log", **sem_meta}, **kw)
-        return self.decide(cfg, action="log", score=float(score), findings=contract_findings,
-                           reason=f"low-confidence poisoning indicators (score {score}): {', '.join(rules)}",
-                           degraded=degraded, meta={"rules": rules, **sem_meta})
+                cfg,
+                action=action,
+                score=float(score),
+                findings=contract_findings,
+                reason=(
+                    f"tool poisoning indicators (score {score}): {', '.join(rules)} - "
+                    f"{_mask(rt, excerpt)}"
+                ),
+                degraded=degraded,
+                meta={"rules": rules, "dropped": action != "log", **sem_meta},
+                **kw,
+            )
+        return self.decide(
+            cfg,
+            action="log",
+            score=float(score),
+            findings=contract_findings,
+            reason=f"low-confidence poisoning indicators (score {score}): {', '.join(rules)}",
+            degraded=degraded,
+            meta={"rules": rules, **sem_meta},
+        )
 
 
 CONTROLS = [McpPoisoning()]

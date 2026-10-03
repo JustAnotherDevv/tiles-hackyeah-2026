@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
@@ -17,7 +17,6 @@ from aegis.core.types import Agent, RequestContext
 
 log = logging.getLogger(__name__)
 
-M = TypeVar("M", bound=BaseModel)
 
 _warned: set[str] = set()
 
@@ -31,7 +30,9 @@ def warn_once(key: str, msg: str, *args: Any) -> None:
     bus = getattr(rt, "bus", None) if rt is not None else None
     if bus is not None:
         try:
-            bus.publish("system", {"level": "warning", "source": "action-guards", "message": msg % args})
+            bus.publish(
+                "system", {"level": "warning", "source": "action-guards", "message": msg % args}
+            )
         except Exception:  # pragma: no cover - bus is best effort
             pass
 
@@ -80,7 +81,7 @@ _PARAMS: dict[tuple[int, str], tuple[ControlConfig, BaseModel]] = {}
 _PARAMS_MAX = 256
 
 
-def params_for(cfg: ControlConfig, model: type[M]) -> M:
+def params_for[M: BaseModel](cfg: ControlConfig, model: type[M]) -> M:
     """Validate ``cfg.params`` into ``model`` (defaults = balanced). Cached per cfg object.
 
     Unknown keys are kept (``extra="allow"``) and reported once; invalid values fall back to
@@ -111,14 +112,19 @@ def params_for(cfg: ControlConfig, model: type[M]) -> M:
             parsed = model()
     extra = set((parsed.model_extra or {}).keys())
     if extra:
-        warn_once(f"params-extra:{cfg.id}:{sorted(extra)}", "unknown params for %s: %s", cfg.id, sorted(extra))
+        warn_once(
+            f"params-extra:{cfg.id}:{sorted(extra)}",
+            "unknown params for %s: %s",
+            cfg.id,
+            sorted(extra),
+        )
     if len(_PARAMS) >= _PARAMS_MAX:
         _PARAMS.clear()
     _PARAMS[key] = (cfg, parsed)
     return parsed
 
 
-def control_params(ctx: RequestContext | None, control_id: str, model: type[M]) -> M:
+def control_params[M: BaseModel](ctx: RequestContext | None, control_id: str, model: type[M]) -> M:
     """Params of another action-guard control (e.g. GOV-04 max_pending_per_agent)."""
     snap = policy_of(ctx)
     cfg = snap.control(control_id) if snap is not None else None

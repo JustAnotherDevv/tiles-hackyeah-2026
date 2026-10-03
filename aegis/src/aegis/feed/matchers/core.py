@@ -184,8 +184,12 @@ def internal_re2(pattern: str) -> Any:
 
 
 _INVISIBLE_RANGES = (
-    (0xE0000, 0xE01EF), (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x2069),
-    (0xFEFF, 0xFEFF), (0xFE00, 0xFE0F),
+    (0xE0000, 0xE01EF),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x2069),
+    (0xFEFF, 0xFEFF),
+    (0xFE00, 0xFE0F),
 )
 
 
@@ -239,7 +243,10 @@ def compile_matcher(
         items = node["any_of"]
         if not isinstance(items, list) or not items:
             raise FeedError(f"{where}.any_of: must be a non-empty list")
-        subs = [compile_matcher(n, f"{where}.any_of[{i}]", depth + 1, lists) for i, n in enumerate(items)]
+        subs = [
+            compile_matcher(n, f"{where}.any_of[{i}]", depth + 1, lists)
+            for i, n in enumerate(items)
+        ]
 
         def any_of(ev: Event) -> list[dict] | None:
             if ev.all_spans:
@@ -262,7 +269,10 @@ def compile_matcher(
         items = node["all_of"]
         if not isinstance(items, list) or not items:
             raise FeedError(f"{where}.all_of: must be a non-empty list")
-        subs = [compile_matcher(n, f"{where}.all_of[{i}]", depth + 1, lists) for i, n in enumerate(items)]
+        subs = [
+            compile_matcher(n, f"{where}.all_of[{i}]", depth + 1, lists)
+            for i, n in enumerate(items)
+        ]
 
         def all_of(ev: Event) -> list[dict] | None:
             ev_all: list[dict] = []

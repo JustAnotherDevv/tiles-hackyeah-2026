@@ -23,12 +23,44 @@ from aegis.metrics.timing import parse_since, to_utc
 CHUNK = 64 * 1024
 
 CSV_COLUMNS = [
-    "seq", "ts", "event_type", "event_id", "request_id", "decision_id", "session_id", "principal",
-    "org_id", "team_id", "member_id", "agent_id", "kind", "surface", "direction", "dest_name",
-    "dest_class", "model", "tool_name", "action_type", "amount_usd", "resource", "action",
-    "control_id", "controls", "reason", "score", "threshold", "redaction_count", "entities",
-    "latency_ms", "input_tokens", "output_tokens", "cost_usd", "policy_version", "feed_serial",
-    "prev_hash", "hash",
+    "seq",
+    "ts",
+    "event_type",
+    "event_id",
+    "request_id",
+    "decision_id",
+    "session_id",
+    "principal",
+    "org_id",
+    "team_id",
+    "member_id",
+    "agent_id",
+    "kind",
+    "surface",
+    "direction",
+    "dest_name",
+    "dest_class",
+    "model",
+    "tool_name",
+    "action_type",
+    "amount_usd",
+    "resource",
+    "action",
+    "control_id",
+    "controls",
+    "reason",
+    "score",
+    "threshold",
+    "redaction_count",
+    "entities",
+    "latency_ms",
+    "input_tokens",
+    "output_tokens",
+    "cost_usd",
+    "policy_version",
+    "feed_serial",
+    "prev_hash",
+    "hash",
 ]
 _CSV_DANGER = ("=", "+", "-", "@", "\t", "\r")
 
@@ -47,11 +79,17 @@ class Filters:
 
     @property
     def empty(self) -> bool:
-        return not (self.start or self.end or self.actions or self.control_id or self.agent_id
-                    or self.event_types)
+        return not (
+            self.start
+            or self.end
+            or self.actions
+            or self.control_id
+            or self.agent_id
+            or self.event_types
+        )
 
     def file_ok(self, path: Path) -> bool:
-        stem = path.name[len("audit-"):-len(".jsonl")]
+        stem = path.name[len("audit-") : -len(".jsonl")]
         if self.start and stem < self.start.strftime("%Y%m%d"):
             return False
         return not (self.end and stem > self.end.strftime("%Y%m%d"))
@@ -67,7 +105,9 @@ class Filters:
                 return False
         if self.event_types:
             et = rec.get("event_type") or ""
-            if not any(et.startswith(t[:-1]) if t.endswith("*") else et == t for t in self.event_types):
+            if not any(
+                et.startswith(t[:-1]) if t.endswith("*") else et == t for t in self.event_types
+            ):
                 return False
         if self.actions and (rec.get("action") or "") not in self.actions:
             return False
@@ -77,7 +117,11 @@ class Filters:
             hits = {c.get("control_id") for c in rec.get("controls") or [] if isinstance(c, dict)}
             summary = (rec.get("data") or {}).get("summary") or {}
             if isinstance(summary, dict):
-                hits |= {c.get("control_id") for c in summary.get("controls") or [] if isinstance(c, dict)}
+                hits |= {
+                    c.get("control_id")
+                    for c in summary.get("controls") or []
+                    if isinstance(c, dict)
+                }
             if rec.get("control_id") != self.control_id and self.control_id not in hits:
                 return False
         return True
@@ -111,11 +155,18 @@ def csv_row(rec: dict[str, Any]) -> list[Any]:
     usage = rec.get("usage") or {}
     controls = rec.get("controls") or s.get("controls") or []
     principal = (
-        f"agent:{actor['agent_id']}" if actor.get("agent_id")
-        else f"member:{actor['member_id']}" if actor.get("member_id") else ""
+        f"agent:{actor['agent_id']}"
+        if actor.get("agent_id")
+        else f"member:{actor['member_id']}"
+        if actor.get("member_id")
+        else ""
     )
     entities = s.get("entities") or sorted(
-        {r.get("entity") for r in rec.get("redactions") or [] if isinstance(r, dict) and r.get("entity")}
+        {
+            r.get("entity")
+            for r in rec.get("redactions") or []
+            if isinstance(r, dict) and r.get("entity")
+        }
     )
     row = {
         "seq": rec.get("seq"),
@@ -138,7 +189,9 @@ def csv_row(rec: dict[str, Any]) -> list[Any]:
         "model": rec.get("model") or s.get("model"),
         "tool_name": rec.get("tool_name") or s.get("tool_name"),
         "action_type": rec.get("action_type") or s.get("action_type"),
-        "amount_usd": rec.get("amount_usd") if rec.get("amount_usd") is not None else s.get("amount_usd"),
+        "amount_usd": rec.get("amount_usd")
+        if rec.get("amount_usd") is not None
+        else s.get("amount_usd"),
         "resource": rec.get("resource"),
         "action": rec.get("action"),
         "control_id": rec.get("control_id"),
@@ -194,8 +247,12 @@ def iter_export(audit_dir: Path, fmt: str, **filters: Any) -> Iterator[bytes]:
                     if fmt == "jsonl":
                         out += raw
                     elif fmt == "ocsf":
-                        out += (json.dumps(to_ocsf(rec), separators=(",", ":"), ensure_ascii=False,
-                                           default=str) + "\n").encode("utf-8")
+                        out += (
+                            json.dumps(
+                                to_ocsf(rec), separators=(",", ":"), ensure_ascii=False, default=str
+                            )
+                            + "\n"
+                        ).encode("utf-8")
                     else:
                         assert writer is not None and buf is not None
                         writer.writerow(csv_row(rec))
@@ -220,4 +277,12 @@ async def export_stream(audit_dir: Path, fmt: str, **filters: Any) -> AsyncItera
         yield chunk  # type: ignore[misc]
 
 
-__all__ = ["CSV_COLUMNS", "EXTENSIONS", "MEDIA_TYPES", "Filters", "csv_row", "export_stream", "iter_export"]
+__all__ = [
+    "CSV_COLUMNS",
+    "EXTENSIONS",
+    "MEDIA_TYPES",
+    "Filters",
+    "csv_row",
+    "export_stream",
+    "iter_export",
+]

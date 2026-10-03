@@ -31,6 +31,7 @@ async def list_audit(
     decision_id: str | None = None,
     limit: int = Query(100, ge=1, le=1000),
     cursor: str | None = None,
+    seq_from: int | None = Query(None, ge=1),
 ) -> Any:
     audit = _audit(request)
     if audit is None:
@@ -38,11 +39,22 @@ async def list_audit(
     raw = getattr(audit, "query_raw", None)
     try:
         if raw is not None:
-            items, nxt = await raw(event_type=event_type, since=since, decision_id=decision_id,
-                                   limit=limit, cursor=cursor)
+            items, nxt = await raw(
+                event_type=event_type,
+                since=since,
+                decision_id=decision_id,
+                limit=limit,
+                cursor=cursor,
+                seq_from=seq_from,
+            )
             return {"items": items, "next_cursor": nxt}
-        events, nxt = await audit.query(event_type=event_type, since=since, limit=limit, cursor=cursor)
-        return {"items": [e.model_dump(mode="json", by_alias=True) for e in events], "next_cursor": nxt}
+        events, nxt = await audit.query(
+            event_type=event_type, since=since, limit=limit, cursor=cursor
+        )
+        return {
+            "items": [e.model_dump(mode="json", by_alias=True) for e in events],
+            "next_cursor": nxt,
+        }
     except Exception as exc:
         log.exception("audit query failed")
         return api_error(500, "internal_error", f"audit query failed: {exc}")
@@ -74,21 +86,33 @@ async def export_audit(
     audit = _audit(request)
     if audit is None or not hasattr(audit, "audit_dir"):
         return api_error(503, "unavailable", "audit log disabled")
-    filters = {"from": from_, "to": to, "action": action, "control_id": control_id,
-               "agent_id": agent_id, "event_type": event_type}
+    filters = {
+        "from": from_,
+        "to": to,
+        "action": action,
+        "control_id": control_id,
+        "agent_id": agent_id,
+        "event_type": event_type,
+    }
     filters = {k: v for k, v in filters.items() if v}
     # verify before export when the cached result is older than 60 s
     lv = getattr(audit, "last_verify", None)
     stale = lv is None or (utcnow() - lv.checked_at).total_seconds() > 60
     if stale:
         lv = await audit.verify()
-    head = audit.head() if hasattr(audit, "head") else {"seq": 0, "hash": ""}
-    if hasattr(audit, "system"):
+    if hasattr(audit, "system"):  # the export itself is audited (and included in this export)
         try:
-            await audit.system("audit.export", f"audit exported as {format} by {viewer.member_id}",
-                               actor=viewer, format=format, filters=filters, by=viewer.member_id)
+            await audit.system(
+                "audit.export",
+                f"audit exported as {format} by {viewer.member_id}",
+                actor=viewer,
+                format=format,
+                filters=filters,
+                by=viewer.member_id,
+            )
         except Exception:
             log.exception("audit export self-audit failed")
+    head = audit.head() if hasattr(audit, "head") else {"seq": 0, "hash": ""}
     date = iso_z()[:10].replace("-", "")
     fname = f"aegis-audit-{date}.{EXTENSIONS[format]}"
     headers = {
@@ -98,5 +122,8 @@ async def export_audit(
         "X-Aegis-Audit-Verified": "ok" if (lv is not None and lv.ok) else "broken",
         "Cache-Control": "no-store",
     }
-    return StreamingResponse(export_stream(audit.audit_dir, format, **filters),
-                             media_type=MEDIA_TYPES[format], headers=headers)
+    return StreamingResponse(
+        export_stream(audit.audit_dir, format, **filters),
+        media_type=MEDIA_TYPES[format],
+        headers=headers,
+    )

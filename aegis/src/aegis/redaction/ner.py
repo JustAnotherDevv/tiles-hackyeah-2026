@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import threading
 import time
 from pathlib import Path
@@ -209,7 +210,11 @@ def ner_status(engine: Any) -> dict[str, Any]:
 
 
 def _own(engine: Any) -> PiiNerService | None:
-    """Own NER session only when rt.semantic cannot host it (never two sessions)."""
+    """Own NER session: DISABLED by Addendum A-38 (semantic-models is the only loader of
+    eu-pii-ner; a second ONNX session would cost +673 MB). Kept for reference / manual use via
+    ``AEGIS_REDACTION_OWN_NER=1`` only."""
+    if os.environ.get("AEGIS_REDACTION_OWN_NER") != "1":
+        return None
     svc = getattr(engine, "_ner", None)
     if svc is not None:
         return svc if svc.ready() else None

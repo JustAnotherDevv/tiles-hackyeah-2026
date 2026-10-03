@@ -31,7 +31,9 @@ class ActionGuardBase(BaseControl):
     default_levers: ClassVar[list[str]] = []
 
     # ------------------------------------------------------------------ phases
-    async def enrich(self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig) -> None:
+    async def enrich(
+        self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
+    ) -> None:
         ensure_classified(interaction, art.action_rules(ctx))
 
     async def evaluate(
@@ -43,17 +45,35 @@ class ActionGuardBase(BaseControl):
     def params(self, cfg: ControlConfig) -> Any:
         return art.params_for(cfg, self.params_model)
 
-    def finding(self, detector: str, *, category: str = "governance", severity: str = "high",
-                excerpt: str | None = None, data_class: str | None = None, entity: str | None = None,
-                **meta: Any) -> Finding:
+    def finding(
+        self,
+        detector: str,
+        *,
+        category: str = "governance",
+        severity: str = "high",
+        excerpt: str | None = None,
+        data_class: str | None = None,
+        entity: str | None = None,
+        **meta: Any,
+    ) -> Finding:
         return Finding(
-            control_id=self.id, detector=detector, category=category, severity=severity,  # type: ignore[arg-type]
-            excerpt=mask(excerpt, 120) if excerpt else None, data_class=data_class,  # type: ignore[arg-type]
-            entity=entity, meta={k: v for k, v in meta.items() if v is not None},
+            control_id=self.id,
+            detector=detector,
+            category=category,
+            severity=severity,  # type: ignore[arg-type]
+            excerpt=mask(excerpt, 120) if excerpt else None,
+            data_class=data_class,  # type: ignore[arg-type]
+            entity=entity,
+            meta={k: v for k, v in meta.items() if v is not None},
         )
 
-    def _meta(self, interaction: Interaction, action_type: str | None, explain: Explain | None,
-              extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _meta(
+        self,
+        interaction: Interaction,
+        action_type: str | None,
+        explain: Explain | None,
+        extra: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         ex = explain or Explain()
         for lv in self.default_levers:
             ex.lever(lv)
@@ -66,25 +86,53 @@ class ActionGuardBase(BaseControl):
             meta.update(extra)
         return meta
 
-    def hard(self, cfg: ControlConfig, interaction: Interaction, *, core: str,
-             findings: list[Finding] | None = None, explain: Explain | None = None,
-             action_type: str | None = None, suffix: str = "", **meta: Any) -> Decision:
+    def hard(
+        self,
+        cfg: ControlConfig,
+        interaction: Interaction,
+        *,
+        core: str,
+        findings: list[Finding] | None = None,
+        explain: Explain | None = None,
+        action_type: str | None = None,
+        suffix: str = "",
+        **meta: Any,
+    ) -> Decision:
         """Block that no approval can lift (hard cap, RESTRICTED, prod DDL)."""
         reason = reason_line("block", core, suffix=suffix)
         if explain is not None and not explain.summary:
             explain.summary = reason
-        return self.decide(cfg, action="block", reason=reason, findings=findings,
-                           meta=self._meta(interaction, action_type, explain, meta))
+        return self.decide(
+            cfg,
+            action="block",
+            reason=reason,
+            findings=findings,
+            meta=self._meta(interaction, action_type, explain, meta),
+        )
 
-    def note(self, cfg: ControlConfig, interaction: Interaction, *, core: str, action: str = "allow",
-             explain: Explain | None = None, findings: list[Finding] | None = None,
-             action_type: str | None = None, **meta: Any) -> Decision:
+    def note(
+        self,
+        cfg: ControlConfig,
+        interaction: Interaction,
+        *,
+        core: str,
+        action: str = "allow",
+        explain: Explain | None = None,
+        findings: list[Finding] | None = None,
+        action_type: str | None = None,
+        **meta: Any,
+    ) -> Decision:
         """Explained allow/log (shows up in the decision drawer, never changes the verdict)."""
         reason = reason_line(action, core)
         if explain is not None and not explain.summary:
             explain.summary = reason
-        return self.decide(cfg, action=action, reason=reason, findings=findings,
-                           meta=self._meta(interaction, action_type, explain, meta))
+        return self.decide(
+            cfg,
+            action=action,
+            reason=reason,
+            findings=findings,
+            meta=self._meta(interaction, action_type, explain, meta),
+        )
 
     async def soft(
         self,
@@ -115,24 +163,56 @@ class ActionGuardBase(BaseControl):
             if gov04.flood_check:
                 flood = await drafts.flood_check(ctx, interaction, gov04.max_pending_per_agent)
                 if flood:
-                    explain.check("flood", "pending approvals for this agent", None,
-                                  gov04.max_pending_per_agent, "fail",
-                                  "controls[GOV-04].params.max_pending_per_agent")
-                    fs = [*(findings or []), self.finding("act.flood", category="approval", severity="medium")]
-                    return self.hard(cfg, interaction, core=flood, findings=fs, explain=explain,
-                                     action_type=action_type, **meta)
+                    explain.check(
+                        "flood",
+                        "pending approvals for this agent",
+                        None,
+                        gov04.max_pending_per_agent,
+                        "fail",
+                        "controls[GOV-04].params.max_pending_per_agent",
+                    )
+                    fs = [
+                        *(findings or []),
+                        self.finding("act.flood", category="approval", severity="medium"),
+                    ]
+                    return self.hard(
+                        cfg,
+                        interaction,
+                        core=flood,
+                        findings=fs,
+                        explain=explain,
+                        action_type=action_type,
+                        **meta,
+                    )
         reason = reason_line(act, core, suffix=suffix if act == "block" else "")
         explain.summary = explain.summary or reason
         decision_meta = self._meta(interaction, action_type, explain, meta)
         if act != "require_approval":
-            return self.decide(cfg, action=act, reason=reason, findings=findings, meta=decision_meta)
+            return self.decide(
+                cfg, action=act, reason=reason, findings=findings, meta=decision_meta
+            )
         draft = drafts.build_draft(
-            control_id=self.id, interaction=interaction, action_type=action_type, title=title,
-            summary=summary or reason, amount_usd=amount_usd, resource=resource, labels=labels,
-            facts=explain.facts, checks=explain.checks, reason=reason, explain=explain.to_dict(),
+            control_id=self.id,
+            interaction=interaction,
+            action_type=action_type,
+            title=title,
+            summary=summary or reason,
+            amount_usd=amount_usd,
+            resource=resource,
+            labels=labels,
+            facts=explain.facts,
+            checks=explain.checks,
+            reason=reason,
+            explain=explain.to_dict(),
         )
-        return self.decide(cfg, action="require_approval", reason=reason, findings=findings,
-                           approval=draft, meta=decision_meta)
+        return self.decide(
+            cfg,
+            action="require_approval",
+            reason=reason,
+            findings=findings,
+            approval=draft,
+            meta=decision_meta,
+        )
 
 
 __all__ = ["ActionGuardBase"]

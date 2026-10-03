@@ -125,8 +125,8 @@ def build_settings(
         deny += [f"Edit({_abs_rule(p)})", f"Write({_abs_rule(p)})"]
     permissions: dict[str, Any] = {"defaultMode": "default", "deny": deny}
     if variant == "hardened":
-        permissions["deny"] = deny + [
-            "Read(**/.env)", "Read(**/.env.*)", "Bash(curl * | sh)", "Bash(curl * | bash)",
+        permissions["deny"] = [
+            *deny, "Read(**/.env)", "Read(**/.env.*)", "Bash(curl * | sh)", "Bash(curl * | bash)",
             "Bash(wget * | sh)", "WebFetch",
         ]
         permissions["disableBypassPermissionsMode"] = "disable"

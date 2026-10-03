@@ -228,6 +228,8 @@ def tool_destination(
 
 def _cc_meta(ev: Any, *, raw_tool_name: str | None, routed_mcp: bool) -> dict[str, Any]:
     return {
+        "session_id": ev.session_id,
+        "request_class": None,
         "hook_event": ev.hook_event_name,
         "tool_use_id": getattr(ev, "tool_use_id", None),
         "raw_tool_name": raw_tool_name,
@@ -238,6 +240,17 @@ def _cc_meta(ev: Any, *, raw_tool_name: str | None, routed_mcp: bool) -> dict[st
         "routed_mcp": routed_mcp,
         "cwd_hash": cwd_hash(ev.cwd),
     }
+
+
+def _meta(ev: Any, *, raw_tool_name: str | None, routed_mcp: bool) -> dict[str, Any]:
+    """Addendum A-13: `meta.client`, `meta.claude_code{...}` and hook `cwd` -> `meta.cwd`."""
+    out: dict[str, Any] = {
+        "client": "claude-code",
+        "claude_code": _cc_meta(ev, raw_tool_name=raw_tool_name, routed_mcp=routed_mcp),
+    }
+    if ev.cwd:
+        out["cwd"] = ev.cwd
+    return out
 
 
 # ---------------------------------------------------------------- public mappers
@@ -266,7 +279,7 @@ def map_tool_input(
         http_method="GET" if url else None,
         url=url,
         raw=tool_input,
-        meta={"claude_code": _cc_meta(ev, raw_tool_name=raw_name, routed_mcp=routed)},
+        meta=_meta(ev, raw_tool_name=raw_name, routed_mcp=routed),
     )
     mapped = Mapped(interaction=interaction, root="tool_input", routed_mcp=routed)
     prefix = "tool_args" if isinstance(tool_input, dict) else "tool_args.input"
@@ -303,7 +316,7 @@ def map_tool_output(
         mcp_method="tools/call" if server else None,
         parent_id=parent_id,
         raw=response,
-        meta={"claude_code": _cc_meta(ev, raw_tool_name=raw_name, routed_mcp=routed)},
+        meta=_meta(ev, raw_tool_name=raw_name, routed_mcp=routed),
     )
     mapped = Mapped(interaction=interaction, root="tool_response", routed_mcp=routed)
     interaction.segments = _segments(
@@ -324,7 +337,7 @@ def map_prompt(
         direction="out",
         destination=model_context_destination(agent),
         raw=ev.prompt,
-        meta={"claude_code": _cc_meta(ev, raw_tool_name=None, routed_mcp=False)},
+        meta=_meta(ev, raw_tool_name=None, routed_mcp=False),
     )
     mapped = Mapped(interaction=interaction, root="prompt")
     interaction.segments = _segments(
@@ -332,6 +345,34 @@ def map_prompt(
         budget=[MAX_TEXT_CHARS],
     )
     return mapped
+
+
+def map_config_change(
+    ev: Any, info: dict[str, Any] | None = None, *, problem: str | None = None
+) -> Mapped:
+    """ConfigChange -> `config.change` interaction for GOV-06 (no segments: the settings file
+    content never enters the pipeline; only the guarded key names that changed)."""
+    data = dict(info or {})
+    interaction = Interaction(
+        id=new_id("int"),
+        kind="config_change",
+        surface="config.change",
+        direction="out",
+        destination=Destination(name="local:claude-code-settings", dest_class="local"),
+        tool_name="claude_code.settings",
+        tool_args={"source": data.get("source"), "file": data.get("file"),
+                   "changed_keys": list(data.get("changed_keys") or [])},
+        meta={
+            **_meta(ev, raw_tool_name=None, routed_mcp=False),
+            "config_change": {
+                "source": data.get("source") or getattr(ev, "source", None) or "unknown",
+                "file": data.get("file"),
+                "changed_keys": list(data.get("changed_keys") or []),
+                "problem": problem,
+            },
+        },
+    )
+    return Mapped(interaction=interaction, root="config")
 
 
 __all__ = [
@@ -342,6 +383,7 @@ __all__ = [
     "cwd_hash",
     "get_by_keys",
     "iter_string_leaves",
+    "map_config_change",
     "map_prompt",
     "map_tool_input",
     "map_tool_output",

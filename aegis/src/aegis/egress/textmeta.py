@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ipaddress
 import re
+from bisect import bisect_right
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -293,15 +294,22 @@ def find_learned(text: str, identifiers: Iterable[str], *, style: str = "placeho
 # ---------------------------------------------------------------- overlap resolution
 def resolve_overlaps(spans: list[MetaSpan]) -> list[MetaSpan]:
     """Longest span wins (then earliest, then higher score); result sorted by start."""
+    if len(spans) <= 1:
+        return [s for s in spans if s.end > s.start]
     ordered = sorted(spans, key=lambda s: (-(s.end - s.start), s.start, -s.score))
+    starts: list[int] = []  # kept spans never overlap -> sorted by start == sorted by end
     kept: list[MetaSpan] = []
     for s in ordered:
         if s.end <= s.start:
             continue
-        if any(s.start < k.end and k.start < s.end for k in kept):
+        i = bisect_right(starts, s.start)
+        if i > 0 and kept[i - 1].end > s.start:
             continue
-        kept.append(s)
-    return sorted(kept, key=lambda s: s.start)
+        if i < len(kept) and kept[i].start < s.end:
+            continue
+        starts.insert(i, s.start)
+        kept.insert(i, s)
+    return kept
 
 
 # ---------------------------------------------------------------- facade

@@ -40,9 +40,11 @@ budgets:
     - {scope: "agent:claude-code@platform",    window: day, usd: 30, tokens: 5000000}
     - {scope: "agent:trading-copilot@trading", window: day, usd: 20, tokens: 1500000}
     - {scope: "agent:research-agent@research", window: day, usd: 2,  compute_s: 5400}
-    # F6: the chaos agent hits a tiny wall -> budget_raise approval (admin) -> limit patched to 1.00
+    # F6: the chaos agent hits a tiny wall -> budget_raise approval (admin) -> limit patched to 1.00.
+    # on_soft: warn is REQUIRED: with the default `downgrade` the 80 % threshold reroutes it to the
+    # (nearly free) local aegis-judge and the $0.50 wall never arrives during the demo.
     - {scope: "agent:chaos-agent@platform",    window: day, usd: 0.50, tokens: 100000, compute_s: 120,
-       on_hard: require_approval, label: "red-team agent: tiny on purpose"}
+       on_soft: warn, on_hard: require_approval, label: "red-team agent: tiny on purpose"}
     - {scope: "session:*", window: session, usd: 5.0, tokens: 3000000, requests: 300, tool_calls: 400}
     - {scope: "session:*", match_agents: ["trading-copilot@trading"], window: session, usd: 1.0, tokens: 200000, requests: 30, tool_calls: 20}
     - {scope: "session:*", match_agents: ["research-agent@research"], window: session, compute_s: 600, requests: 40, tool_calls: 30}

@@ -1,0 +1,5 @@
+# policy-engine: documentation only. policy-engine owns config/policy.yaml directly, so these
+# cross-control smoke tests already live in its top-level `tests:` (merging this file is a no-op).
+# Merge every other snippet with:  uv run --frozen python -m aegis.policy.snippets merge
+tests:
+  - {name: aws-key-blocked, text: "key {{gen:aws_access_key_id}}", expect: block, control: DLP-02}

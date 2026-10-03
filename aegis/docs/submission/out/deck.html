@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Aegis: Local-First AI Guardrails</title>
+<!--
+  10 print-ready 1920x1080 slides. Source of the HackTribe PDF.
+  Build: uv run --frozen python docs/submission/build.py collect render --pdf
+  Placeholders <span class="tbd">[TBD: key]</span> are filled from docs/submission/numbers.json; unresolved ones render as [TBD: key].
+  Screenshot slots (.shot[data-src]) load docs/assets/screens/*.png when present.
+  Colours/typography from staging/design tokens (system font fallbacks, no CDN).
+-->
+<style>
+  :root{
+    --bg:#07080A; --surface-1:#0E1013; --surface-2:#13161A; --surface-3:#191C21;
+    --border:#1E2228; --border-strong:#2A2F37;
+    --text-1:#ECEEF1; --text-2:#A2A8B3; --text-3:#7A808C;
+    --primary:#6D5DFC; --accent:#9A8CFF;
+    --allow:#3CCB7F; --redact:#5BA4F5; --approval:#E8A93A; --block:#F2556F; --neutral:#8C93A0;
+    --sans:"Inter",-apple-system,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono","SFMono-Regular",Menlo,Consolas,monospace;
+  }
+  @page{size:1920px 1080px;margin:0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text-1);font-family:var(--sans);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .slide{width:1920px;height:1080px;position:relative;overflow:hidden;padding:88px 112px 72px;
+    background:radial-gradient(1200px 600px at 85% -10%,rgba(109,93,252,.16),transparent 60%),var(--bg);
+    page-break-after:always;break-after:page;display:flex;flex-direction:column}
+  .slide:last-child{page-break-after:auto;break-after:auto}
+  .kicker{font-size:22px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:72px;line-height:1.05;font-weight:800;letter-spacing:-.02em;margin-top:18px}
+  h2{font-size:58px;line-height:1.08;font-weight:800;letter-spacing:-.015em;margin-top:14px}
+  .sub{font-size:30px;color:var(--text-2);margin-top:18px;line-height:1.35}
+  .grid{display:grid;gap:28px;margin-top:44px;flex:1;min-height:0}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+  .g64{grid-template-columns:1.15fr .85fr}
+  .card{background:var(--surface-1);border:1.5px solid var(--border);border-radius:20px;padding:30px 34px}
+  .card h3{font-size:30px;font-weight:700;margin-bottom:12px}
+  .card p,.card li{font-size:24px;line-height:1.42;color:var(--text-2)}
+  ul.b{list-style:none}
+  ul.b li{position:relative;padding-left:30px;margin:12px 0;font-size:27px;line-height:1.38;color:var(--text-2)}
+  ul.b li::before{content:"";position:absolute;left:0;top:14px;width:12px;height:12px;border-radius:3px;background:var(--primary)}
+  ul.b li b,.card b{color:var(--text-1)}
+  .mono{font-family:var(--mono)}
+  code{font-family:var(--mono);font-size:.88em;background:var(--surface-3);border:1px solid var(--border-strong);
+    border-radius:8px;padding:1px 8px;color:var(--text-1)}
+  .pill{display:inline-block;border-radius:999px;padding:6px 18px;font-size:22px;font-weight:700;border:1.5px solid;margin:0 8px 8px 0}
+  .p-allow{color:var(--allow);border-color:var(--allow);background:rgba(60,203,127,.10)}
+  .p-log{color:var(--text-2);border-color:var(--neutral);background:rgba(140,147,160,.10)}
+  .p-redact{color:var(--redact);border-color:var(--redact);background:rgba(91,164,245,.10)}
+  .p-appr{color:var(--approval);border-color:var(--approval);background:rgba(232,169,58,.10)}
+  .p-block{color:var(--block);border-color:var(--block);background:rgba(242,85,111,.10)}
+  .foot{position:absolute;left:112px;right:112px;bottom:34px;display:flex;justify-content:space-between;
+    font-size:18px;color:var(--text-3)}
+  .num{font-variant-numeric:tabular-nums}
+  .kpi{font-size:56px;font-weight:800;letter-spacing:-.02em}
+  .kpi-l{font-size:20px;color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-top:6px}
+  .tbd{color:var(--approval);font-family:var(--mono);font-size:.8em;border:1.5px dashed var(--approval);
+    border-radius:8px;padding:0 8px;white-space:nowrap}
+  .shot{border:1.5px solid var(--border-strong);border-radius:16px;background:
+    repeating-linear-gradient(135deg,var(--surface-1) 0 22px,var(--surface-2) 22px 44px);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
+  .shot span{font-family:var(--mono);font-size:20px;color:var(--text-3);background:var(--bg);padding:8px 14px;border-radius:8px}
+  .shot img{width:100%;height:100%;object-fit:cover;object-position:top left;display:block}
+  table.t{width:100%;border-collapse:collapse;font-size:24px}
+  table.t td{padding:12px 6px;border-bottom:1px solid var(--border);color:var(--text-2)}
+  table.t td:last-child{text-align:right;color:var(--text-1);font-weight:700}
+  .wire{font-family:var(--mono);font-size:23px;line-height:1.55;color:var(--text-2);white-space:pre-wrap}
+  .wire .tok{color:var(--redact);font-weight:700}.wire .gone{color:var(--block);text-decoration:line-through}
+  .logo{display:flex;align-items:center;gap:22px}
+  .accent{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<!-- 1 Cover -->
+<section class="slide" id="s1">
+  <div class="logo" style="margin-top:120px">
+    <svg width="96" height="110" viewBox="0 0 48 55" aria-hidden="true"><path d="M24 2 L44 9 V26 C44 39 35 48 24 53 C13 48 4 39 4 26 V9 Z" fill="none" stroke="#6D5DFC" stroke-width="3.5"/><path d="M15 27 L22 34 L34 20" fill="none" stroke="#3CCB7F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="kicker">HackYeah 2026 · Goldman Sachs · AI Control Layer</div>
+  </div>
+  <h1 style="font-size:132px;margin-top:40px">Aegis</h1>
+  <div class="sub" style="font-size:44px;color:var(--text-1)">Local-first guardrails for every agent call</div>
+  <div class="sub" style="margin-top:34px">Redact locally · Govern centrally · Prove continuously</div>
+  <div style="margin-top:56px">
+    <span class="pill p-allow">allow</span><span class="pill p-log">log</span><span class="pill p-redact">redact</span><span class="pill p-appr">require_approval</span><span class="pill p-block">block</span>
+  </div>
+  <div class="foot"><span>Team: [NAME — EMAIL] · [NAME — EMAIL] · [NAME — EMAIL] · [NAME — EMAIL]</span><span class="mono">[PUBLIC REPO URL]</span></div>
+</section>
+
+<!-- 2 Problem -->
+<section class="slide" id="s2">
+  <div class="kicker">The problem</div>
+  <h2>Agents leak, loop and overreach</h2>
+  <div class="sub">Every agent call is a data-egress event, an execution event and a spend event at the same time.</div>
+  <div class="grid g4">
+    <div class="card"><h3 style="color:var(--redact)">Leak</h3><p>Prompts, files and tool results carry PESELs, IBANs, card numbers and secrets to remote models and third-party MCP servers.</p><p style="margin-top:18px;color:var(--text-3);font-size:20px">EchoLeak (CVE-2025-32711): zero-click exfiltration via a markdown image</p></div>
+    <div class="card"><h3 style="color:var(--block)">Get hijacked</h3><p>A poisoned README, web page or MCP tool description redirects the agent (OWASP ASI01).</p><p style="margin-top:18px;color:var(--text-3);font-size:20px">MCP tool poisoning · postmark-mcp BCC backdoor</p></div>
+    <div class="card"><h3 style="color:var(--approval)">Loop</h3><p>One runaway agent burns tokens or local GPU time; framework step limits are per framework, not per organization (LLM06:2026).</p></div>
+    <div class="card"><h3 style="color:var(--accent)">Overreach</h3><p>Agents buy, write to production or email externally with no human approval (LLM03:2026). And nobody can prove what happened.</p><p style="margin-top:18px;color:var(--text-3);font-size:20px">LiteLLM 1.82.7–1.82.8 PyPI compromise</p></div>
+  </div>
+  <div class="foot"><span>Aegis · Local-First AI Guardrails</span><span>2 / 10</span></div>
+</section>
+
+<!-- 3 Architecture -->
+<section class="slide" id="s3">
+  <div class="kicker">Architecture</div>
+  <h2>One policy decision point for every hop</h2>
+  <div class="grid" style="grid-template-columns:1fr;margin-top:26px">
+    <div class="shot" style="border:none;background:none"><img src="../../assets/architecture.svg" alt="Aegis architecture" style="object-fit:contain"></div>
+  </div>
+  <div class="sub" style="font-size:24px;margin-top:14px">Claude Code: <code>ANTHROPIC_BASE_URL</code> + fail-closed <code>PreToolUse</code> hook + MCP via <code>/mcp/{server}</code>, from one demo settings profile (<code>make claude</code>), nothing machine-wide.</div>
+  <div class="foot"><span>Decisions map to the OWASP Agent Control Standard: allow · modify · deny · ask</span><span>3 / 10</span></div>
+</section>
+
+<!-- 4 Redaction -->
+<section class="slide" id="s4">
+  <div class="kicker">Headline · local data minimization</div>
+  <h2>The remote model never sees the customer</h2>
+  <div class="grid g2" style="grid-template-rows:auto 1fr">
+    <div class="card"><h3>What you typed</h3><div class="wire">Draft a reply to Jan Kowalski, PESEL 44051401359, IBAN PL61 1090 1014 0000 0712 1981 2874, card 4111 1111 1111 1111 exp 12/27 <span class="gone">CVV 123</span></div></div>
+    <div class="card" style="border-color:var(--redact)"><h3 style="color:var(--redact)">What the remote model received</h3><div class="wire">Draft a reply to <span class="tok">[PERSON_1]</span>, PESEL <span class="tok">[PESEL_1]</span>, IBAN <span class="tok">[IBAN_1]</span>, card <span class="tok">[PAN_1]</span> exp <span class="tok">[CARD_EXPIRY_1]</span></div></div>
+    <ul class="b" style="grid-column:1 / span 2">
+      <li><b>Detected on the device:</b> PII, cards, Polish IDs (PESEL, NIP, REGON, IBAN), secrets, metadata (user paths, hostnames, client headers).</li>
+      <li><b>Validators, not bare regex:</b> Luhn, PESEL / NIP checksums, IBAN mod-97, context words. <b>Destination-aware:</b> raw to local Ollama, tokenized to remote, tokenized or blocked to third parties.</li>
+      <li><b>PCI:</b> CVV dropped, never vaulted; PAN shown as first 6 / last 4; audit keeps keyed HMACs. Real values return only to the local user.</li>
+      <li>Fixture set (626 cases): leak rate on validated types <b class="num">0 %</b> · precision <b class="num">1.0</b> · recall <b class="num">1.0</b> · p95 <b class="num">0.35 ms</b></li>
+    </ul>
+  </div>
+  <div class="foot"><span>DLP-01 · DLP-03 · DLP-07 · DLP-08</span><span>4 / 10</span></div>
+</section>
+
+<!-- 5 Hybrid guardrails -->
+<section class="slide" id="s5">
+  <div class="kicker">Hybrid guardrails · OWASP 2026</div>
+  <h2>Deterministic first, AI second, every hop</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Deterministic tier <span style="color:var(--text-3);font-weight:500">µs–ms</span></h3>
+      <ul class="b"><li>Unicode normalization: zero-width, tag characters, homoglyphs, base64 / hex</li><li>Secrets, command guard (<code>curl | sh</code>), SSRF guard</li><li>MCP poisoning scan + rug-pull pinning</li><li>Exfil-link stripping · signed exploit signatures</li></ul></div>
+    <div class="card"><h3>Semantic tier <span style="color:var(--text-3);font-weight:500">local models, escalation only</span></h3>
+      <ul class="b"><li>Injection classifier · Qwen3Guard · multilingual NER</li><li>Per-control <code>fail_mode</code>: model down → deterministic-only + <b>degraded</b> flag, never silent pass</li><li>Screens tool results, MCP descriptions, fetched pages, not just the prompt</li><li>Never authorizes anything: tools, budgets, approvals stay deterministic</li></ul></div>
+  </div>
+  <div class="grid g3" style="flex:0;margin-top:26px">
+    <div class="card"><div class="kpi num">66.7 %</div><div class="kpi-l">attack detection (balanced)</div></div>
+    <div class="card"><div class="kpi num">1.6 %</div><div class="kpi-l">false positives (balanced)</div></div>
+    <div class="card"><div class="kpi num" style="font-size:40px">LLM <span class="tbd">[TBD: coverage.llm]</span> · ASI <span class="tbd">[TBD: coverage.asi]</span> · MCP <span class="tbd">[TBD: coverage.mcp]</span></div><div class="kpi-l">OWASP coverage (live)</div></div>
+  </div>
+  <div class="foot"><span>INJ-01..05 · DLP-02/04/06 · EXE-01..03 · MCP-01..04 · SIG-01..03</span><span>5 / 10</span></div>
+</section>
+
+<!-- 6 Budgets and approvals -->
+<section class="slide" id="s6">
+  <div class="kicker">Budgets · org governance</div>
+  <h2>Spend and actions follow your org chart</h2>
+  <div class="grid g64">
+    <div style="display:flex;flex-direction:column;gap:24px;min-height:0">
+      <ul class="b">
+        <li><b>Budgets</b> org → team → agent → session: tokens, USD, <b>local compute-seconds</b>; soft limit → downgrade to a local model; hard → 402</li>
+        <li><b>Runaway agents:</b> repeat / cycle detection → tool error → block → kill switch (429 <code>killed</code>)</li>
+        <li><b>Roles:</b> owner · admin · member · agents as service identities (never approvers)</li>
+        <li>Grants bound to <b>exact parameters</b>, single-use, expiring, audited</li>
+      </ul>
+      <div class="shot" data-src="../../assets/screens/approvals.png" style="flex:1"><span>screens/approvals.png · inbox as u_piotr: "needs admin"</span></div>
+    </div>
+    <div class="card"><h3>Who approves what</h3>
+      <table class="t">
+        <tr><td>Agent purchase ≤ $20</td><td>sponsor</td></tr>
+        <tr><td>$50 MarketPulse subscription</td><td style="color:var(--approval)">admin</td></tr>
+        <tr><td>$480 GPU reservation</td><td>owner</td></tr>
+        <tr><td>&gt; $1,000</td><td>owner + admin</td></tr>
+        <tr><td>&gt; $5,000</td><td style="color:var(--block)">blocked</td></tr>
+        <tr><td>Read a PII table</td><td>admin</td></tr>
+        <tr><td>Read card data</td><td style="color:var(--block)">never</td></tr>
+        <tr><td>Production DB write</td><td>owner</td></tr>
+        <tr><td>Team budget +25 % / ×2.5</td><td>admin / owner</td></tr>
+        <tr><td>Disable a critical control</td><td>owner</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="foot"><span>ACT-01..04 · GOV-04/05 · BUD-01/02 · EXE-04</span><span>6 / 10</span></div>
+</section>
+
+<!-- 7 Policy as code + feed -->
+<section class="slide" id="s7">
+  <div class="kicker">Policy as code · signed threat feed</div>
+  <h2>Edit it live and it stays safe</h2>
+  <div class="grid g2">
+    <div class="card"><h3>One YAML file: <code>config/policy.yaml</code></h3>
+      <ul class="b"><li>Controls, mode, action, <b>threshold</b>, <b>adherence %</b>, allowed models, budgets, approval rules</li><li>Strictness profiles: permissive · <b>balanced</b> · strict · paranoid</li><li>Save → validate → <b>self-test gate</b> → atomic swap; version stamped on every decision</li><li>Bad YAML → rejected with line/col, last-good keeps serving · reload p95 <b class="num"><span class="tbd">[TBD: policy.reload_ms]</span> ms</b></li></ul>
+      <div class="wire" style="margin-top:18px;background:var(--surface-3);border-radius:12px;padding:16px 20px">- id: INJ-02
+  threshold: <span class="gone">0.80</span> <span class="tok">0.50</span>   # Borderline (0.62): allow → block</div></div>
+    <div class="card"><h3>External threat feed <span class="mono" style="color:var(--text-3);font-size:22px">:8790</span></h3>
+      <ul class="b"><li>Separate service signs bundles with <b>Ed25519</b>; the gateway holds only the public key</li><li>Monotonic serial (anti-rollback), expiry, sha256 pinning, closed matcher set (a feed can't ship code)</li><li>Inline test vectors must pass before a signature activates</li><li>Seeds: malicious pickles, compromised packages, MCP tool poisoning, EchoLeak-style exfiltration</li><li>Publish <b>AEGIS-TI-022</b> → replay blocked · <b>Tamper</b> → rejected</li></ul></div>
+  </div>
+  <div class="foot"><span>GOV-05 · SIG-01..03 · docs/policy-reference.md</span><span>7 / 10</span></div>
+</section>
+
+<!-- 8 Reporting -->
+<section class="slide" id="s8">
+  <div class="kicker">Security reporting · audit</div>
+  <h2>Every decision explained, chained, exportable</h2>
+  <div class="grid g64">
+    <div class="shot" data-src="../../assets/screens/live.png"><span>screens/live.png · live decision feed + decision drawer</span></div>
+    <div style="display:flex;flex-direction:column;gap:20px">
+      <div class="card"><h3>Management</h3><p>Spend vs budget by team, blocked interactions, cost avoided, approvals.</p></div>
+      <div class="card"><h3>Security</h3><p>Live stream: control, score vs threshold, redacted evidence, policy + feed version, Wire view.</p></div>
+      <div class="card"><h3>Audit</h3><p>Append-only, <b>hash-chained</b>, redacted at write time. Export JSONL · CSV · <b>OCSF</b>. Prometheus <code>/metrics</code>, <code>Server-Timing</code>.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>Audit chain verify: <span class="tbd">[TBD: audit.records]</span> records</span><span>8 / 10</span></div>
+</section>
+
+<!-- 9 Proof -->
+<section class="slide" id="s9">
+  <div class="kicker">Self-testing · performance</div>
+  <h2>One command proves every control</h2>
+  <div class="grid g4" style="flex:0">
+    <div class="card"><div class="kpi num">6</div><div class="kpi-l">test cases · <code>make test</code></div></div>
+    <div class="card"><div class="kpi num">0</div><div class="kpi-l">failed</div></div>
+    <div class="card"><div class="kpi num"><span class="tbd">[TBD: perf.overhead_p50_ms]</span> / <span class="tbd">[TBD: perf.overhead_p95_ms]</span></div><div class="kpi-l">overhead p50 / p95 ms</div></div>
+    <div class="card"><div class="kpi num"><span class="tbd">[TBD: perf.rps]</span></div><div class="kpi-l">requests / s · <code>make bench</code></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:28px">
+    <ul class="b">
+      <li><b>No model needed</b>; semantic cases are skipped with a reason, never silently passed</li>
+      <li><b>Per-control matrix:</b> must-block / must-allow / must-redact; asserts <b>which</b> control decided</li>
+      <li>Any control without both an allowed and a blocked case is <b>UNTESTED</b> and fails the run</li>
+      <li><b>False-positive wall:</b> "kill switch", "execute the order", "egzekucja zlecenia" must pass</li>
+      <li>Jailbreak corpora reported as rates with confidence intervals, not a fake 100 %</li>
+    </ul>
+    <div class="shot" data-src="../../assets/screens/tests.png"><span>screens/tests.png · make test matrix</span></div>
+  </div>
+  <div class="foot"><span>Gateway overhead share of upstream time: <span class="tbd">[TBD: perf.overhead_share_pct]</span></span><span>9 / 10</span></div>
+</section>
+
+<!-- 10 Production -->
+<section class="slide" id="s10">
+  <div class="kicker">Implementability · scale</div>
+  <h2>From laptop to a regulated bank</h2>
+  <div class="grid g3">
+    <div class="card"><h3>Deploy shape</h3><p><b>Data plane local</b>: a sidecar per developer or agent host, because redaction must happen before egress. <b>Control plane central</b>: policy via GitOps with the same self-test gate, signed feed, approvals, audit to the SIEM.</p></div>
+    <div class="card"><h3>Scale path</h3><p>Stateless workers, Postgres for org and approvals, Redis/Lua for atomic multi-level budget reservation (designed). Can sit behind an open-source gateway as its guard webhook. Standards: OWASP ACS, OCSF, OpenTelemetry GenAI.</p></div>
+    <div class="card"><h3>Compliance evidence</h3><p>GDPR minimisation &amp; pseudonymisation · PCI DSS v4.0.1 (no stored CVV, masked PAN) · EU AI Act logging &amp; human oversight · DORA third-party register &amp; exit levers. <i>Supports, does not certify.</i></p></div>
+  </div>
+  <div class="card" style="margin-top:28px;border-color:var(--primary)">
+    <h3 class="accent">Try to break it</h3>
+    <p style="font-size:28px"><code>make setup &amp;&amp; make up</code> → <code>http://127.0.0.1:8787/ui</code> · Playground · edit <code>config/policy.yaml</code> · publish a feed signature · <code>make test</code> · <span class="mono">[PUBLIC REPO URL]</span></p>
+  </div>
+  <div class="foot"><span>Aegis · Local-First AI Guardrails · HackYeah 2026</span><span>10 / 10</span></div>
+</section>
+
+<script>
+  // Unrendered source view: show placeholders as visible TBD chips (runs first: it re-serializes slides).
+  document.querySelectorAll('.slide').forEach(function (s) {
+    s.innerHTML = s.innerHTML.replace(/\{\{\s*TBD:\s*([a-z0-9_.]+)\s*\}\}/g, '<span class="tbd">[TBD: $1]</span>');
+  });
+  // Load real screenshots when they exist; keep the labelled frame otherwise.
+  document.querySelectorAll('.shot[data-src]').forEach(function (el) {
+    var img = new Image();
+    img.onload = function () { el.innerHTML = ''; el.appendChild(img); };
+    img.alt = el.textContent.trim();
+    img.src = el.getAttribute('data-src');
+  });
+</script>
+</body>
+</html>

@@ -35,7 +35,10 @@ def masked_args(args: Any, *, depth: int = 0, budget: list[int] | None = None) -
     if isinstance(args, bool | int | float) or args is None:
         return args
     if isinstance(args, dict):
-        return {str(k): masked_args(v, depth=depth + 1, budget=budget) for k, v in list(args.items())[:30]}
+        return {
+            str(k): masked_args(v, depth=depth + 1, budget=budget)
+            for k, v in list(args.items())[:30]
+        }
     if isinstance(args, list | tuple):
         return [masked_args(v, depth=depth + 1, budget=budget) for v in list(args)[:20]]
     return mask(str(args), 80)
@@ -59,8 +62,15 @@ def payload_check(c: dict[str, Any]) -> dict[str, Any]:
             detail = f"{value} vs limit {limit}"
         elif value is not None:
             detail = str(value)
-    return {"name": c.get("label") or c.get("id"), "ok": c.get("result") != "fail", "detail": detail,
-            "id": c.get("id"), "value": c.get("value"), "limit": c.get("limit"), "param": c.get("param")}
+    return {
+        "name": c.get("label") or c.get("id"),
+        "ok": c.get("result") != "fail",
+        "detail": detail,
+        "id": c.get("id"),
+        "value": c.get("value"),
+        "limit": c.get("limit"),
+        "param": c.get("param"),
+    }
 
 
 def _cap(payload: dict[str, Any]) -> dict[str, Any]:
@@ -100,16 +110,19 @@ def build_draft(
     for k, v in (labels or {}).items():
         if v is not None:
             merged[str(k)] = str(v).lower() if isinstance(v, bool) else str(v)
-    payload = _cap({
-        "tool": interaction.tool_name or (f"http.{(interaction.http_method or 'get').lower()}" if interaction.url else None),
-        "args": masked_args(interaction.tool_args or {}),
-        "facts": facts or {},
-        "checks": [payload_check(c) for c in (checks or [])],
-        "agent_note": agent_note(interaction),
-        "explain": explain or {"summary": reason},
-        "reason": reason,
-        "control_id": control_id,
-    })
+    payload = _cap(
+        {
+            "tool": interaction.tool_name
+            or (f"http.{(interaction.http_method or 'get').lower()}" if interaction.url else None),
+            "args": masked_args(interaction.tool_args or {}),
+            "facts": facts or {},
+            "checks": [payload_check(c) for c in (checks or [])],
+            "agent_note": agent_note(interaction),
+            "explain": explain or {"summary": reason},
+            "reason": reason,
+            "control_id": control_id,
+        }
+    )
     return ApprovalDraft(
         kind="action",
         action_type=action_type,
@@ -146,7 +159,9 @@ def clear_cache() -> None:
     _PENDING.clear()
 
 
-async def flood_check(ctx: RequestContext, interaction: Interaction, max_pending: int) -> str | None:
+async def flood_check(
+    ctx: RequestContext, interaction: Interaction, max_pending: int
+) -> str | None:
     """Reason string when the principal already has >= ``max_pending`` OTHER pending approvals."""
     if max_pending <= 0:
         return None
@@ -155,21 +170,26 @@ async def flood_check(ctx: RequestContext, interaction: Interaction, max_pending
         return None
     principal = ctx.identity.principal
     if not ctx.identity.agent_id:
-        return None  # humans are not throttled here (approvals-engine has max_pending_per_principal)
+        return (
+            None  # humans are not throttled here (approvals-engine has max_pending_per_principal)
+        )
     try:
         fp = rt.approvals.fingerprint(ctx.identity, interaction)
     except Exception:
         fp = None
     reqs = await _pending(rt)
     others = [
-        r for r in reqs
+        r
+        for r in reqs
         if getattr(getattr(r, "requester", None), "principal", None) == principal
         and getattr(r, "fingerprint", None) != fp
         and getattr(r, "kind", "action") == "action"
     ]
     if len(others) >= max_pending:
-        return (f"too many pending approvals ({len(others)} ≥ {max_pending}) for "
-                f"{ctx.identity.agent_id}; resolve them before requesting more")
+        return (
+            f"too many pending approvals ({len(others)} ≥ {max_pending}) for "
+            f"{ctx.identity.agent_id}; resolve them before requesting more"
+        )
     return None
 
 
@@ -179,14 +199,31 @@ def preview_route(ctx: RequestContext, draft: ApprovalDraft) -> dict[str, Any] |
     if rt is None or getattr(rt, "approvals", None) is None:
         return None
     try:
-        route = rt.approvals.route(kind=draft.kind, action_type=draft.action_type, requester=ctx.identity,
-                                   amount_usd=draft.amount_usd, resource=draft.resource, labels=draft.labels)
+        route = rt.approvals.route(
+            kind=draft.kind,
+            action_type=draft.action_type,
+            requester=ctx.identity,
+            amount_usd=draft.amount_usd,
+            resource=draft.resource,
+            labels=draft.labels,
+        )
     except Exception:
         return None
     try:
-        return {"required_role": route.required_role, "rule_id": route.rule_id, "two_person": route.two_person}
+        return {
+            "required_role": route.required_role,
+            "rule_id": route.rule_id,
+            "two_person": route.two_person,
+        }
     except Exception:
         return None
 
 
-__all__ = ["agent_note", "build_draft", "clear_cache", "flood_check", "masked_args", "preview_route"]
+__all__ = [
+    "agent_note",
+    "build_draft",
+    "clear_cache",
+    "flood_check",
+    "masked_args",
+    "preview_route",
+]

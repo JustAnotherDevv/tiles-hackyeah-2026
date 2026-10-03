@@ -1,7 +1,6 @@
 """Stream test helpers ported from `staging/spikes/streaming/tests/helpers.py` (bundle B02):
 fixture builders (realistic synthetic streams), client-side accumulators (what an SDK would
 reconstruct) and protocol validators."""
-# ruff: noqa: E501
 
 from __future__ import annotations
 

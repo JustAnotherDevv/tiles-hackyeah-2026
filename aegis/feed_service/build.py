@@ -73,13 +73,13 @@ _ADVERSARIAL = [
 
 TAMPER_MODES: dict[str, str] = {
     "unsigned": "Compromised mirror: bundle edited (critical signatures withdrawn), serial bumped, "
-                "nothing re-signed. Gateway must reject: bad signature.",
+    "nothing re-signed. Gateway must reject: bad signature.",
     "rollback": "Replay attack: re-serve an older, validly signed bundle. Gateway must reject: "
-                "serial not newer (anti-rollback).",
+    "serial not newer (anti-rollback).",
     "wrong_key": "Rogue signer: new serial signed with an attacker key. Gateway must reject: "
-                 "key_id is not the pinned key.",
+    "key_id is not the pinned key.",
     "swap_bundle": "Mix-and-match: valid signed pointer, but the bundle file is swapped for other "
-                   "bytes. Gateway must reject: bundle sha256 mismatch.",
+    "bytes. Gateway must reject: bundle sha256 mismatch.",
 }
 
 
@@ -135,20 +135,37 @@ def validate_signature(sig: Any, lists: dict | None = None, *, redos: bool = Tru
     warnings: list[str] = []
     sid = sig.get("id") if isinstance(sig, dict) else None
     if not isinstance(sig, dict):
-        return {"id": None, "valid": False, "problems": ["not a YAML mapping"], "warnings": [],
-                "checks": [{"name": "Schema", "ok": False, "detail": "not a YAML mapping"}],
-                "tests": [], "vectors": {"passed": 0, "total": 0}, "redos_worst_ms": 0.0}
+        return {
+            "id": None,
+            "valid": False,
+            "problems": ["not a YAML mapping"],
+            "warnings": [],
+            "checks": [{"name": "Schema", "ok": False, "detail": "not a YAML mapping"}],
+            "tests": [],
+            "vectors": {"passed": 0, "total": 0},
+            "redos_worst_ms": 0.0,
+        }
     schema = signature_problems(sig)
     surf_probs = [p for p in schema if "not in applies_to" in p]
     schema_only = [p for p in schema if p not in surf_probs]
-    checks.append({"name": "Schema", "ok": not schema_only,
-                   "detail": "contract shape OK" if not schema_only else schema_only[0]})
+    checks.append(
+        {
+            "name": "Schema",
+            "ok": not schema_only,
+            "detail": "contract shape OK" if not schema_only else schema_only[0],
+        }
+    )
     problems += schema_only
     compiled = None
     try:
         compiled = compile_signature(sig, lists)
-        checks.append({"name": "RE2", "ok": True,
-                       "detail": f"{sum(1 for _ in iter_regexes(compiled.sig['match']))} pattern(s) compile"})
+        checks.append(
+            {
+                "name": "RE2",
+                "ok": True,
+                "detail": f"{sum(1 for _ in iter_regexes(compiled.sig['match']))} pattern(s) compile",
+            }
+        )
     except FeedError as e:
         checks.append({"name": "RE2", "ok": False, "detail": str(e)})
         problems.append(str(e))
@@ -172,21 +189,56 @@ def validate_signature(sig: Any, lists: dict | None = None, *, redos: bool = Tru
     worst = 0.0
     if redos and compiled is not None:
         worst, slow = redos_smoke(compiled.sig)
-        checks.append({"name": "ReDoS", "ok": not slow,
-                       "detail": f"worst {worst:.2f} ms on 100 KB adversarial inputs"})
+        checks.append(
+            {
+                "name": "ReDoS",
+                "ok": not slow,
+                "detail": f"worst {worst:.2f} ms on 100 KB adversarial inputs",
+            }
+        )
         problems += slow
-    checks.append({"name": "Surfaces", "ok": not surf_probs,
-                   "detail": "every vector surface is in applies_to" if not surf_probs else surf_probs[0]})
+    checks.append(
+        {
+            "name": "Surfaces",
+            "ok": not surf_probs,
+            "detail": "every vector surface is in applies_to" if not surf_probs else surf_probs[0],
+        }
+    )
     problems += surf_probs
-    known = {"id", "title", "description", "status", "severity", "confidence", "aliases", "tags",
-             "references", "published", "modified", "applies_to", "match", "matcher", "action",
-             "action_overrides", "redact_scope", "redact_with", "message", "notes", "tests", "enabled"}
+    known = {
+        "id",
+        "title",
+        "description",
+        "status",
+        "severity",
+        "confidence",
+        "aliases",
+        "tags",
+        "references",
+        "published",
+        "modified",
+        "applies_to",
+        "match",
+        "matcher",
+        "action",
+        "action_overrides",
+        "redact_scope",
+        "redact_with",
+        "message",
+        "notes",
+        "tests",
+        "enabled",
+    }
     extra = sorted(set(sig) - known)
     if extra:
         warnings.append(f"unknown keys kept as metadata: {', '.join(extra)}")
     return {
-        "id": sid, "valid": not problems, "problems": problems, "warnings": warnings,
-        "checks": checks, "tests": rows,
+        "id": sid,
+        "valid": not problems,
+        "problems": problems,
+        "warnings": warnings,
+        "checks": checks,
+        "tests": rows,
         "vectors": {"passed": sum(1 for r in rows if r["ok"]), "total": len(rows)},
         "redos_worst_ms": round(worst, 2),
     }
@@ -263,7 +315,9 @@ class Workspace:
         y.width = 120
         y.indent(mapping=2, sequence=4, offset=2)
         text = self.get_text(sid)
-        header = "".join(ln + "\n" for ln in text.splitlines() if ln.startswith("#") and text.startswith(ln))
+        header = "".join(
+            ln + "\n" for ln in text.splitlines() if ln.startswith("#") and text.startswith(ln)
+        )
         doc = y.load(text)
         fn(doc)
         buf = io.StringIO()
@@ -318,7 +372,9 @@ def parse_yaml(text: str) -> dict:
 
 
 def load_repo_signatures(src: Path) -> list[dict]:
-    return [parse_yaml(p.read_text(encoding="utf-8")) for p in sorted(Path(src).glob("AEGIS-TI-*.yaml"))]
+    return [
+        parse_yaml(p.read_text(encoding="utf-8")) for p in sorted(Path(src).glob("AEGIS-TI-*.yaml"))
+    ]
 
 
 def load_repo_lists(src: Path) -> dict:
@@ -331,18 +387,29 @@ def load_repo_lists(src: Path) -> dict:
 
 
 def build_bundle_bytes(
-    signatures: list[dict], lists: dict, *, serial: int, ttl_h: float, kid: str,
-    now: dt.datetime | None = None, extra_header: dict | None = None,
+    signatures: list[dict],
+    lists: dict,
+    *,
+    serial: int,
+    ttl_h: float,
+    kid: str,
+    now: dt.datetime | None = None,
+    extra_header: dict | None = None,
 ) -> tuple[bytes, dict]:
     """Canonical JSON bundle bytes + the header dict. Drafts (`enabled: false`) are skipped."""
     now = now or utc_now()
     shipped = [public_signature(s) for s in signatures if s.get("enabled") is not False]
     shipped.sort(key=lambda s: str(s.get("id")))
     header = {
-        "name": FEED_NAME, "schema_version": SCHEMA_VERSION, "serial": serial,
-        "version": f"{now:%Y.%m.%d}-{serial}", "published": iso(now),
-        "expires": iso(now + dt.timedelta(hours=ttl_h)), "min_gateway_version": MIN_GATEWAY_VERSION,
-        "key_id": kid, "signature_count": len(shipped),
+        "name": FEED_NAME,
+        "schema_version": SCHEMA_VERSION,
+        "serial": serial,
+        "version": f"{now:%Y.%m.%d}-{serial}",
+        "published": iso(now),
+        "expires": iso(now + dt.timedelta(hours=ttl_h)),
+        "min_gateway_version": MIN_GATEWAY_VERSION,
+        "key_id": kid,
+        "signature_count": len(shipped),
     }
     if extra_header:
         header.update(extra_header)
@@ -351,13 +418,18 @@ def build_bundle_bytes(
 
 
 def pointer_bytes(header: dict, bundle_bytes: bytes, *, kid: str | None = None) -> bytes:
-    return canonical_json({
-        "feed": FEED_NAME, "serial": header["serial"], "version": header["version"],
-        "bundle": bundle_name(int(header["serial"])),
-        "sha256": hashlib.sha256(bundle_bytes).hexdigest(),
-        "published": header["published"], "expires": header["expires"],
-        "key_id": kid or header["key_id"],
-    })
+    return canonical_json(
+        {
+            "feed": FEED_NAME,
+            "serial": header["serial"],
+            "version": header["version"],
+            "bundle": bundle_name(int(header["serial"])),
+            "sha256": hashlib.sha256(bundle_bytes).hexdigest(),
+            "published": header["published"],
+            "expires": header["expires"],
+            "key_id": kid or header["key_id"],
+        }
+    )
 
 
 # --------------------------------------------------------------------------- service state
@@ -365,7 +437,9 @@ class FeedService:
     """All feed-service state + operations. Thread-safe enough for one uvicorn worker."""
 
     def __init__(
-        self, state_dir: Path | None = None, repo_root: Path | None = None,
+        self,
+        state_dir: Path | None = None,
+        repo_root: Path | None = None,
         config_dir: Path | None = None,
     ) -> None:
         self.repo_root = Path(repo_root or REPO_ROOT)
@@ -397,8 +471,10 @@ class FeedService:
             return {"serial": 0, "high_water": 0}
 
     def _save_serial(self, serial: int, high_water: int) -> None:
-        _write_atomic(self.state / "serial.json",
-                      json.dumps({"serial": serial, "high_water": high_water}).encode())
+        _write_atomic(
+            self.state / "serial.json",
+            json.dumps({"serial": serial, "high_water": high_water}).encode(),
+        )
 
     def event(self, kind: str, **data: Any) -> dict:
         rec = {"ts": iso(utc_now()), "type": kind, **data}
@@ -463,13 +539,19 @@ class FeedService:
                 return {"status": "exists", "key_id": kid, "message": "keypair already present"}
             if not if_missing:
                 raise FeedServiceError(
-                    f"pinned key {pinned} != signing key {kid}; use --force to regenerate", 409)
-            log.warning("pinned pubkey %s does not match the signing key %s; regenerating", pinned, kid)
+                    f"pinned key {pinned} != signing key {kid}; use --force to regenerate", 409
+                )
+            log.warning(
+                "pinned pubkey %s does not match the signing key %s; regenerating", pinned, kid
+            )
         elif have_priv and not force and not if_missing:
             raise FeedServiceError("signing key exists; use --force to overwrite", 409)
         elif have_pub and not have_priv and not force:
-            log.warning("fresh clone: %s has no private key here; generating a new keypair and "
-                        "rewriting the pinned pubkey + seed bundle", self.pubkey_file)
+            log.warning(
+                "fresh clone: %s has no private key here; generating a new keypair and "
+                "rewriting the pinned pubkey + seed bundle",
+                self.pubkey_file,
+            )
         seed, pub = signing.generate()
         signing.write_keypair(self.state, seed, pub)
         kid = key_id(pub)
@@ -481,14 +563,20 @@ class FeedService:
         lists = load_repo_lists(self.src_root / "lists")
         data, header = build_bundle_bytes(sigs, lists, serial=1, ttl_h=SEED_TTL_H, kid=kid)
         _write_atomic(self.seed_bundle, data)
-        _write_atomic(self.seed_bundle.with_name("seed_bundle.json.sig"),
-                      (signing.sign_detached(data, seed) + "\n").encode())
+        _write_atomic(
+            self.seed_bundle.with_name("seed_bundle.json.sig"),
+            (signing.sign_detached(data, seed) + "\n").encode(),
+        )
         self.workspace.restore()
         self._init_dist_from_seed()
         self.event("keygen", key_id=kid, serial=1, signatures=header["signature_count"])
-        return {"status": "generated", "key_id": kid, "serial": 1,
-                "signatures": header["signature_count"],
-                "message": "restart the gateway to pin the new key"}
+        return {
+            "status": "generated",
+            "key_id": kid,
+            "serial": 1,
+            "signatures": header["signature_count"],
+            "message": "restart the gateway to pin the new key",
+        }
 
     def _init_dist_from_seed(self) -> None:
         """dist serial 1 = the seed bundle bytes (gateway on seed v1 and service agree)."""
@@ -504,7 +592,9 @@ class FeedService:
         serial = int(header["serial"])
         name = bundle_name(serial)
         _write_atomic(self.dist / name, data)
-        _write_atomic(self.dist / f"{name}.sig", (signing.sign_detached(data, seed) + "\n").encode())
+        _write_atomic(
+            self.dist / f"{name}.sig", (signing.sign_detached(data, seed) + "\n").encode()
+        )
         ptr = pointer_bytes(header, data)
         ptr_sig = (signing.sign_detached(ptr, seed) + "\n").encode()
         _write_atomic(self.history / f"latest-{serial:06d}.json", ptr)
@@ -573,11 +663,24 @@ class FeedService:
         rows = []
         for sid, _text, doc, err in self.workspace.all():
             if doc is None:
-                rows.append({"id": sid, "title": "(unparseable YAML)", "severity": "info",
-                             "status": "invalid", "enabled": True, "action": "log", "surfaces": [],
-                             "aliases": [], "tags": [], "valid": False, "problems": [err or "invalid"],
-                             "vectors": {"passed": 0, "total": 0}, "published": False,
-                             "changed": True})
+                rows.append(
+                    {
+                        "id": sid,
+                        "title": "(unparseable YAML)",
+                        "severity": "info",
+                        "status": "invalid",
+                        "enabled": True,
+                        "action": "log",
+                        "surfaces": [],
+                        "aliases": [],
+                        "tags": [],
+                        "valid": False,
+                        "problems": [err or "invalid"],
+                        "vectors": {"passed": 0, "total": 0},
+                        "published": False,
+                        "changed": True,
+                    }
+                )
                 continue
             rep = validate_signature(doc, lists, redos=False)
             norm = normalize_signature(doc)
@@ -586,16 +689,25 @@ class FeedService:
                 changed = enabled and pub_sha.get(sid) != _sig_sha(doc)
             except Exception:
                 changed = True
-            rows.append({
-                "id": sid, "title": norm.get("title", sid), "severity": norm.get("severity", "medium"),
-                "status": norm.get("status", "stable"), "enabled": enabled,
-                "action": norm.get("action", "block"),
-                "action_overrides": norm.get("action_overrides") or {},
-                "surfaces": (norm.get("applies_to") or {}).get("surfaces", []),
-                "aliases": norm.get("aliases") or [], "tags": norm.get("tags") or [],
-                "valid": rep["valid"], "problems": rep["problems"], "vectors": rep["vectors"],
-                "published": sid in pub_sha, "changed": bool(changed),
-            })
+            rows.append(
+                {
+                    "id": sid,
+                    "title": norm.get("title", sid),
+                    "severity": norm.get("severity", "medium"),
+                    "status": norm.get("status", "stable"),
+                    "enabled": enabled,
+                    "action": norm.get("action", "block"),
+                    "action_overrides": norm.get("action_overrides") or {},
+                    "surfaces": (norm.get("applies_to") or {}).get("surfaces", []),
+                    "aliases": norm.get("aliases") or [],
+                    "tags": norm.get("tags") or [],
+                    "valid": rep["valid"],
+                    "problems": rep["problems"],
+                    "vectors": rep["vectors"],
+                    "published": sid in pub_sha,
+                    "changed": bool(changed),
+                }
+            )
         return rows
 
     def state_doc(self) -> dict:
@@ -608,10 +720,13 @@ class FeedService:
             "serial": ss["serial"] or header.get("serial"),
             "served_serial": latest.get("serial"),
             "high_water": ss["high_water"],
-            "version": header.get("version"), "published": header.get("published"),
-            "expires": header.get("expires"), "key_id": self.key_id() or header.get("key_id"),
+            "version": header.get("version"),
+            "published": header.get("published"),
+            "expires": header.get("expires"),
+            "key_id": self.key_id() or header.get("key_id"),
             "sha256": hashlib.sha256(self.dist_file(bundle_name(ss["serial"])) or b"").hexdigest()
-            if ss["serial"] else None,
+            if ss["serial"]
+            else None,
             "signatures_published": len(pub.get("signatures") or []),
             "signatures_total": len(self.workspace.ids()),
             "pending": self.pending(),
@@ -641,8 +756,9 @@ class FeedService:
         latest = self.latest() or {}
         return max(ss["serial"], ss["high_water"], int(latest.get("serial") or 0)) + 1
 
-    def publish(self, *, force: bool = False, note: str | None = None,
-                ttl_h: float = DEFAULT_TTL_H) -> dict:
+    def publish(
+        self, *, force: bool = False, note: str | None = None, ttl_h: float = DEFAULT_TTL_H
+    ) -> dict:
         seed = self.seed()
         kid = key_id(signing.public_key(seed))
         lists = self.workspace.lists()
@@ -655,21 +771,40 @@ class FeedService:
         _, sha = self._write_release(data, header, seed)
         self._save_serial(serial, serial)
         enabled_ids = sorted(s["id"] for s in sigs)
-        rec = self.event("published", serial=serial, version=header["version"], sha256=sha,
-                         signatures=len(sigs), vectors=vectors, note=note, forced=bool(force and problems),
-                         added=pending["added"], removed=pending["removed"],
-                         modified=pending["modified"])
+        rec = self.event(
+            "published",
+            serial=serial,
+            version=header["version"],
+            sha256=sha,
+            signatures=len(sigs),
+            vectors=vectors,
+            note=note,
+            forced=bool(force and problems),
+            added=pending["added"],
+            removed=pending["removed"],
+            modified=pending["modified"],
+        )
         self.broadcast({"serial": serial, "sha256": sha})
         log.info("feed published serial=%s signatures=%s vectors=%s", serial, len(sigs), vectors)
-        return {"serial": serial, "version": header["version"], "sha256": sha,
-                "signatures": len(sigs), "enabled_ids": enabled_ids, "vectors": vectors,
-                "published": header["published"], "forced": rec["forced"],
-                "invalid": problems, **pending}
+        return {
+            "serial": serial,
+            "version": header["version"],
+            "sha256": sha,
+            "signatures": len(sigs),
+            "enabled_ids": enabled_ids,
+            "vectors": vectors,
+            "published": header["published"],
+            "forced": rec["forced"],
+            "invalid": problems,
+            **pending,
+        }
 
     # ---- tamper
     def tamper(self, mode: str = "unsigned") -> dict:
         if mode not in TAMPER_MODES:
-            raise FeedServiceError(f"unknown tamper mode {mode!r} (one of {', '.join(TAMPER_MODES)})")
+            raise FeedServiceError(
+                f"unknown tamper mode {mode!r} (one of {', '.join(TAMPER_MODES)})"
+            )
         seed = self.seed()
         ss = self._serial_state()
         cur = ss["serial"]
@@ -681,7 +816,9 @@ class FeedService:
             olds = sorted(self.history.glob("latest-*.json"))
             olds = [p for p in olds if int(p.stem.split("-")[1]) < cur]
             if not olds:
-                raise FeedServiceError("no older signed release to replay yet - publish once first", 409)
+                raise FeedServiceError(
+                    "no older signed release to replay yet - publish once first", 409
+                )
             old = olds[0]
             attempted = int(old.stem.split("-")[1])
             old_ptr = json.loads(old.read_bytes())
@@ -713,31 +850,48 @@ class FeedService:
             rogue_seed, rogue_pub = signing.generate()
             rkid = key_id(rogue_pub)
             doc = json.loads(cur_bytes)
-            header = dict(doc["feed"], serial=attempted, key_id=rkid,
-                          version=f"{utc_now():%Y.%m.%d}-{attempted}")
+            header = dict(
+                doc["feed"],
+                serial=attempted,
+                key_id=rkid,
+                version=f"{utc_now():%Y.%m.%d}-{attempted}",
+            )
             doc["feed"] = header
             data = canonical_json(doc)
             name = bundle_name(attempted)
             _write_atomic(self.dist / name, data)
-            _write_atomic(self.dist / f"{name}.sig", (signing.sign_detached(data, rogue_seed) + "\n").encode())
+            _write_atomic(
+                self.dist / f"{name}.sig", (signing.sign_detached(data, rogue_seed) + "\n").encode()
+            )
             ptr = pointer_bytes(header, data, kid=rkid)
             _write_atomic(self.dist / "latest.json", ptr)
-            _write_atomic(self.dist / "latest.json.sig", (signing.sign_detached(ptr, rogue_seed) + "\n").encode())
+            _write_atomic(
+                self.dist / "latest.json.sig",
+                (signing.sign_detached(ptr, rogue_seed) + "\n").encode(),
+            )
             sha = hashlib.sha256(data).hexdigest()
         else:  # swap_bundle
             doc = json.loads(cur_bytes)
             kid = key_id(signing.public_key(seed))
-            header = dict(doc["feed"], serial=attempted, version=f"{utc_now():%Y.%m.%d}-{attempted}")
+            header = dict(
+                doc["feed"], serial=attempted, version=f"{utc_now():%Y.%m.%d}-{attempted}"
+            )
             doc["feed"] = header
             good = canonical_json(doc)
             name = bundle_name(attempted)
             ptr = pointer_bytes(header, good, kid=kid)
             _write_atomic(self.dist / "latest.json", ptr)
-            _write_atomic(self.dist / "latest.json.sig", (signing.sign_detached(ptr, seed) + "\n").encode())
-            evil = dict(doc, signatures=[s for s in doc["signatures"] if s.get("severity") != "critical"])
+            _write_atomic(
+                self.dist / "latest.json.sig", (signing.sign_detached(ptr, seed) + "\n").encode()
+            )
+            evil = dict(
+                doc, signatures=[s for s in doc["signatures"] if s.get("severity") != "critical"]
+            )
             data = canonical_json(evil)
             _write_atomic(self.dist / name, data)
-            _write_atomic(self.dist / f"{name}.sig", (signing.sign_detached(good, seed) + "\n").encode())
+            _write_atomic(
+                self.dist / f"{name}.sig", (signing.sign_detached(good, seed) + "\n").encode()
+            )
             sha = hashlib.sha256(data).hexdigest()
         if mode != "rollback":
             self._save_serial(cur, max(ss["high_water"], attempted))
@@ -754,7 +908,9 @@ class FeedService:
             p = self.state / "events.jsonl"
             p.unlink(missing_ok=True)
             self.event("reset", hard=True, serial=1)
-            self.broadcast({"serial": 1, "sha256": hashlib.sha256(self.seed_bundle.read_bytes()).hexdigest()})
+            self.broadcast(
+                {"serial": 1, "sha256": hashlib.sha256(self.seed_bundle.read_bytes()).hexdigest()}
+            )
             return self.state_doc()
         self.event("reset", hard=False)
         self.publish(note="reset to repo signatures")
@@ -775,8 +931,11 @@ class FeedService:
                 compiled.append(compile_signature(d, lists))
             except FeedError:
                 continue
-        ex = {k: req[k] for k in ("text", "json", "url", "method", "body", "filename", "bytes_b64")
-              if req.get(k) not in (None, "")}
+        ex = {
+            k: req[k]
+            for k in ("text", "json", "url", "method", "body", "filename", "bytes_b64")
+            if req.get(k) not in (None, "")
+        }
         ex["surface"] = req.get("surface") or "model.response"
         ev = event_from_example(ex)
         decision, hits = scan_event(compiled, ev)
@@ -797,12 +956,16 @@ class FeedService:
             total += rep["vectors"]["total"]
             tag = "PASS" if rep["valid"] else "FAIL"
             ok &= rep["valid"]
-            lines.append(f"{tag} {sid:<13} {'draft' if doc.get('enabled') is False else '     '} "
-                         f"{rep['vectors']['passed']}/{rep['vectors']['total']} vectors  "
-                         f"re2-worst {rep['redos_worst_ms']:>6.2f} ms  {str(doc.get('title'))[:60]}")
+            lines.append(
+                f"{tag} {sid:<13} {'draft' if doc.get('enabled') is False else '     '} "
+                f"{rep['vectors']['passed']}/{rep['vectors']['total']} vectors  "
+                f"re2-worst {rep['redos_worst_ms']:>6.2f} ms  {str(doc.get('title'))[:60]}"
+            )
             lines += [f"      - {p}" for p in rep["problems"]]
             try:
-                (drafts if doc.get("enabled") is False else compiled_pub).append(compile_signature(doc, lists))
+                (drafts if doc.get("enabled") is False else compiled_pub).append(
+                    compile_signature(doc, lists)
+                )
             except FeedError:
                 pass
         payload_p = self.src_root / "demo" / "echoleak-proxy-payload.md"
@@ -811,10 +974,19 @@ class FeedService:
 
             text = payload_p.read_text(encoding="utf-8")
             before, _ = scan_event(compiled_pub, Event(surface="model.response", text=text))
-            after, hits = scan_event(compiled_pub + drafts, Event(surface="model.response", text=text))
-            inv = before == "allow" and after == "block" and any(
-                h["signature_id"] == "AEGIS-TI-022" for h in hits)
-            lines.append(f"{'PASS' if inv else 'WARN'} demo invariant: EchoLeak proxy payload "
-                         f"{before.upper()} with the published set, {after.upper()} with drafts enabled")
-        lines.append(f"{'OK' if ok else 'FAILED'}: {len(self.workspace.ids())} signatures, {total} vectors")
+            after, hits = scan_event(
+                compiled_pub + drafts, Event(surface="model.response", text=text)
+            )
+            inv = (
+                before == "allow"
+                and after == "block"
+                and any(h["signature_id"] == "AEGIS-TI-022" for h in hits)
+            )
+            lines.append(
+                f"{'PASS' if inv else 'WARN'} demo invariant: EchoLeak proxy payload "
+                f"{before.upper()} with the published set, {after.upper()} with drafts enabled"
+            )
+        lines.append(
+            f"{'OK' if ok else 'FAILED'}: {len(self.workspace.ids())} signatures, {total} vectors"
+        )
         return ok, lines

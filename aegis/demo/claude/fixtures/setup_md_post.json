@@ -1,0 +1,53 @@
+{
+  "name": "setup_md_post",
+  "title": "Hidden injection in SETUP.md is neutralised on PostToolUse (INJ-01/02)",
+  "steps": [
+    {
+      "event": "PreToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Read",
+        "tool_input": {
+          "file_path": "{{PROJECT}}/docs/SETUP.md"
+        },
+        "tool_use_id": "toolu_{{N}}_setup"
+      },
+      "expect": {
+        "result": "allow"
+      }
+    },
+    {
+      "event": "PostToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Read",
+        "tool_input": {
+          "file_path": "{{PROJECT}}/docs/SETUP.md"
+        },
+        "tool_use_id": "toolu_{{N}}_setup",
+        "tool_response": {
+          "type": "text",
+          "file": {
+            "filePath": "{{PROJECT}}/docs/SETUP.md",
+            "content": "{{FILE:docs/SETUP.md}}",
+            "numLines": 22,
+            "startLine": 1,
+            "totalLines": 22
+          }
+        }
+      },
+      "expect": {
+        "result": "modify",
+        "contains": "INJ-"
+      }
+    }
+  ]
+}

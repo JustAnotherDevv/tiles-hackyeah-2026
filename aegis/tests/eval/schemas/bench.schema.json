@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "aegis.bench/1",
+  "type": "object",
+  "required": ["schema", "generated_at", "status", "profiles"],
+  "properties": {
+    "schema": {"const": "aegis.bench/1"},
+    "status": {"enum": ["ok", "partial", "unavailable"]},
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "mode", "path", "concurrency", "requests", "errors", "overhead_ms"],
+        "properties": {
+          "overhead_ms": {"type": "object", "required": ["p50", "p95", "p99"]},
+          "by_control": {"type": "array"}
+        }
+      }
+    },
+    "by_control": {"type": "array", "items": {"type": "object", "required": ["control_id", "p50_ms", "p95_ms", "source"]}},
+    "modes": {"type": "object"},
+    "headline": {"type": "object"},
+    "eval": {"type": ["object", "null"]},
+    "heatmap": {"type": ["object", "null"]},
+    "dlp": {"type": ["object", "null"]},
+    "selftest": {"type": ["object", "null"]}
+  }
+}

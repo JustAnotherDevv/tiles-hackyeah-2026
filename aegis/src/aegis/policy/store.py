@@ -652,6 +652,7 @@ class PolicyStoreImpl:
             return [], [ValidationIssue(message=f"self-test failed to run: {exc}", severity="warning")], None
         errors: list[ValidationIssue] = []
         warnings: list[ValidationIssue] = []
+        profile_changed = cur is not None and cand.doc.profile != cur.doc.profile
         for key, oc in outcomes.items():
             res = oc.result
             if res.passed:
@@ -659,7 +660,10 @@ class PolicyStoreImpl:
             t = oc.case.test
             base = self._baseline.get(key)
             new_or_changed = base is None or base.def_hash != oc.case.def_hash
-            regress = new_or_changed or (base is not None and base.passed)
+            # A deliberate (governed) profile switch changes expected outcomes wholesale: cases that
+            # passed under the old profile are reported, not gating (otherwise `profile: permissive`
+            # could never be applied). New / edited tests still gate.
+            regress = new_or_changed or (base is not None and base.passed and not profile_changed)
             must = t.expect in MUST_PROTECT
             is_looser = looser(t.expect, res.got) or oc.upstream_failed
             deciding_off = False
@@ -674,7 +678,7 @@ class PolicyStoreImpl:
                     msg += f" ({oc.detail})"
                 errors.append(self._issue_for(cand, oc, msg, "error"))
             else:
-                why = "pre-existing failure" if not regress else ("stricter than expected" if not is_looser else
+                why = ("profile change" if profile_changed and not new_or_changed else "pre-existing failure") if not regress else ("stricter than expected" if not is_looser else
                                                                   "would reject (selftest_gate: warn)" if mode == "warn" else "")
                 if not oc.case.gate:
                     why = "semantic test (never gates)"

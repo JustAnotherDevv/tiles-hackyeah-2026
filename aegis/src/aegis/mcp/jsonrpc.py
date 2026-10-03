@@ -45,7 +45,12 @@ NAME_BEARING_METHODS: Mapping[str, str] = {
     "prompts/get": "name",
     "resources/read": "uri",
 }
-HANDSHAKE_PROTOCOL_VERSIONS: tuple[str, ...] = ("2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25")
+HANDSHAKE_PROTOCOL_VERSIONS: tuple[str, ...] = (
+    "2024-11-05",
+    "2025-03-26",
+    "2025-06-18",
+    "2025-11-25",
+)
 MODERN_PROTOCOL_VERSIONS: tuple[str, ...] = (MODERN_VERSION,)
 
 try:  # guarded: the header codec/validators come from the official SDK (mcp>=2.3)
@@ -97,7 +102,10 @@ def detect_era(headers: Mapping[str, str], body: Any) -> str:
     if isinstance(body, dict):
         params = body.get("params")
         meta = params.get("_meta") if isinstance(params, dict) else None
-        if isinstance(meta, dict) and meta.get(PROTOCOL_VERSION_META_KEY) in MODERN_PROTOCOL_VERSIONS:
+        if (
+            isinstance(meta, dict)
+            and meta.get(PROTOCOL_VERSION_META_KEY) in MODERN_PROTOCOL_VERSIONS
+        ):
             return MODERN
     return LEGACY
 
@@ -160,7 +168,9 @@ def recompute_routing_headers(
     return out
 
 
-def param_headers_for(input_schema: dict[str, Any] | None, arguments: dict[str, Any]) -> dict[str, str]:
+def param_headers_for(
+    input_schema: dict[str, Any] | None, arguments: dict[str, Any]
+) -> dict[str, str]:
     """`Mcp-Param-*` headers a modern client mirrors for these arguments (client side)."""
     if not input_schema or not MODERN_HEADERS_SUPPORTED:
         return {}
@@ -319,10 +329,31 @@ def parse_sse_text(text: str) -> list[SSEEvent]:
 
 
 __all__ = [
-    "HEADER_MISMATCH", "INTERNAL_ERROR", "INVALID_REQUEST", "LEGACY", "LEGACY_VERSION", "MODERN",
-    "MODERN_HEADERS_SUPPORTED", "MODERN_VERSION", "PARSE_ERROR", "UNKNOWN_SERVER",
-    "UPSTREAM_UNREACHABLE", "Rejection", "SSEEvent", "approval_pending_result", "blocked_result",
-    "check_modern_request", "complete_result", "detect_era", "is_notification", "is_request",
-    "is_response", "iter_sse", "jsonrpc_error", "modern_meta", "param_headers_for",
-    "parse_sse_text", "recompute_routing_headers",
+    "HEADER_MISMATCH",
+    "INTERNAL_ERROR",
+    "INVALID_REQUEST",
+    "LEGACY",
+    "LEGACY_VERSION",
+    "MODERN",
+    "MODERN_HEADERS_SUPPORTED",
+    "MODERN_VERSION",
+    "PARSE_ERROR",
+    "UNKNOWN_SERVER",
+    "UPSTREAM_UNREACHABLE",
+    "Rejection",
+    "SSEEvent",
+    "approval_pending_result",
+    "blocked_result",
+    "check_modern_request",
+    "complete_result",
+    "detect_era",
+    "is_notification",
+    "is_request",
+    "is_response",
+    "iter_sse",
+    "jsonrpc_error",
+    "modern_meta",
+    "param_headers_for",
+    "parse_sse_text",
+    "recompute_routing_headers",
 ]

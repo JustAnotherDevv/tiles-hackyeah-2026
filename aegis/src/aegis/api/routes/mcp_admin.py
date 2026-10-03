@@ -37,7 +37,9 @@ def _error(status: int, type_: str, message: str, **fields: Any) -> JSONResponse
 
         return api_error(status, type_, message, **fields)
     except Exception:  # TODO(integration): fallback until aegis.core.errors lands
-        return JSONResponse({"error": {"type": type_, "message": message, **fields}}, status_code=status)
+        return JSONResponse(
+            {"error": {"type": type_, "message": message, **fields}}, status_code=status
+        )
 
 
 def _svc() -> McpService | None:
@@ -56,8 +58,12 @@ async def _viewer(svc: McpService, request: Request) -> Identity:
 def _forbidden_role(viewer: Identity, min_role: str) -> JSONResponse | None:
     if ROLE_RANK.get(viewer.role, 0) < ROLE_RANK[min_role]:
         who = viewer.member_id or viewer.principal
-        return _error(403, "forbidden", f"{who} ({viewer.role}) cannot do this: requires {min_role}",
-                      required_role=min_role)
+        return _error(
+            403,
+            "forbidden",
+            f"{who} ({viewer.role}) cannot do this: requires {min_role}",
+            required_role=min_role,
+        )
     return None
 
 
@@ -134,9 +140,15 @@ async def scan_server(server: str, request: Request) -> Response:
     try:
         await svc.scan_server(server, viewer, snap=snap, force=True)
     except Exception as e:
-        await svc.upstream_failed(await svc.make_ctx(server, {}, era="legacy", transport="http",
-                                                     snap=snap, identity=viewer), type(e).__name__)
-        return _error(502, "upstream_error", f"MCP server {server} unreachable ({type(e).__name__})")
+        await svc.upstream_failed(
+            await svc.make_ctx(
+                server, {}, era="legacy", transport="http", snap=snap, identity=viewer
+            ),
+            type(e).__name__,
+        )
+        return _error(
+            502, "upstream_error", f"MCP server {server} unreachable ({type(e).__name__})"
+        )
     for view in svc.inventory(snap):
         if view.name == server:
             return JSONResponse(view.model_dump(mode="json"))
@@ -158,9 +170,14 @@ async def claude_config(request: Request) -> Response:
         snap, gateway = None, str(request.base_url).rstrip("/")
     if snap is None:
         return _error(503, "unavailable", "policy not loaded")
-    return JSONResponse(build_claude_config(
-        snap, gateway_url=gateway, agent_id=q.get("agent_id") or "claude-code@platform",
-        servers=servers))
+    return JSONResponse(
+        build_claude_config(
+            snap,
+            gateway_url=gateway,
+            agent_id=q.get("agent_id") or "claude-code@platform",
+            servers=servers,
+        )
+    )
 
 
 @router.post("/api/mcp/reset")

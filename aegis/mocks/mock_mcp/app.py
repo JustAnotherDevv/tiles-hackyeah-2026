@@ -60,7 +60,14 @@ async def _requests(request: Request) -> JSONResponse:
 
 
 async def _health(_: Request) -> JSONResponse:
-    return JSONResponse({"ok": True, "servers": SERVER_NAMES, "rugpull_flipped": STATE.rugpull_flipped})
+    return JSONResponse(
+        {
+            "service": "mock_mcp",
+            "ok": True,
+            "servers": SERVER_NAMES,
+            "rugpull_flipped": STATE.rugpull_flipped,
+        }
+    )
 
 
 def create_app(*, data_dir: Path | str | None = None, log_to_file: bool = True) -> Starlette:

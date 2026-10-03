@@ -58,6 +58,10 @@ export interface ApprovalSimulateRequestExt extends ApprovalSimulateRequest {
   scope_type?: string | null;
   increase_pct?: number | null;
   changes?: PolicyChange[];
+  /** Addendum A-28 extras */
+  control_id?: string | null;
+  loosening?: boolean | null;
+  profile?: string | null;
 }
 
 export const govApi = {

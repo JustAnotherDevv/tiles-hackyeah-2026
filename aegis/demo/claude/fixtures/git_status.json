@@ -1,0 +1,49 @@
+{
+  "name": "git_status",
+  "title": "git status is allowed",
+  "steps": [
+    {
+      "event": "PreToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status",
+          "description": "Show working tree status"
+        },
+        "tool_use_id": "toolu_{{N}}_git"
+      },
+      "expect": {
+        "result": "allow"
+      }
+    },
+    {
+      "event": "PostToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PostToolUse",
+        "tool_name": "Bash",
+        "tool_input": {
+          "command": "git status"
+        },
+        "tool_use_id": "toolu_{{N}}_git",
+        "tool_response": {
+          "stdout": "On branch main\nnothing to commit, working tree clean",
+          "stderr": "",
+          "interrupted": false,
+          "isImage": false
+        }
+      },
+      "expect": {
+        "result": "allow"
+      }
+    }
+  ]
+}

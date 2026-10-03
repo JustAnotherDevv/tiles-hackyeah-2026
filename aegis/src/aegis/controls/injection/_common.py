@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Any, TypeVar
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -130,17 +130,22 @@ class Inj05Params(_Params):
         default_factory=lambda: ["mailer.*", "payments.*", "marketpulse.purchase_*", "*.send_email"]
     )
     side_effect_action_types: list[str] = Field(
-        default_factory=lambda: ["spend.*", "email.external", "egress.post", "db.write", "code.deploy"]
+        default_factory=lambda: [
+            "spend.*",
+            "email.external",
+            "egress.post",
+            "db.write",
+            "code.deploy",
+        ]
     )
     intent_ttl_s: int = 1800
 
 
-P = TypeVar("P", bound=_Params)
 _warned: set[tuple[str, str]] = set()
 _param_cache: dict[tuple[str, int], Any] = {}
 
 
-def parse_params(model: type[P], cfg: ControlConfig) -> P:
+def parse_params[P: _Params](model: type[P], cfg: ControlConfig) -> P:
     """Validate ``cfg.params`` into ``model``; never raises. Cached per params object."""
     key = (model.__name__, id(cfg.params))
     hit = _param_cache.get(key)
@@ -153,7 +158,9 @@ def parse_params(model: type[P], cfg: ControlConfig) -> P:
         wk = (cfg.id, f"invalid:{sorted(raw)}")
         if wk not in _warned:
             _warned.add(wk)
-            log.error("invalid params control=%s errors=%d - using defaults", cfg.id, exc.error_count())
+            log.error(
+                "invalid params control=%s errors=%d - using defaults", cfg.id, exc.error_count()
+            )
         # keep the valid keys one by one
         good: dict[str, Any] = {}
         for k, v in raw.items():
@@ -194,7 +201,7 @@ def effective_untrusted_action(cfg_action: str, untrusted_action: str) -> str:
 def get_rt() -> Any | None:
     """The runtime, or None before startup / in isolated tests. Monkeypatch in tests."""
     try:
-        from aegis.core.runtime import get_runtime  # noqa: PLC0415 - optional at import time
+        from aegis.core.runtime import get_runtime
 
         return get_runtime()
     except Exception:

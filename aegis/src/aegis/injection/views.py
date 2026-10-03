@@ -192,7 +192,7 @@ def collapsed(v: View) -> View | None:
 # ---------------------------------------------------------------- fuzzy (typoglycemia)
 @cache
 def _keywords() -> dict[str, object]:
-    import yaml  # noqa: PLC0415 - lazy (no import-time I/O)
+    import yaml
 
     try:
         data = yaml.safe_load((DATA / "keywords.yaml").read_text(encoding="utf-8")) or {}

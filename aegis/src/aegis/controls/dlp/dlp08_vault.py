@@ -10,6 +10,8 @@
   classes whose ``matrix[class].local`` is allow/log are restored (a PAN stays ``[PAN_1]``).
 * Third-party / remote tools (WebFetch, MCP SaaS): placeholders pass through untouched;
   ``tool_args.aegis_rehydrate: true`` toward them -> ``block`` (A15).
+* ``mcp.call`` to a ``local`` MCP server behaves like ``tool.input`` (Addendum A-40); the MCP
+  proxy writes the rehydrated args back.
 * Shell tools whose command has network egress (curl, wget, ssh, URLs) keep placeholders.
 Raw values never appear in findings.
 """
@@ -53,7 +55,9 @@ class Dlp08(BaseControl):
     family: ClassVar[str] = "DLP"
     name: ClassVar[str] = "Vault & controlled re-identification"
     kind: ClassVar[str] = "deterministic"  # type: ignore[assignment]
-    applies_to: ClassVar[AppliesTo] = AppliesTo(surfaces={"model.response", "tool.input"})
+    applies_to: ClassVar[AppliesTo] = AppliesTo(
+        surfaces={"model.response", "tool.input", "mcp.call"}  # A-40: mcp.call to local servers
+    )
     owasp: ClassVar[list[str]] = ["LLM02:2026", "MCP10:2025", "ASI03"]
     priority: ClassVar[int] = 90
 
@@ -66,7 +70,7 @@ class Dlp08(BaseControl):
         vault = eng.vaults.peek(ctx.session_id)
         if interaction.surface == "model.response":
             return self._response(ctx, interaction, cfg, p, vault, snap)
-        if interaction.surface == "tool.input":
+        if interaction.surface in ("tool.input", "mcp.call"):
             return self._tool_input(ctx, interaction, cfg, p, vault, snap)
         return None
 

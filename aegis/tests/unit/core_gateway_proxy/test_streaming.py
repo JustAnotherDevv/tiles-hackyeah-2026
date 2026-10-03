@@ -22,7 +22,6 @@ from aegis.proxy.streaming import (
 from tests.unit.core_gateway_proxy.streams import (
     accumulate_anthropic,
     accumulate_ollama,
-    accumulate_openai,
     anthropic_stream,
     ollama_chat_stream,
     ollama_generate_stream,
@@ -71,7 +70,7 @@ def test_anthropic_skip_start_when_already_sent() -> None:
     out = anthropic_events(acc.message(), include_start=False)
     assert b"message_start" not in out
     p = SSEParser()
-    head = [e for e in p.feed(data) if getattr(e, "event", None) == "message_start"][0]
+    head = next(e for e in p.feed(data) if getattr(e, "event", None) == "message_start")
     validate_anthropic(head.to_bytes() + out)
 
 

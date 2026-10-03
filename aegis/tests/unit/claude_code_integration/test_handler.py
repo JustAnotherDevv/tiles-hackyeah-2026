@@ -73,9 +73,9 @@ async def test_failure_and_stop_sweep(rt):
     await call(rt, "PreToolUse", tool_name="Bash", tool_input={"command": "false"}, tool_use_id="a")
     await call(rt, "PreToolUse", tool_name="Bash", tool_input={"command": "ls"}, tool_use_id="b")
     await call(rt, "PostToolUseFailure", tool_name="Bash", tool_use_id="a", error="exit 1")
-    assert [o.status_code for _, _, o in rt.pipeline.completed] == [500]
+    assert [(o.status_code, o.error) for _, _, o in rt.pipeline.completed] == [(200, "tool_error")]
     await call(rt, "Stop")
-    assert [o.status_code for _, _, o in rt.pipeline.completed] == [500, 499]
+    assert [o.status_code for _, _, o in rt.pipeline.completed] == [200, 499]
     assert len(state_for(rt).pending) == 0
 
 
@@ -185,7 +185,7 @@ async def test_user_prompt_redact_and_budget_precheck(rt):
         limit=0.0001, used=0.02, state="hard")]
     n_eval = len(rt.pipeline.evaluated)
     out = await call(rt, "UserPromptSubmit", prompt="hello")
-    assert out["decision"] == "block" and out["reason"].startswith("AEGIS-BUDGET BUD-01")
+    assert out["decision"] == "block" and out["reason"].startswith("[Aegis] BUD-01: Budget exhausted")
     assert out["hookSpecificOutput"]["suppressOriginalPrompt"] is True
     assert len(rt.pipeline.evaluated) == n_eval  # blocked before the pipeline
     assert any(getattr(e, "data", {}).get("event") == "claude_code.prompt_blocked" for e in rt.audit.items)
@@ -197,14 +197,14 @@ async def test_kill_switch_blocks_prompt():
     snap.doc.budgets.kill_switch.agents = ["claude-code@platform"]
     rt = FakeRuntime(snap)
     out = await call(rt, "UserPromptSubmit", prompt="hello")
-    assert out["reason"].startswith("AEGIS-KILLED EXE-04")
+    assert out["reason"].startswith("[Aegis] EXE-04: Kill switch active")
 
 
 async def test_session_start_banner_audit_bus(rt):
     out = await call(rt, "SessionStart", source="startup")
     banner = out["hookSpecificOutput"]["additionalContext"]
     assert out["hookSpecificOutput"]["hookEventName"] == "SessionStart"
-    assert "policy v7" in banner and "AEGIS-DENY" in banner and "[EMAIL_1]" in banner
+    assert "policy v7" in banner and "[Aegis] <CONTROL-ID>:" in banner and "[EMAIL_1]" in banner
     assert out["systemMessage"].startswith("Aegis: governed session · policy v7")
     assert any(getattr(e, "data", {}).get("event") == "claude_code.session_start" for e in rt.audit.items)
     assert ("system", {"level": "info", "message": "Claude Code session connected (governed) · claude-code@platform",

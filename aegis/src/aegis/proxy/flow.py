@@ -27,9 +27,11 @@ Playground / programmatic use:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import time
+from collections import OrderedDict
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
@@ -84,6 +86,7 @@ __all__ = [
     "ModelCall",
     "ModelCallResult",
     "apply_body_mutations",
+    "fresh_segments",
     "get_adapter",
     "handle_model_request",
     "runtime_of",
@@ -360,6 +363,10 @@ class ModelCall:
         # A-06: control-requested headers (x-aegis-*, retry-after, x-should-retry)
         for k, v in decision_headers([verdict, rv]).items():
             h.setdefault(k, v)
+        # plan 01 section 4.3 #1: BUD-01 may also leave the remaining budget in ctx.state
+        bud = ctx.state.get("bud.remaining")
+        if bud and "x-aegis-budget-remaining" not in h:
+            h["x-aegis-budget-remaining"] = str(bud)
         h["server-timing"] = server_timing_header(ctx, upstream_ms=upstream_ms)
         return {k: v.encode("latin-1", "replace").decode("latin-1") for k, v in h.items()}
 
@@ -409,6 +416,10 @@ class ModelCall:
                            "source": self.source})
         if self.wire == "ollama":
             req_i.meta["op"] = op
+        try:
+            req_i.meta["fresh_segments"] = fresh_segments(ctx.session_id, req_i.segments)
+        except Exception:  # pragma: no cover - hint only
+            log.debug("fresh_segments failed", exc_info=True)
         add_timing(ctx, "parse", (time.perf_counter() - t_parse) * 1000.0)
 
         verdict = await self._evaluate(ctx, req_i)
@@ -932,6 +943,37 @@ def apply_body_mutations(outbound: dict[str, Any], verdict: Verdict) -> dict[str
     for m in sorted((m for m in muts if m.op == "remove"), key=_key, reverse=True):
         outbound = cow_remove(outbound, m.path)
     return outbound
+
+
+_SEEN: OrderedDict[str, set[bytes]] = OrderedDict()
+_SEEN_SESSIONS = 256
+_SEEN_PER_SESSION = 4096
+
+
+def fresh_segments(session_id: str | None, segments: list[TextSegment]) -> list[int]:
+    """GW-17: indexes of segments whose text (sha256) was not seen earlier in this session.
+
+    A hint for expensive controls on long Claude Code conversations (the transcript is resent on
+    every turn); redaction still runs on every segment. Bounded LRU: 256 sessions x 4096 hashes.
+    """
+    if not session_id:
+        return list(range(len(segments)))
+    seen = _SEEN.get(session_id)
+    if seen is None:
+        seen = set()
+        _SEEN[session_id] = seen
+        while len(_SEEN) > _SEEN_SESSIONS:
+            _SEEN.popitem(last=False)
+    else:
+        _SEEN.move_to_end(session_id)
+    fresh: list[int] = []
+    for idx, s in enumerate(segments):
+        h = hashlib.sha256(s.text.encode("utf-8", "surrogatepass")).digest()[:16]
+        if h not in seen:
+            fresh.append(idx)
+            if len(seen) < _SEEN_PER_SESSION:
+                seen.add(h)
+    return fresh
 
 
 def _sse_error(etype: str, message: str) -> bytes:

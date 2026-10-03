@@ -64,10 +64,11 @@ export function KpiTile({ label, value, delta, deltaGoodWhen = 'up', hint, icon,
   const prev = useRef<number | null>(numeric ? value : null);
   const [bump, setBump] = useState(0);
   useEffect(() => {
-    if (!numeric) return;
-    if (prev.current !== null && value > prev.current) setBump((b) => b + 1);
+    if (!numeric || loading) return;
+    // first real value counts up from 0 (no bump); later increases flash without restarting the count-up
+    if (prev.current !== null && prev.current > 0 && value > prev.current) setBump((b) => b + 1);
     prev.current = value;
-  }, [value, numeric]);
+  }, [value, numeric, loading]);
 
   const body = (
     <>
@@ -88,7 +89,7 @@ export function KpiTile({ label, value, delta, deltaGoodWhen = 'up', hint, icon,
             className={cn('text-2xl font-semibold tracking-[-0.03em] text-text-1 tabular', bump > 0 && 'value-bump')}
             style={{ ['--bump-color' as string]: BUMP[tone] }}
           >
-            {numeric ? <AnimatedNumber value={value} format={format} /> : value}
+            {numeric ? <AnimatedNumber value={value} format={format} from0={bump === 0} /> : value}
           </span>
         )}
         {suffix && !loading ? <span className="text-sm font-medium tracking-[-0.01em] text-text-3">{suffix}</span> : null}

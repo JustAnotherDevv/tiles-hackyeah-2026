@@ -167,7 +167,7 @@ budgets:                                # amounts = config/org.seed.yaml `budget
     - {scope: "agent:claude-code@platform",    window: day,     usd: 30}
     - {scope: "agent:trading-copilot@trading", window: day,     usd: 20}
     - {scope: "agent:research-agent@research", window: day,     compute_s: 5400}
-    - {scope: "agent:chaos-agent@platform",    window: day,     usd: 0.50, tokens: 100000, on_hard: require_approval}   # F6
+    - {scope: "agent:chaos-agent@platform",    window: day,     usd: 0.50, tokens: 100000, on_hard: require_approval, on_soft: warn}   # F6
     - {scope: "session:*",                     window: session, usd: 5.0, tokens: 3000000}
   loops: {repeat: 3, window: 20, cycle_k: 3, error_streak: 5, max_steps_per_session: 200, ladder: [tool_error, block, kill]}
   rate: {requests_per_min: 120, tool_calls_per_min: 60}
@@ -545,6 +545,7 @@ mcp:
     weather:     {transport: http, url: "http://127.0.0.1:8792/mcp/weather",     destination: third_party, description: "Benign demo tools"}
     poisoned:    {transport: http, url: "http://127.0.0.1:8792/mcp/poisoned",    destination: third_party, description: "Tool-poisoning demo (MCP-02)"}
     rugpull:     {transport: http, url: "http://127.0.0.1:8792/mcp/rugpull",     destination: third_party, description: "Rug-pull demo (MCP-03)"}
+    poisoned-stdio: {transport: stdio, command: [python, "-m", mocks.mock_mcp, "--stdio", poisoned], destination: third_party, description: "stdio demo via python -m aegis.mcp.stdio"}
   unknown_server_action: block
   on_tool_change: block
   max_description_len: 1024

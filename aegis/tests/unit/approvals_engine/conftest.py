@@ -21,13 +21,13 @@ import yaml
 os.environ.setdefault("AEGIS_TEST_MODE", "1")
 os.environ.setdefault("AEGIS_SEMANTIC", "off")
 
-from aegis.core.policy_schema import (  # noqa: E402
+from aegis.core.policy_schema import (
     ApplyResult,
     ControlConfig,
     PolicyDoc,
     PolicySnapshot,
 )
-from aegis.core.types import (  # noqa: E402
+from aegis.core.types import (
     Agent,
     ApprovalDraft,
     BusMessage,

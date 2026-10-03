@@ -32,7 +32,12 @@ import yaml
 from yaml.nodes import MappingNode, Node, ScalarNode, SequenceNode
 
 from aegis.core.policy_schema import PatchOp
-from aegis.policy.loader import compose
+from aegis.policy.loader import _Loader, compose
+
+
+def _load(text: str) -> Any:
+    """Fast safe load (libyaml when available)."""
+    return yaml.load(text, Loader=_Loader)
 
 
 class PatchError(ValueError):
@@ -171,6 +176,11 @@ class _NoText(Exception):
 
 def _node_end_line(text: str, node: Node) -> int:
     """Index just after the newline that ends the last line of `node`."""
+    # A block collection's end mark is where the *next* token starts (possibly a sibling on a
+    # later line at column > 0): descend to the last leaf so we never overshoot into a sibling.
+    while isinstance(node, MappingNode | SequenceNode) and not node.flow_style and node.value:
+        last = node.value[-1]
+        node = last[1] if isinstance(node, MappingNode) else last
     end = node.end_mark.index
     if node.end_mark.column == 0 and end > 0 and text[end - 1] == "\n":
         # block collections end at the start of the following line; walk back over blank lines
@@ -461,7 +471,7 @@ def _ruamel_apply(text: str, op: PatchOp, tokens: list[Token]) -> str:
 # ---------------------------------------------------------------- public API
 def _verify(text: str, op: PatchOp, tokens: list[Token]) -> bool:
     try:
-        data = yaml.safe_load(text)
+        data = _load(text)
     except yaml.YAMLError:
         return False
     got = get_path(data, tokens)
@@ -476,14 +486,14 @@ def _verify(text: str, op: PatchOp, tokens: list[Token]) -> bool:
 def apply_op(text: str, op: PatchOp) -> str:
     tokens = parse_path(op.path)
     try:
-        before = yaml.safe_load(text)
+        before = _load(text)
     except yaml.YAMLError as exc:
         raise PatchError(op.path, f"current policy is not valid YAML: {exc}") from None
     if op.op == "remove" and get_path(before, tokens) is MISSING:
         raise PatchError(op.path, "nothing to remove at this path")
     try:
         out = _textual(text, op, tokens)
-        if _verify(out, op, tokens) and (op.op != "remove" or get_path(yaml.safe_load(out), tokens) is MISSING
+        if _verify(out, op, tokens) and (op.op != "remove" or get_path(_load(out), tokens) is MISSING
                                          or tokens[-1][0] == "sel"):
             return out
     except _NoText:

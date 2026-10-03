@@ -145,7 +145,9 @@ def get_arg(interaction: Interaction, path: str) -> Any:
     return None
 
 
-def first_arg(interaction: Interaction, paths: list[str] | tuple[str, ...]) -> tuple[str | None, Any]:
+def first_arg(
+    interaction: Interaction, paths: list[str] | tuple[str, ...]
+) -> tuple[str | None, Any]:
     """First non-empty value among ``paths`` -> (path, value)."""
     for p in paths:
         val = get_arg(interaction, p)

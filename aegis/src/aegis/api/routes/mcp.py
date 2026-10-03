@@ -28,8 +28,9 @@ router = APIRouter(tags=["mcp"])
 
 
 def _not_ready() -> JSONResponse:
-    return JSONResponse(jsonrpc_error(None, INTERNAL_ERROR, "[Aegis] MCP proxy not ready"),
-                        status_code=503)
+    return JSONResponse(
+        jsonrpc_error(None, INTERNAL_ERROR, "[Aegis] MCP proxy not ready"), status_code=503
+    )
 
 
 def _svc() -> McpService | None:
@@ -72,12 +73,17 @@ async def mcp_stdio(server: str, request: Request) -> Response:
     except json.JSONDecodeError:
         body = None
     if not isinstance(body, dict) or not isinstance(body.get("message"), dict | list):
-        return JSONResponse(jsonrpc_error(None, INVALID_REQUEST,
-                                          "[Aegis] expected {direction, message, session_id}"),
-                            status_code=400)
+        return JSONResponse(
+            jsonrpc_error(
+                None, INVALID_REQUEST, "[Aegis] expected {direction, message, session_id}"
+            ),
+            status_code=400,
+        )
     if isinstance(body.get("message"), list):
-        return JSONResponse(jsonrpc_error(None, INVALID_REQUEST,
-                                          "[Aegis] JSON-RPC batches are not supported"), status_code=400)
+        return JSONResponse(
+            jsonrpc_error(None, INVALID_REQUEST, "[Aegis] JSON-RPC batches are not supported"),
+            status_code=400,
+        )
     out = await svc.handle_stdio(server, body, lower_headers(request))
     return JSONResponse(out)
 

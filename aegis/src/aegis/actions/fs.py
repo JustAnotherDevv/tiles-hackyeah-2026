@@ -156,4 +156,11 @@ def check_path(
     return PathCheck(True, path=shown)
 
 
-__all__ = ["CASE_INSENSITIVE", "PathCheck", "check_path", "compile_glob", "display_form", "path_forms"]
+__all__ = [
+    "CASE_INSENSITIVE",
+    "PathCheck",
+    "check_path",
+    "compile_glob",
+    "display_form",
+    "path_forms",
+]

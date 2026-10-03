@@ -34,7 +34,9 @@ def api_error(status: int, type_: str, message: str, **fields: Any) -> JSONRespo
             return _core_api_error(status, type_, message, **fields)
         except Exception:
             log.debug("core api_error failed; using local envelope", exc_info=True)
-    return JSONResponse(status_code=status, content={"error": {"type": type_, "message": message, **fields}})
+    return JSONResponse(
+        status_code=status, content={"error": {"type": type_, "message": message, **fields}}
+    )
 
 
 def rt_of(request: Request) -> Any:
@@ -101,5 +103,14 @@ def parse_bool(value: str | None, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-__all__ = ["api_error", "demo_mode", "forbidden", "has_role", "parse_bool", "rt_of", "test_mode",
-           "viewer_of", "warmup_mode"]
+__all__ = [
+    "api_error",
+    "demo_mode",
+    "forbidden",
+    "has_role",
+    "parse_bool",
+    "rt_of",
+    "test_mode",
+    "viewer_of",
+    "warmup_mode",
+]

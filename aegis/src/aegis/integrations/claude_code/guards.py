@@ -69,6 +69,20 @@ class IntegrationParams(BaseModel):
     guard_mode: Literal["enforce", "monitor", "off"] = "enforce"
 
 
+def params_from_raw(raw: dict[str, Any] | None) -> IntegrationParams:
+    """Validate GOV-06 params and apply the seed-fixes aliases (SF-26)."""
+    try:
+        p = IntegrationParams.model_validate(dict(raw or {}))
+    except Exception:
+        log.warning("invalid GOV-06 params; using defaults")
+        p = IntegrationParams()
+    if p.block_bypass_permissions is not None:
+        p.deny_bypass_mode = p.block_bypass_permissions
+    if p.budget_exhausted_prompt is not None:
+        p.budget_precheck = p.budget_exhausted_prompt == "block"
+    return p
+
+
 def load_params(snap: PolicySnapshot | None) -> IntegrationParams:
     raw: dict[str, Any] = {}
     enabled, mode = True, "enforce"
@@ -83,15 +97,7 @@ def load_params(snap: PolicySnapshot | None) -> IntegrationParams:
     if cfg is not None:
         raw = dict(cfg.params or {})
         enabled, mode = bool(cfg.enabled), str(cfg.mode)
-    try:
-        p = IntegrationParams.model_validate(raw)
-    except Exception:
-        log.warning("invalid GOV-06 params; using defaults")
-        p = IntegrationParams()
-    if p.block_bypass_permissions is not None:
-        p.deny_bypass_mode = p.block_bypass_permissions
-    if p.budget_exhausted_prompt is not None:
-        p.budget_precheck = p.budget_exhausted_prompt == "block"
+    p = params_from_raw(raw)
     p.guard_enabled = enabled and mode != "off"
     p.guard_mode = mode if mode in ("enforce", "monitor", "off") else "enforce"  # type: ignore[assignment]
     return p
@@ -151,9 +157,9 @@ async def budget_precheck(
     if killed and (_control_enforced(snap, "EXE-04") or _control_enforced(snap, "BUD-01")):
         return GuardResult(
             "block",
-            f"AEGIS-KILLED EXE-04: kill switch active for {killed}. Stop immediately.",
+            f"[Aegis] EXE-04: Kill switch active for {killed}. Stop immediately.",
             control_id="EXE-04",
-            data={"scope": killed},
+            data={"scope": killed, "state": "killed"},
         )
     if not _control_enforced(snap, "BUD-01"):
         return None
@@ -172,10 +178,10 @@ async def budget_precheck(
             lim = f"{st.limit:g} {st.dimension}/{st.window}"
             url = f"{base_url.rstrip('/')}/ui/governance/budgets"
             if st.state == "killed":
-                reason = f"AEGIS-KILLED EXE-04: kill switch active for {scope}. Stop immediately."
+                reason = f"[Aegis] EXE-04: Kill switch active for {scope}. Stop immediately."
             else:
                 reason = (
-                    f"AEGIS-BUDGET BUD-01: budget exhausted for {scope} ({lim}, used "
+                    f"[Aegis] BUD-01: Budget exhausted for {scope} ({lim}, used "
                     f"{st.used:g}). Stop now and summarise progress for the user; an admin can "
                     f"raise it at {url}."
                 )
@@ -207,6 +213,19 @@ def guarded_subset(doc: Any, keys: list[str]) -> dict[str, Any]:
 _BASELINES: dict[str, dict[str, Any]] = {}
 
 
+def _profile_baseline(doc: Any, keys: list[str]) -> dict[str, Any]:
+    """First sighting of a settings file: when it is (a copy of) the governed demo profile
+    (`env.ANTHROPIC_BASE_URL` set), compare against the generated profile, so dropping the
+    hooks is detected; otherwise the baseline is empty (any guarded key counts as a change)."""
+    if not isinstance(_get_dotted(doc, "env.ANTHROPIC_BASE_URL"), str):
+        return {}
+    profile = Path(__file__).resolve().parents[4] / "demo" / "claude" / "settings.json"
+    try:
+        return guarded_subset(json.loads(profile.read_text(encoding="utf-8")), keys)
+    except (OSError, ValueError):
+        return {}
+
+
 def config_change(
     source: str | None,
     file_path: str | None,
@@ -225,7 +244,7 @@ def config_change(
     if params.config_change_guard == "block_all":
         return GuardResult(
             "block",
-            "Aegis: Claude Code settings changes are blocked during a governed session "
+            "[Aegis] GOV-06: Claude Code settings changes are blocked during a governed session "
             "(config_change_guard: block_all).",
             data=data,
         )
@@ -233,7 +252,7 @@ def config_change(
         return GuardResult("log", "skills changed", data=data)
     if not file_path:
         return GuardResult(
-            "block", "Aegis: unidentified settings change blocked during a governed session.",
+            "block", "[Aegis] GOV-06: unidentified settings change blocked during a governed session.",
             data=data,
         )
     try:
@@ -241,24 +260,26 @@ def config_change(
     except OSError:
         return GuardResult(
             "block",
-            "Aegis: settings file unreadable after change; blocked during a governed session.",
+            "[Aegis] GOV-06: settings file unreadable after change; blocked during a governed session.",
             data=data,
         )
     try:
         doc = json.loads(text) if text.strip() else {}
     except ValueError:
         return GuardResult(
-            "block", "Aegis: unparseable settings change blocked during a governed session.",
+            "block", "[Aegis] GOV-06: unparseable settings change blocked during a governed session.",
             data=data,
         )
     new = guarded_subset(doc, params.config_change_keys)
-    old = base.get(file_path, {})
+    old = base.get(file_path)
+    if old is None:
+        old = _profile_baseline(doc, params.config_change_keys)
     changed = sorted(k for k in set(new) | set(old) if new.get(k) != old.get(k))
     data["changed_keys"] = changed
     if changed:
         return GuardResult(
             "block",
-            "Aegis: changes to Claude Code hooks/gateway settings are blocked during a governed "
+            "[Aegis] GOV-06: changes to Claude Code hooks/gateway settings are blocked during a governed "
             f"session ({', '.join(changed)}).",
             data=data,
         )
@@ -276,7 +297,7 @@ def bypass_mode(permission_mode: str | None, params: IntegrationParams) -> Guard
     if params.deny_bypass_mode and params.guard_enabled and params.guard_mode == "enforce":
         return GuardResult(
             "block",
-            "AEGIS-DENY GOV-06 (Agent harness integrity): tool calls are denied while Claude Code "
+            "[Aegis] GOV-06: Blocked by Agent harness integrity: tool calls are denied while Claude Code "
             "runs with --dangerously-skip-permissions (bypassPermissions). Restart without it.",
         )
     return GuardResult("log", "Claude Code runs in bypassPermissions mode; Aegis hooks still apply")
@@ -294,4 +315,5 @@ __all__ = [
     "guarded_subset",
     "kill_switch_scope",
     "load_params",
+    "params_from_raw",
 ]

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Aegis Threat Intel · signature feed</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239A8CFF'/%3E%3Cstop offset='1' stop-color='%235E4FE6'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M16 2l12 5v8c0 7.5-5 13-12 15C9 28 4 22.5 4 15V7z' fill='url(%23g)'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/ui/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="iris" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9A8CFF"/><stop offset="1" stop-color="#5E4FE6"/></linearGradient></defs><path d="M16 2l12 5v8c0 7.5-5 13-12 15C9 28 4 22.5 4 15V7z" fill="url(#iris)"/><path d="M11 16l3.5 3.5L21 13" stroke="#fff" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div>
+        <div class="brand-title">Aegis Threat Intel</div>
+        <div class="brand-sub">external signature feed · signs with Ed25519</div>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="actions">
+      <button class="btn primary" id="btn-publish" title="Build, re-run every vector, sign and bump the serial">Publish</button>
+      <div class="menu-wrap">
+        <button class="btn danger" id="btn-tamper" aria-haspopup="true">Tamper <span class="caret">▾</span></button>
+        <div class="menu" id="tamper-menu" role="menu" hidden></div>
+      </div>
+      <button class="btn ghost" id="btn-reset" title="Restore the repo signatures and republish">Reset</button>
+    </div>
+  </header>
+  <div class="banner hidden" id="banner" role="alert"></div>
+  <main class="layout">
+    <aside class="pane list-pane">
+      <div class="pane-head">
+        <input class="input" id="search" type="search" placeholder="Search id, title, CVE, tag…" autocomplete="off">
+        <button class="btn sm secondary" id="btn-new" title="New signature from template">+ New</button>
+      </div>
+      <div class="list-meta" id="list-meta"></div>
+      <ul class="sig-list" id="sig-list"></ul>
+    </aside>
+    <section class="pane editor-pane">
+      <div class="editor-head">
+        <div>
+          <div class="eyebrow" id="ed-eyebrow">Signature</div>
+          <h1 class="ed-title"><span class="mono" id="ed-id">—</span> <span id="ed-title"></span></h1>
+          <div class="ed-tags" id="ed-tags"></div>
+        </div>
+        <div class="ed-actions">
+          <button class="btn secondary" id="btn-validate" title="⌘↵">Validate</button>
+          <button class="btn secondary" id="btn-save" title="⌘S">Save</button>
+          <button class="btn secondary" id="btn-enable">Enable</button>
+          <button class="btn ghost danger-text" id="btn-withdraw">Withdraw</button>
+        </div>
+      </div>
+      <div class="editor">
+        <pre class="gutter" id="gutter" aria-hidden="true">1</pre>
+        <textarea id="yaml" spellcheck="false" autocapitalize="off" autocomplete="off" wrap="off"></textarea>
+      </div>
+      <div class="validation" id="validation">
+        <div class="empty">Select a signature, then <b>Validate</b> to run schema, RE2, vectors and the ReDoS smoke test.</div>
+      </div>
+    </section>
+    <aside class="pane side-pane">
+      <div class="card">
+        <div class="card-title">Try it <span class="muted">scan a payload</span></div>
+        <div class="row">
+          <select class="input" id="try-surface"></select>
+          <select class="input" id="try-set">
+            <option value="workspace">workspace</option>
+            <option value="published">published</option>
+          </select>
+        </div>
+        <textarea class="input try-text" id="try-text" spellcheck="false" placeholder="Paste a prompt, response or tool argument…"></textarea>
+        <div class="row">
+          <button class="btn sm secondary" id="try-echoleak" title="Load the EchoLeak proxy payload">EchoLeak payload</button>
+          <button class="btn sm primary" id="try-scan">Scan</button>
+        </div>
+        <div id="try-result" class="try-result"></div>
+      </div>
+      <div class="card grow">
+        <div class="card-title">Activity</div>
+        <ol class="timeline" id="timeline"></ol>
+      </div>
+    </aside>
+  </main>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <script src="/ui/app.js"></script>
+</body>
+</html>

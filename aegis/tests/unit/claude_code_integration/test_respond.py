@@ -30,7 +30,7 @@ def test_block_reason_format():
     h = hso(out)
     assert h["hookEventName"] == "PreToolUse" and h["permissionDecision"] == "deny"
     r = h["permissionDecisionReason"]
-    assert r.startswith("AEGIS-DENY EXE-01 (Dangerous command guard): pipe-to-shell: remote script execution. Decision dec_")
+    assert r.startswith("[Aegis] EXE-01: Blocked by Dangerous command guard: pipe-to-shell: remote script execution. Decision dec_")
     assert "policy v7" in r and "Do not retry" in r and ".." not in r
     assert len(r) <= respond.MAX_REASON
 
@@ -62,8 +62,8 @@ def test_pending_approval_link():
     m = pre("mcp__payments__create_charge", {"amount_usd": 480})
     v = make_verdict("require_approval", control_id="ACT-01", approval=_approval())
     r = hso(respond.pre_tool_use(v, m, base_url=BASE))["permissionDecisionReason"]
-    assert r.startswith("AEGIS-APPROVAL-REQUIRED ACT-01: claude-code@platform wants to spend $480 on gpucloud.")
-    assert "Needs owner approval (rule spend-owner)" in r and "expires 09:30 UTC" in r
+    assert r.startswith("[Aegis] ACT-01: Approval apr_abc123 pending (needs owner: u_katarzyna) — approve at ")
+    assert "spend $480 on gpucloud (rule spend-owner)" in r and "Expires 09:30 UTC" in r
     assert f"{BASE}/ui/governance/approvals?id=apr_abc123" in r
 
 
@@ -80,7 +80,7 @@ def test_denied_approval():
     m = pre("mcp__payments__create_charge", {"amount_usd": 480})
     v = make_verdict("block", control_id="ACT-01", approval=_approval("denied", ["u_katarzyna"]))
     r = hso(respond.pre_tool_use(v, m, base_url=BASE))["permissionDecisionReason"]
-    assert r.startswith("AEGIS-DENY approval apr_abc123 was denied by u_katarzyna")
+    assert r.startswith("[Aegis] ACT-01: Approval apr_abc123 was denied by u_katarzyna")
 
 
 def test_budget_killed_loop():
@@ -88,16 +88,16 @@ def test_budget_killed_loop():
     v = make_verdict("block", control_id="BUD-01", http_status=402, error_type="budget_exceeded",
                      meta={"scope": "agent:claude-code@platform", "limit": 30, "window": "day"})
     r = hso(respond.pre_tool_use(v, m, base_url=BASE))["permissionDecisionReason"]
-    assert r.startswith("AEGIS-BUDGET BUD-01: budget exhausted for agent:claude-code@platform (30 usd/day)")
+    assert r.startswith("[Aegis] BUD-01: Budget exhausted for agent:claude-code@platform (30 usd/day)")
     assert f"{BASE}/ui/governance/budgets" in r
     v = make_verdict("block", control_id="EXE-04", error_type="killed", http_status=403,
                      meta={"scope": "agent:claude-code@platform"})
     r = hso(respond.pre_tool_use(v, m, base_url=BASE))["permissionDecisionReason"]
-    assert r == "AEGIS-KILLED EXE-04: kill switch active for agent:claude-code@platform. Stop immediately."
+    assert r == "[Aegis] EXE-04: Kill switch active for agent:claude-code@platform. Stop immediately."
     v = make_verdict("block", control_id="EXE-04", reason="identical call repeated 3x", http_status=429,
                      error_type="rate_limited")
     r = hso(respond.pre_tool_use(v, m, base_url=BASE))["permissionDecisionReason"]
-    assert r.startswith("AEGIS-LOOP EXE-04: identical call repeated 3x. Change approach")
+    assert r.startswith("[Aegis] EXE-04: Loop/rate limit: identical call repeated 3x. Change approach")
 
 
 def test_allow_is_no_opinion_unless_pass_decision():
@@ -142,7 +142,7 @@ def test_post_block_withholds_and_mcp_field():
     out = respond.post_tool_use(v, m, base_url=BASE)
     assert out["decision"] == "block" and "DLP-05" in out["reason"]
     h = hso(out)
-    assert h["updatedToolOutput"]["content"][0]["text"].startswith("[Aegis] tool output withheld: DLP-05")
+    assert h["updatedToolOutput"]["content"][0]["text"].startswith("[Aegis] DLP-05: tool output withheld")
     assert h["updatedToolOutput"]["content"][0]["type"] == "text"  # structure kept
     assert h["updatedMCPToolOutput"] == h["updatedToolOutput"]
 
@@ -155,7 +155,7 @@ def test_post_allow_no_opinion():
 def test_user_prompt_block_and_redact_note():
     v = make_verdict("block", control_id="INJ-01", reason="prompt injection signature")
     out = respond.user_prompt_submit(v, base_url=BASE, control_name="Injection signatures")
-    assert out["decision"] == "block" and out["reason"].startswith("Aegis blocked this prompt: INJ-01")
+    assert out["decision"] == "block" and out["reason"].startswith("[Aegis] INJ-01: Prompt blocked")
     assert hso(out) == {"hookEventName": "UserPromptSubmit", "suppressOriginalPrompt": True}
     red = [Redaction(segment_index=0, path="prompt", start=0, end=11, entity=e, placeholder=f"[{e}_1]",
                      control_id="DLP-01") for e in ("PESEL", "IBAN", "PAN", "CVV")]

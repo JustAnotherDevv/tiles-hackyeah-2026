@@ -63,9 +63,10 @@ def _preview(text: str, mask: Any = None) -> str:
 
 
 def tool_view(pins: PinStore, server: str, name: str, mask: Any = None) -> McpToolView:
-    pin, cand = pins.get(server, name)
-    definition = (cand.definition if cand and cand.reason != "manual" else None) or \
-        pins.display_definition(server, name)
+    _, cand = pins.get(server, name)
+    definition = (
+        cand.definition if cand and cand.reason != "manual" else None
+    ) or pins.display_definition(server, name)
     desc = str(definition.get("description") or definition.get("title") or "")
     return McpToolView(
         name=name,
@@ -78,10 +79,13 @@ def tool_view(pins: PinStore, server: str, name: str, mask: Any = None) -> McpTo
     )
 
 
-def build_inventory(snap: Any, pins: PinStore, state: InventoryState, mask: Any = None
-                    ) -> list[McpServerView]:
+def build_inventory(
+    snap: Any, pins: PinStore, state: InventoryState, mask: Any = None
+) -> list[McpServerView]:
     """registered (policy) ∪ seen (pins) ∪ attempted-unknown servers."""
-    servers_cfg = dict(getattr(getattr(getattr(snap, "doc", None), "mcp", None), "servers", {}) or {})
+    servers_cfg = dict(
+        getattr(getattr(getattr(snap, "doc", None), "mcp", None), "servers", {}) or {}
+    )
     names: list[str] = list(servers_cfg)
     for s in sorted(pins.known_servers() | set(state.unknown_attempts)):
         if s not in names:
@@ -96,8 +100,16 @@ def build_inventory(snap: Any, pins: PinStore, state: InventoryState, mask: Any 
             status = "blocked" if name in state.unknown_attempts else "unknown"
             transport, url, dest = "http", None, "third_party"
         tools = [tool_view(pins, name, t, mask) for t in pins.tool_names(name)]
-        out.append(McpServerView(name=name, transport=transport, url=url, destination=dest,
-                                 status=status, tools=tools))  # type: ignore[arg-type]
+        out.append(
+            McpServerView(
+                name=name,
+                transport=transport,
+                url=url,
+                destination=dest,
+                status=status,
+                tools=tools,
+            )
+        )  # type: ignore[arg-type]
     return out
 
 
@@ -111,11 +123,17 @@ def tool_detail(pins: PinStore, server: str, name: str, mask: Any = None) -> dic
         diff = cand.diff or (diff_tools(pin.definition, cand.definition) if pin else None)
     return {
         "tool": tool_view(pins, server, name, mask).model_dump(),
-        "pinned": None if pin is None else {"hash": pin.hash, "definition": pin.definition,
-                                            "approved_by": pin.approved_by},
-        "candidate": None if cand is None else {"hash": cand.hash, "definition": cand.definition,
-                                                "reason": cand.reason,
-                                                "detected_at": cand.detected_at},
+        "pinned": None
+        if pin is None
+        else {"hash": pin.hash, "definition": pin.definition, "approved_by": pin.approved_by},
+        "candidate": None
+        if cand is None
+        else {
+            "hash": cand.hash,
+            "definition": cand.definition,
+            "reason": cand.reason,
+            "detected_at": cand.detected_at,
+        },
         "diff": diff,
         "diff_summary": diff_summary(diff) if diff else None,
         "findings": list(cand.findings) if cand else [],
@@ -124,4 +142,11 @@ def tool_detail(pins: PinStore, server: str, name: str, mask: Any = None) -> dic
     }
 
 
-__all__ = ["InventoryState", "McpServerView", "McpToolView", "build_inventory", "tool_detail", "tool_view"]
+__all__ = [
+    "InventoryState",
+    "McpServerView",
+    "McpToolView",
+    "build_inventory",
+    "tool_detail",
+    "tool_view",
+]

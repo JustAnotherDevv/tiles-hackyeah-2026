@@ -1,0 +1,25 @@
+{
+  "name": "read_dotenv",
+  "title": "Read .env is denied (EXE-02)",
+  "steps": [
+    {
+      "event": "PreToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Read",
+        "tool_input": {
+          "file_path": "{{PROJECT}}/.env"
+        },
+        "tool_use_id": "toolu_{{N}}_env"
+      },
+      "expect": {
+        "result": "deny",
+        "contains": "EXE-02"
+      }
+    }
+  ]
+}

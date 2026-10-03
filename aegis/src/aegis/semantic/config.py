@@ -9,6 +9,7 @@ No I/O and no heavy imports here.
 from __future__ import annotations
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -251,6 +252,16 @@ class SemanticConfig(BaseModel):
                     values["ram_budget_mb"] = int(ram)
                 except ValueError:
                     pass
+        # Memory safety on the shared 8 GB box: tests build ``Settings(...)`` directly (env is not
+        # read), so the process environment always wins for the hermetic switches, and a pytest
+        # process never warms models in the background unless explicitly asked to.
+        env_mode = os.environ.get("AEGIS_SEMANTIC", "").strip().lower()
+        if env_mode == "off":
+            values["mode"] = "off"
+        if os.environ.get("AEGIS_TEST_MODE", "").strip().lower() in ("1", "true", "yes", "on"):
+            values["test_mode"] = True
+        if "pytest" in sys.modules and env_mode not in ("on", "auto"):
+            values["test_mode"] = True
         values.update(overrides)
         cfg = cls.model_validate(values)
         if not cfg.models_dir.is_absolute():

@@ -65,7 +65,7 @@ function NavItem({ page, role, collapsed }: { page: PageEntry; role: ViewRole; c
       end={meta.path === '/'}
       className={({ isActive }) =>
         cn(
-          'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-[450] text-text-2 transition-colors duration-150',
+          'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 [@media(max-height:940px)]:h-7 text-[13px] font-[450] text-text-2 transition-colors duration-150',
           'hover:bg-surface-1 hover:text-text-1',
           isActive && 'bg-surface-2 text-text-1 shadow-[inset_0_0_0_1px_var(--border-default)]',
           locked && 'text-text-3',
@@ -147,7 +147,7 @@ export function Sidebar({ role, collapsed, onToggle }: { role: ViewRole; collaps
     >
       <Brand collapsed={collapsed} />
       {!collapsed ? (
-        <div className="mb-3 flex w-full items-center gap-2.5 rounded-md border border-border bg-surface-1 px-2 py-[7px] text-left">
+        <div className="mb-3 flex w-full items-center gap-2.5 rounded-md border border-border bg-surface-1 px-2 py-[7px] text-left [@media(max-height:940px)]:hidden">
           <span className="grid size-[22px] shrink-0 place-items-center rounded-[6px] bg-[#1B2B3F] text-[10px] font-bold tracking-[0.02em] text-[#9CC6FF]">
             {name
               .split(/\s+/)
@@ -170,7 +170,7 @@ export function Sidebar({ role, collapsed, onToggle }: { role: ViewRole; collaps
         {sections.map(({ section, pages }) => (
           <div key={section} className="flex flex-col gap-px">
             {!collapsed ? (
-              <div className="px-2.5 pb-1.5 pt-3.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-text-4">{section}</div>
+              <div className="px-2.5 pb-1.5 pt-3.5 [@media(max-height:940px)]:pb-1 [@media(max-height:940px)]:pt-2 text-[10.5px] font-medium uppercase tracking-[0.08em] text-text-4">{section}</div>
             ) : (
               <div className="mx-auto my-2 h-px w-6 bg-border-subtle" />
             )}

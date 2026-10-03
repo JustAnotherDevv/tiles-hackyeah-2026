@@ -69,7 +69,9 @@ def _severity(rec: dict[str, Any]) -> str:
 def is_finding(rec: dict[str, Any]) -> bool:
     et = rec.get("event_type")
     if et == "decision":
-        return (rec.get("action") or "allow") != "allow" and (rec.get("data") or {}).get("phase") != "outcome"
+        return (rec.get("action") or "allow") != "allow" and (rec.get("data") or {}).get(
+            "phase"
+        ) != "outcome"
     return et in FINDING_EVENTS
 
 
@@ -84,7 +86,11 @@ def _common(rec: dict[str, Any], s: dict[str, Any]) -> dict[str, Any]:
         "severity": SEVERITY_CAPTION.get(SEVERITY_ID.get(sev, 1)),
         "metadata": {
             "version": OCSF_VERSION,
-            "product": {"name": "Aegis AI Control Layer", "vendor_name": "Aegis", "version": __version__},
+            "product": {
+                "name": "Aegis AI Control Layer",
+                "vendor_name": "Aegis",
+                "version": __version__,
+            },
             "uid": rec.get("event_id"),
             "correlation_uid": rec.get("request_id"),
             "log_name": "aegis.audit",
@@ -94,8 +100,10 @@ def _common(rec: dict[str, Any], s: dict[str, Any]) -> dict[str, Any]:
             "user": {"uid": actor.get("member_id")} if actor.get("member_id") else None,
             "app_name": actor.get("agent_id"),
         },
-        "policy": {"uid": str(rec.get("policy_version") or s.get("policy_version") or 0),
-                   "name": "aegis-policy"},
+        "policy": {
+            "uid": str(rec.get("policy_version") or s.get("policy_version") or 0),
+            "name": "aegis-policy",
+        },
         "unmapped": {
             "aegis": {
                 "seq": rec.get("seq"),
@@ -113,7 +121,10 @@ def _common(rec: dict[str, Any], s: dict[str, Any]) -> dict[str, Any]:
     if model:
         out["ai_model"] = {"name": model, "ai_provider": dest.get("provider") or dest.get("name")}
     if actor.get("agent_id"):
-        out["ai_agent"] = {"uid": actor.get("agent_id"), "name": actor.get("display_name") or actor.get("agent_id")}
+        out["ai_agent"] = {
+            "uid": actor.get("agent_id"),
+            "name": actor.get("display_name") or actor.get("agent_id"),
+        }
     action = rec.get("action")
     if action in CONTROL_ACTION:
         aid, acap, did, dcap = CONTROL_ACTION[action]
@@ -126,15 +137,22 @@ def to_ocsf(rec: dict[str, Any]) -> dict[str, Any]:
     out = _common(rec, s)
     data = rec.get("data") or {}
     if is_finding(rec):
-        control = rec.get("control_id") or s.get("control_id") or data.get("kind") or rec.get("event_type")
+        control = (
+            rec.get("control_id")
+            or s.get("control_id")
+            or data.get("kind")
+            or rec.get("event_type")
+        )
         reason = rec.get("reason") or s.get("reason") or ""
-        cats = sorted({
-            f.get("category")
-            for dec in ((data.get("detail") or {}).get("decisions") or [])
-            if isinstance(dec, dict)
-            for f in (dec.get("findings") or [])
-            if isinstance(f, dict) and f.get("category")
-        })
+        cats = sorted(
+            {
+                f.get("category")
+                for dec in ((data.get("detail") or {}).get("decisions") or [])
+                if isinstance(dec, dict)
+                for f in (dec.get("findings") or [])
+                if isinstance(f, dict) and f.get("category")
+            }
+        )
         tool = rec.get("tool_name") or s.get("tool_name")
         model = rec.get("model") or s.get("model")
         resources = []
@@ -143,58 +161,79 @@ def to_ocsf(rec: dict[str, Any]) -> dict[str, Any]:
         if tool:
             resources.append({"type": "tool", "name": tool})
         score = rec.get("score") if rec.get("score") is not None else s.get("score")
-        out.update({
-            "class_uid": 2004,
-            "class_name": "Detection Finding",
-            "category_uid": 2,
-            "category_name": "Findings",
-            "activity_id": 1,
-            "activity_name": "Create",
-            "type_uid": 200401,
-            "type_name": "Detection Finding: Create",
-            "status_id": 1,
-            "status": "New",
-            "finding_info": {
-                "uid": rec.get("decision_id") or rec.get("event_id"),
-                "title": f"{control}: {reason}"[:300],
-                "analytic": {"uid": control, "name": control, "type_id": 1, "type": "Rule"},
-                "types": cats or [rec.get("event_type")],
-            },
-            "evidences": [{
-                "data": {
-                    "surface": rec.get("surface") or s.get("surface"),
-                    "tool_name": tool,
-                    "entities": s.get("entities") or [],
-                    "redaction_spans": data.get("redaction_spans") or [],
-                }
-            }],
-            "resources": resources,
-            "risk_score": round(float(score) * 100) if isinstance(score, (int, float)) else None,
-            "is_alert": rec.get("action") in {"block", "require_approval"} or rec.get("event_type") in FINDING_EVENTS,
-            "message": reason[:300],
-        })
+        out.update(
+            {
+                "class_uid": 2004,
+                "class_name": "Detection Finding",
+                "category_uid": 2,
+                "category_name": "Findings",
+                "activity_id": 1,
+                "activity_name": "Create",
+                "type_uid": 200401,
+                "type_name": "Detection Finding: Create",
+                "status_id": 1,
+                "status": "New",
+                "finding_info": {
+                    "uid": rec.get("decision_id") or rec.get("event_id"),
+                    "title": f"{control}: {reason}"[:300],
+                    "analytic": {"uid": control, "name": control, "type_id": 1, "type": "Rule"},
+                    "types": cats or [rec.get("event_type")],
+                },
+                "evidences": [
+                    {
+                        "data": {
+                            "surface": rec.get("surface") or s.get("surface"),
+                            "tool_name": tool,
+                            "entities": s.get("entities") or [],
+                            "redaction_spans": data.get("redaction_spans") or [],
+                        }
+                    }
+                ],
+                "resources": resources,
+                "risk_score": round(float(score) * 100)
+                if isinstance(score, (int, float))
+                else None,
+                "is_alert": rec.get("action") in {"block", "require_approval"}
+                or rec.get("event_type") in FINDING_EVENTS,
+                "message": reason[:300],
+            }
+        )
     else:
         et = rec.get("event_type") or "system"
         activity_id, activity_name = API_ACTIVITY.get(et, (99, "Other"))
-        op = operation_name(rec.get("kind") or s.get("kind"), rec.get("surface") or s.get("surface")) or et
+        op = (
+            operation_name(rec.get("kind") or s.get("kind"), rec.get("surface") or s.get("surface"))
+            or et
+        )
         dest = rec.get("destination") or s.get("destination") or {}
         actor = rec.get("actor") or s.get("identity") or {}
-        out.update({
-            "class_uid": 6003,
-            "class_name": "API Activity",
-            "category_uid": 6,
-            "category_name": "Application Activity",
-            "activity_id": activity_id,
-            "activity_name": activity_name,
-            "type_uid": 600300 + activity_id,
-            "type_name": f"API Activity: {activity_name}",
-            "status_id": 1,
-            "status": "Success",
-            "api": {"operation": op, "service": {"name": dest.get("provider") or dest.get("name") or "aegis"}},
-            "src_endpoint": {"name": actor.get("agent_id") or actor.get("member_id") or "aegis"},
-            "duration": rec.get("latency_ms") if rec.get("latency_ms") is not None else s.get("latency_ms"),
-            "message": (rec.get("reason") or data.get("kind") or et)[:300] if isinstance(rec.get("reason") or data.get("kind") or et, str) else et,
-        })
+        out.update(
+            {
+                "class_uid": 6003,
+                "class_name": "API Activity",
+                "category_uid": 6,
+                "category_name": "Application Activity",
+                "activity_id": activity_id,
+                "activity_name": activity_name,
+                "type_uid": 600300 + activity_id,
+                "type_name": f"API Activity: {activity_name}",
+                "status_id": 1,
+                "status": "Success",
+                "api": {
+                    "operation": op,
+                    "service": {"name": dest.get("provider") or dest.get("name") or "aegis"},
+                },
+                "src_endpoint": {
+                    "name": actor.get("agent_id") or actor.get("member_id") or "aegis"
+                },
+                "duration": rec.get("latency_ms")
+                if rec.get("latency_ms") is not None
+                else s.get("latency_ms"),
+                "message": (rec.get("reason") or data.get("kind") or et)[:300]
+                if isinstance(rec.get("reason") or data.get("kind") or et, str)
+                else et,
+            }
+        )
     return {k: v for k, v in out.items() if v is not None}
 
 

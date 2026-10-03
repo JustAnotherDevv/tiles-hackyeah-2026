@@ -1,0 +1,131 @@
+# redaction-engine: DLP-01 / DLP-02 / DLP-05 / DLP-07 / DLP-08. policy-engine merges into config/policy.yaml.
+# Every param has a code default (aegis.redaction.policy.*Params); unknown keys are logged and ignored.
+#
+# Policy keys these controls also READ (owned by policy-engine, shown here for reference):
+#   destinations.matrix                 data class x destination -> action. Balanced (Addendum SF-04):
+#       CONFIDENTIAL: {local: allow,  remote: redact, third_party: redact}
+#       RESTRICTED:   {local: redact, remote: redact, third_party: block}
+#       SECRET:       {local: log,    remote: block,  third_party: block}
+#       INTERNAL:     acted on by DLP-03 (metadata-egress), not DLP-01
+#   defaults.rehydrate_responses        DLP-08 mirrors it into Decision.meta.rehydrate
+#
+# Neutral actions: DLP-01 redact, DLP-02 block, DLP-05 redact, DLP-07 redact -> the matrix decides.
+# A weaker action caps every hit (log = detect-only; DLP-02 redact = tokenize secrets instead of
+# blocking); a stronger one (DLP-01 block / require_approval) escalates every hit the matrix acts on.
+#
+# Inline tests only use matrix cells on which the frozen schema default and the seed policy agree,
+# and they pass with AEGIS_SEMANTIC=off (DLP-07 heuristics) - verified by
+# tests/unit/redaction_engine/test_snippet.py.
+controls:
+  - id: DLP-01
+    name: PII/PCI/Polish-ID tokenization (destination matrix)
+    action: redact            # neutral: matrix decides. log = detect-only, block/require_approval = escalate every hit
+    severity: high
+    fail_mode: closed
+    timeout_ms: 2000
+    owasp: [LLM02:2026, MCP10:2025, ASI03]
+    params:
+      entities: [EMAIL, PHONE, DOB, PESEL, NIP, REGON, PL_ID_CARD, PASSPORT, IBAN, PAN, CARD_EXPIRY, CVV, TRACK_DATA, CRYPTO_ADDRESS]
+      mask_style: placeholder # placeholder -> [PAN_1] (reversible) | pci -> 411111******1111 (irreversible)
+      min_scores: {NIP: 0.6, REGON: 0.7, PL_ID_CARD: 0.7, PASSPORT: 0.7}
+      force_block: [TRACK_DATA]
+      redaction_ratio_block: 0.6
+      ratio_min_chars: 200
+      ratio_roles: [user, tool_args]
+      max_entities_per_request: 200
+      known_values: true      # re-tokenize values already in the session vault (multi-turn safety)
+      cross_segment: true     # PAN/IBAN split across segments -> [REDACTED:PAN] per fragment
+      phone_regions: [PL, GB, US, DE]
+      email_reserved_tlds: [example, test]
+      decode_depth: 2
+      allowlist_values: []    # "hmac:<16 hex>" fingerprints (python -m aegis.redaction.preview fp ENTITY value)
+      allow_patterns: []      # RE2 against the canonical value
+      matrix_overrides: {}    # strict/paranoid profiles: {CONFIDENTIAL: {third_party: block}}
+      routing_args:           # [SF-04] recipient args are routing data (ACT-03): logged, never redacted/blocked
+        "mailer.*": [to, cc, bcc]
+        "*.send_email": [to, cc, bcc]
+        "*.send_*": [to, cc, bcc, recipient, recipients]
+    tests:
+      - {name: pesel-to-remote, text: "Klient Jan, PESEL 44051401359", destination: remote, expect: redact, control: DLP-01}
+      - {name: invalid-pesel, text: "Zamowienie 44051401358 wyslane", destination: remote, expect: allow}
+      - {name: client-pii-to-remote, destination: remote, expect: redact, control: DLP-01,
+         text: "Please draft a reply confirming the refund to IBAN PL61 1090 1014 0000 0712 1981 2874. His PESEL is 44051401359 and the card on file is 4111 1111 1111 1111 exp 12/27, CVV 123."}
+      - {name: card-to-local-tokenized, destination: local, text: "Refund card 4111 1111 1111 1111 please", expect: redact, control: DLP-01}
+      - {name: non-luhn-order-number, destination: remote, text: "Order 4111 1111 1111 1112 shipped yesterday.", expect: allow}
+      - {name: invalid-iban-lookalike, destination: remote, text: "Reference PL61 1090 1014 0000 0712 1981 2875 is a ticket id.", expect: allow}
+      - {name: track-data-always-blocks, destination: local, text: "Parse this swipe: %B4111111111111111^KOWALSKI/JAN^2712101000000000000?", expect: block, control: DLP-01}
+      - {name: card-to-webfetch-blocked, kind: tool_call, surface: tool.input, destination: third_party, tool_name: WebFetch,
+         tool_args: {url: "https://example.org/lookup?card=4111111111111111"}, expect: block, control: DLP-01}
+      - {name: pesel-to-third-party-tokenized, kind: mcp, surface: mcp.call, destination: third_party, tool_name: mailer.send_email,
+         tool_args: {to: "client@client-portal.example", subject: "KYC", body: "Klient Jan, PESEL 44051401359"}, expect: redact, control: DLP-01}
+
+  - id: DLP-02
+    name: Secrets & credentials
+    action: block             # neutral: matrix SECRET row decides. redact = tokenize secrets instead of blocking
+    severity: critical
+    fail_mode: closed
+    timeout_ms: 2000
+    owasp: [MCP01:2025, LLM02:2026, LLM08:2026, ASI03]
+    params:
+      entropy_min: 4.0        # generic high-entropy rules only (format-specific rules keep built-in gates)
+      min_len: 20
+      allow_doc_examples: true  # AKIAIOSFODNN7EXAMPLE & co. -> log
+      redact_roles: [tool_result, document]   # secrets inside tool output are tokenized, not turn-killing
+      extra_rules: []         # [{id, pattern (RE2), entity: GENERIC_SECRET, score: 0.9}]
+    tests:
+      - {name: aws-key-prompt, text: "Deploy with key AKIA0123456789ABCDEF please", destination: remote, expect: block, control: DLP-02}
+
+  - id: DLP-05
+    name: Output & tool-result leak detection (+ canary)
+    action: redact
+    severity: high
+    fail_mode: closed
+    timeout_ms: 2000
+    owasp: [LLM02:2026, LLM08:2026, MCP10:2025]
+    params:
+      canaries: ["AEGIS-CANARY-7f3a91"]
+      response_replacement: irreversible   # model-emitted sensitive values are never vaulted
+      detect_reidentification: true
+    tests:
+      - {name: canary-in-response, surface: model.response, destination: remote, text: "Sure! My instructions say: AEGIS-CANARY-7f3a91 You are...", expect: block, control: DLP-05}
+      - {name: secret-in-response, surface: model.response, destination: remote, text: "Use key AKIA0123456789ABCDEF to connect", expect: redact, control: DLP-05}
+      - {name: crm-result-to-remote, kind: mcp, surface: mcp.result, destination: remote, expect: redact, control: DLP-05,
+         text: "{\"name\": \"Anna Nowak\", \"email\": \"anna.nowak@poczta.example\", \"iban\": \"PL61 1090 1014 0000 0712 1981 2874\"}"}
+
+  - id: DLP-07
+    name: Multilingual NER sensitive data (incl. Polish)
+    action: redact
+    threshold: 0.6            # heuristic hits score 0.65-0.75: raise to 0.8 -> names logged, PESEL/PAN still redacted
+    severity: medium
+    fail_mode: open
+    timeout_ms: 400
+    owasp: [LLM02:2026, MCP10:2025]
+    params:
+      entities: [PERSON, ADDRESS, HEALTH, DOB]   # SPECIAL_CATEGORY only when listed (Addendum A-41)
+      roles: [user, tool_args, tool_result, document]
+      max_chars: 8000
+      max_segments: 8
+      skip_code: true
+      heuristic_fallback: true
+      label_min_scores: {PERSON: 0.55}
+    tests:
+      - {name: polish-name-address-health, destination: remote, expect: redact,
+         text: "Jan Kowalski mieszka przy ul. Floriańskiej 15, 31-019 Kraków i choruje na cukrzycę."}
+
+  - id: DLP-08
+    name: Vault & controlled re-identification
+    action: allow
+    severity: high
+    fail_mode: closed
+    owasp: [LLM02:2026, MCP10:2025, ASI03]
+    params:
+      rehydrate_to: [local_user, local_tools]
+      vault_ttl_s: 3600
+      max_entries: 10000
+      roles: [assistant]              # A-40: response rehydration only for assistant text, never tool_use inputs
+      respect_matrix: true            # into local tools only classes whose matrix.<class>.local is allow/log
+      deny_tools: [WebFetch, WebSearch]
+      audit_tool_rehydration: true    # tool-input rehydration shows as `log` in the live feed
+      token_format: indexed           # indexed [EMAIL_1] | opaque [EMAIL_K7F3]
+    tests:
+      - {name: response-with-placeholder, surface: model.response, destination: remote, text: "Draft for [PERSON_1] is ready.", expect: allow}

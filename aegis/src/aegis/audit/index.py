@@ -51,11 +51,43 @@ _ADDITIVE = {
 }
 
 DECISION_COLS = [
-    "id", "ts", "request_id", "org_id", "team_id", "member_id", "agent_id", "session_id", "source",
-    "kind", "surface", "direction", "dest_name", "dest_class", "model", "tool_name", "action_type",
-    "amount_usd", "action", "control_id", "reason", "score", "latency_ms", "upstream_ms", "cost_usd",
-    "tokens", "redaction_count", "entities_json", "policy_version", "feed_serial", "degraded",
-    "dry_run", "summary_json", "detail_json", "categories_json", "synthetic", "cost_avoided_usd",
+    "id",
+    "ts",
+    "request_id",
+    "org_id",
+    "team_id",
+    "member_id",
+    "agent_id",
+    "session_id",
+    "source",
+    "kind",
+    "surface",
+    "direction",
+    "dest_name",
+    "dest_class",
+    "model",
+    "tool_name",
+    "action_type",
+    "amount_usd",
+    "action",
+    "control_id",
+    "reason",
+    "score",
+    "latency_ms",
+    "upstream_ms",
+    "cost_usd",
+    "tokens",
+    "redaction_count",
+    "entities_json",
+    "policy_version",
+    "feed_serial",
+    "degraded",
+    "dry_run",
+    "summary_json",
+    "detail_json",
+    "categories_json",
+    "synthetic",
+    "cost_avoided_usd",
     "avoided_reason",
 ]
 _PRESERVE_ON_CONFLICT = {"id", "cost_avoided_usd", "avoided_reason", "synthetic"}
@@ -101,9 +133,20 @@ def insert_audit_index(
         " action, control_id, actor, file, line, hash, offset, length)"
         " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (
-            d.get("seq"), d.get("event_id"), iso_z(d.get("ts")), d.get("event_type"),
-            d.get("request_id"), d.get("decision_id"), d.get("action"), d.get("control_id"),
-            _principal(d.get("actor")), file, line, d.get("hash"), offset, length,
+            d.get("seq"),
+            d.get("event_id"),
+            iso_z(d.get("ts")),
+            d.get("event_type"),
+            d.get("request_id"),
+            d.get("decision_id"),
+            d.get("action"),
+            d.get("control_id"),
+            _principal(d.get("actor")),
+            file,
+            line,
+            d.get("hash"),
+            offset,
+            length,
         ),
     )
 
@@ -137,7 +180,9 @@ def summary_from_event(d: dict[str, Any]) -> dict[str, Any]:
         "threshold": d.get("threshold"),
         "controls": d.get("controls") or [],
         "redaction_count": len(reds),
-        "entities": sorted({r.get("entity") for r in reds if isinstance(r, dict) and r.get("entity")}),
+        "entities": sorted(
+            {r.get("entity") for r in reds if isinstance(r, dict) and r.get("entity")}
+        ),
         "approval_id": None,
         "latency_ms": d.get("latency_ms") or 0.0,
         "upstream_ms": None,
@@ -209,7 +254,9 @@ def decision_row(
         "degraded": 1 if summary.get("degraded") else 0,
         "dry_run": 1 if summary.get("dry_run") else 0,
         "summary_json": json.dumps(summary, separators=(",", ":"), default=str),
-        "detail_json": json.dumps(detail, separators=(",", ":"), default=str) if detail is not None else None,
+        "detail_json": json.dumps(detail, separators=(",", ":"), default=str)
+        if detail is not None
+        else None,
         "categories_json": json.dumps(sorted(set(categories))),
         "synthetic": 1 if synthetic else 0,
         "cost_avoided_usd": float(cost_avoided_usd or 0.0),
@@ -255,8 +302,14 @@ def annotate(conn: sqlite3.Connection, decision_id: str, **cols: Any) -> int:
     return cur.rowcount
 
 
-def apply_outcome(conn: sqlite3.Connection, decision_id: str, *, cost_usd: float | None,
-                  tokens: int | None, upstream_ms: float | None) -> int:
+def apply_outcome(
+    conn: sqlite3.Connection,
+    decision_id: str,
+    *,
+    cost_usd: float | None,
+    tokens: int | None,
+    upstream_ms: float | None,
+) -> int:
     """Outcome phase (R1): usage/cost/upstream time land on the decision row + summary_json."""
     cur = conn.execute(
         "UPDATE decisions SET cost_usd=COALESCE(?, cost_usd), tokens=COALESCE(?, tokens),"
@@ -307,8 +360,14 @@ def query_decisions(
 ) -> tuple[list[dict[str, Any]], str | None]:
     where: list[str] = []
     args: list[Any] = []
-    for col, val in (("action", action), ("kind", kind), ("surface", surface),
-                     ("agent_id", agent_id), ("team_id", team_id), ("member_id", member_id)):
+    for col, val in (
+        ("action", action),
+        ("kind", kind),
+        ("surface", surface),
+        ("agent_id", agent_id),
+        ("team_id", team_id),
+        ("member_id", member_id),
+    ):
         vals = _csv(val)
         if vals:
             where.append(f"{col} IN ({', '.join('?' for _ in vals)})")
@@ -385,6 +444,7 @@ def query_audit_rows(
     decision_id: str | None = None,
     limit: int = 100,
     cursor: str | None = None,
+    seq_from: int | None = None,
 ) -> tuple[list[sqlite3.Row], str | None]:
     where: list[str] = []
     args: list[Any] = []
@@ -405,6 +465,9 @@ def query_audit_rows(
     if decision_id:
         where.append("decision_id = ?")
         args.append(decision_id)
+    if seq_from is not None:  # A-54: jump to an old record (page starts at seq_from, newest first)
+        where.append("seq <= ?")
+        args.append(int(seq_from))
     cur_parts = decode_cursor(cursor)
     if cur_parts:
         try:

@@ -42,8 +42,9 @@ log = logging.getLogger(__name__)
 class McpClientError(Exception):
     """JSON-RPC error (or non-JSON-RPC HTTP failure) returned by the server/gateway."""
 
-    def __init__(self, code: int | None, message: str, *, status: int | None = None,
-                 data: Any = None) -> None:
+    def __init__(
+        self, code: int | None, message: str, *, status: int | None = None, data: Any = None
+    ) -> None:
         super().__init__(f"{code}: {message}" if code is not None else message)
         self.code = code
         self.message = message
@@ -128,14 +129,22 @@ class McpHttpClient:
             extra["X-Aegis-Approval"] = approval_id
         return await self.request("tools/call", {"name": name, "arguments": arguments or {}}, extra)
 
-    async def request(self, method: str, params: dict[str, Any] | None = None,
-                      extra_headers: dict[str, str] | None = None) -> dict[str, Any]:
+    async def request(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        extra_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]:
         params = dict(params or {})
         if self.era == MODERN:
             try:
                 return await self._modern(method, params, extra_headers)
             except McpClientError as e:
-                if not self._auto or e.code in (-32001, -32002, -32020) or e.status in (403, 404, 502):
+                if (
+                    not self._auto
+                    or e.code in (-32001, -32002, -32020)
+                    or e.status in (403, 404, 502)
+                ):
                     raise
                 log.debug("modern era rejected (%s); falling back to legacy", e)
                 self.era = LEGACY
@@ -144,19 +153,27 @@ class McpHttpClient:
 
     # ------------------------------------------------------------------ eras
     def _base_headers(self, version: str | None) -> dict[str, str]:
-        h = {"accept": "application/json, text/event-stream", "content-type": "application/json",
-             **self.headers}
+        h = {
+            "accept": "application/json, text/event-stream",
+            "content-type": "application/json",
+            **self.headers,
+        }
         if version:
             h["mcp-protocol-version"] = version
         if self.session_id:
             h["mcp-session-id"] = self.session_id
         return h
 
-    async def _modern(self, method: str, params: dict[str, Any], extra: dict[str, str] | None
-                      ) -> dict[str, Any]:
+    async def _modern(
+        self, method: str, params: dict[str, Any], extra: dict[str, str] | None
+    ) -> dict[str, Any]:
         rid = next(self._ids)
-        body = {"jsonrpc": "2.0", "id": rid, "method": method,
-                "params": {**params, "_meta": modern_meta(self.client_name)}}
+        body = {
+            "jsonrpc": "2.0",
+            "id": rid,
+            "method": method,
+            "params": {**params, "_meta": modern_meta(self.client_name)},
+        }
         headers = self._base_headers(MODERN_VERSION)
         headers["mcp-method"] = method
         if (key := NAME_BEARING_METHODS.get(method)) and params.get(key) is not None:
@@ -171,38 +188,56 @@ class McpHttpClient:
         if self._initialized:
             return
         rid = next(self._ids)
-        body = {"jsonrpc": "2.0", "id": rid, "method": "initialize",
-                "params": {"protocolVersion": LEGACY_VERSION, "capabilities": {},
-                           "clientInfo": {"name": self.client_name, "version": "0.1"}}}
+        body = {
+            "jsonrpc": "2.0",
+            "id": rid,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": LEGACY_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": self.client_name, "version": "0.1"},
+            },
+        }
         await self._post(body, self._base_headers(None), rid)
         sid = self.last_headers.get("mcp-session-id")
         if sid:
             self.session_id = sid
         note = {"jsonrpc": "2.0", "method": "notifications/initialized"}
-        resp = await self._http.post(self.url, json=note, headers=self._base_headers(LEGACY_VERSION))
+        resp = await self._http.post(
+            self.url, json=note, headers=self._base_headers(LEGACY_VERSION)
+        )
         await resp.aread()
         self._initialized = True
 
-    async def _legacy(self, method: str, params: dict[str, Any], extra: dict[str, str] | None
-                      ) -> dict[str, Any]:
+    async def _legacy(
+        self, method: str, params: dict[str, Any], extra: dict[str, str] | None
+    ) -> dict[str, Any]:
         rid = next(self._ids)
         body = {"jsonrpc": "2.0", "id": rid, "method": method, "params": params}
         headers = self._base_headers(LEGACY_VERSION)
         headers.update(extra or {})
         return await self._post(body, headers, rid)
 
-    async def _post(self, body: dict[str, Any], headers: dict[str, str], rid: Any) -> dict[str, Any]:
+    async def _post(
+        self, body: dict[str, Any], headers: dict[str, str], rid: Any
+    ) -> dict[str, Any]:
         resp = await self._http.post(self.url, content=json.dumps(body).encode(), headers=headers)
         text = (await resp.aread()).decode("utf-8", errors="replace")
         self.last_status = resp.status_code
         self.last_headers = {k.lower(): v for k, v in resp.headers.items()}
         msg = self._extract(text, resp.headers.get("content-type", ""), rid)
         if msg is None:
-            raise McpClientError(None, f"HTTP {resp.status_code}: {text[:200]}", status=resp.status_code)
+            raise McpClientError(
+                None, f"HTTP {resp.status_code}: {text[:200]}", status=resp.status_code
+            )
         if "error" in msg:
             err = msg["error"] or {}
-            raise McpClientError(err.get("code"), str(err.get("message")), status=resp.status_code,
-                                 data=err.get("data"))
+            raise McpClientError(
+                err.get("code"),
+                str(err.get("message")),
+                status=resp.status_code,
+                data=err.get("data"),
+            )
         return dict(msg.get("result") or {})
 
     @staticmethod
@@ -210,7 +245,11 @@ class McpHttpClient:
         if "text/event-stream" in content_type:
             for ev in parse_sse_text(text):
                 msg = ev.json()
-                if isinstance(msg, dict) and msg.get("id") == rid and ("result" in msg or "error" in msg):
+                if (
+                    isinstance(msg, dict)
+                    and msg.get("id") == rid
+                    and ("result" in msg or "error" in msg)
+                ):
                     return msg
             return None
         try:
@@ -222,7 +261,9 @@ class McpHttpClient:
 
 def result_text(result: dict[str, Any]) -> str:
     """Concatenated text content of a tool result."""
-    return "\n".join(str(c.get("text", "")) for c in result.get("content") or [] if isinstance(c, dict))
+    return "\n".join(
+        str(c.get("text", "")) for c in result.get("content") or [] if isinstance(c, dict)
+    )
 
 
 def aegis_decision(result: dict[str, Any]) -> dict[str, Any]:

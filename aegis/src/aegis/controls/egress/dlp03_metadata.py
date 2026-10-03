@@ -23,7 +23,15 @@ from aegis.egress.cache import TEXT_CACHE
 from aegis.egress.headers import plan_headers
 from aegis.egress.params import Dlp03Params, effective_params, params_hash
 from aegis.egress.policyview import destinations, profile_for, snapshot_for
-from aegis.egress.textmeta import MetaSpan, learnable, mask_excerpt, resolve_overlaps, scan_text
+from aegis.egress.textmeta import (
+    MetaSpan,
+    find_learned,
+    learnable,
+    mask_excerpt,
+    resolve_overlaps,
+    scan_text,
+    usable_identifier,
+)
 
 log = logging.getLogger(__name__)
 
@@ -136,11 +144,14 @@ class MetadataStrip(BaseControl):
         phash = params_hash(P)
         dkey = hashlib.sha256("|".join(doms).encode()).hexdigest()[:8]
         per_seg: list[tuple[int, list[MetaSpan]]] = []
+        seg_keys: dict[int, str] = {}
         candidates: list[str] = []
         for i, seg in enumerate(interaction.segments):
             if not seg.redactable or not seg.text:
                 continue
-            key = (hashlib.sha256(seg.text.encode()).hexdigest(), phash, style, dkey, is_cc)
+            sha = hashlib.sha256(seg.text.encode()).hexdigest()
+            seg_keys[i] = sha
+            key = (sha, phash, style, dkey, is_cc)
             spans = TEXT_CACHE.get(key)
             if spans is None:
                 spans = scan_text(seg.text, internal_domains=doms, params=P.text, style=style,
@@ -158,12 +169,19 @@ class MetadataStrip(BaseControl):
                                         max_identifiers=P.text.max_identifiers)
             known = identifiers.get(session_id)
         if P.text.learn_identifiers and known:
+            idents = frozenset(i for i in known if usable_identifier(
+                i, min_len=P.text.min_identifier_len, allow=P.text.user_allowlist))
+            ikey = hashlib.sha256("\x00".join(sorted(idents)).encode()).hexdigest()[:16]
             seg_map = dict(per_seg)
             for i, seg in enumerate(interaction.segments):
-                if not seg.redactable or not seg.text:
+                if not seg.redactable or not seg.text or not idents:
                     continue
-                extra = scan_text(seg.text, internal_domains=(), params=_learn_only(P),
-                                  identifiers=known, style=style, learned=True)
+                lkey = ("learned", seg_keys.get(i) or hashlib.sha256(seg.text.encode()).hexdigest(),
+                        ikey, style)
+                extra = TEXT_CACHE.get(lkey)
+                if extra is None:
+                    extra = find_learned(seg.text, idents, style=style)
+                    TEXT_CACHE.put(lkey, extra)
                 if extra:
                     seg_map[i] = seg_map.get(i, []) + extra
             per_seg = sorted(seg_map.items())
@@ -173,7 +191,7 @@ class MetadataStrip(BaseControl):
                 f_meta: dict[str, Any] = {}
                 if s.meta.get("block"):
                     f_meta["block"] = s.meta["block"]
-                findings.append(Finding(
+                findings.append(Finding.model_construct(  # trusted values: skip validation (hot path)
                     control_id=self.id, detector=s.detector, category="metadata",
                     entity=s.entity, data_class=s.data_class,  # type: ignore[arg-type]
                     severity="low", score=s.score, segment_index=i, start=s.start, end=s.end,
@@ -225,12 +243,6 @@ class MetadataStrip(BaseControl):
             kind = {"jpeg": "image", "png": "image", "webp": "image", "gif": "image"}.get(
                 str(m.get("format")), str(m.get("format") or "image"))
             compat.inc_metric("aegis_metadata_stripped_total", {"kind": kind})
-
-
-def _learn_only(P: Dlp03Params):
-    """TextParams with every detector off except learned identifiers."""
-    return P.text.model_copy(update={"paths": False, "hostnames": False, "private_ips": False,
-                                     "git": False, "enabled": True, "learn_identifiers": True})
 
 
 CONTROLS = [MetadataStrip()]

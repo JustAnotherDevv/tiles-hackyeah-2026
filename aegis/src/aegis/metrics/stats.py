@@ -42,7 +42,9 @@ def _conn(rt: Any) -> sqlite3.Connection:
 
 
 # ------------------------------------------------------------------ SQL part (sync)
-def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: datetime) -> dict[str, Any]:
+def _sql_stats(
+    conn: sqlite3.Connection, window: str, include_synth: bool, now: datetime
+) -> dict[str, Any]:
     span, step = WINDOWS[window]
     starts, step = bucket_starts(window, now)
     since = iso_z(datetime.fromtimestamp(starts[0], UTC))
@@ -51,7 +53,10 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
     dflt = "d.ts >= ? AND (? = 1 OR d.synthetic = 0)"
     args = (since, syn)
 
-    buckets = {s: {"ts": epoch_iso(s), **{a: 0 for a in ACTIONS}, "spend_usd": 0.0, "tokens": 0} for s in starts}
+    buckets = {
+        s: {"ts": epoch_iso(s), **{a: 0 for a in ACTIONS}, "spend_usd": 0.0, "tokens": 0}
+        for s in starts
+    }
     for b, action, n, cost, tok in conn.execute(
         f"SELECT (CAST(strftime('%s', ts) AS INTEGER) / {step}) * {step} AS b, action, COUNT(*),"
         f" COALESCE(SUM(cost_usd), 0), COALESCE(SUM(tokens), 0) FROM decisions WHERE {flt}"
@@ -70,7 +75,9 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
     kargs = (kpi_since, syn)
     counts = {a: 0 for a in ACTIONS}
     total = 0
-    for action, n in conn.execute(f"SELECT action, COUNT(*) FROM decisions WHERE {flt} GROUP BY action", kargs):
+    for action, n in conn.execute(
+        f"SELECT action, COUNT(*) FROM decisions WHERE {flt} GROUP BY action", kargs
+    ):
         total += int(n)
         if action in counts:
             counts[action] += int(n)
@@ -94,7 +101,10 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
     ):
         if not cid:
             continue
-        e = ctl.setdefault(cid, {"control_id": cid, "family": cid.split("-")[0], "hits": 0, "blocks": 0, "redacts": 0})
+        e = ctl.setdefault(
+            cid,
+            {"control_id": cid, "family": cid.split("-")[0], "hits": 0, "blocks": 0, "redacts": 0},
+        )
         e["hits"] += int(n)
         if mode != "monitor":
             if act == "block":
@@ -107,7 +117,10 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
         " GROUP BY 1, 2",
         kargs,
     ):
-        e = ctl.setdefault(cid, {"control_id": cid, "family": cid.split("-")[0], "hits": 0, "blocks": 0, "redacts": 0})
+        e = ctl.setdefault(
+            cid,
+            {"control_id": cid, "family": cid.split("-")[0], "hits": 0, "blocks": 0, "redacts": 0},
+        )
         e["hits"] += int(n)
         if act == "block":
             e["blocks"] += int(n)
@@ -142,7 +155,12 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
         if e
     ]
     top_agents = [
-        {"agent_id": a, "requests": int(n), "blocks": int(b or 0), "spend_usd": round(float(s or 0), 6)}
+        {
+            "agent_id": a,
+            "requests": int(n),
+            "blocks": int(b or 0),
+            "spend_usd": round(float(s or 0), 6),
+        }
         for a, n, b, s in conn.execute(
             "SELECT agent_id, COUNT(*), SUM(CASE WHEN action='block' THEN 1 ELSE 0 END), SUM(cost_usd)"
             f" FROM decisions WHERE {flt} AND agent_id IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 8",
@@ -153,7 +171,8 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
     today = {
         int(s): float(c)
         for s, c in conn.execute(
-            "SELECT synthetic, COALESCE(SUM(cost_usd),0) FROM decisions WHERE ts >= ? GROUP BY 1", (midnight,)
+            "SELECT synthetic, COALESCE(SUM(cost_usd),0) FROM decisions WHERE ts >= ? GROUP BY 1",
+            (midnight,),
         )
     }
     degraded_recent = conn.execute(
@@ -180,7 +199,9 @@ def _sql_stats(conn: sqlite3.Connection, window: str, include_synth: bool, now: 
     }
 
 
-def sql_stats(rt: Any, window: str, include_synth: bool, now: datetime | None = None) -> dict[str, Any]:
+def sql_stats(
+    rt: Any, window: str, include_synth: bool, now: datetime | None = None
+) -> dict[str, Any]:
     conn = _conn(rt)
     try:
         return _sql_stats(conn, window, include_synth, now or utc_now())
@@ -189,9 +210,9 @@ def sql_stats(rt: Any, window: str, include_synth: bool, now: datetime | None = 
 
 
 # ------------------------------------------------------------------ service pulls (async)
-async def _guard(coro: Any, timeout: float = 0.3) -> Any:
+async def _guard(coro: Any, limit_s: float = 0.3) -> Any:
     try:
-        return await asyncio.wait_for(coro, timeout)
+        return await asyncio.wait_for(coro, limit_s)
     except Exception:
         return None
 
@@ -257,8 +278,9 @@ def verify_ok(rt: Any) -> bool:
     return True if lv is None else bool(lv.ok)
 
 
-async def build_stats(rt: Any, window: str = "24h", include_synth: bool = True,
-                      now: datetime | None = None) -> dict[str, Any]:
+async def build_stats(
+    rt: Any, window: str = "24h", include_synth: bool = True, now: datetime | None = None
+) -> dict[str, Any]:
     """StatsResponse (CONTRACTS section 5.5) with exactly the frozen keys."""
     if window not in WINDOWS:
         raise ValueError(f"bad window {window!r}")
@@ -414,7 +436,14 @@ async def control_rollup(rt: Any, window_s: int = 86400) -> dict[str, dict[str, 
 
 
 # ------------------------------------------------------------------ posture (G2)
-FEED_SCORES = {"ok": 1.0, "seed": 0.7, "rejected": 0.6, "unreachable": 0.5, "stale": 0.4, "disabled": 0.0}
+FEED_SCORES = {
+    "ok": 1.0,
+    "seed": 0.7,
+    "rejected": 0.6,
+    "unreachable": 0.5,
+    "stale": 0.4,
+    "disabled": 0.0,
+}
 
 
 def _grade(score: int) -> str:
@@ -449,34 +478,82 @@ async def posture(rt: Any, primer: dict[str, Any] | None = None) -> dict[str, An
                 off += 1
                 why = "not implemented" if implemented is False and cfg.enabled else "disabled"
                 sev = "high" if cid.split("-")[0] in {"DLP", "INJ", "EXE", "SIG"} else "medium"
-                findings.append({"severity": sev, "message": f"{cid} {why} (policy v{policy_version})",
-                                 "control_id": cid, "link": "/ui/governance/policy"})
+                findings.append(
+                    {
+                        "severity": sev,
+                        "message": f"{cid} {why} (policy v{policy_version})",
+                        "control_id": cid,
+                        "link": "/ui/governance/policy",
+                    }
+                )
             elif cfg.mode == "monitor":
                 monitor += 1
                 acc += 0.5
             else:
                 acc += 1.0
         score = acc / total if total else 0.0
-        comps.append({"id": "controls", "label": "Controls enabled & enforcing", "weight": 35,
-                      "score": round(score, 3), "value": f"{total - off - monitor}/{total} enforcing"
-                      + (f", {monitor} monitor" if monitor else ""),
-                      "status": "ok" if score >= 0.9 else "warn" if score >= 0.6 else "error"})
+        comps.append(
+            {
+                "id": "controls",
+                "label": "Controls enabled & enforcing",
+                "weight": 35,
+                "score": round(score, 3),
+                "value": f"{total - off - monitor}/{total} enforcing"
+                + (f", {monitor} monitor" if monitor else ""),
+                "status": "ok" if score >= 0.9 else "warn" if score >= 0.6 else "error",
+            }
+        )
     else:
-        comps.append({"id": "controls", "label": "Controls enabled & enforcing", "weight": 35,
-                      "score": 0.0, "value": "no policy loaded", "status": "error"})
-        findings.append({"severity": "critical", "message": "no policy snapshot available",
-                         "control_id": None, "link": "/ui/governance/policy"})
+        comps.append(
+            {
+                "id": "controls",
+                "label": "Controls enabled & enforcing",
+                "weight": 35,
+                "score": 0.0,
+                "value": "no policy loaded",
+                "status": "error",
+            }
+        )
+        findings.append(
+            {
+                "severity": "critical",
+                "message": "no policy snapshot available",
+                "control_id": None,
+                "link": "/ui/governance/policy",
+            }
+        )
 
-    # self-tests (20) - from the primer cache; excluded when unknown
+    # self-tests (20) - rt.policy.last_selftest() when present (A-51), else the primer cache;
+    # excluded when unknown
+    with contextlib.suppress(Exception):
+        last = rt.policy.last_selftest() if hasattr(rt.policy, "last_selftest") else None
+        if last is not None and (int(last.passed) + int(last.failed)) > 0:
+            primer = {
+                "tests_passed": int(last.passed),
+                "tests_total": int(last.passed) + int(last.failed),
+            }
     if primer and primer.get("tests_total"):
         passed, total_t = int(primer.get("tests_passed", 0)), int(primer["tests_total"])
         s = passed / total_t
-        comps.append({"id": "selftests", "label": "Inline policy tests passing", "weight": 20,
-                      "score": round(s, 3), "value": f"{passed}/{total_t} passing",
-                      "status": "ok" if s >= 0.95 else "warn" if s >= 0.8 else "error"})
+        comps.append(
+            {
+                "id": "selftests",
+                "label": "Inline policy tests passing",
+                "weight": 20,
+                "score": round(s, 3),
+                "value": f"{passed}/{total_t} passing",
+                "status": "ok" if s >= 0.95 else "warn" if s >= 0.8 else "error",
+            }
+        )
         if passed < total_t:
-            findings.append({"severity": "medium", "message": f"{total_t - passed} inline policy tests failing",
-                             "control_id": None, "link": "/ui/security/coverage"})
+            findings.append(
+                {
+                    "severity": "medium",
+                    "message": f"{total_t - passed} inline policy tests failing",
+                    "control_id": None,
+                    "link": "/ui/security/coverage",
+                }
+            )
 
     # feed (15)
     fstatus = "disabled"
@@ -485,45 +562,106 @@ async def posture(rt: Any, primer: dict[str, Any] | None = None) -> dict[str, An
         fs = rt.feed.status()
         fstatus, serial = fs.status, fs.serial
     fscore = FEED_SCORES.get(fstatus, 0.0)
-    comps.append({"id": "feed", "label": "Threat feed freshness", "weight": 15, "score": fscore,
-                  "value": f"{fstatus}" + (f" · serial {serial}" if serial is not None else ""),
-                  "status": "ok" if fscore >= 0.9 else "warn" if fscore >= 0.4 else "off" if fstatus == "disabled" else "error"})
+    comps.append(
+        {
+            "id": "feed",
+            "label": "Threat feed freshness",
+            "weight": 15,
+            "score": fscore,
+            "value": f"{fstatus}" + (f" · serial {serial}" if serial is not None else ""),
+            "status": "ok"
+            if fscore >= 0.9
+            else "warn"
+            if fscore >= 0.4
+            else "off"
+            if fstatus == "disabled"
+            else "error",
+        }
+    )
     if fstatus not in {"ok", "seed"}:
-        findings.append({"severity": "medium" if fstatus != "rejected" else "high",
-                         "message": f"threat feed {fstatus}", "control_id": None, "link": "/ui/security/threats"})
+        findings.append(
+            {
+                "severity": "medium" if fstatus != "rejected" else "high",
+                "message": f"threat feed {fstatus}",
+                "control_id": None,
+                "link": "/ui/security/threats",
+            }
+        )
 
     # audit (15)
     lv = getattr(getattr(rt, "audit", None), "last_verify", None)
     if lv is None:
-        comps.append({"id": "audit", "label": "Audit chain integrity", "weight": 15, "score": 1.0,
-                      "value": "not verified yet", "status": "warn"})
+        comps.append(
+            {
+                "id": "audit",
+                "label": "Audit chain integrity",
+                "weight": 15,
+                "score": 1.0,
+                "value": "not verified yet",
+                "status": "warn",
+            }
+        )
     else:
-        comps.append({"id": "audit", "label": "Audit chain integrity", "weight": 15,
-                      "score": 1.0 if lv.ok else 0.0,
-                      "value": f"chain OK ({lv.records} records)" if lv.ok else (lv.message or "broken"),
-                      "status": "ok" if lv.ok else "error"})
+        comps.append(
+            {
+                "id": "audit",
+                "label": "Audit chain integrity",
+                "weight": 15,
+                "score": 1.0 if lv.ok else 0.0,
+                "value": f"chain OK ({lv.records} records)" if lv.ok else (lv.message or "broken"),
+                "status": "ok" if lv.ok else "error",
+            }
+        )
         if not lv.ok:
-            findings.append({"severity": "critical",
-                             "message": f"audit chain broken at seq {lv.broken_at_seq}" if lv.broken_at_seq else (lv.message or "audit chain broken"),
-                             "control_id": None, "link": "/ui/security/audit"})
+            findings.append(
+                {
+                    "severity": "critical",
+                    "message": f"audit chain broken at seq {lv.broken_at_seq}"
+                    if lv.broken_at_seq
+                    else (lv.message or "audit chain broken"),
+                    "control_id": None,
+                    "link": "/ui/security/audit",
+                }
+            )
 
     # models (10)
     sem = semantic_status(rt)
     mscore = 0.5 if sem.get("degraded") else 1.0
-    comps.append({"id": "models", "label": "Detection models healthy", "weight": 10, "score": mscore,
-                  "value": f"{sem.get('mode')}" + (" · degraded (heuristic fallback)" if sem.get("degraded") else ""),
-                  "status": "ok" if mscore == 1.0 else "warn"})
+    comps.append(
+        {
+            "id": "models",
+            "label": "Detection models healthy",
+            "weight": 10,
+            "score": mscore,
+            "value": f"{sem.get('mode')}"
+            + (" · degraded (heuristic fallback)" if sem.get("degraded") else ""),
+            "status": "ok" if mscore == 1.0 else "warn",
+        }
+    )
     if sem.get("degraded"):
-        findings.append({"severity": "low", "message": "semantic models degraded (heuristic fallback active)",
-                         "control_id": None, "link": "/ui/system/health"})
+        findings.append(
+            {
+                "severity": "low",
+                "message": "semantic models degraded (heuristic fallback active)",
+                "control_id": None,
+                "link": "/ui/system/health",
+            }
+        )
 
     # governance (5)
     g = 0.0
     if snap is not None:
         g = 0.5 * bool(snap.doc.approvals.rules) + 0.5 * bool(snap.doc.budgets.limits)
-    comps.append({"id": "governance", "label": "Approvals & budgets configured", "weight": 5, "score": g,
-                  "value": "rules + limits" if g == 1.0 else "partial" if g else "not configured",
-                  "status": "ok" if g == 1.0 else "warn"})
+    comps.append(
+        {
+            "id": "governance",
+            "label": "Approvals & budgets configured",
+            "weight": 5,
+            "score": g,
+            "value": "rules + limits" if g == 1.0 else "partial" if g else "not configured",
+            "status": "ok" if g == 1.0 else "warn",
+        }
+    )
 
     wsum = sum(c["weight"] for c in comps)
     score = round(100 * sum(c["weight"] * c["score"] for c in comps) / wsum) if wsum else 0

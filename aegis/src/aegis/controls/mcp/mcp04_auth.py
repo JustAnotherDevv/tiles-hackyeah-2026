@@ -27,8 +27,14 @@ log = logging.getLogger(__name__)
 
 BEARER_RE = re.compile(r"(?i)\b(?:authorization\s*[:=]\s*)?bearer\s+([A-Za-z0-9\-._~+/]{16,}=*)")
 JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}")
-OAUTH_KEYS = ("authorization_endpoint", "token_endpoint", "registration_endpoint",
-              "revocation_endpoint", "issuer", "jwks_uri")
+OAUTH_KEYS = (
+    "authorization_endpoint",
+    "token_endpoint",
+    "registration_endpoint",
+    "revocation_endpoint",
+    "issuer",
+    "jwks_uri",
+)
 SCOPE_KEYS = {"scope", "scopes", "oauth_scope", "permissions"}
 
 
@@ -36,8 +42,9 @@ class _OAuthRules(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     schemes: list[str] = Field(default_factory=lambda: ["https"])
-    deny_substrings: list[str] = Field(default_factory=lambda: [
-        "$(", "`", "%24%28", " ", "javascript:", "data:", "file:"])
+    deny_substrings: list[str] = Field(
+        default_factory=lambda: ["$(", "`", "%24%28", " ", "javascript:", "data:", "file:"]
+    )
 
 
 class _Params(BaseModel):
@@ -80,15 +87,25 @@ class McpAuthHygiene(BaseControl):
             log.warning("MCP-04 invalid params; using defaults", exc_info=True)
             return _Params()
 
-    async def evaluate(self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
-                       ) -> Decision | None:
+    async def evaluate(
+        self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
+    ) -> Decision | None:
         p = self._params(cfg)
         mismatch = interaction.meta.get("mcp.header_mismatch")
         if mismatch:
-            return self.decide(cfg, action="block",
-                               reason=f"request smuggling: routing header != body ({mismatch})",
-                               findings=[Finding(control_id=self.id, detector="mcp.header_mismatch",
-                                                 category="mcp", severity="high")])
+            return self.decide(
+                cfg,
+                action="block",
+                reason=f"request smuggling: routing header != body ({mismatch})",
+                findings=[
+                    Finding(
+                        control_id=self.id,
+                        detector="mcp.header_mismatch",
+                        category="mcp",
+                        severity="high",
+                    )
+                ],
+            )
         if interaction.surface == "mcp.init":
             return self._oauth(cfg, p, interaction)
         if interaction.surface == "mcp.call":
@@ -113,12 +130,21 @@ class McpAuthHygiene(BaseControl):
                 bad.append(key)
         if not bad:
             return None
-        return self.decide(cfg, action="block",
-                           reason=f"unsafe OAuth metadata ({', '.join(sorted(set(bad)))}): "
-                                  "non-https or shell/script characters (CVE-2025-6514 class)",
-                           findings=[Finding(control_id=self.id, detector="mcp.oauth_url",
-                                             category="mcp", severity="high",
-                                             meta={"fields": sorted(set(bad))})])
+        return self.decide(
+            cfg,
+            action="block",
+            reason=f"unsafe OAuth metadata ({', '.join(sorted(set(bad)))}): "
+            "non-https or shell/script characters (CVE-2025-6514 class)",
+            findings=[
+                Finding(
+                    control_id=self.id,
+                    detector="mcp.oauth_url",
+                    category="mcp",
+                    severity="high",
+                    meta={"fields": sorted(set(bad))},
+                )
+            ],
+        )
 
     def _scopes(self, cfg: ControlConfig, p: _Params, i: Interaction) -> Decision | None:
         hits: list[str] = []
@@ -135,11 +161,20 @@ class McpAuthHygiene(BaseControl):
                         hits.append(v)
         if not hits:
             return None
-        return self.decide(cfg, action="block",
-                           reason=f"forbidden OAuth scope requested: {', '.join(sorted(set(hits)))}",
-                           findings=[Finding(control_id=self.id, detector="mcp.forbidden_scope",
-                                             category="scope", severity="high",
-                                             excerpt=", ".join(sorted(set(hits)))[:160])])
+        return self.decide(
+            cfg,
+            action="block",
+            reason=f"forbidden OAuth scope requested: {', '.join(sorted(set(hits)))}",
+            findings=[
+                Finding(
+                    control_id=self.id,
+                    detector="mcp.forbidden_scope",
+                    category="scope",
+                    severity="high",
+                    excerpt=", ".join(sorted(set(hits)))[:160],
+                )
+            ],
+        )
 
     def _bearer(self, cfg: ControlConfig, i: Interaction) -> Decision | None:
         findings: list[Finding] = []
@@ -147,22 +182,44 @@ class McpAuthHygiene(BaseControl):
             taken: list[tuple[int, int]] = []
             for m in JWT_RE.finditer(seg.text):
                 taken.append((m.start(), m.end()))
-                findings.append(Finding(control_id=self.id, detector="mcp.bearer_jwt", category="secret",
-                                        entity="JWT", data_class="SECRET", severity="high",
-                                        segment_index=idx, start=m.start(), end=m.end()))
+                findings.append(
+                    Finding(
+                        control_id=self.id,
+                        detector="mcp.bearer_jwt",
+                        category="secret",
+                        entity="JWT",
+                        data_class="SECRET",
+                        severity="high",
+                        segment_index=idx,
+                        start=m.start(),
+                        end=m.end(),
+                    )
+                )
             for m in BEARER_RE.finditer(seg.text):
                 s, e = m.start(1), m.end(1)
                 if any(s < te and ts < e for ts, te in taken):
                     continue
-                findings.append(Finding(control_id=self.id, detector="mcp.bearer_token",
-                                        category="secret", entity="GENERIC_SECRET",
-                                        data_class="SECRET", severity="high",
-                                        segment_index=idx, start=s, end=e))
+                findings.append(
+                    Finding(
+                        control_id=self.id,
+                        detector="mcp.bearer_token",
+                        category="secret",
+                        entity="GENERIC_SECRET",
+                        data_class="SECRET",
+                        severity="high",
+                        segment_index=idx,
+                        start=s,
+                        end=e,
+                    )
+                )
         if not findings:
             return None
-        return self.decide(cfg, action="redact",
-                           reason=f"{len(findings)} bearer credential(s) in MCP tool output redacted",
-                           findings=findings)
+        return self.decide(
+            cfg,
+            action="redact",
+            reason=f"{len(findings)} bearer credential(s) in MCP tool output redacted",
+            findings=findings,
+        )
 
 
 CONTROLS = [McpAuthHygiene()]

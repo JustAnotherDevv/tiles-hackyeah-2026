@@ -23,32 +23,76 @@ SEVERITY_SCORE = {"high": 3, "medium": 1, "low": 0}
 
 _I = re.IGNORECASE
 INJECTION_RULES: list[tuple[str, re.Pattern[str], str]] = [
-    ("inj.hidden_tag", re.compile(
-        r"<\s*/?\s*(important|system|instructions?|secret|admin|hidden)\b[^>]{0,40}>", _I), "high"),
-    ("inj.ignore_previous", re.compile(
-        r"\b(ignore|disregard|forget|override)\b[\s\w,]{0,30}?\b(previous|prior|above|earlier|all|any|system)\b"
-        r"[\s\w]{0,20}?\b(instructions?|prompts?|rules|guidelines|directions)\b", _I), "high"),
-    ("inj.conceal_from_user", re.compile(
-        r"\b(do\s*n[o']?t|never|without)\s+(tell|mention|inform|reveal|notify|alert|let)\w*\b"
-        r"[\s\w]{0,15}?\buser\b", _I), "high"),
-    ("inj.role_override", re.compile(
-        r"\byou are now\b|\bnew instructions?\s*:|\b(admin|developer|god|dan|jailbreak)\s+mode\b", _I),
-     "high"),
-    ("inj.chat_template", re.compile(
-        r"<\|im_(start|end)\|>|\[/?INST\]|<\|(system|user|assistant)\|>|</?(tool_call|function_call)>",
-        _I), "high"),
-    ("inj.sensitive_path", re.compile(
-        r"(?:~|\$HOME|^|[\s'\"`(])/?\.(?:ssh|aws|gnupg|kube|docker|cursor)\b(?!\.)"
-        r"|\bid_(?:rsa|ed25519|ecdsa|dsa)\b"
-        r"|(?:^|[\s'\"`/])\.env\b|\bmcp\.json\b|\bcredentials\.json\b|/etc/(?:passwd|shadow)\b"
-        r"|\.git-credentials\b|\.netrc\b", _I), "high"),
-    ("inj.precondition_hijack", re.compile(
-        r"\bbefore (using|calling|invoking|running) (this|the|any) tool\b", _I), "medium"),
-    ("inj.tool_directive", re.compile(
-        r"\b(call|invoke|run|use)\s+(the\s+)?(tool|function)\b|\bcall\s+[a-z][a-z0-9_]{2,}\s+with\b", _I),
-     "medium"),
-    ("inj.exfil_directive", re.compile(
-        r"\b(always|also|secretly|silently)\s+(bcc|cc|forward|send|copy)\b", _I), "medium"),
+    (
+        "inj.hidden_tag",
+        re.compile(
+            r"<\s*/?\s*(important|system|instructions?|secret|admin|hidden)\b[^>]{0,40}>", _I
+        ),
+        "high",
+    ),
+    (
+        "inj.ignore_previous",
+        re.compile(
+            r"\b(ignore|disregard|forget|override)\b[\s\w,]{0,30}?\b(previous|prior|above|earlier|all|any|system)\b"
+            r"[\s\w]{0,20}?\b(instructions?|prompts?|rules|guidelines|directions)\b",
+            _I,
+        ),
+        "high",
+    ),
+    (
+        "inj.conceal_from_user",
+        re.compile(
+            r"\b(do\s*n[o']?t|never|without)\s+(tell|mention|inform|reveal|notify|alert|let)\w*\b"
+            r"[\s\w]{0,15}?\buser\b",
+            _I,
+        ),
+        "high",
+    ),
+    (
+        "inj.role_override",
+        re.compile(
+            r"\byou are now\b|\bnew instructions?\s*:|\b(admin|developer|god|dan|jailbreak)\s+mode\b",
+            _I,
+        ),
+        "high",
+    ),
+    (
+        "inj.chat_template",
+        re.compile(
+            r"<\|im_(start|end)\|>|\[/?INST\]|<\|(system|user|assistant)\|>|</?(tool_call|function_call)>",
+            _I,
+        ),
+        "high",
+    ),
+    (
+        "inj.sensitive_path",
+        re.compile(
+            r"(?:~|\$HOME|^|[\s'\"`(])/?\.(?:ssh|aws|gnupg|kube|docker|cursor)\b(?!\.)"
+            r"|\bid_(?:rsa|ed25519|ecdsa|dsa)\b"
+            r"|(?:^|[\s'\"`/])\.env\b|\bmcp\.json\b|\bcredentials\.json\b|/etc/(?:passwd|shadow)\b"
+            r"|\.git-credentials\b|\.netrc\b",
+            _I,
+        ),
+        "high",
+    ),
+    (
+        "inj.precondition_hijack",
+        re.compile(r"\bbefore (using|calling|invoking|running) (this|the|any) tool\b", _I),
+        "medium",
+    ),
+    (
+        "inj.tool_directive",
+        re.compile(
+            r"\b(call|invoke|run|use)\s+(the\s+)?(tool|function)\b|\bcall\s+[a-z][a-z0-9_]{2,}\s+with\b",
+            _I,
+        ),
+        "medium",
+    ),
+    (
+        "inj.exfil_directive",
+        re.compile(r"\b(always|also|secretly|silently)\s+(bcc|cc|forward|send|copy)\b", _I),
+        "medium",
+    ),
     ("inj.ansi_escape", re.compile(r"\x1b\["), "high"),
 ]
 URL_RE = re.compile(r"https?://[^\s'\"<>)]+", _I)
@@ -72,7 +116,12 @@ class ToolFinding:
     meta: dict[str, Any] = field(default_factory=dict, compare=False, hash=False)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"rule": self.rule, "severity": self.severity, "path": self.path, "evidence": self.evidence}
+        return {
+            "rule": self.rule,
+            "severity": self.severity,
+            "path": self.path,
+            "evidence": self.evidence,
+        }
 
 
 def snippet(value: str, limit: int = 80) -> str:
@@ -80,7 +129,9 @@ def snippet(value: str, limit: int = 80) -> str:
     return value if len(value) <= limit else value[: limit - 1] + "…"
 
 
-def iter_strings(obj: Any, path: str = "", skip: Iterable[str] = SKIP_KEYS) -> Iterator[tuple[str, str]]:
+def iter_strings(
+    obj: Any, path: str = "", skip: Iterable[str] = SKIP_KEYS
+) -> Iterator[tuple[str, str]]:
     """Yield (path, string) for every string leaf of a JSON value (dotted keys, `[i]` indices)."""
     skip = frozenset(skip)
     if isinstance(obj, str):
@@ -103,7 +154,9 @@ def _local_normalize(text: str) -> tuple[str, list[str], set[str]]:
     if TAG_RE.search(text):
         flags.add("tag_chars")
         # ASCII smuggling: TAG characters U+E0020..E007E map to printable ASCII
-        decoded = "".join(chr(ord(c) - 0xE0000) for c in TAG_RE.findall(text) if 0xE0020 <= ord(c) <= 0xE007E)
+        decoded = "".join(
+            chr(ord(c) - 0xE0000) for c in TAG_RE.findall(text) if 0xE0020 <= ord(c) <= 0xE007E
+        )
         variants = [decoded] if decoded.strip() else []
     else:
         variants = []
@@ -150,7 +203,9 @@ def scan_text(text: str, path: str = "") -> list[ToolFinding]:
                 out.append(ToolFinding(rule + ".decoded", "high", path, snippet(m.group(0))))
                 seen.add(rule)
     if "tag_chars" in flags:
-        out.append(ToolFinding("inj.tag_chars", "high", path, "Unicode TAG block (ASCII smuggling)"))
+        out.append(
+            ToolFinding("inj.tag_chars", "high", path, "Unicode TAG block (ASCII smuggling)")
+        )
     elif "invisible" in flags:
         m = INVISIBLE_RE.search(text)
         cp = f"U+{ord(m.group(0)):04X}" if m else "invisible"
@@ -177,20 +232,34 @@ def scan_tool_definition(
         for marker in extra_markers:
             try:
                 if marker.search(text):
-                    findings.append(ToolFinding("tooldef.extra_marker", "high", path, snippet(text)))
+                    findings.append(
+                        ToolFinding("tooldef.extra_marker", "high", path, snippet(text))
+                    )
             except Exception:  # pragma: no cover - defensive (bad user regex)
                 continue
     desc = tool.get("description") or ""
     if isinstance(desc, str) and len(desc) > max_description_len:
-        findings.append(ToolFinding("tooldef.long_description", "medium", "description",
-                                    f"{len(desc)} chars > {max_description_len}"))
+        findings.append(
+            ToolFinding(
+                "tooldef.long_description",
+                "medium",
+                "description",
+                f"{len(desc)} chars > {max_description_len}",
+            )
+        )
     if not NAME_RE.fullmatch(str(tool.get("name", ""))):
-        findings.append(ToolFinding("tooldef.bad_name", "high", "name", snippet(str(tool.get("name")))))
+        findings.append(
+            ToolFinding("tooldef.bad_name", "high", "name", snippet(str(tool.get("name"))))
+        )
     return findings
 
 
-def scan_segments(texts: Iterable[tuple[str, str]], *, url_allowlist: Iterable[str] = (),
-                  extra_markers: Iterable[Any] = ()) -> list[ToolFinding]:
+def scan_segments(
+    texts: Iterable[tuple[str, str]],
+    *,
+    url_allowlist: Iterable[str] = (),
+    extra_markers: Iterable[Any] = (),
+) -> list[ToolFinding]:
     """Scan already-extracted (path, text) pairs (the control works on Interaction segments)."""
     allow = tuple(a.lower() for a in url_allowlist)
     findings: list[ToolFinding] = []
@@ -202,7 +271,9 @@ def scan_segments(texts: Iterable[tuple[str, str]], *, url_allowlist: Iterable[s
         for marker in extra_markers:
             try:
                 if marker.search(text):
-                    findings.append(ToolFinding("tooldef.extra_marker", "high", path, snippet(text)))
+                    findings.append(
+                        ToolFinding("tooldef.extra_marker", "high", path, snippet(text))
+                    )
             except Exception:  # pragma: no cover
                 continue
     return findings
@@ -230,8 +301,11 @@ def cross_reference(
         for m in rx.finditer(text):
             ident = m.group(1)
             if (lowered and ident.lower() in lowered) or (not lowered and "_" in ident):
-                out.append(ToolFinding("tooldef.cross_reference", "high", path,
-                                       f"references {server}.{ident}"))
+                out.append(
+                    ToolFinding(
+                        "tooldef.cross_reference", "high", path, f"references {server}.{ident}"
+                    )
+                )
                 break
     return out
 
@@ -256,7 +330,18 @@ def compile_markers(markers: Iterable[str]) -> list[Any]:
 
 
 __all__ = [
-    "INJECTION_RULES", "INVISIBLE_RE", "SEVERITY_SCORE", "URL_RE", "ToolFinding", "compile_markers",
-    "cross_reference", "iter_strings", "normalize_text", "poison_score", "scan_segments",
-    "scan_text", "scan_tool_definition", "snippet",
+    "INJECTION_RULES",
+    "INVISIBLE_RE",
+    "SEVERITY_SCORE",
+    "URL_RE",
+    "ToolFinding",
+    "compile_markers",
+    "cross_reference",
+    "iter_strings",
+    "normalize_text",
+    "poison_score",
+    "scan_segments",
+    "scan_text",
+    "scan_tool_definition",
+    "snippet",
 ]

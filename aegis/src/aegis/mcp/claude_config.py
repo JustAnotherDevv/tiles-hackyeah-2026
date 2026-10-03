@@ -51,17 +51,32 @@ def build_claude_config(
             out[name] = {
                 "type": "stdio",
                 "command": str(python if python.exists() else "python3"),
-                "args": ["-m", "aegis.mcp.stdio", "--server", name, "--gateway", gw, "--agent", agent_id,
-                         "--", *list(cfg.command or [])],
-                "env": {"PYTHONPATH": f"{root}:{root / 'src'}", "AEGIS_AGENT": agent_id,
-                        "AEGIS_AGENT_KEY": key_default},
+                "args": [
+                    "-m",
+                    "aegis.mcp.stdio",
+                    "--server",
+                    name,
+                    "--gateway",
+                    gw,
+                    "--agent",
+                    agent_id,
+                    "--",
+                    *list(cfg.command or []),
+                ],
+                "env": {
+                    "PYTHONPATH": f"{root}:{root / 'src'}",
+                    "AEGIS_AGENT": agent_id,
+                    "AEGIS_AGENT_KEY": key_default,
+                },
             }
         else:
             out[name] = {
                 "type": "http",
                 "url": f"{gw}/mcp/{name}",
-                "headers": {"X-Aegis-Agent": agent_id,
-                            "Authorization": f"Bearer ${{AEGIS_AGENT_KEY:-{key_default}}}"},
+                "headers": {
+                    "X-Aegis-Agent": agent_id,
+                    "Authorization": f"Bearer ${{AEGIS_AGENT_KEY:-{key_default}}}",
+                },
             }
     return {"mcpServers": out}
 
@@ -87,19 +102,26 @@ def _load_snapshot(policy_path: str | None) -> Any:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="python -m aegis.mcp.claude_config",
-                                 description="Generate a Claude Code --mcp-config routed through Aegis.")
+    ap = argparse.ArgumentParser(
+        prog="python -m aegis.mcp.claude_config",
+        description="Generate a Claude Code --mcp-config routed through Aegis.",
+    )
     ap.add_argument("--gateway", default="http://127.0.0.1:8787")
     ap.add_argument("--agent", default=DEFAULT_AGENT)
-    ap.add_argument("--key", default=None, help="agent key (default: seed demo key / $AEGIS_AGENT_KEY)")
-    ap.add_argument("--servers", default=None, help="comma-separated subset (default: all registered)")
+    ap.add_argument(
+        "--key", default=None, help="agent key (default: seed demo key / $AEGIS_AGENT_KEY)"
+    )
+    ap.add_argument(
+        "--servers", default=None, help="comma-separated subset (default: all registered)"
+    )
     ap.add_argument("--policy", default=None, help="policy YAML (default config/policy.yaml)")
     ap.add_argument("--out", default=None, help="write to this file instead of stdout")
     ns = ap.parse_args(argv)
     snap = _load_snapshot(ns.policy)
     servers = [s.strip() for s in ns.servers.split(",") if s.strip()] if ns.servers else None
-    cfg = build_claude_config(snap, gateway_url=ns.gateway, agent_id=ns.agent, agent_key=ns.key,
-                              servers=servers)
+    cfg = build_claude_config(
+        snap, gateway_url=ns.gateway, agent_id=ns.agent, agent_key=ns.key, servers=servers
+    )
     text = json.dumps(cfg, indent=2) + "\n"
     if ns.out:
         Path(ns.out).write_text(text, encoding="utf-8")

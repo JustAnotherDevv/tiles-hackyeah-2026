@@ -78,6 +78,7 @@ class FeedManager:
         self._wake = None  # asyncio.Event set by SSE pushes
         self.pending_serial: int | None = None
         self._started = False
+        self._bg: set[asyncio.Task[Any]] = set()
 
     # ------------------------------------------------------------------ config
     @property
@@ -154,7 +155,12 @@ class FeedManager:
     def status(self) -> FeedStatus:
         a = self.active
         st = self._status
-        if a is not None and a.expires is not None and a.expires < utcnow() and st in ("ok", "seed"):
+        if (
+            a is not None
+            and a.expires is not None
+            and a.expires < utcnow()
+            and st in ("ok", "seed")
+        ):
             st = "stale"
         monitor = 0
         active = 0
@@ -164,20 +170,32 @@ class FeedManager:
                 ov = overrides.get(sid)
                 if ov is not None and (ov.enabled is False or ov.mode == "off"):
                     continue
-                mode = "monitor" if (a.sigs[sid].mode == "monitor" or (ov is not None and ov.mode == "monitor")) else "enforce"
+                mode = (
+                    "monitor"
+                    if (a.sigs[sid].mode == "monitor" or (ov is not None and ov.mode == "monitor"))
+                    else "enforce"
+                )
                 if mode == "monitor":
                     monitor += 1
                 else:
                     active += 1
         return FeedStatus(
-            feed_id=self._source_id(), url=self.url, status=st,  # type: ignore[arg-type]
-            serial=self.serial, version=a.version if a and a.serial else None,
-            published=a.published if a else None, expires=a.expires if a else None,
+            feed_id=self._source_id(),
+            url=self.url,
+            status=st,  # type: ignore[arg-type]
+            serial=self.serial,
+            version=a.version if a and a.serial else None,
+            published=a.published if a else None,
+            expires=a.expires if a else None,
             key_id=(a.key_id if a and a.key_id else (key_id(self._pub) if self._pub else None)),
-            signatures_total=len(a.sigs) if a else 0, signatures_active=active,
-            signatures_monitor=monitor, signatures_quarantined=len(a.quarantined) if a else 0,
-            last_check=self._last_check, last_update=self._last_update,
-            last_error=self._last_error, history=list(self._history),
+            signatures_total=len(a.sigs) if a else 0,
+            signatures_active=active,
+            signatures_monitor=monitor,
+            signatures_quarantined=len(a.quarantined) if a else 0,
+            last_check=self._last_check,
+            last_update=self._last_update,
+            last_error=self._last_error,
+            history=list(self._history),
         )
 
     async def refresh(self, trigger: str = "api") -> FeedStatus:
@@ -215,17 +233,26 @@ class FeedManager:
                 if ov.action:
                     action = str(ov.action)
             aliases = list(s.get("aliases") or [])
-            out.append({
-                "id": sid, "title": s.get("title", sid), "severity": s.get("severity", "medium"),
-                "status": status, "aliases": aliases, "tags": list(s.get("tags") or []),
-                "surfaces": sorted(c.surfaces), "action": action,
-                "hits_24h": int(self._hit_counts.get(sid, 0)),
-                "message": s.get("message"), "references": list(s.get("references") or []),
-                "quarantine_reason": a.quarantined.get(sid), "mode": mode,
-                "cves": [x for x in aliases if str(x).startswith("CVE-")],
-                "action_overrides": dict(s.get("action_overrides") or {}),
-                "override": ov.model_dump(exclude_none=True) if ov is not None else None,
-            })
+            out.append(
+                {
+                    "id": sid,
+                    "title": s.get("title", sid),
+                    "severity": s.get("severity", "medium"),
+                    "status": status,
+                    "aliases": aliases,
+                    "tags": list(s.get("tags") or []),
+                    "surfaces": sorted(c.surfaces),
+                    "action": action,
+                    "hits_24h": int(self._hit_counts.get(sid, 0)),
+                    "message": s.get("message"),
+                    "references": list(s.get("references") or []),
+                    "quarantine_reason": a.quarantined.get(sid),
+                    "mode": mode,
+                    "cves": [x for x in aliases if str(x).startswith("CVE-")],
+                    "action_overrides": dict(s.get("action_overrides") or {}),
+                    "override": ov.model_dump(exclude_none=True) if ov is not None else None,
+                }
+            )
         return out
 
     # ------------------------------------------------------------------ extras
@@ -239,8 +266,11 @@ class FeedManager:
             return None
         view = next((v for v in self.signatures() if v["id"] == sid), {})
         return {
-            **view, "signature": a.sigs[sid].sig, "sha256": a.sig_sha.get(sid),
-            "selftest": a.selftest.get(sid), "feed_serial": a.serial,
+            **view,
+            "signature": a.sigs[sid].sig,
+            "sha256": a.sig_sha.get(sid),
+            "selftest": a.selftest.get(sid),
+            "feed_serial": a.serial,
         }
 
     def snapshot_for(self, ctx: Any = None) -> CompiledFeed | None:
@@ -251,8 +281,15 @@ class FeedManager:
             return p
         return a
 
-    def scan(self, interaction: Any, *, ctx: Any = None, segments: Any = None,
-             snapshot: CompiledFeed | None = None, artifact_roots: Any = None) -> list[dict]:
+    def scan(
+        self,
+        interaction: Any,
+        *,
+        ctx: Any = None,
+        segments: Any = None,
+        snapshot: CompiledFeed | None = None,
+        artifact_roots: Any = None,
+    ) -> list[dict]:
         """Evaluate the active signatures for this interaction's surface; per-signature errors
         are isolated (logged, `degraded` hit) and never raised."""
         snap = snapshot or self.snapshot_for(ctx)
@@ -262,8 +299,9 @@ class FeedManager:
         sigs = snap.by_surface.get(surface) or ()
         if not sigs:
             return []
-        ev = event_from_interaction(interaction, segments=segments, artifact_roots=artifact_roots,
-                                    base_dir=self._root())
+        ev = event_from_interaction(
+            interaction, segments=segments, artifact_roots=artifact_roots, base_dir=self._root()
+        )
         hits: list[dict] = []
         for c in sigs:
             try:
@@ -276,7 +314,9 @@ class FeedManager:
                 hits.append(h)
         return hits
 
-    def record_hits(self, hits: list[dict], *, surface: str, decision_id: str | None = None) -> None:
+    def record_hits(
+        self, hits: list[dict], *, surface: str, decision_id: str | None = None
+    ) -> None:
         """24 h counters + batched `signature_hits` rows + `aegis_signature_hits_total`."""
         now = time.time()
         ts = _iso(datetime.now(UTC))
@@ -293,18 +333,23 @@ class FeedManager:
             rows, self._pending_rows = self._pending_rows, []
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(asyncio.to_thread(self._insert_hits, rows, decision_id))
+                t = loop.create_task(asyncio.to_thread(self._insert_hits, rows, decision_id))
+                self._bg.add(t)
+                t.add_done_callback(self._bg.discard)
             except RuntimeError:
                 self._insert_hits(rows, decision_id)
 
-    def _insert_hits(self, rows: list[tuple[str, str, str | None, str | None]],
-                     decision_id: str | None) -> None:
+    def _insert_hits(
+        self, rows: list[tuple[str, str, str | None, str | None]], decision_id: str | None
+    ) -> None:
         try:
             con = self.rt.db()
             try:
                 con.executemany(
                     "INSERT INTO signature_hits (ts, signature_id, surface, action, decision_id) "
-                    "VALUES (?, ?, ?, ?, ?)", [(*r, decision_id) for r in rows])
+                    "VALUES (?, ?, ?, ?, ?)",
+                    [(*r, decision_id) for r in rows],
+                )
                 con.commit()
             finally:
                 con.close()
@@ -344,8 +389,12 @@ class FeedManager:
             self._metric_gauge("aegis_feed_serial", self.active.serial)
         if not self._test_mode() and self.url and self._pub is not None:
             self._tasks.append(asyncio.create_task(self._loop(), name="feed-loop"))
-        log.info("feed manager started status=%s serial=%s url=%s", self._status, self.serial,
-                 self.url or "disabled")
+        log.info(
+            "feed manager started status=%s serial=%s url=%s",
+            self._status,
+            self.serial,
+            self.url or "disabled",
+        )
 
     async def stop(self) -> None:
         self._stopping = True
@@ -364,8 +413,10 @@ class FeedManager:
             con = rt.db()
             try:
                 con.executescript(DDL)
-                row = con.execute("SELECT serial, history_json FROM feed_state WHERE feed_id = ?",
-                                  (self._source_id(),)).fetchone()
+                row = con.execute(
+                    "SELECT serial, history_json FROM feed_state WHERE feed_id = ?",
+                    (self._source_id(),),
+                ).fetchone()
                 if row is not None:
                     self._high_water = max(self._high_water, int(row[0] or 0))
                     try:
@@ -431,9 +482,13 @@ class FeedManager:
                 self._status = "seed"
                 self._last_update = utcnow()
                 if not self._history:
-                    self._history.append(self._history_item(feed, {"added": sorted(feed.sigs),
-                                                                   "removed": [], "modified": []},
-                                                            verify_ms=0.0))
+                    self._history.append(
+                        self._history_item(
+                            feed,
+                            {"added": sorted(feed.sigs), "removed": [], "modified": []},
+                            verify_ms=0.0,
+                        )
+                    )
                 return
             except (FeedRejected, OSError, ValueError) as e:
                 self._last_error = getattr(e, "reason", None) or f"bad_signature: seed bundle: {e}"
@@ -450,7 +505,9 @@ class FeedManager:
         doc = json.loads(data)
         hdr_kid = (doc.get("feed") or {}).get("key_id")
         if hdr_kid and hdr_kid != key_id(self._pub):
-            raise FeedRejected(f"wrong_key: {path.name} key_id {hdr_kid} != pinned {key_id(self._pub)}")
+            raise FeedRejected(
+                f"wrong_key: {path.name} key_id {hdr_kid} != pinned {key_id(self._pub)}"
+            )
         return compile_bundle(doc, sha256=sha256_hex(data), source=source)
 
     # ------------------------------------------------------------------ network loop
@@ -493,8 +550,9 @@ class FeedManager:
                 continue
             try:
                 async with self._client(timeout=None) as client:  # type: ignore[arg-type]
-                    async with client.stream("GET", f"{url}/feed/events",
-                                             headers={"accept": "text/event-stream"}) as resp:
+                    async with client.stream(
+                        "GET", f"{url}/feed/events", headers={"accept": "text/event-stream"}
+                    ) as resp:
                         if resp.status_code != 200:
                             raise httpx.HTTPError(f"HTTP {resp.status_code}")
                         attempt = 0
@@ -519,7 +577,9 @@ class FeedManager:
     async def _fetch(self, client: Any, url: str, cap: int) -> bytes:
         async with client.stream("GET", url) as r:
             if r.status_code != 200:
-                raise FeedRejected(f"unreachable: GET {url.rsplit('/', 1)[-1]} -> HTTP {r.status_code}")
+                raise FeedRejected(
+                    f"unreachable: GET {url.rsplit('/', 1)[-1]} -> HTTP {r.status_code}"
+                )
             buf = bytearray()
             async for chunk in r.aiter_bytes():
                 buf += chunk
@@ -531,7 +591,8 @@ class FeedManager:
         """GET + verify latest.json. Returns (bytes, sig, pointer, sha256 of pointer bytes)."""
         ptr_bytes = await self._fetch(client, f"{url}/feed/latest.json", MAX_POINTER_BYTES)
         ptr_sig = (await self._fetch(client, f"{url}/feed/latest.json.sig", 4096)).decode(
-            "ascii", "replace")
+            "ascii", "replace"
+        )
         ptr_sha = sha256_hex(ptr_bytes)
         if self._status == "unreachable":
             self._status = "seed" if (self.active and self.active.source == "seed") else "ok"
@@ -548,13 +609,15 @@ class FeedManager:
         kid = ptr_raw.get("key_id")
         serial_hint = ptr_raw.get("serial") if isinstance(ptr_raw.get("serial"), int) else None
         if kid and kid != pinned and self._load_pubkey():
-            log.warning("pinned feed key changed on disk; reloaded old=%s new=%s", pinned,
-                        key_id(self._pub))
+            log.warning(
+                "pinned feed key changed on disk; reloaded old=%s new=%s", pinned, key_id(self._pub)
+            )
             pinned = key_id(self._pub)
             self._system("warning", f"threat feed public key reloaded from disk (key {pinned})")
         if kid and kid != pinned:
-            raise FeedRejected(f"wrong_key: key_id {kid} ≠ pinned {pinned}",
-                               serial_attempted=serial_hint)
+            raise FeedRejected(
+                f"wrong_key: key_id {kid} ≠ pinned {pinned}", serial_attempted=serial_hint
+            )
         try:
             verify_detached(ptr_bytes, ptr_sig, self._pub, what="latest.json")
         except FeedRejected as e:
@@ -562,10 +625,13 @@ class FeedManager:
         try:
             ptr = FeedPointer.model_validate(ptr_raw)
         except Exception:
-            raise FeedRejected("schema: latest.json pointer", serial_attempted=serial_hint) from None
+            raise FeedRejected(
+                "schema: latest.json pointer", serial_attempted=serial_hint
+            ) from None
         if ptr.feed != self._source_id():
-            raise FeedRejected(f"schema: feed {ptr.feed!r} != {self._source_id()!r}",
-                               serial_attempted=ptr.serial)
+            raise FeedRejected(
+                f"schema: feed {ptr.feed!r} != {self._source_id()!r}", serial_attempted=ptr.serial
+            )
         return ptr_bytes, ptr_sig, ptr, ptr_sha
 
     async def _refresh_locked(self, trigger: str) -> None:
@@ -598,17 +664,23 @@ class FeedManager:
                 cached_ok = cached.exists() and sha256_hex(cached.read_bytes()) == ptr.sha256
                 if ptr.serial <= self._high_water and not cached_ok:
                     raise FeedRejected(
-                        f"rollback: serial {ptr.serial} <= high-water {self._high_water}")
+                        f"rollback: serial {ptr.serial} <= high-water {self._high_water}"
+                    )
                 if self.pinned:
                     self.pending_serial = ptr.serial
                     log.info("feed serial %s available; operator pin holds %s", ptr.serial, cur)
                     return
-                name = ptr.bundle if ptr.bundle.startswith("bundle-") else f"bundle-{ptr.serial:06d}.json"
+                name = (
+                    ptr.bundle
+                    if ptr.bundle.startswith("bundle-")
+                    else f"bundle-{ptr.serial:06d}.json"
+                )
                 b_bytes = await self._fetch(client, f"{url}/feed/bundle/{name}", MAX_BUNDLE_BYTES)
                 if sha256_hex(b_bytes) != ptr.sha256:
                     raise FeedRejected("sha256_mismatch: bundle sha256 does not match latest.json")
                 b_sig = (await self._fetch(client, f"{url}/feed/bundle/{name}.sig", 4096)).decode(
-                    "ascii", "replace")
+                    "ascii", "replace"
+                )
             verify_t0 = time.perf_counter()
             verify_detached(b_bytes, b_sig, self._pub, what=name)
             verify_ms = (time.perf_counter() - verify_t0) * 1000
@@ -617,8 +689,11 @@ class FeedManager:
             except ValueError:
                 raise FeedRejected("schema: bundle is not JSON") from None
             hdr = doc.get("feed") if isinstance(doc, dict) else None
-            if (not isinstance(hdr, dict) or hdr.get("serial") != ptr.serial
-                    or hdr.get("name", self._source_id()) != self._source_id()):
+            if (
+                not isinstance(hdr, dict)
+                or hdr.get("serial") != ptr.serial
+                or hdr.get("name", self._source_id()) != self._source_id()
+            ):
                 raise FeedRejected("schema: bundle header does not match latest.json")
             new = await asyncio.to_thread(compile_bundle, doc, sha256=ptr.sha256, source=trigger)
             if new.expires is not None and new.expires < utcnow():
@@ -631,21 +706,41 @@ class FeedManager:
                 e.serial_attempted = serial_attempted
             self._on_rejected(e, trigger, url, ptr_sha)
             return
-        await self._activate(new, b_bytes, b_sig, ptr_bytes, ptr_sig, trigger=trigger,
-                             verify_ms=verify_ms, t0=t0)
+        await self._activate(
+            new, b_bytes, b_sig, ptr_bytes, ptr_sig, trigger=trigger, verify_ms=verify_ms, t0=t0
+        )
 
     def _history_item(self, feed: CompiledFeed, d: dict, *, verify_ms: float) -> dict:
         return {
-            "serial": feed.serial, "version": feed.version, "applied_at": _iso(utcnow()),
-            "added": len(d["added"]), "removed": len(d["removed"]), "modified": len(d["modified"]),
-            "sha256": feed.sha256, "quarantined": len(feed.quarantined), "vectors": feed.vectors,
-            "verify_ms": round(verify_ms, 2), "compile_ms": feed.compile_ms, "source": feed.source,
+            "serial": feed.serial,
+            "version": feed.version,
+            "applied_at": _iso(utcnow()),
+            "added": len(d["added"]),
+            "removed": len(d["removed"]),
+            "modified": len(d["modified"]),
+            "sha256": feed.sha256,
+            "quarantined": len(feed.quarantined),
+            "vectors": feed.vectors,
+            "verify_ms": round(verify_ms, 2),
+            "compile_ms": feed.compile_ms,
+            "source": feed.source,
         }
 
-    async def _activate(self, new: CompiledFeed, b_bytes: bytes, b_sig: str, ptr_bytes: bytes,
-                        ptr_sig: str, *, trigger: str, verify_ms: float, t0: float,
-                        actor: Identity | None = None, reason: str | None = None,
-                        rollback: bool = False) -> None:
+    async def _activate(
+        self,
+        new: CompiledFeed,
+        b_bytes: bytes,
+        b_sig: str,
+        ptr_bytes: bytes,
+        ptr_sig: str,
+        *,
+        trigger: str,
+        verify_ms: float,
+        t0: float,
+        actor: Identity | None = None,
+        reason: str | None = None,
+        rollback: bool = False,
+    ) -> None:
         old = self.active
         d = diff(old, new)
         # atomic swap: one reference assignment; in-flight requests keep their snapshot
@@ -659,32 +754,60 @@ class FeedManager:
         item = self._history_item(new, d, verify_ms=verify_ms)
         if rollback:
             item["source"] = "rollback"
-        self._history = (self._history + [item])[-HISTORY_MAX:]
+        self._history = ([*self._history, item])[-HISTORY_MAX:]
         latency_ms = round((time.perf_counter() - t0) * 1000, 1)
         await asyncio.to_thread(self._persist, new, b_bytes, b_sig, ptr_bytes, ptr_sig)
         st = self.status()
         payload = st.model_dump(mode="json") | {
-            "added": len(d["added"]), "removed": len(d["removed"]), "modified": len(d["modified"]),
-            "added_ids": d["added"], "removed_ids": d["removed"], "modified_ids": d["modified"],
-            "quarantined_ids": sorted(new.quarantined), "trigger": trigger, "latency_ms": latency_ms,
-            "from_serial": old.serial if old else None, "rollback": rollback,
+            "added": len(d["added"]),
+            "removed": len(d["removed"]),
+            "modified": len(d["modified"]),
+            "added_ids": d["added"],
+            "removed_ids": d["removed"],
+            "modified_ids": d["modified"],
+            "quarantined_ids": sorted(new.quarantined),
+            "trigger": trigger,
+            "latency_ms": latency_ms,
+            "from_serial": old.serial if old else None,
+            "rollback": rollback,
         }
-        await self._audit("feed.updated", new.serial, {
-            "from": old.serial if old else None, "to": new.serial, "version": new.version,
-            "sha256": new.sha256, "key_id": new.key_id, "added": d["added"], "removed": d["removed"],
-            "modified": d["modified"], "quarantined": new.quarantined, "vectors": new.vectors,
-            "latency_ms": latency_ms, "trigger": trigger,
-            **({"rollback": True, "reason": reason} if rollback else {}),
-        }, actor=actor)
+        await self._audit(
+            "feed.updated",
+            new.serial,
+            {
+                "from": old.serial if old else None,
+                "to": new.serial,
+                "version": new.version,
+                "sha256": new.sha256,
+                "key_id": new.key_id,
+                "added": d["added"],
+                "removed": d["removed"],
+                "modified": d["modified"],
+                "quarantined": new.quarantined,
+                "vectors": new.vectors,
+                "latency_ms": latency_ms,
+                "trigger": trigger,
+                **({"rollback": True, "reason": reason} if rollback else {}),
+            },
+            actor=actor,
+        )
         self._publish("feed.updated", payload)
         self._metric_gauge("aegis_feed_serial", new.serial)
         self._metric_inc("aegis_feed_reloads_total", {"result": "ok"})
-        log.info("feed applied serial=%s added=%s removed=%s modified=%s quarantined=%s ms=%.1f trigger=%s",
-                 new.serial, len(d["added"]), len(d["removed"]), len(d["modified"]),
-                 len(new.quarantined), latency_ms, trigger)
+        log.info(
+            "feed applied serial=%s added=%s removed=%s modified=%s quarantined=%s ms=%.1f trigger=%s",
+            new.serial,
+            len(d["added"]),
+            len(d["removed"]),
+            len(d["modified"]),
+            len(new.quarantined),
+            latency_ms,
+            trigger,
+        )
 
-    def _persist(self, new: CompiledFeed, b_bytes: bytes, b_sig: str, ptr_bytes: bytes,
-                 ptr_sig: str) -> None:
+    def _persist(
+        self, new: CompiledFeed, b_bytes: bytes, b_sig: str, ptr_bytes: bytes, ptr_sig: str
+    ) -> None:
         cache = self._cache_dir()
         try:
             cache.mkdir(parents=True, exist_ok=True)
@@ -712,9 +835,16 @@ class FeedManager:
                     "ON CONFLICT(feed_id) DO UPDATE SET serial=excluded.serial, version=excluded.version, "
                     "sha256=excluded.sha256, applied_at=excluded.applied_at, status=excluded.status, "
                     "last_error=excluded.last_error, history_json=excluded.history_json",
-                    (self._source_id(), max(self._high_water, feed.serial if feed else 0),
-                     feed.version if feed else None, feed.sha256 if feed else None,
-                     _iso(utcnow()), self._status, self._last_error, json.dumps(self._history)),
+                    (
+                        self._source_id(),
+                        max(self._high_water, feed.serial if feed else 0),
+                        feed.version if feed else None,
+                        feed.sha256 if feed else None,
+                        _iso(utcnow()),
+                        self._status,
+                        self._last_error,
+                        json.dumps(self._history),
+                    ),
                 )
                 con.commit()
             finally:
@@ -722,16 +852,24 @@ class FeedManager:
         except Exception:
             log.warning("feed_state write failed", exc_info=True)
 
-    def _on_rejected(self, e: FeedRejected, trigger: str, url: str | None, ptr_sha: str | None) -> None:
+    def _on_rejected(
+        self, e: FeedRejected, trigger: str, url: str | None, ptr_sha: str | None
+    ) -> None:
         reason = e.reason
         if reason.startswith("unreachable"):
             was = self._status
             self._status = "unreachable"
             self._last_error = reason
             if was != "unreachable":
-                log.warning("threat feed unreachable url=%s (%s); enforcing serial %s", url, reason,
-                            self.serial)
-                self._system("warning", f"threat feed unreachable ({url}); enforcing #{self.serial}")
+                log.warning(
+                    "threat feed unreachable url=%s (%s); enforcing serial %s",
+                    url,
+                    reason,
+                    self.serial,
+                )
+                self._system(
+                    "warning", f"threat feed unreachable ({url}); enforcing #{self.serial}"
+                )
                 self._metric_inc("aegis_feed_reloads_total", {"result": "unreachable"})
             return
         self._status = "rejected"
@@ -741,42 +879,77 @@ class FeedManager:
             return
         self._reported.add(key)
         kept = self.serial
-        log.warning("feed bundle rejected reason=%s serial_attempted=%s kept_serial=%s trigger=%s",
-                    reason, e.serial_attempted, kept, trigger)
-        data = {"reason": reason, "serial_attempted": e.serial_attempted, "kept_serial": kept,
-                "url": url, "trigger": trigger}
+        log.warning(
+            "feed bundle rejected reason=%s serial_attempted=%s kept_serial=%s trigger=%s",
+            reason,
+            e.serial_attempted,
+            kept,
+            trigger,
+        )
+        data = {
+            "reason": reason,
+            "serial_attempted": e.serial_attempted,
+            "kept_serial": kept,
+            "url": url,
+            "trigger": trigger,
+        }
         self._spawn(self._audit("feed.rejected", kept, data))
-        self._publish("feed.rejected", {"reason": reason, "serial_attempted": e.serial_attempted,
-                                        "kept_serial": kept})
+        self._publish(
+            "feed.rejected",
+            {"reason": reason, "serial_attempted": e.serial_attempted, "kept_serial": kept},
+        )
         self._metric_inc("aegis_feed_reloads_total", {"result": "rejected"})
         with contextlib.suppress(Exception):
             self._save_state(self.active)
 
+    def _rollback_files(self, serial: int) -> tuple[CompiledFeed, bytes, str, bytes, str]:
+        cache = self._cache_dir()
+        p = cache / f"bundle-{serial:06d}.json"
+        if not p.exists():
+            seed = self._seed_path()
+            if (
+                seed is not None
+                and seed.exists()
+                and json.loads(seed.read_bytes()).get("feed", {}).get("serial") == serial
+            ):
+                p = seed
+            else:
+                raise LookupError(f"no cached bundle for serial {serial} (last {KEEP_CACHE} kept)")
+        feed = self._load_verified_file(p, source="rollback")
+        data = p.read_bytes()
+        sig = Path(str(p) + ".sig").read_text(encoding="utf-8")
+        lp = cache / "latest.json"
+        ptr = lp.read_bytes() if lp.exists() else b""
+        ps = cache / "latest.json.sig"
+        ptr_sig = ps.read_text(encoding="utf-8") if ps.exists() else ""
+        return feed, data, sig, ptr, ptr_sig
+
     # ------------------------------------------------------------------ operator rollback
-    async def rollback(self, serial: int, actor: Identity | None = None,
-                       reason: str | None = None) -> FeedStatus:
+    async def rollback(
+        self, serial: int, actor: Identity | None = None, reason: str | None = None
+    ) -> FeedStatus:
         """Re-verify the cached bundle for `serial`, activate it and pin it (A-49)."""
         if self._lock is None:
             self._lock = asyncio.Lock()
         async with self._lock:
-            cache = self._cache_dir()
-            p = cache / f"bundle-{int(serial):06d}.json"
             t0 = time.perf_counter()
-            if not p.exists():
-                seed = self._seed_path()
-                if seed is not None and seed.exists() and json.loads(seed.read_bytes()).get(
-                        "feed", {}).get("serial") == int(serial):
-                    p = seed
-                else:
-                    raise LookupError(f"no cached bundle for serial {serial} (last {KEEP_CACHE} kept)")
-            feed = await asyncio.to_thread(self._load_verified_file, p, source="rollback")
-            data = p.read_bytes()
-            sig = Path(str(p) + ".sig").read_text(encoding="utf-8")
-            ptr = (cache / "latest.json").read_bytes() if (cache / "latest.json").exists() else b""
-            ptr_sig = (cache / "latest.json.sig").read_text() if (cache / "latest.json.sig").exists() else ""
+            feed, data, sig, ptr, ptr_sig = await asyncio.to_thread(
+                self._rollback_files, int(serial)
+            )
             self.pinned = True
-            await self._activate(feed, data, sig, ptr, ptr_sig, trigger="rollback", verify_ms=0.0,
-                                 t0=t0, actor=actor, reason=reason, rollback=True)
+            await self._activate(
+                feed,
+                data,
+                sig,
+                ptr,
+                ptr_sig,
+                trigger="rollback",
+                verify_ms=0.0,
+                t0=t0,
+                actor=actor,
+                reason=reason,
+                rollback=True,
+            )
         return self.status()
 
     # ------------------------------------------------------------------ services (guarded)
@@ -792,14 +965,22 @@ class FeedManager:
     def _system(self, level: str, message: str) -> None:
         self._publish("system", {"level": level, "message": message, "component": "feed"})
 
-    async def _audit(self, event_type: str, serial: int | None, data: dict,
-                     actor: Identity | None = None) -> None:
+    async def _audit(
+        self, event_type: str, serial: int | None, data: dict, actor: Identity | None = None
+    ) -> None:
         audit = getattr(self.rt, "audit", None)
         if audit is None:
             return
         try:
-            await audit.record(AuditEvent(event_id=new_id("evt"), event_type=event_type,  # type: ignore[arg-type]
-                                          feed_serial=serial, actor=actor, data=data))
+            await audit.record(
+                AuditEvent(
+                    event_id=new_id("evt"),
+                    event_type=event_type,  # type: ignore[arg-type]
+                    feed_serial=serial,
+                    actor=actor,
+                    data=data,
+                )
+            )
         except Exception:
             log.debug("audit record failed event=%s", event_type, exc_info=True)
 

@@ -16,7 +16,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[3]
 HOOK = ROOT / "scripts" / "aegis-hook"
 DENY = {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                               "permissionDecisionReason": "AEGIS-DENY EXE-01 test"}}
+                               "permissionDecisionReason": "[Aegis] EXE-01: test"}}
 KEY = "aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
 PAYLOAD = json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Bash",
                       "tool_input": {"command": "ls"}})

@@ -1,0 +1,234 @@
+{
+  "seed": 20261003,
+  "generated_by": "build_public.py",
+  "upstream": {
+    "deepset_train": {
+      "url": "https://huggingface.co/datasets/deepset/prompt-injections/resolve/4f61ecb038e9c3fb77e21034b22511b523772cdd/data/train-00000-of-00001-9564e8b05b4757ab.parquet",
+      "sha256": "2e10bc7ab30f542c97e4e83e2a5683000b5057d25ec10908784c631d44124c04",
+      "bytes": 40323
+    },
+    "deepset_test": {
+      "url": "https://huggingface.co/datasets/deepset/prompt-injections/resolve/4f61ecb038e9c3fb77e21034b22511b523772cdd/data/test-00000-of-00001-701d16158af87368.parquet",
+      "sha256": "39ac797cabc157eeed58435a08593b2952bb6cb16fc394a2d383f447cc7b246e",
+      "bytes": 10892
+    },
+    "gandalf_train": {
+      "url": "https://huggingface.co/datasets/Lakera/gandalf_ignore_instructions/resolve/04737b65e90a6794ec227012e4a255a7def6344b/data/train-00000-of-00001-ded53be747ff55cd.parquet",
+      "sha256": "5b6acf3e5a5998d21f8e1222bb45bbdec25a14408747b1cd63bebef4a75fa439",
+      "bytes": 36715
+    },
+    "gandalf_test": {
+      "url": "https://huggingface.co/datasets/Lakera/gandalf_ignore_instructions/resolve/04737b65e90a6794ec227012e4a255a7def6344b/data/test-00000-of-00001-bc92128b9288a6d1.parquet",
+      "sha256": "56b646d133335ebc535266bd55dbe1b5bee7caa4b95bf49d040684b9b5dd9972",
+      "bytes": 7336
+    },
+    "jbb_harmful": {
+      "url": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors/resolve/886acc352a31533ffbcf4ef22c744658688086fc/data/harmful-behaviors.csv",
+      "sha256": "4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1",
+      "bytes": 23116
+    },
+    "jbb_benign": {
+      "url": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors/resolve/886acc352a31533ffbcf4ef22c744658688086fc/data/benign-behaviors.csv",
+      "sha256": "3cda234d21a991fa309bbfea4b6d9dae31ccdf8e9d452424b6a983e4fdc33468",
+      "bytes": 20570
+    },
+    "xstest": {
+      "url": "https://raw.githubusercontent.com/paul-rottger/xstest/main/xstest_prompts.csv",
+      "sha256": "11783fb294ed017473ee53c207d71f2161c7672c8d0b037501e78387f801cb5a",
+      "bytes": 38719
+    },
+    "bipia_text": {
+      "url": "https://raw.githubusercontent.com/microsoft/BIPIA/main/benchmark/text_attack_test.json",
+      "sha256": "75750e7b4e8b34e8f9d88d89b357aeaaf02bd07f9e493ccd37eda74a0cd7c7f8",
+      "bytes": 6322
+    },
+    "injecagent_dh": {
+      "url": "https://raw.githubusercontent.com/uiuc-kang-lab/InjecAgent/main/data/test_cases_dh_base.json",
+      "sha256": "0a8186468d21389af432e8c7b399ae42264d1b93a07b65c7a489468508604305",
+      "bytes": 672918
+    },
+    "injecagent_ds": {
+      "url": "https://raw.githubusercontent.com/uiuc-kang-lab/InjecAgent/main/data/test_cases_ds_base.json",
+      "sha256": "4daab35c62a3845e8b9400f4dca58b9c9f37e57cd33b2337552557fbb26282e9",
+      "bytes": 765370
+    }
+  },
+  "outputs": [
+    {
+      "file": "public/deepset_prompt_injections.jsonl",
+      "rows": 150,
+      "labels": {
+        "attack": 75,
+        "benign": 75
+      },
+      "sha256": "229208fce3646e72ae96d039aa85730038ac062fd9adbd1ea8b3432066728cce"
+    },
+    {
+      "file": "public/lakera_gandalf.jsonl",
+      "rows": 150,
+      "labels": {
+        "attack": 150
+      },
+      "sha256": "fa1179222758dc30f0d198cbafaa01ae55929f8da3880d6b2799ded67f663f26"
+    },
+    {
+      "file": "public/jailbreakbench_behaviors.jsonl",
+      "rows": 200,
+      "labels": {
+        "attack": 100,
+        "benign": 100
+      },
+      "sha256": "f5bf66c2240af094ad9c96beb8f915862319d14c94b032e1e2b2fbf7508e28bd"
+    },
+    {
+      "file": "public/xstest_safe.jsonl",
+      "rows": 200,
+      "labels": {
+        "benign": 200
+      },
+      "sha256": "7ce2724dbf5ae55a8379ddd2c49d8a71976c7e7659086d1061061b55f59f60a1"
+    },
+    {
+      "file": "public/indirect_injections.jsonl",
+      "rows": 65,
+      "labels": {
+        "attack": 45,
+        "benign": 20
+      },
+      "sha256": "34b3853af1e9b4473e6839d73ff0c950ccc8349f44c59ce24d9c3c62944ee03b"
+    }
+  ],
+  "files": {
+    "generated/obfuscation_matrix.jsonl": {
+      "sha256": "5d54af1ec516f5ae65f9ba50d769843014d5934c7ca9c2617b2c5b0e92ddf538",
+      "rows": 253,
+      "attack": 226,
+      "benign": 27,
+      "licence": "Aegis-original",
+      "seen_by_tuning": true
+    },
+    "handwritten/agentic_tools.jsonl": {
+      "sha256": "d19ee3739c29d920a3b9a6fc416c95a4e97ab5d040f6784d9a133df8c918f5a5",
+      "rows": 51,
+      "attack": 39,
+      "benign": 12,
+      "licence": "Aegis-original",
+      "seen_by_tuning": true
+    },
+    "handwritten/finance_benign.jsonl": {
+      "sha256": "144836d3f238d54536597d026df30997eebfbac7ccb3bedf0eae4e4ed26a8307",
+      "rows": 42,
+      "attack": 0,
+      "benign": 42,
+      "licence": "Aegis-original",
+      "seen_by_tuning": true
+    },
+    "handwritten/polish_multilingual.jsonl": {
+      "sha256": "6cc72f8608e9cd406919d131811849d33841ec95b0ea5cfb81d6183ee4e83ee0",
+      "rows": 83,
+      "attack": 49,
+      "benign": 34,
+      "licence": "Aegis-original",
+      "seen_by_tuning": true
+    },
+    "pii/adversarial.jsonl": {
+      "sha256": "6044c494ecffe41dca5e1fe1a57ddf7dea6edc3ec29942e9469a0c154a3ea807",
+      "rows": 75,
+      "attack": null,
+      "benign": null,
+      "licence": "Aegis-original (synthetic)",
+      "seen_by_tuning": true
+    },
+    "pii/hard_negatives.jsonl": {
+      "sha256": "a19a19acb48aa867c73abe36bd50eb98fbcd9d8732a9329645ebcc8fd421717a",
+      "rows": 123,
+      "attack": null,
+      "benign": null,
+      "licence": "Aegis-original (synthetic)",
+      "seen_by_tuning": true
+    },
+    "pii/holdout.jsonl": {
+      "sha256": "dec922ba9d143b8c4705355dcb75ebec651823ee82b09db6bebe92d2d4f7d8ed",
+      "rows": 78,
+      "attack": null,
+      "benign": null,
+      "licence": "Aegis-original (synthetic)",
+      "seen_by_tuning": false
+    },
+    "pii/positives_en.jsonl": {
+      "sha256": "7188c6e7bd17e94e82540511a37bed59176e95eb16f138591cc92be62e6b511a",
+      "rows": 100,
+      "attack": null,
+      "benign": null,
+      "licence": "Aegis-original (synthetic)",
+      "seen_by_tuning": true
+    },
+    "pii/positives_pl.jsonl": {
+      "sha256": "d9a9e6db7942d009d377d3c249bf6899f0f5b462cdeeba525f25ee847030c820",
+      "rows": 130,
+      "attack": null,
+      "benign": null,
+      "licence": "Aegis-original (synthetic)",
+      "seen_by_tuning": true
+    },
+    "public/deepset_prompt_injections.jsonl": {
+      "sha256": "229208fce3646e72ae96d039aa85730038ac062fd9adbd1ea8b3432066728cce",
+      "rows": 150,
+      "attack": 75,
+      "benign": 75,
+      "licence": "Apache-2.0",
+      "seen_by_tuning": false
+    },
+    "public/indirect_injections.jsonl": {
+      "sha256": "34b3853af1e9b4473e6839d73ff0c950ccc8349f44c59ce24d9c3c62944ee03b",
+      "rows": 65,
+      "attack": 45,
+      "benign": 20,
+      "licence": [
+        "MIT",
+        "MIT (Aegis)",
+        "MIT (template) / MIT (Aegis filler)"
+      ],
+      "seen_by_tuning": true
+    },
+    "public/jailbreakbench_behaviors.jsonl": {
+      "sha256": "f5bf66c2240af094ad9c96beb8f915862319d14c94b032e1e2b2fbf7508e28bd",
+      "rows": 200,
+      "attack": 100,
+      "benign": 100,
+      "licence": "MIT",
+      "seen_by_tuning": false
+    },
+    "public/lakera_gandalf.jsonl": {
+      "sha256": "fa1179222758dc30f0d198cbafaa01ae55929f8da3880d6b2799ded67f663f26",
+      "rows": 150,
+      "attack": 150,
+      "benign": 0,
+      "licence": "MIT",
+      "seen_by_tuning": false
+    },
+    "public/xstest_safe.jsonl": {
+      "sha256": "7ce2724dbf5ae55a8379ddd2c49d8a71976c7e7659086d1061061b55f59f60a1",
+      "rows": 200,
+      "attack": 0,
+      "benign": 200,
+      "licence": "CC-BY-4.0",
+      "seen_by_tuning": false
+    }
+  },
+  "totals": {
+    "rows": 1194,
+    "attack": 684,
+    "benign": 510,
+    "pii_rows": 506
+  },
+  "pii_dropped": {
+    "positives_en": 0,
+    "positives_pl": 0,
+    "adversarial": 2,
+    "hard_negatives": 4,
+    "holdout": 18,
+    "secrets_code": "not copied (runtime secrets_gen)"
+  },
+  "ported_from": "staging/corpora + staging/pii/fixtures (secret-pattern rows dropped)"
+}

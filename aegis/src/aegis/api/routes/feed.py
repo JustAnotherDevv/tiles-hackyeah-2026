@@ -34,11 +34,15 @@ except Exception:  # TODO(integration): core-gateway deps missing -> permissive 
         return _dep
 
     def api_error(status: int, type: str, message: str, **fields: Any) -> JSONResponse:  # type: ignore[misc]
-        return JSONResponse({"error": {"type": type, "message": message, **fields}},
-                            status_code=status)
+        return JSONResponse(
+            {"error": {"type": type, "message": message, **fields}}, status_code=status
+        )
 
 
 router = APIRouter(tags=["feed"])
+RT = Depends(get_rt)
+VIEWER = Depends(viewer)
+ADMIN = Depends(require_role("admin"))
 ORDER = 100
 
 
@@ -53,21 +57,22 @@ def _dump(st: Any) -> dict[str, Any]:
 
 
 @router.get("/api/feed/status")
-async def feed_status(rt: Any = Depends(get_rt), _: Identity = Depends(viewer)) -> dict[str, Any]:
+async def feed_status(rt: Any = RT, _: Identity = VIEWER) -> dict[str, Any]:
     feed = _feed(rt)
     return _dump(feed.status() if feed is not None else None)
 
 
 @router.get("/api/feed/signatures")
-async def feed_signatures(rt: Any = Depends(get_rt), _: Identity = Depends(viewer)) -> dict[str, Any]:
+async def feed_signatures(rt: Any = RT, _: Identity = VIEWER) -> dict[str, Any]:
     feed = _feed(rt)
     items = feed.signatures() if feed is not None else []
     return {"items": items, "feed_serial": getattr(feed, "serial", None) if feed else None}
 
 
 @router.get("/api/feed/signatures/{sid}", response_model=None)
-async def feed_signature(sid: str, rt: Any = Depends(get_rt),
-                         _: Identity = Depends(viewer)) -> dict[str, Any] | JSONResponse:
+async def feed_signature(
+    sid: str, rt: Any = RT, _: Identity = VIEWER
+) -> dict[str, Any] | JSONResponse:
     feed = _feed(rt)
     detail = getattr(feed, "signature_detail", None)
     if detail is None:
@@ -79,8 +84,7 @@ async def feed_signature(sid: str, rt: Any = Depends(get_rt),
 
 
 @router.post("/api/feed/refresh")
-async def feed_refresh(rt: Any = Depends(get_rt),
-                       _: Identity = Depends(require_role("admin"))) -> dict[str, Any]:
+async def feed_refresh(rt: Any = RT, _: Identity = ADMIN) -> dict[str, Any]:
     feed = _feed(rt)
     if feed is None:
         return _dump(None)
@@ -88,8 +92,9 @@ async def feed_refresh(rt: Any = Depends(get_rt),
 
 
 @router.post("/api/feed/rollback", response_model=None)
-async def feed_rollback(request: Request, rt: Any = Depends(get_rt),
-                        who: Identity = Depends(require_role("admin"))) -> dict[str, Any] | JSONResponse:
+async def feed_rollback(
+    request: Request, rt: Any = RT, who: Identity = ADMIN
+) -> dict[str, Any] | JSONResponse:
     feed = _feed(rt)
     fn = getattr(feed, "rollback", None)
     if fn is None:

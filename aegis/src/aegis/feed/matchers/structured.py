@@ -79,11 +79,15 @@ def m_url(node: dict, where: str, depth: int = 0, lists: dict | None = None) -> 
         if k not in _URL_EXTRACTORS:
             raise FeedError(f"{where}: unknown URL kind {k!r}")
     fld = node.get("field", "all")
-    path_rx = compile_re2(node["path_regex"], where + ".path_regex") if "path_regex" in node else None
+    path_rx = (
+        compile_re2(node["path_regex"], where + ".path_regex") if "path_regex" in node else None
+    )
     query_rx = (
         compile_re2(node["query_regex"], where + ".query_regex") if "query_regex" in node else None
     )
-    host_rx = compile_re2(node["host_regex"], where + ".host_regex") if "host_regex" in node else None
+    host_rx = (
+        compile_re2(node["host_regex"], where + ".host_regex") if "host_regex" in node else None
+    )
     scheme_in = [str(s).lower() for s in node.get("scheme_in", [])]
     scheme_not_in = [str(s).lower() for s in node.get("scheme_not_in", [])]
     host_in, host_not_in = node.get("host_in"), node.get("host_not_in")
@@ -130,13 +134,24 @@ def m_url(node: dict, where: str, depth: int = 0, lists: dict | None = None) -> 
             if not ev.url:
                 return None
             if check(ev.url, ev.method):
-                return [{"matcher": "url", "at": where, "kind": "url", "url": printable(ev.url, 200)}]
+                return [
+                    {"matcher": "url", "at": where, "kind": "url", "url": printable(ev.url, 200)}
+                ]
             return None
         out: list[dict] = []
         for kind, u, start, end in extract_urls(ev.view(fld), kinds):
             if check(u, None):
-                out.append({"matcher": "url", "at": where, "kind": kind,
-                            "url": printable(u, 200), "field": fld, "start": start, "end": end})
+                out.append(
+                    {
+                        "matcher": "url",
+                        "at": where,
+                        "kind": kind,
+                        "url": printable(u, 200),
+                        "field": fld,
+                        "start": start,
+                        "end": end,
+                    }
+                )
                 if not ev.all_spans or len(out) >= MAX_SPANS:
                     break
         return out or None
@@ -147,26 +162,93 @@ def m_url(node: dict, where: str, depth: int = 0, lists: dict | None = None) -> 
 # --------------------------------------------------------------------------- packages
 _CMD_PREFIX = r"(?:^|[\s;&|(`$'\"=])"
 _PKG_COMMANDS = [
-    ("pypi", internal_re2(r"(?i)" + _CMD_PREFIX
-                          + r"(?:python[0-9.]*\s+-m\s+)?(?:pip[0-9.]*|uv\s+pip|pipx)\s+install\b([^\n;&|`)]*)")),
-    ("pypi", internal_re2(r"(?i)" + _CMD_PREFIX + r"(?:uv|poetry|pdm|rye|hatch)\s+add\b([^\n;&|`)]*)")),
-    ("npm", internal_re2(r"(?i)" + _CMD_PREFIX
-                         + r"(?:npm|pnpm|yarn|bun)\s+(?:install|i|add)\b([^\n;&|`)]*)")),
-    ("npm-exec", internal_re2(r"(?i)" + _CMD_PREFIX
-                              + r"(?:npx|bunx|pnpx|pnpm\s+dlx|yarn\s+dlx)\b([^\n;&|`)]*)")),
-    ("vscode", internal_re2(r"(?i)" + _CMD_PREFIX
-                            + r"(?:code|code-insiders|cursor|windsurf)\s+--install-extension\s+([^\s;&|`)]+)")),
+    (
+        "pypi",
+        internal_re2(
+            r"(?i)"
+            + _CMD_PREFIX
+            + r"(?:python[0-9.]*\s+-m\s+)?(?:pip[0-9.]*|uv\s+pip|pipx)\s+install\b([^\n;&|`)]*)"
+        ),
+    ),
+    (
+        "pypi",
+        internal_re2(r"(?i)" + _CMD_PREFIX + r"(?:uv|poetry|pdm|rye|hatch)\s+add\b([^\n;&|`)]*)"),
+    ),
+    (
+        "npm",
+        internal_re2(
+            r"(?i)" + _CMD_PREFIX + r"(?:npm|pnpm|yarn|bun)\s+(?:install|i|add)\b([^\n;&|`)]*)"
+        ),
+    ),
+    (
+        "npm-exec",
+        internal_re2(
+            r"(?i)" + _CMD_PREFIX + r"(?:npx|bunx|pnpx|pnpm\s+dlx|yarn\s+dlx)\b([^\n;&|`)]*)"
+        ),
+    ),
+    (
+        "vscode",
+        internal_re2(
+            r"(?i)"
+            + _CMD_PREFIX
+            + r"(?:code|code-insiders|cursor|windsurf)\s+--install-extension\s+([^\s;&|`)]+)"
+        ),
+    ),
 ]
 _PIP_VALUE_FLAGS = {
-    "-r", "--requirement", "-c", "--constraint", "-e", "--editable", "-i", "--index-url",
-    "--extra-index-url", "-f", "--find-links", "-t", "--target", "--prefix", "--root",
-    "--python", "-p", "--platform", "--python-version", "--implementation", "--abi", "--src",
-    "--upgrade-strategy", "--log", "--cache-dir", "--trusted-host", "--proxy", "--retries",
-    "--timeout", "--exists-action", "--cert", "--client-cert", "-C", "--config-settings",
-    "--group", "-G", "--extra", "--optional", "--source", "--index", "--spec",
+    "-r",
+    "--requirement",
+    "-c",
+    "--constraint",
+    "-e",
+    "--editable",
+    "-i",
+    "--index-url",
+    "--extra-index-url",
+    "-f",
+    "--find-links",
+    "-t",
+    "--target",
+    "--prefix",
+    "--root",
+    "--python",
+    "-p",
+    "--platform",
+    "--python-version",
+    "--implementation",
+    "--abi",
+    "--src",
+    "--upgrade-strategy",
+    "--log",
+    "--cache-dir",
+    "--trusted-host",
+    "--proxy",
+    "--retries",
+    "--timeout",
+    "--exists-action",
+    "--cert",
+    "--client-cert",
+    "-C",
+    "--config-settings",
+    "--group",
+    "-G",
+    "--extra",
+    "--optional",
+    "--source",
+    "--index",
+    "--spec",
 }
-_NPM_VALUE_FLAGS = {"--registry", "--prefix", "--tag", "-w", "--workspace", "--cache",
-                    "--userconfig", "-C", "--cwd"}
+_NPM_VALUE_FLAGS = {
+    "--registry",
+    "--prefix",
+    "--tag",
+    "-w",
+    "--workspace",
+    "--cache",
+    "--userconfig",
+    "-C",
+    "--cwd",
+}
 _PYPI_SPEC = re.compile(
     r"^([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)(?:\[[^\]]*\])?(?:\s*(===?)\s*([A-Za-z0-9.+!_-]+))?"
 )
@@ -212,7 +294,9 @@ def parse_install_commands(text: str) -> list[tuple[str, str, str | None]]:
                     continue
                 if not tok:
                     continue
-                if eco == "npm-exec" and (tok in ("-p", "--package") or tok.startswith("--package=")):
+                if eco == "npm-exec" and (
+                    tok in ("-p", "--package") or tok.startswith("--package=")
+                ):
                     if "=" in tok:
                         name, ver = _npm_spec(tok.split("=", 1)[1])
                         found.append(("npm", norm_pkg("npm", name), ver))
@@ -252,14 +336,25 @@ def m_package(node: dict, where: str, depth: int = 0, lists: dict | None = None)
     entries = []
     for e in raw:
         eco = str(e["ecosystem"]).lower()
-        entries.append((eco, norm_pkg(eco, str(e["name"])), {str(v) for v in e.get("versions") or []}))
+        entries.append(
+            (eco, norm_pkg(eco, str(e["name"])), {str(v) for v in e.get("versions") or []})
+        )
 
     def m(ev: Event) -> list[dict] | None:
         for eco, name, ver in parse_install_commands(ev.view(fld)):
             for e_eco, e_name, e_vers in entries:
-                if eco == e_eco and name == e_name and (not e_vers or (ver is not None and ver in e_vers)):
-                    return [{"matcher": "package", "at": where,
-                             "package": f"{eco}:{name}" + (f"@{ver}" if ver else "")}]
+                if (
+                    eco == e_eco
+                    and name == e_name
+                    and (not e_vers or (ver is not None and ver in e_vers))
+                ):
+                    return [
+                        {
+                            "matcher": "package",
+                            "at": where,
+                            "package": f"{eco}:{name}" + (f"@{ver}" if ver else ""),
+                        }
+                    ]
         return None
 
     return m
@@ -357,7 +452,11 @@ def jsonpath_select(root: Any, steps: list[tuple[str, Any]]) -> list[Any]:
 
 def m_json_path(node: dict, where: str, depth: int = 0, lists: dict | None = None) -> Matcher:
     steps = parse_jsonpath(node["path"], where + ".path")
-    sub = compile_matcher(node["match"], where + ".match", depth + 1, lists) if "match" in node else None
+    sub = (
+        compile_matcher(node["match"], where + ".match", depth + 1, lists)
+        if "match" in node
+        else None
+    )
     has_equals = "equals" in node
     equals = node.get("equals")
     exists = node.get("exists", True)
@@ -367,7 +466,9 @@ def m_json_path(node: dict, where: str, depth: int = 0, lists: dict | None = Non
             return None
         sel = jsonpath_select(ev.json, steps)
         if exists is False:
-            return [{"matcher": "json_path", "at": where, "absent": node["path"]}] if not sel else None
+            return (
+                [{"matcher": "json_path", "at": where, "absent": node["path"]}] if not sel else None
+            )
         for v in sel:
             if has_equals and v != equals:
                 continue
@@ -375,8 +476,11 @@ def m_json_path(node: dict, where: str, depth: int = 0, lists: dict | None = Non
                 if isinstance(v, str):
                     sev = Event(surface=ev.surface, text=v, url=v, json=v)
                 else:
-                    sev = Event(surface=ev.surface,
-                                text=json.dumps(v, ensure_ascii=False, sort_keys=True), json=v)
+                    sev = Event(
+                        surface=ev.surface,
+                        text=json.dumps(v, ensure_ascii=False, sort_keys=True),
+                        json=v,
+                    )
                 r = sub(sev)
                 if r is None:
                     continue
@@ -384,8 +488,14 @@ def m_json_path(node: dict, where: str, depth: int = 0, lists: dict | None = Non
                 return [{"matcher": "json_path", "at": where, "path": node["path"]}] + [
                     {k: val for k, val in e.items() if k not in ("start", "end")} for e in r
                 ]
-            return [{"matcher": "json_path", "at": where, "path": node["path"],
-                     "value": printable(json.dumps(v, ensure_ascii=False)[:120])}]
+            return [
+                {
+                    "matcher": "json_path",
+                    "at": where,
+                    "path": node["path"],
+                    "value": printable(json.dumps(v, ensure_ascii=False)[:120]),
+                }
+            ]
         return None
 
     return m

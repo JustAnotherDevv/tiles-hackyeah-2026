@@ -18,8 +18,14 @@ from mocks.mock_mcp import seed_db
 from mocks.mock_mcp.state import STATE
 
 DATABASES = {
-    "acme-prod-pg": ["customers", "payment_cards", "trades", "positions", "research_notes",
-                     "market_prices"],
+    "acme-prod-pg": [
+        "customers",
+        "payment_cards",
+        "trades",
+        "positions",
+        "research_notes",
+        "market_prices",
+    ],
     "acme-staging-pg": ["customers_synthetic", "trades_synthetic", "market_prices"],
 }
 MAX_ROWS = 200
@@ -28,8 +34,10 @@ MAX_ROWS = 200
 def _table(columns: list[str], rows: list[list[Any]]) -> str:
     if not columns:
         return "(no result set)"
-    widths = [max(len(str(c)), *(len(str(r[i])) for r in rows)) if rows else len(str(c))
-              for i, c in enumerate(columns)]
+    widths = [
+        max(len(str(c)), *(len(str(r[i])) for r in rows)) if rows else len(str(c))
+        for i, c in enumerate(columns)
+    ]
     line = " | ".join(str(c).ljust(widths[i]) for i, c in enumerate(columns))
     sep = "-+-".join("-" * w for w in widths)
     body = [" | ".join(str(v).ljust(widths[i]) for i, v in enumerate(r)) for r in rows]
@@ -48,13 +56,17 @@ def build() -> MCPServer:
     @srv.tool()
     def query(
         sql: Annotated[str, Field(description="A single SQL statement")],
-        database: Annotated[str, Field(description="acme-prod-pg or acme-staging-pg")] = "acme-prod-pg",
+        database: Annotated[
+            str, Field(description="acme-prod-pg or acme-staging-pg")
+        ] = "acme-prod-pg",
     ) -> CallToolResult:
         """Run a single SQL statement against an Acme database and return the rows."""
         STATE.log_call("acme-db", "query", {"sql": sql, "database": database})
         if database not in DATABASES:
-            return CallToolResult(content=[TextContent(type="text", text=f"unknown database {database}")],
-                                  is_error=True)
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"unknown database {database}")],
+                is_error=True,
+            )
         path = seed_db.ensure(STATE.db_path)
         con = sqlite3.connect(path)
         try:
@@ -64,15 +76,20 @@ def build() -> MCPServer:
             con.commit()
             affected = cur.rowcount if not columns else len(rows)
         except sqlite3.Error as e:
-            return CallToolResult(content=[TextContent(type="text", text=f"SQL error: {e}")],
-                                  is_error=True)
+            return CallToolResult(
+                content=[TextContent(type="text", text=f"SQL error: {e}")], is_error=True
+            )
         finally:
             con.close()
-        structured = {"database": database, "columns": columns,
-                      "rows": [dict(zip(columns, r, strict=True)) for r in rows],
-                      "row_count": affected}
+        structured = {
+            "database": database,
+            "columns": columns,
+            "rows": [dict(zip(columns, r, strict=True)) for r in rows],
+            "row_count": affected,
+        }
         text = _table(columns, rows) if columns else f"OK ({affected} rows affected)"
-        return CallToolResult(content=[TextContent(type="text", text=text)],
-                              structured_content=structured)
+        return CallToolResult(
+            content=[TextContent(type="text", text=text)], structured_content=structured
+        )
 
     return srv

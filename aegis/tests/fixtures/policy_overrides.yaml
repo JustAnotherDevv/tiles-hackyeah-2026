@@ -1,0 +1,18 @@
+# Hermetic deltas applied to a temp copy of config/policy.golden.yaml by tests/lib/stack.py.
+# Placeholders {llm} {sink} {feed} {mcp} {feed_pub} are filled with the ephemeral test servers.
+# Extra "what if" overrides: AEGIS_TEST_OVERRIDES=<file with the same shape>.
+set:
+  "approvals.defaults.hold_s": {hook: 0, mcp: 0, egress: 0, guard: 0, proxy: 0, playground: 0, dashboard: 0}
+  "budgets.rate": {requests_per_min: 100000, tool_calls_per_min: 100000}
+  "providers.mock-anthropic.base_url": "{llm}"
+  "providers.mock-openai.base_url": "{llm}/v1"
+  "models.downgrade": [{from: "mock-sonnet", to: "mock-echo"}]
+  "defaults.max_body_bytes": 1000000
+# only applied when the stack runs a fake feed (feed=True)
+feed:
+  "feeds.sources[0].url": "{feed}"
+  "feeds.sources[0].pubkey_file": "{feed_pub}"
+  "feeds.sources[0].seed_bundle": "{feed_seed}"
+  "feeds.sources[0].sse": false
+# only applied when an MCP upstream runs (mcp=True)
+each_mcp_server_url: "{mcp}/mcp/{name}"

@@ -52,7 +52,7 @@ def server_of(i: Interaction) -> tuple[str, str]:
     server = i.mcp_server or (name.split(".", 1)[0] if "." in name else name)
     tool = name.split(".", 1)[1] if "." in name else ""
     if i.mcp_server and name.startswith(i.mcp_server + "."):
-        tool = name[len(i.mcp_server) + 1:]
+        tool = name[len(i.mcp_server) + 1 :]
     return server, tool
 
 
@@ -65,8 +65,9 @@ class McpRegistry(BaseControl):
     owasp = ["MCP09:2025", "MCP04:2025", "ASI04"]
     priority = 20
 
-    async def evaluate(self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
-                       ) -> Decision | None:
+    async def evaluate(
+        self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig
+    ) -> Decision | None:
         extra = set(cfg.params) - set(_Params.model_fields)
         if extra:
             log.debug("MCP-01 ignores params %s", sorted(extra))
@@ -81,34 +82,69 @@ class McpRegistry(BaseControl):
             if action == "allow":
                 return None
             return self.decide(
-                cfg, action=action,
+                cfg,
+                action=action,
                 reason=f"unknown MCP server '{server}' (shadow MCP; not in mcp.servers)",
-                findings=[Finding(control_id=self.id, detector="mcp.unknown_server", category="mcp",
-                                  severity="high", excerpt=server, meta={"server": server})])
+                findings=[
+                    Finding(
+                        control_id=self.id,
+                        detector="mcp.unknown_server",
+                        category="mcp",
+                        severity="high",
+                        excerpt=server,
+                        meta={"server": server},
+                    )
+                ],
+            )
         transport = interaction.meta.get("mcp.transport")
         if transport and transport != scfg.transport:
             return self.decide(
-                cfg, reason=f"MCP server '{server}' is registered as {scfg.transport}, "
-                            f"reached over {transport}",
-                findings=[Finding(control_id=self.id, detector="mcp.transport_mismatch",
-                                  category="mcp", severity="high")])
+                cfg,
+                reason=f"MCP server '{server}' is registered as {scfg.transport}, "
+                f"reached over {transport}",
+                findings=[
+                    Finding(
+                        control_id=self.id,
+                        detector="mcp.transport_mismatch",
+                        category="mcp",
+                        severity="high",
+                    )
+                ],
+            )
         if interaction.surface == "mcp.init" and "mcp.command" in interaction.meta:
             got = list(interaction.meta.get("mcp.command") or [])
             want = list(scfg.command or [])
             if got != want:
                 return self.decide(
-                    cfg, reason=f"launch command differs from registry for '{server}'",
-                    findings=[Finding(control_id=self.id, detector="mcp.launch_mismatch",
-                                      category="mcp", severity="high",
-                                      excerpt=" ".join(got)[:160],
-                                      meta={"expected": " ".join(want)[:160]})])
+                    cfg,
+                    reason=f"launch command differs from registry for '{server}'",
+                    findings=[
+                        Finding(
+                            control_id=self.id,
+                            detector="mcp.launch_mismatch",
+                            category="mcp",
+                            severity="high",
+                            excerpt=" ".join(got)[:160],
+                            meta={"expected": " ".join(want)[:160]},
+                        )
+                    ],
+                )
         if interaction.surface == "mcp.call" and tool:
             allowed = list(scfg.allowed_tools or ["*"])
             if not any(_glob(p, tool) or _glob(p, f"{server}.{tool}") for p in allowed):
                 return self.decide(
-                    cfg, reason=f"tool '{tool}' is not in mcp.servers.{server}.allowed_tools",
-                    findings=[Finding(control_id=self.id, detector="mcp.tool_not_allowed",
-                                      category="mcp", severity="high", excerpt=f"{server}.{tool}")])
+                    cfg,
+                    reason=f"tool '{tool}' is not in mcp.servers.{server}.allowed_tools",
+                    findings=[
+                        Finding(
+                            control_id=self.id,
+                            detector="mcp.tool_not_allowed",
+                            category="mcp",
+                            severity="high",
+                            excerpt=f"{server}.{tool}",
+                        )
+                    ],
+                )
         return None
 
 

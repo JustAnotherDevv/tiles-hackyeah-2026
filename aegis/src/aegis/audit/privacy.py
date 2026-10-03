@@ -23,14 +23,51 @@ log = logging.getLogger(__name__)
 SAD_ENTITIES = frozenset({"CVV", "TRACK_DATA", "CARD_CVV", "CARD_TRACK"})
 
 SKIP_KEYS = frozenset(
-    {"hash", "prev_hash", "fp", "fingerprint", "sha256", "placeholder", "ts", "id", "schema",
-     "event_type", "kind", "surface", "direction", "action", "mode", "severity", "category",
-     "entity", "data_class", "control_id", "detector", "op", "path", "head_hash"}
+    {
+        "hash",
+        "prev_hash",
+        "fp",
+        "fingerprint",
+        "sha256",
+        "placeholder",
+        "ts",
+        "id",
+        "schema",
+        "event_type",
+        "kind",
+        "surface",
+        "direction",
+        "action",
+        "mode",
+        "severity",
+        "category",
+        "entity",
+        "data_class",
+        "control_id",
+        "detector",
+        "op",
+        "path",
+        "head_hash",
+    }
 )
 DROP_KEYS = frozenset(
-    {"authorization", "cookie", "set-cookie", "x-api-key", "api_key", "apikey", "password",
-     "raw", "wire", "original", "response_raw", "response_local", "upstream_request_preview",
-     "vault", "secret"}
+    {
+        "authorization",
+        "cookie",
+        "set-cookie",
+        "x-api-key",
+        "api_key",
+        "apikey",
+        "password",
+        "raw",
+        "wire",
+        "original",
+        "response_raw",
+        "response_local",
+        "upstream_request_preview",
+        "vault",
+        "secret",
+    }
 )
 CONTENT_KEYS = frozenset({"segments", "content"})
 MIN_LEN, MAX_LEN, MAX_LEAVES = 8, 4096, 200
@@ -146,7 +183,13 @@ def scrub_text(text: str, redactor: Any = None) -> tuple[str, int]:
     return out, len(merged)
 
 
-def _walk(node: Any, redactor: Any, state: dict[str, int], audit_content: bool, cache: dict[str, tuple[str, int]]) -> Any:
+def _walk(
+    node: Any,
+    redactor: Any,
+    state: dict[str, int],
+    audit_content: bool,
+    cache: dict[str, tuple[str, int]],
+) -> Any:
     if isinstance(node, dict):
         out: dict[str, Any] = {}
         for k, v in node.items():
@@ -207,6 +250,31 @@ def scrub_event(d: dict[str, Any], redactor: Any = None, audit_content: bool = F
     return state["scrubbed"]
 
 
+# ------------------------------------------------------------------ A-10 large mutation values
+ELIDE_OVER = 512
+
+
+def elide_mutations(detail: Any) -> int:
+    """A-10: `Mutation.value` strings > 512 chars -> {"$elided", "sha256" (hex16), "len"} in place."""
+    import hashlib
+
+    if not isinstance(detail, dict):
+        return 0
+    n = 0
+    for m in detail.get("mutations") or []:
+        if not isinstance(m, dict):
+            continue
+        v = m.get("value")
+        if isinstance(v, str) and len(v) > ELIDE_OVER:
+            m["value"] = {
+                "$elided": True,
+                "sha256": hashlib.sha256(v.encode("utf-8")).hexdigest()[:16],
+                "len": len(v),
+            }
+            n += 1
+    return n
+
+
 # ------------------------------------------------------------------ redaction spans
 def _findings(d: dict[str, Any]) -> list[dict[str, Any]]:
     detail = (d.get("data") or {}).get("detail") or {}
@@ -227,7 +295,9 @@ def _op(placeholder: str, reversible: bool) -> str:
 
 def redaction_spans(d: dict[str, Any]) -> list[dict[str, Any]]:
     """research-07 span records (no values) for `data.redaction_spans`."""
-    reds = d.get("redactions") or ((d.get("data") or {}).get("detail") or {}).get("redactions") or []
+    reds = (
+        d.get("redactions") or ((d.get("data") or {}).get("detail") or {}).get("redactions") or []
+    )
     reds = [r for r in reds if isinstance(r, dict)]
     if not reds:
         return []
@@ -280,4 +350,4 @@ def redaction_spans(d: dict[str, Any]) -> list[dict[str, Any]]:
     return spans
 
 
-__all__ = ["builtin_spans", "redaction_spans", "scrub_event", "scrub_text"]
+__all__ = ["builtin_spans", "elide_mutations", "redaction_spans", "scrub_event", "scrub_text"]

@@ -35,7 +35,7 @@ function Loading({ label }: { label: string }) {
   );
 }
 
-const LOAD_TIMEOUT_MS = 6000;
+const LOAD_TIMEOUT_MS = 10000; // cold dev-server loads of Monaco can take > 6 s
 
 export function EditorHost(props: PolicyEditorProps & { onEngine?: (kind: 'monaco' | 'plain') => void }) {
   const { onReady, onEngine, ...rest } = props;

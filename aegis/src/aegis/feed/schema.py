@@ -156,11 +156,23 @@ class SigExample(_M):
     @model_validator(mode="after")
     def _has_input(self) -> SigExample:
         fields = self.model_fields_set
-        inputs = {"text", "json_", "url", "body", "bytes_hex", "bytes_b64", "filename",
-                  "tool_args", "raw", "meta"}
+        inputs = {
+            "text",
+            "json_",
+            "url",
+            "body",
+            "bytes_hex",
+            "bytes_b64",
+            "filename",
+            "tool_args",
+            "raw",
+            "meta",
+        }
         if not (inputs & fields):
-            raise ValueError("an example needs at least one input: text, tool_args, url, raw, "
-                             "meta.artifact_b64 (or staging json/body/bytes_hex/bytes_b64)")
+            raise ValueError(
+                "an example needs at least one input: text, tool_args, url, raw, "
+                "meta.artifact_b64 (or staging json/body/bytes_hex/bytes_b64)"
+            )
         return self
 
 

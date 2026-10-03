@@ -265,7 +265,8 @@ class LoopBreakerControl(BaseControl):
         if is_tool and i.tool_name in set(params.repeat_exempt_tools or ()):
             return None
         fp = loops_mod.fingerprint(i, params.volatile_keys)
-        if st is not None:
+        second_sighting = led.loops.seen_elsewhere(ident.principal, fp, ctx.source, params.dedupe_s)
+        if st is not None and not second_sighting:
             trip = self._detect(st, fp, is_model, loops, params, ov)
             if trip is not None:
                 return await self._ladder(cfg, ctx, i, params, led, st, trip, dry, snap)

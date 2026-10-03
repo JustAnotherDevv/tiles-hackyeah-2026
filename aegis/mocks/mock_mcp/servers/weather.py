@@ -9,8 +9,14 @@ from pydantic import Field
 
 from mocks.mock_mcp.state import STATE
 
-_WEATHER = {"krakow": "14°C, light rain", "kraków": "14°C, light rain", "warsaw": "12°C, cloudy",
-            "warszawa": "12°C, cloudy", "gdansk": "11°C, windy", "london": "13°C, drizzle"}
+_WEATHER = {
+    "krakow": "14°C, light rain",
+    "kraków": "14°C, light rain",
+    "warsaw": "12°C, cloudy",
+    "warszawa": "12°C, cloudy",
+    "gdansk": "11°C, windy",
+    "london": "13°C, drizzle",
+}
 
 
 def build() -> MCPServer:

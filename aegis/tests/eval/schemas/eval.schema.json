@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "aegis.eval/1",
+  "type": "object",
+  "required": ["schema", "generated_at", "machine", "corpora", "runs", "attribution"],
+  "properties": {
+    "schema": {"const": "aegis.eval/1"},
+    "generated_at": {"type": "string"},
+    "duration_s": {"type": ["number", "null"]},
+    "machine": {"type": "object"},
+    "corpora": {"type": "object", "required": ["rows", "files"]},
+    "attribution": {"type": "array", "items": {"type": "string"}},
+    "runs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["profile", "mode", "status"],
+        "properties": {
+          "profile": {"type": "string"},
+          "mode": {"type": "string"},
+          "status": {"enum": ["ok", "skipped", "rejected", "unavailable"]},
+          "overall": {
+            "type": "object",
+            "required": ["attack", "benign"],
+            "properties": {
+              "attack": {"type": "object", "required": ["n", "detected", "rate", "ci95"]},
+              "benign": {"type": "object", "required": ["n", "over_block", "fpr", "ci95"]}
+            }
+          },
+          "by_lang": {"type": "object"},
+          "misses": {"type": "array", "maxItems": 20},
+          "false_positives": {"type": "array", "maxItems": 20}
+        }
+      }
+    },
+    "dlp": {"type": ["object", "null"]},
+    "heatmap": {"type": ["object", "null"]}
+  }
+}

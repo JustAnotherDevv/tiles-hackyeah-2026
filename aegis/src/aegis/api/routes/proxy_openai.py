@@ -46,7 +46,28 @@ async def chat_completions_prefixed(request: Request) -> Response:
     return await handle_model_request(request, wire="openai", op="chat")
 
 
-async def _ollama_tags(base: str, test_mode: bool) -> list[str]:
+_OLLAMA_UP: dict[str, bool] = {}
+
+
+def _ollama_state(rt: Any, base: str, up: bool) -> None:
+    """GW-13: bus `system` toast when Ollama reachability changes (first probe only logs)."""
+    prev = _OLLAMA_UP.get(base)
+    _OLLAMA_UP[base] = up
+    if prev is None or prev == up:
+        return
+    bus = getattr(rt, "bus", None)
+    if bus is None:
+        return
+    try:
+        bus.publish("system", {
+            "level": "info" if up else "warning", "component": "ollama",
+            "message": f"Ollama {'reachable again' if up else 'unreachable'} at {base}",
+        })
+    except Exception:
+        log.debug("system event publish failed", exc_info=True)
+
+
+async def _ollama_tags(base: str, test_mode: bool, rt: Any = None) -> list[str]:
     if test_mode:
         return []
     now = time.monotonic()
@@ -54,9 +75,11 @@ async def _ollama_tags(base: str, test_mode: bool) -> list[str]:
     if hit and now - hit[0] < _TAGS_TTL_S:
         return hit[1]
     names: list[str] = []
+    up = False
     try:
         resp = await upstream.get_client().get(f"{base.rstrip('/')}/api/tags",
                                                timeout=httpx.Timeout(1.0))
+        up = resp.status_code < 500
         if resp.status_code == 200:
             for m in (resp.json() or {}).get("models") or []:
                 name = m.get("name") or m.get("model")
@@ -64,6 +87,7 @@ async def _ollama_tags(base: str, test_mode: bool) -> list[str]:
                     names.append(name)
     except Exception:
         log.debug("ollama tags probe failed", exc_info=True)
+    _ollama_state(rt, base, up)
     _TAGS_CACHE[base] = (now, names)
     return names
 
@@ -115,7 +139,7 @@ async def list_models(request: Request) -> Response:
                 break
     ollama = (getattr(settings, "ollama_url", None) or "http://127.0.0.1:11434")
     test_mode = bool(getattr(settings, "test_mode", False))
-    for name in await _ollama_tags(ollama, test_mode):
+    for name in await _ollama_tags(ollama, test_mode, rt):
         if any(fnmatch.fnmatchcase(name, a) for a in allowed):
             add(name, "ollama")
     data = list(seen.values())

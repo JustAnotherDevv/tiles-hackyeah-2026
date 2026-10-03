@@ -142,11 +142,11 @@ def test_parse_events() -> None:
 
 async def test_events_endpoint_headers(tmp_path) -> None:
     """Route wiring: SSE response object with no-buffering headers (body not consumed)."""
+    from gw_fakes import FakeRT, route_app
     from starlette.requests import Request
 
-    from aegis.api.routes.events import events_endpoint
-    from gw_fakes import FakeRT, route_app
     from aegis.api.routes import events
+    from aegis.api.routes.events import events_endpoint
 
     rt = FakeRT(tmp_path)
     app = route_app(rt, events)

@@ -24,7 +24,9 @@ VERB = {
 
 _EMAIL_RX = re.compile(r"([A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]*@([A-Za-z0-9.\-]+\.[A-Za-z]{2,})")
 _LONG_DIGITS_RX = re.compile(r"\d[\d \-]{5,}\d")
-_SECRETISH_RX = re.compile(r"\b(?=[A-Za-z0-9_\-]*\d)(?=[A-Za-z0-9_\-]*[A-Za-z])[A-Za-z0-9_\-]{28,}\b")
+_SECRETISH_RX = re.compile(
+    r"\b(?=[A-Za-z0-9_\-]*\d)(?=[A-Za-z0-9_\-]*[A-Za-z])[A-Za-z0-9_\-]{28,}\b"
+)
 
 
 def local_mask(text: str, max_len: int = 160) -> str:
@@ -82,11 +84,26 @@ class Explain:
     route: dict[str, Any] | None = None
     levers: list[str] = field(default_factory=list)
 
-    def check(self, cid: str, label: str, value: Any = None, limit: Any = None,
-              result: str = "pass", param: str | None = None) -> Explain:
+    def check(
+        self,
+        cid: str,
+        label: str,
+        value: Any = None,
+        limit: Any = None,
+        result: str = "pass",
+        param: str | None = None,
+    ) -> Explain:
         """Record one check: ``result`` in pass | fail | info | skip."""
-        self.checks.append({"id": cid, "label": label, "value": value, "limit": limit,
-                            "result": result, "param": param})
+        self.checks.append(
+            {
+                "id": cid,
+                "label": label,
+                "value": value,
+                "limit": limit,
+                "result": result,
+                "param": param,
+            }
+        )
         return self
 
     def lever(self, *paths: str) -> Explain:
@@ -96,8 +113,13 @@ class Explain:
         return self
 
     def to_dict(self) -> dict[str, Any]:
-        return {"summary": self.summary, "facts": self.facts, "checks": self.checks,
-                "route": self.route, "levers": self.levers}
+        return {
+            "summary": self.summary,
+            "facts": self.facts,
+            "checks": self.checks,
+            "route": self.route,
+            "levers": self.levers,
+        }
 
 
 def reason_line(action: str, core: str, *, suffix: str = "") -> str:

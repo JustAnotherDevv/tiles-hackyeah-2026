@@ -8,8 +8,32 @@ export function mockOrg(): OrgResponse {
   return orgResponse(govStore.getMembers(), govStore.getAgents());
 }
 
+/** Pending governed changes per member (CONTRACTS A-37 `meta.pending_changes`), derived from the store. */
+export interface PendingChange {
+  org_change_id: string | null;
+  approval_id: string;
+  op: string;
+  to: string | null;
+  required_role: ApproverLevel;
+  expires_at: string | null;
+}
+
 export function mockMembersList(): { items: Member[] } {
-  return { items: govStore.getMembers() };
+  const pending = govStore.getApprovals().filter((a) => a.status === 'pending' && a.action_type.startsWith('org.') && a.resource?.startsWith('member:'));
+  const items = govStore.getMembers().map((m) => {
+    const mine = pending.filter((a) => a.resource === `member:${m.id}`);
+    if (mine.length === 0) return m;
+    const changes: PendingChange[] = mine.map((a) => ({
+      org_change_id: ((a.payload as { org_change_id?: string }).org_change_id ?? null) as string | null,
+      approval_id: a.id,
+      op: a.action_type.replace(/^org\./, ''),
+      to: (a.payload as { patch?: { role?: string } }).patch?.role ?? null,
+      required_role: a.required_role,
+      expires_at: a.expires_at,
+    }));
+    return { ...m, meta: { ...m.meta, pending_changes: changes } };
+  });
+  return { items };
 }
 
 export function mockAgentsList(): { items: Agent[] } {

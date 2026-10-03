@@ -364,6 +364,9 @@ class SelfTestRunner:
             labels={str(k): str(v) for k, v in (extra.get("labels") or {}).items()},
             meta=meta,
         )
+        hdrs = extra.get("headers")
+        if isinstance(hdrs, dict) and hdrs:  # A-30: Interaction.headers and ctx.headers
+            inter.headers = {str(k).lower(): str(v) for k, v in hdrs.items()}
         if surface == "model.request":
             inter.est_input_tokens = max(1, len(inter.text()) // 4)
         if extra.get("max_output_tokens"):
@@ -383,7 +386,8 @@ class SelfTestRunner:
             ident = await self._identity(t)
             inter = self.build_interaction(t, seed)
             ctx = self.rt.pipeline.new_context(source="selftest", identity=ident,
-                                               session_id=f"ses_selftest_{run_id}_{idx}", dry_run=True)
+                                               session_id=f"ses_selftest_{run_id}_{idx}", dry_run=True,
+                                               headers=dict(inter.headers or {}) or None)
             verdict = await self.rt.pipeline.evaluate(ctx, inter, policy=snap, dry_run=True)
         except Exception as exc:
             ms = (time.perf_counter() - t0) * 1000

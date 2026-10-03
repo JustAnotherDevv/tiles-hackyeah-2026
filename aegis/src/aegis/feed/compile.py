@@ -40,17 +40,22 @@ class CompiledFeed:
     selftest: dict[str, dict] = field(default_factory=dict)
 
     def active_ids(self) -> list[str]:
-        return [sid for sid, c in self.sigs.items()
-                if sid not in self.quarantined and c.status != "withdrawn"]
+        return [
+            sid
+            for sid, c in self.sigs.items()
+            if sid not in self.quarantined and c.status != "withdrawn"
+        ]
 
 
 def empty_feed() -> CompiledFeed:
-    return CompiledFeed(serial=0, version="", sha256="", published=None, expires=None,
-                        key_id=None, source="none")
+    return CompiledFeed(
+        serial=0, version="", sha256="", published=None, expires=None, key_id=None, source="none"
+    )
 
 
-def compile_bundle(doc: dict | Bundle, *, sha256: str, source: str = "network",
-                   run_vectors: bool = True) -> CompiledFeed:
+def compile_bundle(
+    doc: dict | Bundle, *, sha256: str, source: str = "network", run_vectors: bool = True
+) -> CompiledFeed:
     """Validate + compile a parsed bundle. Raises FeedRejected('schema: ...') on hard errors."""
     t0 = time.perf_counter()
     try:
@@ -90,11 +95,21 @@ def compile_bundle(doc: dict | Bundle, *, sha256: str, source: str = "network",
             by_surface.setdefault(s, []).append(c)
     h = bundle.feed
     return CompiledFeed(
-        serial=int(h.serial), version=h.version or str(h.serial), sha256=sha256,
-        published=parse_iso(h.published), expires=parse_iso(h.expires), key_id=h.key_id,
-        sigs=sigs, by_surface={k: tuple(v) for k, v in by_surface.items()},
-        quarantined=quarantined, sig_sha=sig_sha, lists=dict(lists), vectors=vectors,
-        compile_ms=round((time.perf_counter() - t0) * 1000, 2), source=source, selftest=selftest,
+        serial=int(h.serial),
+        version=h.version or str(h.serial),
+        sha256=sha256,
+        published=parse_iso(h.published),
+        expires=parse_iso(h.expires),
+        key_id=h.key_id,
+        sigs=sigs,
+        by_surface={k: tuple(v) for k, v in by_surface.items()},
+        quarantined=quarantined,
+        sig_sha=sig_sha,
+        lists=dict(lists),
+        vectors=vectors,
+        compile_ms=round((time.perf_counter() - t0) * 1000, 2),
+        source=source,
+        selftest=selftest,
     )
 
 

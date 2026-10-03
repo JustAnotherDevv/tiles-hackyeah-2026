@@ -237,7 +237,12 @@ class ContentSafety(BaseControl):
                 similarity=sim.score,
                 embed_model=sim.model,
             )
-            if pct < minimum and degraded_disposition(sim, cfg.fail_mode) != "allow":
+            # The org-wide fallback purpose ("*") is broad; hashed heuristic embeddings are too
+            # coarse to judge it, so only a real embedding model may flag it (avoids log noise).
+            weak = purpose_agent == "*" and bool(sim.degraded)
+            if weak:
+                meta["adherence_note"] = "org-wide purpose not scored by the heuristic"
+            if pct < minimum and not weak and degraded_disposition(sim, cfg.fail_mode) != "allow":
                 on_low = p.off_topic_action or c.resolve(p.adherence.on_low, profile, "log")
                 action = c.valid_action(on_low, "log")
                 d = self.decide(

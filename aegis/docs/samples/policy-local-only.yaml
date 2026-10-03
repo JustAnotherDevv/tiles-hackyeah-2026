@@ -1,0 +1,58 @@
+# =============================================================================
+#  Sample policy: LOCAL ONLY (air-gapped / offline)          docs/samples/
+# =============================================================================
+#  Nothing leaves the machine: only local Ollama models are routable, every
+#  remote / third-party destination is blocked for non-public data, and the
+#  semantic controls run on local models (or on the deterministic heuristic
+#  with a visible `degraded` flag when Ollama is down).
+#  Local usage is still budgeted in compute-seconds (config/pricing.yaml).
+#
+#  Try it:  AEGIS_POLICY=docs/samples/policy-local-only.yaml make gateway
+#           OPENAI_BASE_URL=http://127.0.0.1:8787/v1  (model: aegis-judge)
+# =============================================================================
+version: 1
+metadata:
+  name: sample-local-only
+  description: "Offline: only local Ollama models, nothing non-public leaves the machine"
+profile: balanced
+
+defaults:
+  mode: enforce
+  fail_mode: closed
+
+destinations:
+  matrix:
+    PUBLIC:       {local: allow, remote: allow, third_party: allow}
+    INTERNAL:     {local: allow, remote: block, third_party: block}
+    CONFIDENTIAL: {local: allow, remote: block, third_party: block}
+    RESTRICTED:   {local: redact, remote: block, third_party: block}   # cards are tokenized even locally
+    SECRET:       {local: log,   remote: block, third_party: block}
+
+providers:
+  ollama:        {wire: ollama, base_url: "http://127.0.0.1:11434", destination: local}
+  ollama-openai: {wire: openai, base_url: "http://127.0.0.1:11434/v1", destination: local}
+
+models:
+  allowed: ["aegis-judge*", "qwen*"]
+  denied: ["claude-*", "gpt-*", "*:cloud", "aegis-guard*"]   # guard model is a classifier, not a chat model
+  routes:
+    - {match: "*", provider: ollama-openai, wire: openai}
+    - {match: "*", provider: ollama,        wire: ollama}
+  default_local: "aegis-judge"
+
+budgets:
+  defaults: {on_soft: warn, on_hard: block, local_concurrency: 1}
+  limits:
+    - {scope: "org:acme-capital", window: day, compute_s: 14400}        # 4 GPU-hours per day
+    - {scope: "session:*",        window: session, compute_s: 600}
+
+controls:
+  - id: GOV-02                                    # model allowlist & destination tiering
+    action: block
+    tests:
+      - {name: remote-model-denied, text: "hello", destination: remote, expect: block}
+  - {id: DLP-01, action: redact}
+  - {id: DLP-02, action: block}
+  - {id: INJ-01, action: block}
+  - {id: INJ-02, action: block, threshold: 0.80, fail_mode: deterministic_only}
+  - {id: BUD-02, action: block, params: {max_concurrency: 1, max_model_gb: 3}}

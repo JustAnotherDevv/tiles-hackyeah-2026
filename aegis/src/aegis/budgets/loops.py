@@ -157,6 +157,12 @@ class LoopRegistry:
             self._recent = {k: v for k, v in self._recent.items() if v[0] >= cutoff}
         return prev is not None and prev[1] != source and now - prev[0] <= dedupe_s
 
+    def seen_elsewhere(self, principal: str, fp: str, source: str, dedupe_s: float) -> bool:
+        """Non-mutating: the same call was just confirmed by ANOTHER source (hook vs MCP proxy),
+        so this hop is a second sighting of one logical call and must not trip a detector."""
+        prev = self._recent.get((principal, fp))
+        return prev is not None and prev[1] != source and windows.monotonic() - prev[0] <= dedupe_s
+
     def sessions(self) -> dict[str, LoopState]:
         return dict(self._states)
 

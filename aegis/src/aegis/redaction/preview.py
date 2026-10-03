@@ -2,7 +2,8 @@
 
 * ``pan_mask``: PCI DSS 3.4.1 maximum display, first 6 + last 4 (``411111******1111``).
 * ``mask_preview``: type-aware, non-reversible preview for audit excerpts (None for SAD).
-* ``fingerprint``: ``hmac:<16 hex>`` via ``aegis.core.crypto.hmac_hex(purpose="redaction")``
+* ``fingerprint``: ``hmac:<16 hex>`` via ``aegis.core.crypto.hmac_hex(canonical, purpose="audit")``
+  (Addendum A-42)
   (keyed; never a plain hash of a PAN/PESEL). SAD (CVV, TRACK_DATA) is never fingerprinted.
 * ``mask_text``: the implementation behind ``rt.redactor.mask_for_log`` (never raises).
 
@@ -33,7 +34,7 @@ def _hmac_hex(value: str) -> str:
     try:
         from aegis.core.crypto import hmac_hex
 
-        return hmac_hex(value, purpose="redaction")
+        return hmac_hex(value, purpose="audit")
     except Exception:  # TODO(integration): core crypto missing -> per-process key
         global _FALLBACK_KEY
         if _FALLBACK_KEY is None:
@@ -41,16 +42,14 @@ def _hmac_hex(value: str) -> str:
             _FALLBACK_KEY = env.encode() if env else os.urandom(32)
             if not env:
                 log.warning("hmac key fallback: aegis.core.crypto unavailable, per-process key")
-        return hmac.new(
-            _FALLBACK_KEY, b"redaction\x00" + value.encode(), hashlib.sha256
-        ).hexdigest()
+        return hmac.new(_FALLBACK_KEY, b"audit\x00" + value.encode(), hashlib.sha256).hexdigest()
 
 
 def fingerprint(entity: str, canonical: str) -> str | None:
     """``hmac:<16 hex>`` for audit / allow-lists; None for SAD (never fingerprinted)."""
     if entity in IRREVERSIBLE:
         return None
-    return "hmac:" + _hmac_hex(f"{entity}\x1f{canonical}")[:16]
+    return "hmac:" + _hmac_hex(canonical)[:16]  # A-42: canonical value, purpose="audit"
 
 
 def pan_mask(digits: str) -> str:
