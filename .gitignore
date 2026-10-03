@@ -58,6 +58,13 @@ secrets.*
 .toolchain/
 
 # ---------------------------------------------------------------------------
+# Agent skills installed per machine (~26 MB of third-party content).
+# Source: https://github.com/onirodeveloper/hackyeah2026-challenge/tree/main/skills
+# plus the deveco-cli skill from `devecocli init --skill`. See README.md -> Setup.
+# ---------------------------------------------------------------------------
+.claude/skills/
+
+# ---------------------------------------------------------------------------
 # IDE / OS
 # ---------------------------------------------------------------------------
 .idea/

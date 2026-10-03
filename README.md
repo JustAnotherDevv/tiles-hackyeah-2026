@@ -1,8 +1,13 @@
 # HackYeah App (working title)
 
 > **Status:** project skeleton. The app idea is not decided yet. The current app is the DevEco Studio
-> "Empty Ability" template showing a bold **Hello HarmonyOS** screen.
+> "Empty Ability" template showing a bold **Hello HarmonyOS** screen, plus the files the organizers'
+> **Hackathon Template** adds on top (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `HACKATHON_BRIEF.md`,
+> `AI_WORKFLOW.md`, `hackathon-resources/`).
 > Replace every `TODO` below once the idea and toolchain are settled.
+
+Organizers' setup repository (challenge statement, FAQ, skills, templates):
+<https://github.com/onirodeveloper/hackyeah2026-challenge>
 
 Submission for **HackYeah 2026, Huawei partner task "Imagine What's Next"**: an app for an
 OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
@@ -11,7 +16,8 @@ OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
 |---|---|
 | Language / UI | ArkTS + ArkUI (declarative) |
 | App model | Stage model (`UIAbility`) |
-| Target / minimum API | **20** (HarmonyOS 6.0.0 / OpenHarmony 6.0) |
+| SDK levels (`build-profile.json5`) | compatible **API 20** `6.0.0(20)` (minimum), compile **API 23** `6.1.0(23)`, target **API 24** `6.1.1(24)`. These are the organizers' defaults |
+| Runtime | `runtimeOS: "HarmonyOS"` |
 | Deliverable | `.hap` (module `entry`) |
 | Bundle name | `com.hackyeah.huawei.app` (placeholder) |
 | Build system | hvigor + ohpm |
@@ -38,7 +44,13 @@ OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
 ├── build-profile.json5             # App build profile: SDK versions, products, signing, modules
 ├── oh-package.json5                # ohpm root manifest (dev deps: hypium, hamock)
 ├── code-linter.json5               # ArkTS linter rules (DevEco Code Linter)
-├── AI_WORKFLOW.md                  # Required by the Huawei brief
+├── AGENTS.md                       # Agent guidance from the organizers' Hackathon Template (canonical)
+├── CLAUDE.md, GEMINI.md            # Shims that import AGENTS.md
+├── HACKATHON_BRIEF.md              # Our submission brief (pitch, target, user flow, acceptance checks)
+├── AI_WORKFLOW.md                  # Required by the Huawei brief: AI tools, prompts, work log, validation
+├── hackathon-resources/            # Organizers' bundled reference: devecocli matrix, emulator capabilities
+├── scripts/                        # macOS helpers: DevEco region switch, DevEco template install
+├── .claude/skills/                 # Agent skills, installed per machine (git-ignored, see Setup)
 └── README.md
 ```
 
@@ -46,10 +58,11 @@ OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
 
 | Tool | Version | Notes |
 |---|---|---|
-| macOS (Apple Silicon) | 27 | Development machine |
-| DevEco Studio | TODO: exact version (6.x, with API 20 support) | Bundles the HarmonyOS SDK, hvigor, ohpm, hdc and the emulator |
-| HarmonyOS SDK | 6.0.0(20) | Installed via DevEco SDK Manager or the command-line tools |
-| Node.js | 18+ (tested with TODO) | Only needed for CLI builds outside DevEco |
+| macOS (Apple Silicon) | 27 | Development machine. The DevEco Studio emulator needs Apple Silicon |
+| DevEco Studio | 6.1.x (data directory `DevEcoStudio6.1`) | Bundles the HarmonyOS SDK, hvigor, ohpm, hdc and the emulator. Install into `/Applications` |
+| HarmonyOS SDK | 6.0.0(20), 6.1.0(23), 6.1.1(24) | Installed through the DevEco SDK Manager |
+| Node.js | 22 or later (tested with 24.10) | Required by `devecocli`. Keep your own Node first on `PATH`, not DevEco's bundled `tools/node` |
+| Python 3 | any 3.x | Some agent skills call the `python` command |
 | Java | 17 | TODO: confirm whether the CLI toolchain needs it |
 | Git | any recent | |
 
@@ -57,19 +70,104 @@ OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
 
 ## 3. Setup
 
+The organizers' automated installer ([`INSTALLATION_PROMPT.md`](https://github.com/onirodeveloper/hackyeah2026-challenge/blob/main/INSTALLATION_PROMPT.md))
+supports Windows only. On macOS their README and FAQ say to do the same steps by hand. The steps below are that
+macOS path. The two scripts in `scripts/` automate the manual parts. Neither script uses sudo.
+
 ```bash
 git clone TODO-public-repo-url
 cd TODO-repo-dir
-
-# TODO: exact commands to install the SDK and command-line tools (or "install DevEco Studio X.Y")
-# TODO: export PATH for ohpm / hvigorw / hdc, e.g.
-# export PATH="$PWD/.toolchain/TODO/command-line-tools/bin:$PATH"
-
-ohpm install            # restores oh_modules/ (hypium, hamock)
+# The organizers' repository provides the skills, the DevEco CLI patches and the templates:
+git clone --depth 1 https://github.com/onirodeveloper/hackyeah2026-challenge /tmp/hy-challenge
 ```
 
-**DevEco Studio:** File > Open > select this folder. Let it sync, then accept the SDK prompt for API 20.
-DevEco creates `local.properties` (git-ignored) pointing at your SDK.
+### 3.1 DevEco Studio and the emulator
+
+1. **Install DevEco Studio 6.1** into `/Applications`. See the
+   [Oniro DevEco Studio installation guide](https://docs.oniroproject.org/application-development/environment-setup-guide/deveco-studio/installation/).
+2. **First launch.** Start DevEco Studio once, finish the first-launch setup (including the SDK download), then
+   quit it (Cmd+Q). This step creates `~/Library/Application Support/Huawei/DevEcoStudio6.1/options/country.region.xml`.
+3. **Switch the region to China.** Outside China, Device Manager only offers smart-watch emulators. With the
+   region set to CN it also offers phone, tablet, 2-in-1 and TV emulators.
+   ```bash
+   scripts/set-deveco-region-cn.sh --dry-run   # shows the change
+   scripts/set-deveco-region-cn.sh             # backs up the file, sets <countryregion name="CN"/>
+   ```
+   The script reads `dataDirectoryName` from the app's `product-info.json`. It refuses to run while DevEco Studio is
+   running and never creates the file. This follows the organizers' [FAQ](https://github.com/onirodeveloper/hackyeah2026-challenge/blob/main/FAQ.md#how-do-i-switch-the-deveco-studio-region-to-china-manually).
+4. **Create and start an emulator** (GUI only; the agent cannot do this). Start DevEco Studio, open Device Manager,
+   create a **Phone** device, download its system image (newest available, API 24; several GB) and start it. With
+   8 GB RAM, close other heavy apps first. See the [Oniro emulator guide](https://docs.oniroproject.org/application-development/environment-setup-guide/deveco-studio/emulator/).
+5. *(Optional)* **Install the organizers' project templates** (`Hackathon Template`, `Conductor Hackathon Template`)
+   into DevEco's Create Project wizard. This repository already contains the Hackathon Template files, so you only
+   need the templates to create new projects.
+   ```bash
+   scripts/install-deveco-templates.sh --source /tmp/hy-challenge --dry-run
+   scripts/install-deveco-templates.sh --source /tmp/hy-challenge
+   ```
+   Target directory: `<DevEco Studio>.app/Contents/plugins/openharmony/lib/templates/project`. This is the macOS
+   equivalent of the organizers' Windows path `<DevEcoStudioRoot>\plugins\openharmony\lib\templates\project`.
+   The script does not overwrite or merge an existing template that differs. If macOS reports
+   "Operation not permitted", allow your terminal under System Settings > Privacy & Security > App Management.
+   Restart DevEco Studio afterwards.
+6. **Open this project.** In DevEco Studio choose File > Open and select this folder. Let it sync and accept the SDK
+   prompts. DevEco creates `local.properties` (git-ignored), which points at your SDK. Then restore dependencies:
+   ```bash
+   ohpm install            # restores oh_modules/ (hypium, hamock)
+   ```
+   TODO: verify the CLI paths after the install. DevEco puts its tools under
+   `<DevEco Studio>.app/Contents/tools/{ohpm,hvigor}/bin` and `hdc` under
+   `<DevEco Studio>.app/Contents/sdk/default/openharmony/toolchains`. You can add these directories to `PATH`, but
+   do not add `Contents/tools/node`.
+
+### 3.2 Agent tooling (Claude Code)
+
+We use **Claude Code** (model Claude Opus 5.5) with **parallel sub-agents** (see [AI_WORKFLOW.md](AI_WORKFLOW.md)).
+The tooling is installed **for this project**, not in the user-level agent configuration.
+
+**Agent skills.** The organizers' nine skills are copied unmodified into `.claude/skills/`, where Claude Code loads
+project skills. The folder is git-ignored because it holds about 26 MB of third-party content. To restore it:
+
+```bash
+mkdir -p .claude/skills && cp -R /tmp/hy-challenge/skills/* .claude/skills/
+```
+
+| Skill | Purpose |
+|---|---|
+| `ohos-app-scaffold` | Creates a new, untouched project skeleton and stops |
+| `ohos-app-dev` | Inner dev loop for an existing app: lint, build, run, logs, UI checks |
+| `ohos-system-app-dev` | Privilege preflight and dev loop for apps that may need system-app identity |
+| `ohos-system-dev` | Platform components built inside the OpenHarmony source tree |
+| `conductor-dev` | Conductor orchestration. Not used with this template (see `AGENTS.md`) |
+| `hmos-arkts-knowledge-retriever` | Grounded ArkTS and API references |
+| `hmos-arkui-scenario-development` | Scenario-based ArkUI development (REQ, DEV, FIX, VAL) |
+| `hmos-arkui-develop-skill` | ArkUI pages, components, layout and state |
+| `hmos-arkui-mvvm-pattern` | MVVM layering and refactoring |
+
+**DevEco CLI.** Install `@deveco/deveco-cli` **exactly 1.3.4**, because the organizers' patches are verified only
+against that version. The package pins its companion `@deveco/deveco-cli-common` to 1.3.4. Then apply the patches.
+They fix the linter wording and disable a Windows memory sampler.
+
+```bash
+npm install -g @deveco/deveco-cli@1.3.4
+node /tmp/hy-challenge/scripts/apply-devecocli-patches.mjs   # "Applied DevEco CLI 1.3.4 patches at ..."
+node /tmp/hy-challenge/scripts/apply-devecocli-patches.mjs   # must say "patches are already applied"
+devecocli -V                                                 # 1.3.4
+```
+
+`devecocli` is installed into `$(npm config get prefix)/bin`, which must be on `PATH`. To opt out of the CLI's
+telemetry, set `export DEVECO_CLI_DISABLE_TELEMETRY=1`.
+
+**DevEco CLI skill** (after DevEco Studio is installed, because the CLI refuses to run without it). Install it into
+this project only:
+
+```bash
+devecocli init --skill --agent claude-code --project .   # writes .claude/skills/deveco-cli/SKILL.md
+```
+
+Without `--agent`/`--project`, `init` writes into the global configuration of every agent it detects.
+
+Restart Claude Code after installing skills so that it loads them.
 
 ## 4. Signing
 
@@ -105,7 +203,7 @@ hdc list targets                      # emulator/device must be listed
 hdc install -r entry/build/default/outputs/default/entry-default-signed.hap
 ```
 
-TODO: emulator setup steps (Device Manager > create/download image > start).
+The emulator must be created and running first (see [3.1 step 4](#31-deveco-studio-and-the-emulator)).
 
 ## 7. Launch
 
@@ -144,13 +242,15 @@ runs HarmonyOS projects. To build against the **OpenHarmony** SDK instead (for e
 board), change the product in `build-profile.json5`:
 
 ```json5
-"compileSdkVersion": 20,
+"compileSdkVersion": 23,
 "compatibleSdkVersion": 20,
-"targetSdkVersion": 20,
+"targetSdkVersion": 23,
 "runtimeOS": "OpenHarmony",
 ```
 
-The OpenHarmony runtime uses integer API levels. The HarmonyOS runtime uses `"6.0.0(20)"` strings.
+The OpenHarmony runtime uses integer API levels. The HarmonyOS runtime uses release labels:
+`"6.0.0(20)"`, `"6.1.0(23)"`, `"6.1.1(24)"`. The Oniro emulator runs OpenHarmony 6.1 (API 23), so do not rely on
+API 24 behaviour there.
 Only `@ohos.*` / OpenHarmony APIs are available there. HarmonyOS-only Kits are not.
 
 ---

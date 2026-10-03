@@ -9,8 +9,15 @@
       {
         "name": "default",
         "signingConfig": "default",
-        "targetSdkVersion": "6.0.0(20)",
+        // Organizers' recommended defaults (hackyeah2026-challenge README, step 3):
+        // compile against API 23, test against API 24, stay installable on API 20.
+        // Labels follow DevEco's "<HarmonyOS version>(<API>)" format; the mapping
+        // 6.0.0(20) / 6.1.0(23) / 6.1.1(24) is taken from deveco-cli 1.3.4's SDK table.
+        // If hvigor reports "SDK component missing", compileSdkVersion must name an SDK
+        // release that is actually installed (the organizers' FAQ example uses "6.1.1(24)").
+        "compileSdkVersion": "6.1.0(23)",
         "compatibleSdkVersion": "6.0.0(20)",
+        "targetSdkVersion": "6.1.1(24)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {
