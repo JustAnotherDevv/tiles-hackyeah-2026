@@ -1,0 +1,46 @@
+{
+  "app": {
+    // Left empty on purpose. DevEco Studio > File > Project Structure > Signing Configs >
+    // "Automatically generate signature" fills this block with machine-local paths and
+    // encrypted passwords. Do NOT commit that block (see README.md -> Signing).
+    // With no signing configs, hvigor still builds an *unsigned* .hap.
+    "signingConfigs": [],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "6.0.0(20)",
+        "compatibleSdkVersion": "6.0.0(20)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

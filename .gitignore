@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# OpenHarmony / HarmonyOS (DevEco Studio, hvigor, ohpm)
+# ---------------------------------------------------------------------------
+# Dependencies (restored by `ohpm install`). Keep oh-package-lock.json5 committed.
+oh_modules/
+node_modules/
+
+# hvigor caches and build output
+.hvigor/
+build/
+**/build/
+entry/build/
+.cxx/
+**/.test/
+**/.preview/
+.appanalyzer/
+
+# Machine-local SDK paths (sdk.dir, nodejs.dir, ...)
+local.properties
+
+# Native / clang tooling
+.clangd
+.clang-format
+.clang-tidy
+
+# Build artifacts. Ship the .hap via GitHub Releases, not git history.
+*.hap
+*.hsp
+*.app
+
+# ---------------------------------------------------------------------------
+# Signing material and secrets. NEVER commit these.
+# DevEco auto-signing writes the material to ~/.ohos/config/, outside this repo.
+# It also writes absolute paths and encrypted passwords into the
+# app.signingConfigs block of build-profile.json5. Do not commit that block.
+# See README.md -> "Signing".
+# ---------------------------------------------------------------------------
+*.p12
+*.cer
+*.p7b
+*.csr
+*.pem
+*.key
+*.jks
+*.keystore
+*.pfx
+signing/
+.ohos/
+.env
+.env.*
+!.env.example
+*.secret
+secrets.*
+
+# ---------------------------------------------------------------------------
+# Local toolchain (SDK / emulator / command-line tools installed per machine)
+# ---------------------------------------------------------------------------
+.toolchain/
+
+# ---------------------------------------------------------------------------
+# IDE / OS
+# ---------------------------------------------------------------------------
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
