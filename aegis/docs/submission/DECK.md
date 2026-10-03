@@ -80,7 +80,8 @@ precision high, NER catches names, placeholders keep the model useful, real valu
 - Semantic (local models, escalation only): injection classifier, Qwen3Guard, multilingual NER. Per-control
   `fail_mode`; model down → deterministic-only + `degraded` flag, never silent pass-through.
 - Screens untrusted content too: tool results, MCP descriptions, fetched pages.
-- Red-team eval (balanced): detection {{TBD: eval.detection_rate}} at {{TBD: eval.fpr}} false positives.
+- Red-team eval (balanced, {{TBD: eval.mode}}): detection {{TBD: eval.detection_rate}} {{TBD: eval.detection_ci}}, held-out public sets
+  {{TBD: eval.heldout_detection}}, at {{TBD: eval.fpr}} false positives; deterministic only {{TBD: eval.det_detection_rate}} at {{TBD: eval.det_fpr}}.
 - OWASP coverage (live from the catalog): LLM {{TBD: coverage.llm}} · ASI {{TBD: coverage.asi}} · MCP {{TBD: coverage.mcp}}.
 
 *Notes (30 s):* "Judges will attack the gaps: a tool result, an MCP description, a base64 payload. We

@@ -211,6 +211,19 @@ class AdherenceParams(BaseModel):
     purposes: dict[str, str] = Field(default_factory=dict)  # agent-id glob -> declared purpose
 
 
+class Inj03Calibration(BaseModel):
+    """CAL: guard verdicts in ``categories`` on finance-operational prompts -> ``action``."""
+
+    model_config = ConfigDict(extra="allow")
+
+    enabled: bool = False
+    categories: list[str] = Field(default_factory=lambda: ["Non-violent Illegal Acts"])
+    action: str = "log"
+    max_chars: int = 400
+    domain_terms: list[str] = Field(default_factory=list)
+    harm_cues: list[str] = Field(default_factory=list)
+
+
 class Inj03Params(BaseModel):
     model_config = ConfigDict(extra="allow")
 
@@ -227,6 +240,7 @@ class Inj03Params(BaseModel):
     controversial_action: str = "log"
     category_actions: dict[str, str] = Field(default_factory=lambda: dict(DEFAULT_CATEGORY_ACTIONS))
     adherence: AdherenceParams = Field(default_factory=AdherenceParams)
+    calibration: Inj03Calibration = Field(default_factory=Inj03Calibration)
     # aliases used by docs/seed-fixes/policy.yaml
     purpose: str | None = None  # global purpose for agents without their own
     off_topic_action: str | None = None  # alias of adherence.on_low

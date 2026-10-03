@@ -78,6 +78,18 @@ class ExemplarParams(_Params):
     margin: float = 0.03
 
 
+class CalibrationParams(_Params):
+    """INJ-02 trusted-prompt domain calibration (aegis.injection.calibration); off unless configured."""
+
+    enabled: bool = False
+    domain: bool = True
+    mention: bool = True
+    max_cue_score: float = 0.0
+    max_chars: int = 400
+    domain_terms: list[str] = Field(default_factory=list)
+    target_cues: list[str] = Field(default_factory=list)
+
+
 class ConversationParams(_Params):
     enabled: bool = False
     decay: float = 0.7
@@ -97,6 +109,7 @@ class Inj02Params(_Params):
     untrusted_max_sentences: int = 12
     log_review: bool = False
     conversation: ConversationParams = Field(default_factory=ConversationParams)
+    calibration: CalibrationParams = Field(default_factory=CalibrationParams)
     model_request_scope: str = "latest_turn"
     strip_harness_blocks: bool = True
     local_heuristic: bool = True  # degraded engine -> also consult the signature heuristic

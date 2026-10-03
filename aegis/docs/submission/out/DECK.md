@@ -66,8 +66,8 @@ deterministic first, AI second."
 - **Destination-aware:** raw to local Ollama, tokenized to a remote model, tokenized or blocked to a third party.
 - Reversible placeholders (`[PESEL_1]`), stable per session, restored only for the local user.
 - **PCI:** CVV dropped, never vaulted; PAN shown as first 6 / last 4; audit stores keyed HMACs.
-- Measured on our redaction fixture set ([TBD: dlp.cases] cases): leak rate on validated types
-  [TBD: dlp.leak_rate_validated], precision [TBD: dlp.precision], recall [TBD: dlp.recall], p95 [TBD: dlp.latency_p95_ms] ms.
+- Measured on our redaction fixture set (626 cases): leak rate on validated types
+  0 %, precision 1.0, recall 1.0, p95 0.35 ms.
 - Visual: Wire view screenshot (`screens/wire.png`).
 
 *Notes (35 s):* "This is the headline: data minimization before egress, on the laptop. Validators keep
@@ -80,8 +80,9 @@ precision high, NER catches names, placeholders keep the model useful, real valu
 - Semantic (local models, escalation only): injection classifier, Qwen3Guard, multilingual NER. Per-control
   `fail_mode`; model down → deterministic-only + `degraded` flag, never silent pass-through.
 - Screens untrusted content too: tool results, MCP descriptions, fetched pages.
-- Red-team eval (balanced): detection [TBD: eval.detection_rate] at [TBD: eval.fpr] false positives.
-- OWASP coverage (live from the catalog): LLM [TBD: coverage.llm] · ASI [TBD: coverage.asi] · MCP [TBD: coverage.mcp].
+- Red-team eval (balanced, with semantic models): detection 92.4 % [90.2–94.1 %], held-out public sets
+  89.6 %, at 5.1 % false positives; deterministic only 66.6 % at 0.4 %.
+- OWASP coverage (live from the catalog): LLM 9/10 · ASI 10/10 · MCP 10/10.
 
 *Notes (30 s):* "Judges will attack the gaps: a tool result, an MCP description, a base64 payload. We
 normalize first, screen every hop, and put an independent control on the exfiltration leg."
@@ -103,7 +104,7 @@ approve a $50 subscription; doubling the team budget needs the owner."
 
 - One YAML file: controls, mode, action, threshold, adherence %, models, budgets, approval rules, 4 profiles.
 - Save → validate → **self-test gate** → atomic swap → version stamped on every decision; bad YAML →
-  rejected, last-good keeps serving. Reload p95 [TBD: policy.reload_ms] ms.
+  rejected, last-good keeps serving. Reload p95 584 ms.
 - External threat feed (:8790): Ed25519-signed, monotonic serial, anti-rollback, inline test vectors;
   tampered bundle → rejected.
 - Visual: threshold 0.80 → 0.50 → toast → verdict flips; feed serial N → N+1 (`screens/policy.png`).
@@ -123,12 +124,12 @@ straight into a SIEM."
 
 ## Slide 9: One command proves every control
 
-- `make test`: [TBD: tests.total] cases · [TBD: tests.failed] failed · [TBD: tests.duration_s] s; no model needed;
+- `make test`: 1,045 cases · 0 failed · 179 s; no model needed;
   semantic cases skipped with a reason when models are absent.
 - Per-control matrix: must-block / must-allow / must-redact; asserts *which* control decided; UNTESTED fails the run.
 - False-positive wall: "kill switch", "execute the order", "egzekucja zlecenia" must pass.
-- `make bench`: deterministic overhead p50 / p95 [TBD: perf.overhead_p50_ms] / [TBD: perf.overhead_p95_ms] ms;
-  throughput [TBD: perf.rps] rps; overhead share [TBD: perf.overhead_share_pct] of upstream time.
+- `make bench`: deterministic overhead p50 / p95 2.40 / 3.82 ms;
+  throughput 320 rps; overhead share 2.0 % of upstream time.
 - Visual: `make test` matrix (`screens/tests.png`).
 
 *Notes (30 s):* "Judges will run our suite: one command, no model, per-control results. Jailbreak corpora

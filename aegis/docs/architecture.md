@@ -152,19 +152,19 @@ enforcing) · **not built**.
 
 | Component | Status | Note for judges |
 |---|---|---|
-| Anthropic `/v1/messages` proxy (JSON + SSE) | {{TBD: status}} | |
-| OpenAI-compatible `/v1/chat/completions` proxy | {{TBD: status}} | |
-| Ollama `/ollama/*` proxy | {{TBD: status}} | |
-| MCP proxy `/mcp/{server}` + mock MCP servers | {{TBD: status}} | |
-| Claude Code hook endpoint + fail-closed `scripts/aegis-hook` | {{TBD: status}} | |
-| `/egress` third-party HTTP | {{TBD: status}} | |
-| Deterministic detectors (validators, secrets, command/SSRF) | {{TBD: status}} | |
-| Semantic tier (NER ONNX, injection classifier, Qwen3Guard) | {{TBD: status}} | heuristic fallback when models are absent |
-| Token vault + rehydration (incl. streaming) | {{TBD: status}} | |
-| Budget ledger + loop detector + kill switch | {{TBD: status}} | |
-| Org / roles / approvals + view-as | {{TBD: status}} | |
-| Policy hot reload + self-test gate + last-known-good | {{TBD: status}} | |
-| Threat-intel feed service + Ed25519 verify | {{TBD: status}} | |
-| Hash-chained audit + JSONL / CSV / OCSF export | {{TBD: status}} | |
-| Dashboard views | {{TBD: status}} | |
+| Anthropic `/v1/messages` proxy (JSON + SSE) | built | real `claude -p` went through it in the live rehearsal (docs/status/LIVE.md) |
+| OpenAI-compatible `/v1/chat/completions` proxy | built | used by the demo agents (scenes F1, F4, F6) |
+| Ollama `/ollama/*` proxy | built | covered by unit/route tests; not part of the live script |
+| MCP proxy `/mcp/{server}` + mock MCP servers | built | poisoned tool dropped, rug pull blocked (F9) |
+| Claude Code hook endpoint + fail-closed `scripts/aegis-hook` | built | gateway down → hook exits 2 (fail-closed) |
+| `/egress` third-party HTTP | built | only traffic routed through `/egress` is inspected |
+| Deterministic detectors (validators, secrets, command/SSRF) | built | |
+| Semantic tier (NER ONNX, injection classifier, Qwen3Guard) | built | heuristic fallback when models are absent; ~1 GB extra RAM with all models |
+| Token vault + rehydration (incl. streaming) | built | CVV is dropped, never tokenized |
+| Budget ledger + loop detector + kill switch | built | F6 runaway rehearsed live |
+| Org / roles / approvals + view-as | built | view-as is demo mode, not authentication |
+| Policy hot reload + self-test gate + last-known-good | built | |
+| Threat-intel feed service + Ed25519 verify | built | tampered and rolled-back bundles refused (F8) |
+| Hash-chained audit + JSONL / CSV / OCSF export | built | |
+| Dashboard views | built | served at `/ui` from `web/dist` |
 | A2A peers | not built | reserved controls A2A-01/02 |

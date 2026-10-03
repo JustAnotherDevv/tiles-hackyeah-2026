@@ -1,0 +1,264 @@
+{
+  "generated_at": "2026-10-03T23:52:24+00:00",
+  "reports_dir": "reports",
+  "numbers": {
+    "audit.ok": {
+      "value": "OK",
+      "raw": true,
+      "source": "http://127.0.0.1:8787/api/audit/verify",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "audit.records": {
+      "value": "1,273",
+      "raw": 1273,
+      "source": "http://127.0.0.1:8787/api/audit/verify",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "controls.count": {
+      "value": "39",
+      "raw": 39,
+      "source": "http://127.0.0.1:8787/api/controls",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "coverage.asi": {
+      "value": "10/10",
+      "raw": [
+        10,
+        10
+      ],
+      "source": "http://127.0.0.1:8787/api/coverage",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "coverage.llm": {
+      "value": "9/10",
+      "raw": [
+        9,
+        10
+      ],
+      "source": "http://127.0.0.1:8787/api/coverage",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "coverage.mcp": {
+      "value": "10/10",
+      "raw": [
+        10,
+        10
+      ],
+      "source": "http://127.0.0.1:8787/api/coverage",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "dlp.cases": {
+      "value": "626",
+      "raw": 626,
+      "source": "reports/dlp-metrics.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "dlp.latency_p95_ms": {
+      "value": "0.35",
+      "raw": 0.346,
+      "source": "reports/dlp-metrics.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "dlp.leak_rate_validated": {
+      "value": "0 %",
+      "raw": 0.0,
+      "source": "reports/dlp-metrics.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "dlp.precision": {
+      "value": "1.0",
+      "raw": 1.0,
+      "source": "reports/dlp-metrics.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "dlp.recall": {
+      "value": "1.0",
+      "raw": 1.0,
+      "source": "reports/dlp-metrics.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.det_detection_rate": {
+      "value": "66.6 %",
+      "raw": 0.6657,
+      "source": "reports/bench.json#headline.det_detection_rate_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.det_fpr": {
+      "value": "0.4 %",
+      "raw": 0.0039,
+      "source": "reports/bench.json#headline.det_fpr_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.det_heldout_detection": {
+      "value": "38.9 %",
+      "raw": 0.389,
+      "source": "reports/bench.json#headline.det_detection_rate_balanced_held_out",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.detection_ci": {
+      "value": "[90.2–94.1 %]",
+      "raw": [
+        0.9024,
+        0.9412
+      ],
+      "source": "reports/bench.json#headline.detection_ci95_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.detection_rate": {
+      "value": "92.4 %",
+      "raw": 0.924,
+      "source": "reports/bench.json#headline.detection_rate_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.fpr": {
+      "value": "5.1 %",
+      "raw": 0.051,
+      "source": "reports/bench.json#headline.fpr_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.fpr_ci": {
+      "value": "[3.5–7.4 %]",
+      "raw": [
+        0.035,
+        0.0737
+      ],
+      "source": "reports/bench.json#headline.fpr_ci95_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.heldout_detection": {
+      "value": "89.6 %",
+      "raw": 0.8959,
+      "source": "reports/bench.json#headline.detection_rate_balanced_held_out",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.heldout_detection_ci": {
+      "value": "[86.0–92.3 %]",
+      "raw": [
+        0.8603,
+        0.9232
+      ],
+      "source": "reports/bench.json#headline.detection_ci95_balanced_held_out",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.heldout_fpr": {
+      "value": "6.7 %",
+      "raw": 0.0667,
+      "source": "reports/bench.json#headline.fpr_balanced_held_out",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.mode": {
+      "value": "with semantic models",
+      "raw": "semantic",
+      "source": "reports/bench.json#headline.detection_mode_balanced",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "eval.obfuscation_coverage": {
+      "value": "100 %",
+      "raw": 1.0,
+      "source": "reports/bench.json#headline.obfuscation_coverage",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "feed.activation_ms": {
+      "value": "21.2",
+      "raw": 21.2,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "perf.overhead_p50_ms": {
+      "value": "2.40",
+      "raw": 2.405,
+      "source": "reports/bench.json#headline.det_overhead_p50_ms",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "perf.overhead_p95_ms": {
+      "value": "3.82",
+      "raw": 3.82,
+      "source": "reports/bench.json#headline.det_overhead_p95_ms",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "perf.overhead_share_pct": {
+      "value": "2.0 %",
+      "raw": 1.99,
+      "source": "reports/bench.json#headline.overhead_share_pct",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "perf.rps": {
+      "value": "320",
+      "raw": 320.9,
+      "source": "reports/bench.json#headline.rps_det",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "perf.sem_overhead_p50_ms": {
+      "value": "13.6",
+      "raw": 13.585,
+      "source": "reports/bench.json#headline.sem_overhead_p50_ms",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "perf.sem_overhead_p95_ms": {
+      "value": "45.1",
+      "raw": 45.069,
+      "source": "reports/bench.json#headline.sem_overhead_p95_ms",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "policy.reload_ms": {
+      "value": "584",
+      "raw": 584.1,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "policy.version": {
+      "value": "23",
+      "raw": 23,
+      "source": "http://127.0.0.1:8787/api/policy",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.controls": {
+      "value": "37",
+      "raw": 37,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.duration_s": {
+      "value": "179",
+      "raw": 179.49,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.failed": {
+      "value": "0",
+      "raw": 0,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.passed": {
+      "value": "1,006",
+      "raw": 1006,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.skipped": {
+      "value": "1",
+      "raw": 1,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.total": {
+      "value": "1,045",
+      "raw": 1045,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.untested": {
+      "value": "0",
+      "raw": 0,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    },
+    "tests.xfailed": {
+      "value": "38",
+      "raw": 38,
+      "source": "reports/results.json",
+      "collected_at": "2026-10-03T23:52:24+00:00"
+    }
+  }
+}

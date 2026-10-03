@@ -270,6 +270,15 @@ async def classify_unit(
                 **({"reason": best.reason} if best.reason else {}),
             }
         )
+        # domain calibration (trusted only): an act-band classifier verdict with no lexical
+        # injection evidence on finance language / a quoted mention goes to guard review instead
+        if us.band == "act" and trusted and not us.degraded:
+            rule = _calibration_rule(us, cands[best_i][0], params)
+            if rule:
+                us.band = "review"
+                us.stages.append(
+                    {"stage": "calibration", "rule": rule, "from": "act", "to": "review"}
+                )
         # exemplar vote: may lift into the review band (never acts alone)
         if us.band == "allow" and exemplar_vote is not None:
             try:
@@ -295,6 +304,53 @@ async def classify_unit(
         if not trusted and not us.spans:
             await _localize(rt, us, params, threshold)
     return us
+
+
+def _calibration_rule(us: UnitScore, candidate: str, params: Any) -> str | None:
+    cal = getattr(params, "calibration", None)
+    if cal is None or not getattr(cal, "enabled", False):
+        return None
+    try:
+        from aegis.injection.calibration import demotion_rule
+        from aegis.semantic import heuristic
+
+        text = us.unit.text
+        sig = scan_text(text, trust="trusted")
+        all_mentioned = bool(sig.hits) and all(h.mentioned for h in sig.hits)
+        return demotion_rule(
+            text,
+            candidate=candidate,
+            sig_score=float(sig.score),
+            sig_all_mentioned=all_mentioned,
+            heur_score=float(heuristic.injection(text).score),
+            max_cue_score=float(cal.max_cue_score),
+            max_chars=int(cal.max_chars),
+            mention=bool(cal.mention),
+            domain=bool(cal.domain),
+            domain_terms=tuple(cal.domain_terms),
+            target_cues=tuple(cal.target_cues),
+        )
+    except Exception:
+        log.warning("INJ-02 calibration failed - verdict unchanged", exc_info=True)
+        return None
+
+
+def _guard_finance_calibrated(text: str, cats: list[str], params: Any) -> bool:
+    cal = getattr(params, "calibration", None)
+    if cal is None or not getattr(cal, "enabled", False) or not getattr(cal, "domain", True):
+        return False
+    # only a guard "Jailbreak" verdict is injection evidence on plain finance language; Qwen3Guard-0.6B
+    # labels e.g. "cancel all open orders before the RPP decision" Controversial/PII or Illegal Acts
+    if not cats or "Jailbreak" in cats:
+        return False
+    try:
+        from aegis.injection.calibration import finance_benign
+
+        return finance_benign(
+            text, max_chars=int(cal.max_chars), domain_terms=tuple(cal.domain_terms)
+        )
+    except Exception:
+        return False
 
 
 async def _review(rt: Any, us: UnitScore, params: Any, remaining_s: float) -> None:
@@ -341,6 +397,12 @@ async def _review(rt: Any, us: UnitScore, params: Any, remaining_s: float) -> No
         return
     gs = float(getattr(res, "score", 0.0) or 0.0)
     confirmed = gs >= float(g.threshold)
+    cats = list(getattr(res, "categories", []) or [])
+    calibrated = False
+    if confirmed and trusted and _guard_finance_calibrated(us.unit.text, cats, params):
+        # a non-Jailbreak guard verdict on plain finance language is not injection evidence
+        confirmed = False
+        calibrated = True
     us.review_outcome = "confirmed" if confirmed else "cleared"
     us.act = confirmed
     us.stages.append(
@@ -348,10 +410,11 @@ async def _review(rt: Any, us: UnitScore, params: Any, remaining_s: float) -> No
             "stage": "guard",
             "model": getattr(res, "model", "aegis-guard"),
             "label": getattr(res, "label", ""),
-            "categories": list(getattr(res, "categories", []) or []),
+            "categories": cats,
             "score": gs,
             "threshold": float(g.threshold),
             "ms": ms,
+            **({"calibration": "finance_domain"} if calibrated else {}),
         }
     )
 

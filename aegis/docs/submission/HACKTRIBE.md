@@ -49,6 +49,8 @@ Claude Code. Model traffic via ANTHROPIC_BASE_URL, tool calls via a fail-closed 
 
 Tech. Python 3.13, FastAPI, SQLite, RE2, ONNX Runtime, Ollama; React dashboard. Runs offline on an 8 GB laptop; remote models optional.
 
+Measured (make eval, 1,234 labelled prompts incl. public held-out sets): {{TBD: eval.detection_rate}} attack detection ({{TBD: eval.heldout_detection}} on held-out sets) at {{TBD: eval.fpr}} false positives; gateway overhead p50 {{TBD: perf.overhead_p50_ms}} ms deterministic.
+
 How judges test it. make setup, make up, open http://127.0.0.1:8787/ui, then make test. Type anything into the Playground, edit config/policy.yaml and watch the next decision change, or publish a feed signature and replay the exploit. Guide: docs/JUDGES.md.
 
 Team:

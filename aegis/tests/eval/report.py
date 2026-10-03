@@ -66,10 +66,22 @@ def headline_from_eval(runs: list[dict[str, Any]], heatmap: dict[str, Any] | Non
         h["detection_rate_balanced"] = ov["attack"]["rate"]
         h["fpr_balanced"] = ov["benign"]["fpr"]
         h["detection_mode_balanced"] = bal["mode"]
+        h["detection_ci95_balanced"] = ov["attack"].get("ci95")
+        h["fpr_ci95_balanced"] = ov["benign"].get("ci95")
         held = (bal["summary"].get("by_split") or {}).get("held_out")
         if held:
             h["detection_rate_balanced_held_out"] = held["attack"]["rate"]
+            h["detection_ci95_balanced_held_out"] = held["attack"].get("ci95")
             h["fpr_balanced_held_out"] = held["benign"]["fpr"]
+            h["fpr_ci95_balanced_held_out"] = held["benign"].get("ci95")
+    det = find_run(runs, "balanced", "deterministic")
+    if det:  # deterministic-only (AEGIS_SEMANTIC=off) numbers, always reported next to the headline
+        ov = det["summary"]["overall"]
+        h["det_detection_rate_balanced"] = ov["attack"]["rate"]
+        h["det_fpr_balanced"] = ov["benign"]["fpr"]
+        held = (det["summary"].get("by_split") or {}).get("held_out")
+        if held:
+            h["det_detection_rate_balanced_held_out"] = held["attack"]["rate"]
     if heatmap:
         h["obfuscation_coverage"] = heatmap["overall"]["rate"]
     return h

@@ -28,6 +28,7 @@ class FakeSemantic:
         self.degraded = False
         self.guard_label = "Safe"
         self.guard_degraded = False
+        self.guard_categories: list[str] | None = None  # None -> ["Jailbreak"] when unsafe
         self.calls: list[str] = []
         self.guard_calls: list[str] = []
         self.vectors: dict[str, list[float]] = {}
@@ -53,7 +54,9 @@ class FakeSemantic:
             label=self.guard_label,
             model="aegis-guard",
             degraded=self.guard_degraded,
-            categories=["Jailbreak"] if sc else [],
+            categories=(self.guard_categories if self.guard_categories is not None else ["Jailbreak"])
+            if sc
+            else [],
             reason="fallback:timeout" if self.guard_degraded else None,
         )
 

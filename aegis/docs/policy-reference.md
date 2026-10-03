@@ -60,6 +60,7 @@ what is written in the control entry. **strict** and **paranoid** are a *floor*:
 | Semantic controls | monitor, fail open | fail `deterministic_only` | fail closed | fail closed |
 | INJ-02 injection threshold (trusted / untrusted) | 0.98 / 0.90 | **0.80** / 0.75 | 0.75 / 0.60 | 0.60 / 0.50 |
 | INJ-03 content safety / adherence % / off-topic | 0.90 / – / log | 0.80 / 50 / log | 0.70 / 65 / block | 0.60 / 75 / block |
+| INJ-02 / INJ-03 finance-domain calibration (`params.calibration`) | on | on | on | **off** (classifier and guard act alone) |
 | DLP-01 block when > x % of the prompt is placeholders | 90 % | 60 % | 40 % | 30 % |
 | Card data (RESTRICTED) to a remote model | tokenized | tokenized | **blocked**, re-routed to the local model | blocked |
 | Client data (CONFIDENTIAL) to a third party | tokenized | tokenized | **blocked** | blocked (also to remote models) |
@@ -270,6 +271,7 @@ a stale base gets **409 conflict**) go through GOV-05 and the config rules above
 | `defaults.mode: enforce → monitor` | shadow mode: "would block", nothing enforced |
 | `controls[id=DLP-02]` add `enabled: false` | secrets pass; coverage view shows DLP-02 disabled; audited |
 | `controls[id=INJ-02].threshold: 0.80 → 0.50` | borderline user prompts flip allow → block (tool output: `params.untrusted_threshold`) |
+| `controls[id=INJ-02].params.calibration.enabled: true → false` | the injection classifier acts alone again: e.g. "Unwind the hedge and report the realized PnL" (classifier 0.98) is blocked instead of sent to guard review |
 | `destinations.matrix.CONFIDENTIAL.remote: redact → block` | PII to remote models blocked instead of tokenized |
 | `budgets.limits` `team:research` `usd: 15 → 0.01` | next research call → 402 `budget_exceeded` |
 | `budgets.kill_switch.agents: [chaos-agent@platform]` | that agent → 429 `killed` |

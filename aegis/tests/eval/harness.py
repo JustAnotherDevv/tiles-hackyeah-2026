@@ -64,8 +64,12 @@ def semantic_preflight(models_dir: Path | None = None) -> str | None:
         avail = psutil.virtual_memory().available / 2**30
     except Exception:  # pragma: no cover
         return "psutil unavailable (cannot check memory)"
-    if avail < MIN_SEM_AVAILABLE_GB:
-        return f"available RAM {avail:.2f} GB < {MIN_SEM_AVAILABLE_GB} GB"
+    try:  # lite model sets (e.g. AEGIS_SEMANTIC_MODELS=horizon-small,minilm-l12-multi) need ~0.5 GB
+        need = float(os.environ.get("AEGIS_EVAL_MIN_RAM_GB") or MIN_SEM_AVAILABLE_GB)
+    except ValueError:
+        need = MIN_SEM_AVAILABLE_GB
+    if avail < need:
+        return f"available RAM {avail:.2f} GB < {need} GB"
     md = models_dir or Path(os.environ.get("AEGIS_MODELS_DIR") or ROOT / "models")
     if not (md / SEM_MODEL_DIR).exists():
         return f"model {SEM_MODEL_DIR} not found in {md}"

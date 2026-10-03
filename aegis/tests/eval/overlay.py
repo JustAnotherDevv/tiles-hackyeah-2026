@@ -41,6 +41,14 @@ def build_policy_doc(base: Path | None = None, profile: str = "balanced", *,
         "requests": 1e9, "compute_s": 1e9, "spend_usd": 1e9,
     }]
     budgets["kill_switch"] = {"global": False, "teams": [], "members": [], "agents": [], "sessions": []}
+    # CAL: the eval agent (chaos-agent@platform) carries the demo persona purpose "Red-team test agent.";
+    # strict/paranoid topic adherence then blocks every benign corpus prompt as off-purpose, which measures
+    # the persona, not the guardrails. Score it against the org-wide purpose like any bank agent.
+    for ctl in doc.get("controls") or []:
+        if isinstance(ctl, dict) and ctl.get("id") == "INJ-03":
+            purposes = ((ctl.get("params") or {}).get("adherence") or {}).get("purposes")
+            if isinstance(purposes, dict):
+                purposes.pop("chaos-agent@platform", None)
     if upstream_url:
         prov = doc.setdefault("providers", {})
         up = upstream_url.rstrip("/")

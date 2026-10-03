@@ -27,8 +27,8 @@ controls:
   DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}, text: {public_ips: true}}}
   DLP-07: {threshold: 0.5, fail_mode: closed}
   INJ-01: {params: {untrusted_action: redact}}       # [SF-05] quarantine, never block on mcp.list
-  INJ-02: {threshold: 0.60, params: {untrusted_threshold: 0.50}}
-  INJ-03: {threshold: 0.60, adherence_pct: 75, params: {off_topic_action: block}}
+  INJ-02: {threshold: 0.60, params: {untrusted_threshold: 0.50, calibration: {enabled: false}}}
+  INJ-03: {threshold: 0.60, adherence_pct: 75, params: {off_topic_action: block, calibration: {enabled: false}}}
   INJ-05: {mode: enforce}
   EXE-03: {action: block}
   MCP-04: {mode: enforce}

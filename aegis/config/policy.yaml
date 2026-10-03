@@ -1219,11 +1219,12 @@ controls:
     action: block
     threshold: 0.80                     # [SF-22] demo lever; strict floors it to 0.75, paranoid to 0.60
     # params.untrusted_threshold (profiles): 0.90 | 0.75 | 0.60 | 0.50
+    # params.calibration [CAL]: trusted classifier-only hits on finance language / quoted mentions -> guard review (paranoid: off)
     severity: high
     fail_mode: deterministic_only
     timeout_ms: 700
     owasp: [LLM01:2026, ASI01, ASI06, MCP06:2025]
-    params: {untrusted_action: redact, review_threshold: 0.5, guard: {enabled: true, threshold: 0.5, timeout_ms: 450}, review_fallback: {trusted: allow, untrusted: redact}, exemplars: {enabled: true, threshold: 0.55, margin: 0.03}, score_decoded_layers: true, max_chars: 4000, untrusted_max_sentences: 12, log_review: false, conversation: {enabled: false, decay: 0.7, window_turns: 6}}
+    params: {untrusted_action: redact, review_threshold: 0.5, guard: {enabled: true, threshold: 0.5, timeout_ms: 450}, review_fallback: {trusted: allow, untrusted: redact}, exemplars: {enabled: true, threshold: 0.55, margin: 0.03}, score_decoded_layers: true, max_chars: 4000, untrusted_max_sentences: 12, log_review: false, conversation: {enabled: false, decay: 0.7, window_turns: 6}, calibration: {enabled: true, domain: true, mention: true, max_cue_score: 0.0, max_chars: 400}}
     enabled: true
     mode: enforce
     tests:
@@ -1248,11 +1249,12 @@ controls:
     action: block
     # threshold / adherence_pct / params.off_topic_action (profiles):
     #   permissive 0.90 / - / log | balanced 0.80 / 50 / log | strict 0.70 / 65 / block | paranoid 0.60 / 75 / block
+    # params.calibration [CAL]: guard 'Non-violent Illegal Acts' on a short finance prompt with no financial-crime cue -> log (paranoid: off)
     severity: medium
     fail_mode: deterministic_only
     timeout_ms: 900
     owasp: [LLM07:2026, ASI10, ASI01]
-    params: {purpose: "Investment research, trading support, client service and software engineering at Acme Capital", check_input: true, check_output: {permissive: false, balanced: true, strict: true, paranoid: true}, max_chars: 6000, controversial_action: log, category_actions: {Violent: block, "Non-violent Illegal Acts": block, "Sexual Content or Sexual Acts": block, "Suicide & Self-Harm": block, Jailbreak: log, PII: log, "Unethical Acts": log, "Politically Sensitive Topics": log, "Copyright Violation": log}, adherence: {enabled: {permissive: false, balanced: true, strict: true, paranoid: true}, on_low: {permissive: log, balanced: log, strict: block, paranoid: block}, min_chars: 20, calibration: {minilm-l12-multi: [0.1, 0.46], heuristic: [0.02, 0.18]}, purposes: {trading-copilot@trading: "Assist the trading desk: market data, stock prices, positions, portfolio risk, research summaries and client email drafts. Never execute trades.", research-agent@research: "Equity research: summarise company filings, analyst notes and market data for Polish and EU listed companies.", claude-code@platform: "Software engineering on Acme Capital internal repositories, code, tests and infrastructure.", chaos-agent@platform: "Red-team test agent."}}}
+    params: {purpose: "Investment research, trading support, client service and software engineering at Acme Capital", check_input: true, check_output: {permissive: false, balanced: true, strict: true, paranoid: true}, max_chars: 6000, controversial_action: log, category_actions: {Violent: block, "Non-violent Illegal Acts": block, "Sexual Content or Sexual Acts": block, "Suicide & Self-Harm": block, Jailbreak: log, PII: log, "Unethical Acts": log, "Politically Sensitive Topics": log, "Copyright Violation": log}, adherence: {enabled: {permissive: false, balanced: true, strict: true, paranoid: true}, on_low: {permissive: log, balanced: log, strict: block, paranoid: block}, min_chars: 20, calibration: {minilm-l12-multi: [0.1, 0.46], heuristic: [0.02, 0.18]}, purposes: {trading-copilot@trading: "Assist the trading desk: market data, stock prices, positions, portfolio risk, research summaries and client email drafts. Never execute trades.", research-agent@research: "Equity research: summarise company filings, analyst notes and market data for Polish and EU listed companies.", claude-code@platform: "Software engineering on Acme Capital internal repositories, code, tests and infrastructure.", chaos-agent@platform: "Red-team test agent."}}, calibration: {enabled: true, categories: ["Non-violent Illegal Acts"], action: log}}
     enabled: true
     mode: enforce
     tests:

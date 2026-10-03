@@ -218,7 +218,18 @@ class InjectionClassifier(BaseControl):
         used_thr = thr if top.unit.trust == "trusted" else uthr
         cleared = top.review_outcome == "cleared"
         action = "log" if (cleared and p.log_review) else "allow"
-        if cleared:
+        calibrated = any(st.get("stage") == "calibration" for st in top.stages)
+        if cleared and calibrated:
+            reason = (
+                f"Injection classifier {top.model} {top.score:.2f} ≥ {used_thr:.2f} without lexical "
+                f"evidence on finance language → calibrated to review → guard cleared"
+            )
+        elif calibrated and top.review_outcome == "fallback":
+            reason = (
+                f"Injection classifier {top.model} {top.score:.2f} ≥ {used_thr:.2f} without lexical "
+                f"evidence on finance language → calibrated to review → guard unavailable, fallback allow"
+            )
+        elif cleared:
             reason = (
                 f"Injection classifier {top.model} {top.score:.2f} in review band → guard cleared; "
                 f"score {top.score:.2f} < {used_thr:.2f}"

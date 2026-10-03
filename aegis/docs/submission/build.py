@@ -120,6 +120,16 @@ def fmt_pct(value: Any) -> str | None:
     return f"{pct:.1f} %" if pct not in (0, 100) else f"{pct:.0f} %"
 
 
+def fmt_ci(value: Any) -> str | None:
+    """[0.63, 0.70] -> '[63.1–70.0 %]' (95 % Wilson interval from reports/eval.json)."""
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    lo, hi = value
+    if not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in (lo, hi)):
+        return None
+    return f"[{lo * 100:.1f}–{hi * 100:.1f} %]"
+
+
 def fmt_ms(value: Any) -> str | None:
     if not isinstance(value, (int, float)) or isinstance(value, bool):
         return None
@@ -214,9 +224,21 @@ def collect_bench(n: Numbers) -> None:
         ("eval.detection_rate", "detection_rate_balanced", fmt_pct),
         ("eval.fpr", "fpr_balanced", fmt_pct),
         ("eval.obfuscation_coverage", "obfuscation_coverage", fmt_pct),
+        ("eval.detection_ci", "detection_ci95_balanced", fmt_ci),
+        ("eval.fpr_ci", "fpr_ci95_balanced", fmt_ci),
+        ("eval.heldout_detection", "detection_rate_balanced_held_out", fmt_pct),
+        ("eval.heldout_detection_ci", "detection_ci95_balanced_held_out", fmt_ci),
+        ("eval.heldout_fpr", "fpr_balanced_held_out", fmt_pct),
+        ("eval.det_detection_rate", "det_detection_rate_balanced", fmt_pct),
+        ("eval.det_heldout_detection", "det_detection_rate_balanced_held_out", fmt_pct),
+        ("eval.det_fpr", "det_fpr_balanced", fmt_pct),
     ]:
         v = h.get(path)
         n.put(key, v, fmt(v), f"{src}#headline.{path}")
+    mode = h.get("detection_mode_balanced")
+    if mode:
+        label = "with semantic models" if str(mode).startswith("semantic") else "deterministic only"
+        n.put("eval.mode", mode, label, f"{src}#headline.detection_mode_balanced")
     if "policy.reload_ms" not in n.items:
         v = h.get("reload_p95_ms")
         n.put("policy.reload_ms", v, fmt_ms(v), f"{src}#headline.reload_p95_ms")

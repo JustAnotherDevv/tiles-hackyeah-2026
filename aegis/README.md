@@ -69,8 +69,8 @@ make models         # verifies models/ and the Ollama tags aegis-guard (Qwen3Gua
    Each result shows the action, the control that decided and what the remote side would receive.
 3. **Edit the policy live:** open `config/policy.yaml` in any editor (or the Policy page,
    `/ui/governance/policy`), change `controls[id=INJ-02].threshold` from `0.80` to `0.50`, save, resend the
-   **Borderline (0.70)** preset: allow → **block** (deterministic mode, `AEGIS_SEMANTIC=off`; with the injection
-   classifier loaded the preset already blocks at 0.80, so try `0.80 → 0.95` instead). Break the YAML on purpose: rejected with line/col, traffic
+   **Borderline (review band)** preset: allow → **block** (same edit with the models loaded, INJ-02 0.65, or with
+   `AEGIS_SEMANTIC=off`, heuristic 0.50). Break the YAML on purpose: rejected with line/col, traffic
    keeps flowing on the last good version.
 4. **Approvals by role:** run `uv run --frozen python demo/agents/trading_copilot.py subscribe`. The agent's
    $50 MarketPulse subscription waits in `/ui/governance/approvals`; as `u_piotr` Approve is locked
@@ -149,7 +149,7 @@ stamped with the policy version. Try (each is a one-line edit):
 
 | Edit | Expected effect |
 |---|---|
-| `controls[id=INJ-02].threshold: 0.80 → 0.50` | Playground "Borderline (0.70)" flips allow → block (`AEGIS_SEMANTIC=off`; classifier loaded: `0.80 → 0.95` flips block → allow) |
+| `controls[id=INJ-02].threshold: 0.80 → 0.50` | Playground "Borderline (review band)" flips allow → block (classifier 0.65 or heuristic 0.50; works with and without models) |
 | add `enabled: false` to `controls[id=DLP-02]` | AWS-style key now passes; coverage view greys out DLP-02; audited |
 | `destinations.matrix.CONFIDENTIAL.remote: redact → block` | PII prompt to a remote model is blocked instead of tokenized |
 | `profile: balanced → strict` | everything tightens (fail closed, lower thresholds, purchases > $1,000 blocked) |
@@ -226,11 +226,14 @@ measured stay as placeholders; we never publish an unmeasured number.
 
 | Metric | Value | Source |
 |---|---|---|
-| Test cases / failures | {{TBD: tests.total}} / {{TBD: tests.failed}} | `reports/results.json` |
-| Gateway overhead p50 / p95 (deterministic path) | {{TBD: perf.overhead_p50_ms}} / {{TBD: perf.overhead_p95_ms}} ms | `reports/bench.json` |
-| Injection detection rate / false-positive rate (balanced) | {{TBD: eval.detection_rate}} / {{TBD: eval.fpr}} | `reports/eval.json` |
-| Redaction leak rate on validated entity types (fixture set) | {{TBD: dlp.leak_rate_validated}} | `reports/dlp-metrics.json` |
-| Audit chain verify | {{TBD: audit.records}} records | `GET /api/audit/verify` |
+| Test cases / failures | 1,045 / 0 | `reports/results.json` |
+| Gateway overhead p50 / p95 (deterministic path) | 2.40 / 3.82 ms | `reports/bench.json` |
+| Attack detection, all 724 attack rows / held-out public sets only (balanced, with semantic models) | 92.4 % [90.2–94.1 %] / held-out 89.6 % [86.0–92.3 %] | `reports/eval.json` |
+| False-positive rate, 510 benign rows / held-out only (balanced, with semantic models) | 5.1 % [3.5–7.4 %] / held-out 6.7 % | `reports/eval.json` |
+| Same corpus, deterministic only (`AEGIS_SEMANTIC=off`): detection / held-out / FPR | 66.6 % / 38.9 % / 0.4 % | `reports/eval.json` |
+| Gateway overhead p50 / p95 with the injection classifier + embeddings loaded (Qwen3Guard escalations add ≈ 0.3–0.5 s per guard call, see `semantic_status` in `reports/eval.json`) | 13.6 / 45.1 ms | `reports/bench.json` |
+| Redaction leak rate on validated entity types (fixture set) | 0 % | `reports/dlp-metrics.json` |
+| Audit chain verify | 1,273 records | `GET /api/audit/verify` |
 
 ## Known limitations (honest list)
 
@@ -242,6 +245,12 @@ measured stay as placeholders; we never publish an unmeasured number.
 - Images get metadata stripping and allow/strip/block; there is no OCR.
 - A2A (agent-to-agent) controls are reserved in the catalog, not implemented.
 - Demo identity uses the view-as switcher (`AEGIS_DEMO_MODE=1`), not real authentication.
+- False positives with the models loaded come mostly from the content-safety guard (Qwen3Guard-0.6B, INJ-03):
+  it blocks 21 of the 100 JailbreakBench benign look-alikes ("write a story about a hacker"), while the
+  finance benign set stays at 0 of 42 (`reports/eval.json`, `by_source`). Deterministic-only FPR is 0.4 %.
+- Semantic numbers were measured on the same 8 GB laptop with other apps open; under memory pressure model
+  calls time out and the circuit breaker falls back to the heuristic for a while, so a repeat run of the
+  same build measured 94.5 % instead of 92.4 % detection (see `docs/status/CAL.md`).
 
 ## Credits and licences
 

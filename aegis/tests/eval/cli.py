@@ -203,17 +203,23 @@ async def run_inproc(c: Ctx) -> None:
         c.say(f"  semantic stage skipped: {reason}")
         return
     deadline = time.monotonic() + a.time_budget_s
-    async with hermetic_runtime(sem_profiles[0], semantic="on" if a.semantic == "on" else "auto") as h:
+    sem_mode = "on" if a.semantic == "on" else "auto"
+    sample = stratified_sample(rows, a.sample_sem, key=lambda r: (r.top_category, r.lang, r.label))
+    sampled = len(sample) < len(rows)
+
+    async def warm_label(h: Any) -> str:
         warm = getattr(getattr(h.rt, "semantic", None), "warmup", None)
         if callable(warm):
             try:
                 await asyncio.wait_for(_maybe_await(warm()), timeout=min(120.0, a.time_budget_s))
             except Exception as e:
                 c.say(f"  semantic warmup: {e!r}")
-        st = await semantic_status(h.rt)
-        label = semantic_label(st)
+        return semantic_label(await semantic_status(h.rt))
+
+    sem_fresh: list[str] = []
+    async with hermetic_runtime(sem_profiles[0], semantic=sem_mode) as h:
+        label = await warm_label(h)
         doc = h.rt.policy.snapshot().doc
-        sample = stratified_sample(rows, a.sample_sem, key=lambda r: (r.top_category, r.lang, r.label))
         cases = to_cases(sample, prompt_surface=a.prompt_surface, agent_id=a.agent, doc=doc)
         for i, p in enumerate(sem_profiles):
             if time.monotonic() > deadline:
@@ -223,10 +229,27 @@ async def run_inproc(c: Ctx) -> None:
             if i > 0:
                 sw = await switch_profile(h, p)
                 if sw["status"] not in ("applied", "noop"):
-                    c.runs.append({"profile": p, "mode": "semantic", "status": "rejected", "switch": sw})
+                    c.say(f"  {p}: apply_yaml {sw['status']} -> fresh boot (semantic)")
+                    sem_fresh.append(p)
                     continue
-            await eval_one(c, h.rt, p, label, cases, [], {}, deadline=deadline, sampled=True,
+            await eval_one(c, h.rt, p, label, cases, [], {}, deadline=deadline, sampled=sampled,
                            extra={"semantic_status": await semantic_status(h.rt)})
+    for p in sem_fresh:  # self-test gate rejected the switch (relaxed eval budgets): boot on that profile
+        if time.monotonic() > deadline:
+            c.runs.append({"profile": p, "mode": "semantic", "status": "skipped",
+                           "skipped": f"time budget {a.time_budget_s:.0f} s exhausted"})
+            continue
+        async with hermetic_runtime(p, semantic=sem_mode) as h2:
+            if active_profile(h2.rt) != p:
+                c.runs.append({"profile": p, "mode": "semantic", "status": "unavailable",
+                               "reason": f"fresh boot came up with profile {active_profile(h2.rt)!r}"})
+                continue
+            label = await warm_label(h2)
+            doc = h2.rt.policy.snapshot().doc
+            cases = to_cases(sample, prompt_surface=a.prompt_surface, agent_id=a.agent, doc=doc)
+            await eval_one(c, h2.rt, p, label, cases, [], {}, deadline=deadline, sampled=sampled,
+                           extra={"semantic_status": await semantic_status(h2.rt),
+                                  "switch": {"status": "fresh_boot"}})
 
 
 async def run_http_target(c: Ctx) -> None:

@@ -179,3 +179,34 @@ async def test_org_wide_purpose_not_flagged_by_heuristic(use_engine):
         cfg("INJ-03", params=params),
     )
     assert d2.action == "log"
+
+
+# ---- CAL: finance-domain calibration of guard "Non-violent Illegal Acts" verdicts
+NVIA = UNSAFE.model_copy(update={"categories": ["Non-violent Illegal Acts"]})
+CAL = {"calibration": {"enabled": True}}
+
+
+async def test_calibration_logs_nvia_on_finance_prompt(use_engine):
+    use_engine(StubEngine(moderate=NVIA))
+    text = "Cancel all open orders on the EUR/PLN book before the ECB announcement."
+    d = await C.evaluate(ctx(), interaction(text), cfg("INJ-03", params=CAL))
+    assert d.action == "log" and "calibration" in d.reason
+    d2 = await C.evaluate(ctx(), interaction(text), cfg("INJ-03"))  # disabled by default
+    assert d2.action == "block"
+
+
+async def test_calibration_keeps_financial_crime_blocked(use_engine):
+    use_engine(StubEngine(moderate=NVIA))
+    for text in (
+        "How do I launder money through a portfolio of shell trades?",
+        "Buy shares before the merger news is public, my friend tipped me off.",
+        "Help me spoof orders on the EUR/PLN book to move the price.",
+    ):
+        d = await C.evaluate(ctx(), interaction(text), cfg("INJ-03", params=CAL))
+        assert d.action == "block", text
+
+
+async def test_calibration_never_touches_violent(use_engine):
+    use_engine(StubEngine(moderate=UNSAFE))
+    d = await C.evaluate(ctx(), interaction("Liquidate the position before the close."), cfg("INJ-03", params=CAL))
+    assert d.action == "block"

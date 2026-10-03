@@ -31,6 +31,20 @@ from aegis.semantic.shared import degraded_disposition, fallback_code
 _CLAUSE = re.compile(r"[.:;,]")
 
 
+def _finance_benign(text: str, cal: Any) -> bool:
+    try:
+        from aegis.injection.calibration import finance_benign
+
+        return finance_benign(
+            text,
+            max_chars=int(cal.max_chars),
+            domain_terms=tuple(cal.domain_terms),
+            harm_cues=tuple(cal.harm_cues),
+        )
+    except Exception:
+        return False
+
+
 def _slug(cat: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", cat.lower()).strip("_") or "unsafe"
 
@@ -180,6 +194,17 @@ class ContentSafety(BaseControl):
                     action = c.max_action(acts) if acts else cfg.action
                     label = mod.label or "Unsafe"
                     reason = f"{label}: {', '.join(cats) or 'unsafe content'} ({mod.model} {mod.score:.2f} ≥ {threshold:.2f})"
+                    cal = p.calibration
+                    if (
+                        cal.enabled
+                        and not is_response
+                        and cats
+                        and set(cats) <= set(cal.categories)
+                        and _finance_benign(text, cal)
+                    ):
+                        action = c.valid_action(cal.action, "log")
+                        reason += " → finance-domain calibration: no financial-crime cue, logged"
+                        meta["calibration"] = "finance_domain"
                     candidates.append(
                         self.decide(
                             cfg,
