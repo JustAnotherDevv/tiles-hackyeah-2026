@@ -34,17 +34,18 @@ Requirements & product vision: `docs/BRIEF.md`.
 | Research (7 reports) | `/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/research/goldman/01…07` |
 | Downloaded models (gitignored) | `models/`; Ollama aliases `aegis-guard` (Qwen3Guard-0.6B), `aegis-judge` (Qwen3.5-0.8B), plus `qwen3:0.6b` |
 
-## Snapshot (orchestrator-maintained) — last update Sun 00:10
+## Snapshot (orchestrator-maintained) — last update Sun 02:05
 | Phase | Status |
 |---|---|
 | 0–5 Research → scaffold | ✅ done |
-| 6 Build wave 1 (B01–B20) | ✅ **all 20 finished** (Sat 23:25–Sun 00:08), each with `docs/status/<ID>.md`; committed `494cf7e` |
-| 6 Build wave 2 (B21–B25) | 🟡 running (B21 harness, B22 functional, B23 demo agents, B24 eval/perf, B25 docs) |
-| 7 Integration & verification | 🟡 starting: snippet merge, Makefile targets, cross-bundle fixes, live stack, demo scenes F1–F10 |
-| 8 Submission | ⏳ (B25 drafting final docs; numbers from reports/* only) |
-| Huawei "Aegis Pocket" | 🟡 app being built on branch `feature/aegis-pocket` in parent repo (see ../HUAWEI_HANDOFF.md) |
+| 6 Build waves 1+2 (B01–B25) | ✅ all 25 finished, `docs/status/B*.md` |
+| 7 Integration & verification | ✅ INT-A (backend, snippet merge, fixes), INT-B (web), LIVE (all scenes F1–F10 pass on real stack, Claude Code via demo profile), CAL (semantic calibration). `make test`: 2002 passed / 0 failed |
+| 8 Submission | 🟡 docs/deck/HackTribe filled with measured numbers (`docs/submission/out/`); history scrubbed of secret-shaped fixtures (git-filter-repo, staging/ only; backup mirror in orchestrator scratchpad). **Waiting on user:** team names/emails, GitHub repo creation/push approval, 60 s video recording, HackTribe upload |
+| Huawei "Aegis Pocket" | 🟡 app builds (unsigned .hap) on branch `feature/aegis-pocket` in parent repo; waiting on user: quit DevEco, emulator licences, Huawei-ID debug signing |
 
-### Integration todos collected from status files (Phase 7)
+**Measured (reports/*):** `make eval` balanced, models on: detection 92.4% [90.2–94.1], held-out 89.6% [86.0–92.3], FPR 5.1% [3.5–7.4]; deterministic only 66.6% / 0.4% FPR. Bench deterministic overhead p50/p95 2.41/3.82 ms; with classifier 13.6/45.1 ms. Details: `docs/status/CAL.md`, `docs/status/LIVE.md`.
+
+### Integration todos collected from status files (Phase 7 — all resolved by INT-A/INT-B/LIVE/CAL unless noted in their status files)
 - Merge `config/snippets/*` → `config/policy.yaml` with `uv run --frozen python -m aegis.policy.snippets merge` (B03 rehearsal: 16 snippets, 183 self-tests green). Sync `docs/seed-fixes/policy.yaml` (on_soft: warn for chaos-agent; poisoned-stdio server).
 - Fix `src/aegis/injection/canary.py:55` IndexError (INJ-04 internal error → allow) (B03 report).
 - `/healthz`: feed state `seed` should count as ok (B01). EXE-03 live entry lacks `action` (B11). DLP-03 legacy params (B05). SIG-02 params + `ollama_op` on Ollama route; start feed before gateway (B14). org-rbac approval rules at top of `approvals.rules` (B09).
@@ -226,3 +227,4 @@ Requirements & product vision: `docs/BRIEF.md`.
 - [01:13] [LIVE] DONE: F1-F10 all PASS live on fixed ports (run.py all 9/9 + manual role checks), real claude -p via gateway OK (after TI-019 FP fix). Extra fixes: audit scrubber all-letter AWS key, policy status last_error, spend card, approval titles. make test 1992 passed/0 failed. RISK: scene 4 flip only with AEGIS_SEMANTIC=off (classifier: 0.91 already blocks -> use 0.80->0.95); classifier FP on 'execute the order at market open' (0.84). Stack stopped, models unloaded, ports free, policy==golden. Status docs/status/LIVE.md
 - [01:14] [orchestrator] LIVE rehearsal done (F1–F10 pass, make test 1992/0) committed 6678a8f; CAL agent running semantic calibration + final numbers + docs apply.
 - [01:55] [CAL] DONE: INJ-02/INJ-03 finance-domain calibration (classifier-only hits w/o lexical cue on finance text -> guard review; guard NVIA on finance w/o crime cue -> log; paranoid off); tuning FP 9->1/135, finance 0/42. Scene 4 preset 'Borderline (review band)' flips at 0.80->0.50 in semantic ON (0.65) and OFF (0.50). make eval (full corpus, models on): balanced 92.4% [90.2-94.1], held-out 89.6% [86.0-92.3], FPR 5.1% [3.5-7.4] (above 3% target: Qwen3Guard on JBB benign look-alikes 21/100); deterministic 66.6%/38.9%/0.4%. bench det p50/p95 2.41/3.82 ms, classifier 13.6/45.1 ms. make test 2002 passed/0 failed. build.py collect/render/apply done (desc 485 words, deck 10). Stack stopped, models unloaded, ports free, policy==golden. Status docs/status/CAL.md
+- [01:58] [orchestrator] CAL done (eval 92.4%/held-out 89.6%/FPR 5.1%, make test 2002/0). History rewritten with git-filter-repo to replace secret-shaped strings in staging/ (8 commits, only staging/ changed). Ready to push once the user approves the GitHub repo.
