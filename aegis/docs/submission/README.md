@@ -48,4 +48,4 @@ URL (`[PUBLIC REPO URL]`), tick the claims table in HACKTRIBE.md §2, fill the b
 
 Every number in the README, deck, description and video must come from `reports/` (or a live API call
 recorded by `build.py collect` with source + timestamp in `numbers.json`). Unmeasured values stay visible as
-`[TBD: key]`, or are labelled "target". Never "100 % secure", never "compliant".
+`[TBD: …]`, or are labelled "target". Never "100 % secure", never "compliant".

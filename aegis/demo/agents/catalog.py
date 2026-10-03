@@ -27,7 +27,7 @@ from typing import Any
 import httpx
 
 from aegis.sdk import AegisAdmin, AegisClient
-from aegis.sdk.results import AegisError, control_from_text
+from aegis.sdk.results import ANY_CONTROL_RE, AegisError, control_from_text
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -87,13 +87,14 @@ class Ctx:
     services: dict[str, bool] = field(default_factory=dict)
     created_approvals: list[str] = field(default_factory=list)
     timeout: float = 120.0
+    transport: Any = None  # tests: an in-process transport (e.g. TestClient(app)._transport)
 
     def client(self, agent: str) -> AegisClient:
         c = self.agents.get(agent)
         if c is None:
             sid = self.session or f"ses_chaos_{int(time.time() * 1000)}"
             c = AegisClient(self.base_url, agent, session_id=f"{sid}_{agent.split('@')[0]}",
-                            timeout=self.timeout)
+                            timeout=self.timeout, transport=self.transport)
             self.agents[agent] = c
         return c
 
@@ -297,15 +298,20 @@ def parse_hook_output(data: dict[str, Any], headers: dict[str, str] | None = Non
                  or hso.get("additionalContext") or data.get("systemMessage") or "")
     apr = re.search(r"\bapr_[0-9a-f]{26}\b", reason)
     hdr_action = headers.get("x-aegis-decision")
+    m = ANY_CONTROL_RE.search(reason) if "Aegis" in reason else None
+    control = control_from_text(reason) or (m.group(1) if m else None) or headers.get(
+        "x-aegis-control")
+    low = reason.lower()
     if decision in ("deny", "block"):
-        action = "require_approval" if (apr and "pending" in reason.lower()) else "block"
-    elif hdr_action:
+        action = "require_approval" if (apr and "pending" in low) else "block"
+    elif hdr_action and hdr_action != "allow":
         action = hdr_action
-    elif "[Aegis]" in reason:
-        action = "redact" if "redact" in reason.lower() else "log"
+    elif control:  # PostToolUse additionalContext: content neutralised / flagged
+        action = "redact" if any(w in low for w in ("neutralis", "neutraliz", "redact", "strip",
+                                                    "removed")) else "log"
     else:
         action = "allow"
-    return Outcome(action, control_from_text(reason) or headers.get("x-aegis-control"),
+    return Outcome(action, control,
                    apr.group(0) if apr else None, detail=reason[:200],
                    decision_id=headers.get("x-aegis-decision-id"))
 

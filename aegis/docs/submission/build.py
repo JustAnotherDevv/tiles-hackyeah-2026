@@ -16,13 +16,16 @@ Only the standard library (+ httpx when --url is used) and an installed Google C
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -75,8 +78,10 @@ SCREENS = {  # docs/assets/screens/<name>.png <- /ui route (viewed as the given 
     "perf": ("/ui/system/perf", "u_katarzyna"),
 }
 
-PLACEHOLDER = re.compile(r"\{\{\s*(?:TBD:\s*)?([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+|[a-z][a-z0-9_]*)\s*\}\}")
-TBD_LEFT = re.compile(r"\[TBD: [^\]]+\]|\{\{\s*TBD:[^}]*\}\}")
+PLACEHOLDER = re.compile(
+    r"\{\{\s*(?:TBD:\s*)?([a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+|[a-z][a-z0-9_]*)\s*\}\}"
+)
+TBD_LEFT = re.compile(r"\[TBD: [a-z][a-z0-9_.]*\]|\{\{\s*TBD:\s*[a-z][^}]*\}\}")
 
 
 # ---------------------------------------------------------------------------------------- helpers
@@ -165,8 +170,12 @@ def collect_results(n: Numbers) -> None:
     n.put("tests.duration_s", dur, f"{dur:.0f}" if isinstance(dur, (int, float)) else None, src)
     perf = d.get("perf") or {}
     n.put("policy.reload_ms", perf.get("reload_ms"), fmt_ms(perf.get("reload_ms")), src)
-    n.put("feed.activation_ms", perf.get("feed_activation_ms"),
-          fmt_ms(perf.get("feed_activation_ms")), src)
+    n.put(
+        "feed.activation_ms",
+        perf.get("feed_activation_ms"),
+        fmt_ms(perf.get("feed_activation_ms")),
+        src,
+    )
 
 
 def collect_junit(n: Numbers) -> None:
@@ -238,8 +247,12 @@ def collect_dlp(n: Numbers) -> None:
     src = "reports/dlp-metrics.json"
     ov = d.get("overall") or {}
     n.put("dlp.cases", d.get("cases"), fmt_int(d.get("cases")), src)
-    n.put("dlp.leak_rate_validated", ov.get("leak_rate_validated"),
-          fmt_pct(ov.get("leak_rate_validated")), src)
+    n.put(
+        "dlp.leak_rate_validated",
+        ov.get("leak_rate_validated"),
+        fmt_pct(ov.get("leak_rate_validated")),
+        src,
+    )
     n.put("dlp.precision", ov.get("precision"), fmt_ratio(ov.get("precision")), src)
     n.put("dlp.recall", ov.get("recall"), fmt_ratio(ov.get("recall")), src)
     lat = (d.get("latency_ms") or {}).get("p95")
@@ -258,10 +271,18 @@ def collect_live(n: Numbers, url: str) -> None:
             ver = c.get("/api/audit/verify")
             if ver.status_code == 200:
                 v = ver.json()
-                n.put("audit.records", v.get("records"), fmt_int(v.get("records")),
-                      f"{url}/api/audit/verify")
-                n.put("audit.ok", v.get("ok"), "OK" if v.get("ok") else "BROKEN",
-                      f"{url}/api/audit/verify")
+                n.put(
+                    "audit.records",
+                    v.get("records"),
+                    fmt_int(v.get("records")),
+                    f"{url}/api/audit/verify",
+                )
+                n.put(
+                    "audit.ok",
+                    v.get("ok"),
+                    "OK" if v.get("ok") else "BROKEN",
+                    f"{url}/api/audit/verify",
+                )
             cov = c.get("/api/coverage")
             if cov.status_code == 200:
                 names = {"OWASP-LLM-2026": "llm", "OWASP-ASI-2026": "asi", "OWASP-MCP-2025": "mcp"}
@@ -271,13 +292,18 @@ def collect_live(n: Numbers, url: str) -> None:
                     if not short or not items:
                         continue
                     covered = sum(1 for i in items if i.get("status") == "covered")
-                    n.put(f"coverage.{short}", [covered, len(items)], f"{covered}/{len(items)}",
-                          f"{url}/api/coverage")
+                    n.put(
+                        f"coverage.{short}",
+                        [covered, len(items)],
+                        f"{covered}/{len(items)}",
+                        f"{url}/api/coverage",
+                    )
             pol = c.get("/api/policy")
             if pol.status_code == 200:
                 p = pol.json()
-                n.put("policy.version", p.get("version"), str(p.get("version")),
-                      f"{url}/api/policy")
+                n.put(
+                    "policy.version", p.get("version"), str(p.get("version")), f"{url}/api/policy"
+                )
             ctl = c.get("/api/controls")
             if ctl.status_code == 200:
                 items = ctl.json().get("items") or []
@@ -295,8 +321,13 @@ def collect(url: str | None) -> dict[str, dict[str, Any]]:
     collect_dlp(n)
     if url:
         collect_live(n, url)
-    doc = {"generated_at": _now(), "reports_dir": str(REPORTS.relative_to(ROOT))
-           if REPORTS.is_relative_to(ROOT) else str(REPORTS), "numbers": dict(sorted(n.items.items()))}
+    doc = {
+        "generated_at": _now(),
+        "reports_dir": str(REPORTS.relative_to(ROOT))
+        if REPORTS.is_relative_to(ROOT)
+        else str(REPORTS),
+        "numbers": dict(sorted(n.items.items())),
+    }
     NUMBERS.write_text(json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"numbers.json: {len(n.items)} measured values")
     for k, v in sorted(n.items.items()):
@@ -311,8 +342,9 @@ def load_numbers() -> dict[str, dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------------------- render
-def substitute(text: str, nums: dict[str, dict[str, Any]], *, html: bool,
-               keep_unresolved: bool = False) -> tuple[str, list[str]]:
+def substitute(
+    text: str, nums: dict[str, dict[str, Any]], *, html: bool, keep_unresolved: bool = False
+) -> tuple[str, list[str]]:
     missing: list[str] = []
 
     def repl(m: re.Match[str]) -> str:
@@ -372,16 +404,51 @@ def find_chrome() -> str | None:
     return next((c for c in cands if c and Path(c).exists()), None)
 
 
-def _chrome(args: list[str], timeout: int = 120) -> subprocess.CompletedProcess[str]:
+def _chrome(args: list[str], out: Path, timeout: float = 90.0) -> bool:
+    """Run headless Chrome until `out` is written and stable, then stop it (Chrome may linger)."""
     chrome = find_chrome()
     if not chrome:
-        raise SystemExit("Google Chrome not found (set CHROME=/path/to/chrome). Manual fallback: open "
-                         "docs/submission/out/deck.html in Chrome -> Print -> Save as PDF, "
-                         "margins none, background graphics on.")
+        raise SystemExit(
+            "Google Chrome not found (set CHROME=/path/to/chrome). Manual fallback: open "
+            "docs/submission/out/deck.html in Chrome -> Print -> Save as PDF, "
+            "margins none, background graphics on."
+        )
+    out.unlink(missing_ok=True)
     with tempfile.TemporaryDirectory(prefix="aegis-chrome-") as prof:
-        cmd = [chrome, "--headless=new", "--disable-gpu", "--no-first-run", "--no-default-browser-check",
-               "--hide-scrollbars", f"--user-data-dir={prof}", *args]
-        return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+        cmd = [
+            chrome,
+            "--headless",
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--hide-scrollbars",
+            f"--user-data-dir={prof}",
+            *args,
+        ]
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True
+        )
+        deadline = time.monotonic() + timeout
+        last, stable = -1, 0
+        try:
+            while time.monotonic() < deadline:
+                size = out.stat().st_size if out.exists() else -1
+                stable = stable + 1 if size > 0 and size == last else 0
+                last = size
+                if stable >= 3 or (proc.poll() is not None and size > 0):
+                    break
+                if proc.poll() is not None and size <= 0:
+                    break
+                time.sleep(0.5)
+        finally:
+            if proc.poll() is None:
+                try:
+                    os.killpg(proc.pid, signal.SIGTERM)
+                    proc.wait(timeout=5)
+                except (ProcessLookupError, subprocess.TimeoutExpired):
+                    with contextlib.suppress(ProcessLookupError):
+                        os.killpg(proc.pid, signal.SIGKILL)
+    return out.exists() and out.stat().st_size > 0
 
 
 def pdf_pages(path: Path) -> int:
@@ -390,8 +457,12 @@ def pdf_pages(path: Path) -> int:
     if count:
         return count
     if sys.platform == "darwin":  # Spotlight fallback (may lag for brand-new files)
-        res = subprocess.run(["mdls", "-raw", "-name", "kMDItemNumberOfPages", str(path)],
-                             capture_output=True, text=True, check=False)
+        res = subprocess.run(
+            ["mdls", "-raw", "-name", "kMDItemNumberOfPages", str(path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         if res.stdout.strip().isdigit():
             return int(res.stdout.strip())
     return 0
@@ -402,10 +473,9 @@ def build_pdf() -> Path:
     if not deck.exists():
         render()
     pdf = OUT / PDF_NAME
-    res = _chrome(["--no-pdf-header-footer", "--virtual-time-budget=5000",
-                   f"--print-to-pdf={pdf}", deck.as_uri()])
-    if not pdf.exists():
-        raise SystemExit(f"PDF not written (chrome rc={res.returncode}): {res.stderr[-400:]}")
+    ok = _chrome(["--no-pdf-header-footer", f"--print-to-pdf={pdf}", deck.as_uri()], pdf)
+    if not ok:
+        raise SystemExit("PDF not written by headless Chrome (see manual fallback in --help)")
     pages = pdf_pages(pdf)
     size_kb = pdf.stat().st_size // 1024
     print(f"PDF: {pdf.relative_to(ROOT)} · {pages} pages · {size_kb} KB")
@@ -420,8 +490,15 @@ def screens(url: str) -> None:
     for name, (route, member) in SCREENS.items():
         out = dest / f"{name}.png"
         target = f"{url.rstrip('/')}{route}?view_as={member}"
-        _chrome(["--window-size=1920,1080", "--virtual-time-budget=6000",
-                 "--force-dark-mode", f"--screenshot={out}", target])
+        _chrome(
+            [
+                "--window-size=1920,1080",
+                "--virtual-time-budget=6000",
+                f"--screenshot={out}",
+                target,
+            ],
+            out,
+        )
         print(f"{'ok ' if out.exists() else 'ERR'} {out.relative_to(ROOT)}  <- {target}")
 
 
@@ -493,7 +570,9 @@ def check(strict: bool) -> int:
             for f in sorted(OUT.glob("*.md")) + sorted(OUT.glob("*.html")):
                 left = TBD_LEFT.findall(f.read_text(encoding="utf-8"))
                 if left:
-                    problems.append(f"{f.relative_to(ROOT)}: {len(left)} unresolved, e.g. {left[0]}")
+                    problems.append(
+                        f"{f.relative_to(ROOT)}: {len(left)} unresolved, e.g. {left[0]}"
+                    )
         for f in (ROOT / "README.md", HERE / "HACKTRIBE.md"):
             if "[PUBLIC REPO URL]" in f.read_text(encoding="utf-8"):
                 problems.append(f"{f.relative_to(ROOT)}: [PUBLIC REPO URL] not filled")
@@ -506,14 +585,25 @@ def check(strict: bool) -> int:
 # ---------------------------------------------------------------------------------------- main
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
-    ap.add_argument("steps", nargs="*", choices=["collect", "render", "apply"], default=[],
-                    help="collect numbers, render out/, apply numbers in place")
+    ap.add_argument(
+        "steps",
+        nargs="*",
+        default=[],
+        help="collect | render | apply (collect numbers, render out/, fill numbers in place)",
+    )
     ap.add_argument("--url", default=None, help="live gateway for audit/coverage/policy numbers")
-    ap.add_argument("--pdf", action="store_true", help="print out/deck.html to PDF via headless Chrome")
+    ap.add_argument(
+        "--pdf", action="store_true", help="print out/deck.html to PDF via headless Chrome"
+    )
     ap.add_argument("--check", action="store_true", help="limits, slide count, links, PDF pages")
     ap.add_argument("--strict", action="store_true", help="--check also fails on unresolved [TBD]")
-    ap.add_argument("--screens", action="store_true", help="capture dashboard screenshots (needs --url)")
+    ap.add_argument(
+        "--screens", action="store_true", help="capture dashboard screenshots (needs --url)"
+    )
     args = ap.parse_args(argv)
+    bad = [s for s in args.steps if s not in ("collect", "render", "apply")]
+    if bad:
+        ap.error(f"unknown step(s): {', '.join(bad)} (choose from collect, render, apply)")
     if not (args.steps or args.pdf or args.check or args.screens):
         ap.print_help()
         return 0
@@ -525,7 +615,9 @@ def main(argv: list[str] | None = None) -> int:
         apply_in_place()
     if args.screens:
         if not args.url:
-            raise SystemExit("--screens needs --url http://127.0.0.1:8787 (after make demo warm-up)")
+            raise SystemExit(
+                "--screens needs --url http://127.0.0.1:8787 (after make demo warm-up)"
+            )
         screens(args.url)
     if args.pdf:
         build_pdf()

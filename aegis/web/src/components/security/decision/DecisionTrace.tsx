@@ -29,6 +29,7 @@ import { VersionStamp } from '../common/VersionStamp';
 import { buildTrace, serverTiming } from '../lib/trace';
 import { RedactionDiff } from '../redaction/RedactionDiff';
 import type { CatalogControl, TraceModel } from '../types';
+import { InjectionExplain } from './InjectionExplain';
 import { PipelineWaterfall, type RevealState } from './PipelineWaterfall';
 
 export type TraceTab = 'trace' | 'wire' | 'findings' | 'raw';
@@ -197,6 +198,9 @@ function TraceBody({ detail, trace, current, reveal, animate }: { detail: Decisi
       ) : null}
       <div className="mt-1">
         <PipelineWaterfall trace={trace} reveal={reveal} animate={animate} />
+      </div>
+      <div className="mt-2">
+        <InjectionExplain decisions={detail.decisions} />
       </div>
       <div className="mt-2">
         <Milestone icon={GitMerge} title="Combine · block > approval > redact > log > allow">

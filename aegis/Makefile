@@ -14,8 +14,8 @@ OK5   := ; rc=$$?; if [ $$rc -eq 5 ]; then echo "(no tests collected yet)"; exit
 todo_or = if [ ! -e "$(1)" ]; then echo "TODO: $(2) ($(1) not implemented yet)"; exit 0; fi;
 
 .DEFAULT_GOAL := help
-.PHONY: help setup gateway run dev web web-dev typecheck lint feed feed-keys mocks up demo demo-scene \
-        demo-preflight test test-unit test-e2e test-sem test-live selftest eval bench redteam \
+.PHONY: help setup gateway run dev web web-dev typecheck lint feed feed-keys feed-reseed mocks up demo \
+        demo-scene demo-preflight demo-reset stack-check test test-unit test-e2e test-sem test-live selftest eval bench redteam \
         verify-audit audit-verify fetch-models models reset claude
 
 help: ## list targets
@@ -49,10 +49,13 @@ dev: ## gateway --reload + Vite dev server (Ctrl-C stops both)
 	@trap 'kill 0' INT TERM; $(PY) -m aegis serve --reload & (cd web && npm run dev) & wait
 
 feed: ## threat-intel feed service on :8790 (threat-feed)
-	@$(call todo_or,feed_service/__main__.py,threat-feed) $(PY) -m feed_service
+	@$(PY) -m feed_service
 
 feed-keys: ## generate feed signing keys + config/feeds/feed_pubkey.b64 (threat-feed)
-	@$(call todo_or,feed_service/__main__.py,threat-feed) $(PY) -m feed_service keygen --if-missing
+	@$(PY) -m feed_service keygen --if-missing
+
+feed-reseed: ## re-sign config/feeds/seed_bundle.json after editing feed_service/signatures (same key)
+	@$(PY) -m feed_service reseed
 
 mocks: ## run all mock upstreams (:8791-8794) in the foreground
 	@pids=""; \
@@ -63,17 +66,23 @@ mocks: ## run all mock upstreams (:8791-8794) in the foreground
 	done; \
 	if [ -n "$$pids" ]; then trap "kill $$pids" INT TERM; wait; fi
 
-up: ## whole stack: gateway + feed + mocks (demo-mocks-docs: scripts/run_stack.py)
-	@$(call todo_or,scripts/run_stack.py,demo-mocks-docs) $(PY) scripts/run_stack.py $(ARGS)
+up: ## whole demo stack: feed + mocks + gateway (scripts/run_stack.py --lean; ARGS=--auto-ports ...)
+	@$(PY) scripts/run_stack.py --lean $(ARGS)
 
-demo: ## stack in demo mode (warm-up + preflight)
-	@$(call todo_or,scripts/run_stack.py,demo-mocks-docs) $(PY) scripts/run_stack.py --demo $(ARGS)
+demo: ## stack + warm-up + preflight (demo mode)
+	@$(PY) scripts/run_stack.py --demo $(ARGS)
+
+stack-check: ## port/identity/health check without starting anything
+	@$(PY) scripts/run_stack.py --check $(ARGS)
 
 demo-scene: ## run one demo scene: make demo-scene S=<scene>
 	@$(call todo_or,demo/scenarios/run.py,demo-mocks-docs) $(PY) demo/scenarios/run.py $(S)
 
-demo-preflight: ## READY check + reset between judges
-	@$(call todo_or,demo/preflight.py,demo-mocks-docs) $(PY) demo/preflight.py $(ARGS)
+demo-preflight: ## READY / DEGRADED / NOT READY (ARGS=--reset|--quick|--json)
+	@$(PY) demo/preflight.py $(ARGS)
+
+demo-reset: ## reset demo state between judges (ARGS=--stop-ambient|--policy-golden)
+	@$(PY) demo/scenarios/reset.py $(ARGS)
 
 claude: ## Claude Code through Aegis (demo settings profile, never machine-wide)
 	@if [ -x demo/claude/run.sh ] || [ -f demo/claude/run.sh ]; then bash demo/claude/run.sh $(ARGS); \
@@ -85,7 +94,7 @@ test: ## unit + hermetic deterministic e2e + matrix/report
 	@AEGIS_SEMANTIC=off $(PYTEST) tests --ignore=tests/eval --ignore=tests/bench --ignore=tests/redteam -m "not semantic and not live and not slow and not bench" $(OK5)
 
 test-unit: ## unit tests of every workstream
-	@$(PYTEST) tests/unit $(ARGS) $(OK5)
+	@AEGIS_SEMANTIC=off $(PYTEST) tests/unit $(ARGS) $(OK5)
 
 test-e2e: ## hermetic e2e + coverage (test-suite)
 	@$(call todo_or,tests/test_coverage.py,test-suite) AEGIS_SEMANTIC=off $(PYTEST) tests/e2e tests/test_coverage.py tests/test_cases_schema.py -m "not semantic and not live and not slow" $(OK5)

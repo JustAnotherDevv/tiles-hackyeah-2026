@@ -5,8 +5,8 @@
 > **Source of the PDF:** `deck/deck.html` (10 print-ready 1920×1080 slides, dashboard design tokens, system
 > fonts, no CDN) → `uv run --frozen python docs/submission/build.py collect render --pdf` →
 > `out/Aegis_HackYeah2026_GS_AIControlLayer.pdf`. Edit copy in **both** this file and `deck.html`.
-> **Numbers:** `{{TBD: key}}` placeholders are filled from `numbers.json` (collected from `reports/`);
-> unresolved ones render as a visible `[TBD: key]`. Never ship a number that wasn't measured; a target must
+> **Numbers:** `{{TBD: …}}` placeholders are filled from `numbers.json` (collected from `reports/`);
+> unresolved ones render as a visible `[TBD: …]`. Never ship a number that wasn't measured; a target must
 > say "target".
 > **Screenshots:** slots load `docs/assets/screens/<name>.png` when present (capture after `make demo`
 > warm-up: `build.py --screens --url http://127.0.0.1:8787`, or by hand at 1920×1080), else a labelled frame.

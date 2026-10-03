@@ -578,6 +578,36 @@ class FeedService:
             "message": "restart the gateway to pin the new key",
         }
 
+    def reseed(self) -> dict:
+        """Rebuild + re-sign config/feeds/seed_bundle.json (serial 1) from the repo signatures with
+        the EXISTING key (after editing feed_service/signatures/*). Then dist = seed (like
+        `reset --hard`). Restart the gateway (or `make reset`) so it loads the new seed."""
+        seed = self.seed()
+        kid = key_id(signing.public_key(seed))
+        try:
+            from aegis.feed.verify import load_pubkey
+
+            pinned = key_id(load_pubkey(self.pubkey_file))
+        except (OSError, ValueError):
+            pinned = None
+        if pinned != kid:
+            raise FeedServiceError(
+                f"pinned key {pinned} != signing key {kid}; run `keygen --if-missing` instead", 409
+            )
+        sigs = load_repo_signatures(self.src_root / "signatures")
+        lists = load_repo_lists(self.src_root / "lists")
+        data, header = build_bundle_bytes(sigs, lists, serial=1, ttl_h=SEED_TTL_H, kid=kid)
+        _write_atomic(self.seed_bundle, data)
+        _write_atomic(
+            self.seed_bundle.with_name("seed_bundle.json.sig"),
+            (signing.sign_detached(data, seed) + "\n").encode(),
+        )
+        self.workspace.restore()
+        self._init_dist_from_seed()
+        self.event("reseed", key_id=kid, serial=1, signatures=header["signature_count"])
+        return {"status": "resealed", "key_id": kid, "serial": 1,
+                "signatures": header["signature_count"]}
+
     def _init_dist_from_seed(self) -> None:
         """dist serial 1 = the seed bundle bytes (gateway on seed v1 and service agree)."""
         seed = self.seed()

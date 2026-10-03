@@ -5,6 +5,7 @@
 // (never two toasts for one version). Pages must not duplicate any of these.
 // Dedupe: same kind + subject within 2 s (sonner id); at most 4 visible (Toaster visibleToasts).
 // Replayed messages (first ~1.5 s after (re)connect) never toast.
+import { displayTitle } from '@/components/governance/lib/format-gov';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -152,7 +153,7 @@ export function EventToasts() {
       case 'approval.created': {
         const d = data as SseEventMap['approval.created'];
         if (dedupe(`approval:${d.id}`)) return;
-        toast(d.title, {
+        toast(displayTitle(d.title), {
           id: `apr-${d.id}`,
           className: 'aegis-toast aegis-toast-approval',
           icon: <span className="text-[13px]">✋</span>,
@@ -178,7 +179,7 @@ export function EventToasts() {
         const by = d.votes?.length ? (getMember(d.votes[d.votes.length - 1].member_id)?.name ?? d.votes[d.votes.length - 1].member_id) : null;
         const title = d.status === 'approved' ? `Approved${by ? ` by ${by}` : ''}` : d.status === 'denied' ? `Denied${by ? ` by ${by}` : ''}` : 'Approval expired';
         const fn = d.status === 'approved' ? toast.success : d.status === 'denied' ? toast.error : toast.warning;
-        fn(title, { id: `apr-${d.id}`, className: 'aegis-toast', duration: 4500, description: d.title });
+        fn(title, { id: `apr-${d.id}`, className: 'aegis-toast', duration: 4500, description: displayTitle(d.title) });
         return;
       }
       case 'budget.threshold': {
@@ -236,6 +237,9 @@ export function EventToasts() {
       case 'system': {
         const d = data as SseEventMap['system'];
         if (dedupe(`system:${d.message}`)) return;
+        // "policy vN: K warning(s) — …" accompanies every apply; the policy.applied toast and the editor's
+        // validation panel already cover it, so don't stack a second (alarming) warning toast on stage.
+        if (d.component === 'policy' && d.level === 'warning' && /warning\(s\)/.test(d.message)) return;
         const fn = d.level === 'error' ? toast.error : d.level === 'warning' ? toast.warning : toast.info;
         fn(d.message, { className: 'aegis-toast', description: d.component ? <Meta>system · {d.component}</Meta> : undefined });
         return;

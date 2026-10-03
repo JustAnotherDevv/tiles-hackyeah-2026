@@ -17,6 +17,10 @@ def pct(x: float | None, nd: int = 1) -> str:
     return NM if x is None else f"{x * 100:.{nd}f}%"
 
 
+def cell(x: float | None) -> str:
+    return "–" if x is None else pct(x)
+
+
 def ci(c: list[float] | tuple[float, float] | None) -> str:
     return "" if not c else f"[{c[0] * 100:.1f}–{c[1] * 100:.1f}]"
 
@@ -122,13 +126,13 @@ def eval_markdown(doc: dict[str, Any]) -> str:
         L += ["", f"## Balanced ({base['mode']}) by category", "", "| category | attacks | detected | benign | FPR |",
               "|---|--:|---|--:|---|"]
         for k, v in base["by_category"].items():
-            L.append(f"| {k} | {v['attack']['n']} | {pct(v['attack']['rate'])} | {v['benign']['n']} | "
-                     f"{pct(v['benign']['fpr'])} |")
+            L.append(f"| {k} | {v['attack']['n']} | {cell(v['attack']['rate'])} | {v['benign']['n']} | "
+                     f"{cell(v['benign']['fpr'])} |")
         L += ["", "## Balanced by corpus source", "", "| source | attacks | detected | benign | FPR |",
               "|---|--:|---|--:|---|"]
         for k, v in base["by_source"].items():
-            L.append(f"| {k} | {v['attack']['n']} | {pct(v['attack']['rate'])} | {v['benign']['n']} | "
-                     f"{pct(v['benign']['fpr'])} |")
+            L.append(f"| {k} | {v['attack']['n']} | {cell(v['attack']['rate'])} | {v['benign']['n']} | "
+                     f"{cell(v['benign']['fpr'])} |")
         L += ["", "## Balanced: deciding controls", "", "| control | true positives | false positives | deciding |",
               "|---|--:|--:|--:|"]
         for c in base["by_control"]:

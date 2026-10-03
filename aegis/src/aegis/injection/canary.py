@@ -51,12 +51,13 @@ def extract_urls(text: str) -> list[tuple[str, int, int]]:
     out: list[tuple[str, int, int]] = []
     seen: set[tuple[int, int]] = set()
     for rx in (_MD_INLINE, _MD_REF, _HTML_ATTR, _BARE):
+        g = 1 if rx.groups else 0  # _BARE has no capture group (whole match is the URL)
         for m in rx.finditer(text or ""):
-            a, b = m.span(1)
+            a, b = m.span(g)
             if (a, b) in seen or any(x <= a and b <= y for x, y in seen):
                 continue
             seen.add((a, b))
-            out.append((m.group(1), a, b))
+            out.append((m.group(g), a, b))
             if len(out) >= 256:
                 return out
     return out

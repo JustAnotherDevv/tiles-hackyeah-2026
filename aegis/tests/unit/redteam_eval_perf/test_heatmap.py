@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from tests.corpora.loader import load_rows
 from tests.eval.heatmap import ascii_heatmap, build_heatmap
-from tests.eval.scoring import CaseResult
 from tests.eval.schemas import validate
+from tests.eval.scoring import CaseResult
 
 
 def fake_results():

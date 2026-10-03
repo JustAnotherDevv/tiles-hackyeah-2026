@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aegis video cards</title>
+<!--
+  Designed cards for the 60 s video (shots 1, 2, 9). Not product footage.
+  Open in Chrome at 1920x1080 (or full screen) and screen-record:
+    #title  title card (subtitle types itself)      #arch  architecture with travelling pulses
+    #end    end card (edit the repo URL below)
+  e.g. open "docs/submission/video/cards.html#title"
+-->
+<style>
+  :root{--bg:#07080A;--t1:#ECEEF1;--t2:#A2A8B3;--t3:#7A808C;--iris:#6D5DFC;--accent:#9A8CFF;
+    --allow:#3CCB7F;--redact:#5BA4F5;--block:#F2556F;
+    --sans:"Inter",-apple-system,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:"JetBrains Mono","SFMono-Regular",Menlo,Consolas,monospace}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;background:var(--bg);color:var(--t1);font-family:var(--sans);overflow:hidden}
+  .card{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;
+    background:radial-gradient(1100px 620px at 50% 40%,rgba(109,93,252,.18),transparent 65%),var(--bg)}
+  .card.on{display:flex}
+  .logo{width:150px;height:172px;animation:pop .8s cubic-bezier(.2,.9,.3,1.2) both}
+  .logo path.tick{stroke-dasharray:40;stroke-dashoffset:40;animation:draw .6s .6s forwards}
+  h1{font-size:148px;font-weight:800;letter-spacing:-.03em;margin-top:22px;animation:rise .7s .2s both}
+  .typed{font-size:46px;color:var(--t2);margin-top:14px;font-family:var(--sans);min-height:60px;
+    border-right:3px solid var(--accent);padding-right:6px;white-space:nowrap;overflow:hidden;width:0;
+    animation:type 2.2s .9s steps(44) forwards,blink .8s step-end infinite}
+  .meta{margin-top:40px;font-size:26px;color:var(--t3);letter-spacing:.14em;text-transform:uppercase}
+  .url{margin-top:26px;font-family:var(--mono);font-size:34px;color:var(--accent)}
+  .arch{width:1600px;max-width:92vw}
+  .pulse{fill:var(--redact);filter:drop-shadow(0 0 8px var(--redact))}
+  @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+  @keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes type{to{width:22.5em}}
+  @keyframes blink{50%{border-color:transparent}}
+</style>
+</head>
+<body>
+<section class="card" id="title">
+  <svg class="logo" viewBox="0 0 48 55" aria-hidden="true"><path d="M24 2 L44 9 V26 C44 39 35 48 24 53 C13 48 4 39 4 26 V9 Z" fill="none" stroke="#6D5DFC" stroke-width="3"/><path class="tick" d="M15 27 L22 34 L34 20" fill="none" stroke="#3CCB7F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <h1>Aegis</h1>
+  <div class="typed">Local-first guardrails for every agent call</div>
+</section>
+
+<section class="card" id="arch">
+  <svg class="arch" viewBox="0 0 1600 600" font-family="Inter, -apple-system, Helvetica, Arial, sans-serif">
+    <rect x="300" y="60" width="760" height="480" rx="22" fill="none" stroke="#3CCB7F" stroke-opacity=".5" stroke-width="2" stroke-dasharray="12 10"/>
+    <text x="320" y="96" fill="#3CCB7F" font-size="22" font-weight="600">YOUR MACHINE</text>
+    <g font-size="30" font-weight="700" fill="#ECEEF1">
+      <rect x="20" y="230" width="240" height="140" rx="18" fill="#13161A" stroke="#2A2F37" stroke-width="2"/>
+      <text x="140" y="292" text-anchor="middle">Agents</text>
+      <text x="140" y="330" text-anchor="middle" font-size="20" font-weight="400" fill="#A2A8B3">Claude Code · SDK</text>
+      <rect x="520" y="200" width="320" height="200" rx="22" fill="#161327" stroke="#6D5DFC" stroke-width="3"/>
+      <text x="680" y="290" text-anchor="middle" font-size="44">Aegis</text>
+      <text x="680" y="332" text-anchor="middle" font-size="20" font-weight="400" fill="#A2A8B3">one policy · every hop</text>
+      <rect x="520" y="430" width="320" height="80" rx="16" fill="#13161A" stroke="#2A2F37" stroke-width="2"/>
+      <text x="680" y="480" text-anchor="middle" font-size="24">Local models (raw OK)</text>
+      <rect x="1180" y="110" width="380" height="110" rx="18" fill="#13161A" stroke="#2A2F37" stroke-width="2"/>
+      <text x="1370" y="176" text-anchor="middle">Remote models</text>
+      <rect x="1180" y="245" width="380" height="110" rx="18" fill="#13161A" stroke="#2A2F37" stroke-width="2"/>
+      <text x="1370" y="311" text-anchor="middle">MCP tools</text>
+      <rect x="1180" y="380" width="380" height="110" rx="18" fill="#13161A" stroke="#2A2F37" stroke-width="2"/>
+      <text x="1370" y="446" text-anchor="middle">Third-party APIs</text>
+    </g>
+    <g stroke="#2A2F37" stroke-width="3" fill="none">
+      <path id="p0" d="M260 300 H520"/><path id="p1" d="M840 270 C1000 270 1020 165 1180 165"/>
+      <path id="p2" d="M840 300 H1180"/><path id="p3" d="M840 330 C1000 330 1020 435 1180 435"/>
+      <path id="p4" d="M680 400 V430"/>
+    </g>
+    <text x="1010" y="560" text-anchor="middle" fill="#5BA4F5" font-size="22" font-weight="700">only placeholders cross the boundary</text>
+    <circle r="9" class="pulse"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#p0"/></animateMotion></circle>
+    <circle r="9" class="pulse"><animateMotion dur="1.4s" begin=".3s" repeatCount="indefinite"><mpath href="#p1"/></animateMotion></circle>
+    <circle r="9" class="pulse"><animateMotion dur="1.4s" begin=".6s" repeatCount="indefinite"><mpath href="#p2"/></animateMotion></circle>
+    <circle r="9" class="pulse"><animateMotion dur="1.4s" begin=".9s" repeatCount="indefinite"><mpath href="#p3"/></animateMotion></circle>
+    <circle r="7" fill="#3CCB7F"><animateMotion dur="1s" repeatCount="indefinite"><mpath href="#p4"/></animateMotion></circle>
+  </svg>
+</section>
+
+<section class="card" id="end">
+  <svg class="logo" viewBox="0 0 48 55" aria-hidden="true" style="width:110px;height:126px"><path d="M24 2 L44 9 V26 C44 39 35 48 24 53 C13 48 4 39 4 26 V9 Z" fill="none" stroke="#6D5DFC" stroke-width="3"/><path d="M15 27 L22 34 L34 20" fill="none" stroke="#3CCB7F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <h1 style="font-size:96px">Aegis: Local-First AI Guardrails</h1>
+  <div class="url">[PUBLIC REPO URL]</div>
+  <div class="meta">HackYeah 2026 · Goldman Sachs · AI Control Layer</div>
+</section>
+
+<script>
+  function show() {
+    var id = (location.hash || '#title').slice(1);
+    document.querySelectorAll('.card').forEach(function (c) { c.classList.toggle('on', c.id === id); });
+  }
+  window.addEventListener('hashchange', show); show();
+  // keys: 1 / 2 / 3 switch cards while recording
+  window.addEventListener('keydown', function (e) {
+    var m = {'1': 'title', '2': 'arch', '3': 'end'}[e.key]; if (m) location.hash = m;
+  });
+</script>
+</body>
+</html>

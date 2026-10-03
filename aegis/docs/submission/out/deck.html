@@ -7,7 +7,7 @@
 <!--
   10 print-ready 1920x1080 slides. Source of the HackTribe PDF.
   Build: uv run --frozen python docs/submission/build.py collect render --pdf
-  Placeholders <span class="tbd">[TBD: key]</span> are filled from docs/submission/numbers.json; unresolved ones render as [TBD: key].
+  Placeholders (TBD: key in double braces) are filled from docs/submission/numbers.json; unresolved ones render as a visible TBD chip.
   Screenshot slots (.shot[data-src]) load docs/assets/screens/*.png when present.
   Colours/typography from staging/design tokens (system font fallbacks, no CDN).
 -->
@@ -59,6 +59,7 @@
   .kpi-l{font-size:20px;color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-top:6px}
   .tbd{color:var(--approval);font-family:var(--mono);font-size:.8em;border:1.5px dashed var(--approval);
     border-radius:8px;padding:0 8px;white-space:nowrap}
+  .kpi .tbd{font-size:24px;letter-spacing:0;vertical-align:middle}
   .shot{border:1.5px solid var(--border-strong);border-radius:16px;background:
     repeating-linear-gradient(135deg,var(--surface-1) 0 22px,var(--surface-2) 22px 44px);
     display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
@@ -126,7 +127,7 @@
       <li><b>Detected on the device:</b> PII, cards, Polish IDs (PESEL, NIP, REGON, IBAN), secrets, metadata (user paths, hostnames, client headers).</li>
       <li><b>Validators, not bare regex:</b> Luhn, PESEL / NIP checksums, IBAN mod-97, context words. <b>Destination-aware:</b> raw to local Ollama, tokenized to remote, tokenized or blocked to third parties.</li>
       <li><b>PCI:</b> CVV dropped, never vaulted; PAN shown as first 6 / last 4; audit keeps keyed HMACs. Real values return only to the local user.</li>
-      <li>Fixture set (626 cases): leak rate on validated types <b class="num">0 %</b> · precision <b class="num">1.0</b> · recall <b class="num">1.0</b> · p95 <b class="num">0.35 ms</b></li>
+      <li>Fixture set (<span class="tbd">[TBD: dlp.cases]</span> cases): leak rate on validated types <b class="num"><span class="tbd">[TBD: dlp.leak_rate_validated]</span></b> · precision <b class="num"><span class="tbd">[TBD: dlp.precision]</span></b> · recall <b class="num"><span class="tbd">[TBD: dlp.recall]</span></b> · p95 <b class="num"><span class="tbd">[TBD: dlp.latency_p95_ms]</span> ms</b></li>
     </ul>
   </div>
   <div class="foot"><span>DLP-01 · DLP-03 · DLP-07 · DLP-08</span><span>4 / 10</span></div>
@@ -136,15 +137,15 @@
 <section class="slide" id="s5">
   <div class="kicker">Hybrid guardrails · OWASP 2026</div>
   <h2>Deterministic first, AI second, every hop</h2>
-  <div class="grid g2">
+  <div class="grid g2" style="flex:none">
     <div class="card"><h3>Deterministic tier <span style="color:var(--text-3);font-weight:500">µs–ms</span></h3>
       <ul class="b"><li>Unicode normalization: zero-width, tag characters, homoglyphs, base64 / hex</li><li>Secrets, command guard (<code>curl | sh</code>), SSRF guard</li><li>MCP poisoning scan + rug-pull pinning</li><li>Exfil-link stripping · signed exploit signatures</li></ul></div>
     <div class="card"><h3>Semantic tier <span style="color:var(--text-3);font-weight:500">local models, escalation only</span></h3>
       <ul class="b"><li>Injection classifier · Qwen3Guard · multilingual NER</li><li>Per-control <code>fail_mode</code>: model down → deterministic-only + <b>degraded</b> flag, never silent pass</li><li>Screens tool results, MCP descriptions, fetched pages, not just the prompt</li><li>Never authorizes anything: tools, budgets, approvals stay deterministic</li></ul></div>
   </div>
-  <div class="grid g3" style="flex:0;margin-top:26px">
-    <div class="card"><div class="kpi num">66.7 %</div><div class="kpi-l">attack detection (balanced)</div></div>
-    <div class="card"><div class="kpi num">1.6 %</div><div class="kpi-l">false positives (balanced)</div></div>
+  <div class="grid g3" style="flex:none;margin-top:26px">
+    <div class="card"><div class="kpi num"><span class="tbd">[TBD: eval.detection_rate]</span></div><div class="kpi-l">attack detection (balanced)</div></div>
+    <div class="card"><div class="kpi num"><span class="tbd">[TBD: eval.fpr]</span></div><div class="kpi-l">false positives (balanced)</div></div>
     <div class="card"><div class="kpi num" style="font-size:40px">LLM <span class="tbd">[TBD: coverage.llm]</span> · ASI <span class="tbd">[TBD: coverage.asi]</span> · MCP <span class="tbd">[TBD: coverage.mcp]</span></div><div class="kpi-l">OWASP coverage (live)</div></div>
   </div>
   <div class="foot"><span>INJ-01..05 · DLP-02/04/06 · EXE-01..03 · MCP-01..04 · SIG-01..03</span><span>5 / 10</span></div>
@@ -216,9 +217,9 @@
 <section class="slide" id="s9">
   <div class="kicker">Self-testing · performance</div>
   <h2>One command proves every control</h2>
-  <div class="grid g4" style="flex:0">
-    <div class="card"><div class="kpi num">6</div><div class="kpi-l">test cases · <code>make test</code></div></div>
-    <div class="card"><div class="kpi num">0</div><div class="kpi-l">failed</div></div>
+  <div class="grid g4" style="flex:none">
+    <div class="card"><div class="kpi num"><span class="tbd">[TBD: tests.total]</span></div><div class="kpi-l">test cases · <code>make test</code></div></div>
+    <div class="card"><div class="kpi num"><span class="tbd">[TBD: tests.failed]</span></div><div class="kpi-l">failed</div></div>
     <div class="card"><div class="kpi num"><span class="tbd">[TBD: perf.overhead_p50_ms]</span> / <span class="tbd">[TBD: perf.overhead_p95_ms]</span></div><div class="kpi-l">overhead p50 / p95 ms</div></div>
     <div class="card"><div class="kpi num"><span class="tbd">[TBD: perf.rps]</span></div><div class="kpi-l">requests / s · <code>make bench</code></div></div>
   </div>

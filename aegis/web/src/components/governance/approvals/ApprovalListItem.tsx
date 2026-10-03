@@ -1,5 +1,6 @@
 // One inbox row: kind icon, title, approver badge, requester, amount, countdown, two-person, lock.
 // Owner: B18-dashboard-gov-approvals.
+import { displayTitle } from '@/components/governance/lib/format-gov';
 import { motion } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import { forwardRef } from 'react';
@@ -72,7 +73,7 @@ export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps
           <Icon className="size-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className={cn('text-[13px] font-medium leading-[18px]', locked ? 'text-text-2' : 'text-text-1')}>{req.title}</div>
+          <div className={cn('text-[13px] font-medium leading-[18px]', locked ? 'text-text-2' : 'text-text-1')}>{displayTitle(req.title)}</div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-text-3">
             {pending ? (
               <ApproverBadge level={req.required_role} size="sm" />

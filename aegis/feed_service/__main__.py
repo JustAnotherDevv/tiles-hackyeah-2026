@@ -4,6 +4,7 @@ serve   [--host 127.0.0.1] [--port 8790] [--state DIR]   (default; --port 0 = ep
 keygen  [--force | --if-missing]   keys + config/feeds/feed_pubkey.b64 + seed bundle (serial 1)
 publish [--enable ID ...] [--force] [--note TEXT]
 reset   [--hard]                   soft = workspace from repo + republish; hard = back to serial 1
+reseed                             re-sign the seed bundle from repo signatures (existing key)
 verify                             schema, RE2, vectors, ReDoS smoke, EchoLeak demo invariant
 """
 
@@ -136,6 +137,17 @@ def cmd_reset(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reseed(args: argparse.Namespace) -> int:
+    try:
+        res = _svc(args).reseed()
+    except FeedServiceError as e:
+        print(f"reseed: {e}", file=sys.stderr)
+        return 1
+    print(f"seed bundle re-signed (key {res['key_id']}): {res['signatures']} signatures, serial #1")
+    print("  restart the gateway / run `make reset` so it loads the new seed")
+    return 0
+
+
 def cmd_verify(args: argparse.Namespace) -> int:
     svc = _svc(args)
     svc.ensure_ready()
@@ -169,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--local", action="store_true", help="write files directly (no running service)")
     p = sub.add_parser("reset")
     p.add_argument("--hard", action="store_true")
+    sub.add_parser("reseed")
     p = sub.add_parser("verify")
     p.add_argument("--json", action="store_true")
     p.add_argument("--workspace", action="store_true", help="(default) verify the workspace")
@@ -185,6 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         "publish": cmd_publish,
         "reset": cmd_reset,
         "verify": cmd_verify,
+        "reseed": cmd_reseed,
     }
     if args.cmd is None:
         args = ap.parse_args(["serve"])

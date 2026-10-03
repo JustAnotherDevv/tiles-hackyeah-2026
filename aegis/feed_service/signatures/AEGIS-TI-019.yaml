@@ -24,7 +24,7 @@ match:
   any_of:
     - type: regex
       field: all
-      pattern: '(?i)(ignore\s+(all\s+)?(the\s+)?(previous|above|prior|earlier)\s+(instructions|prompts|rules|messages)|disregard\s+(the\s+)?(previous|above|system|all)\b|you\s+are\s+now\s+(in\s+)?(developer|dan|jailbreak)\s+mode|do\s+anything\s+now|reveal\s+(your|the)\s+(system\s+)?(prompt|instructions)|print\s+(your|the)\s+system\s+prompt|</?(system|assistant|user)>|<\|im_start\|>\s*system|<\|eot_id\|>|\[/?INST\]|</s>)'
+      pattern: '(?i)((?:^|[^''"‘“])ignore\s+(all\s+)?(the\s+)?(previous|above|prior|earlier)\s+(instructions|prompts|rules|messages)|disregard\s+(the\s+)?(previous|above|system|all)\b|you\s+are\s+now\s+(in\s+)?(developer|dan|jailbreak)\s+mode|do\s+anything\s+now|reveal\s+(your|the)\s+(system\s+)?(prompt|instructions)|print\s+(your|the)\s+system\s+prompt|</?(system|assistant|user)>|<\|im_start\|>\s*system|<\|eot_id\|>|\[/?INST\]|</s>)'
     - type: semantic
       lexical_threshold: 0.6
       threshold: 0.86
@@ -56,3 +56,6 @@ tests:
     - name: ordinary summarisation request mentioning jailbreaks
       surface: model.request
       text: "Please summarise the following news article about jailbreaking phones."
+    - name: quoted mention of the phrase (test writing, not use)
+      surface: model.request
+      text: "Write a pytest that asserts our gateway blocks the phrase 'ignore previous instructions'."

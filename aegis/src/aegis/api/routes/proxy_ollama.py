@@ -128,7 +128,8 @@ def _admin_interaction(op: str, method: str, body: dict[str, Any]) -> Interactio
         else:
             segs.append(TextSegment(path=p, text=s, role="tool_args"))
     dest = "remote" if str(model).endswith(":cloud") else "local"
-    meta: dict[str, Any] = {"op": op, "wire": "ollama", "insecure": bool(body.get("insecure"))}
+    meta: dict[str, Any] = {"op": op, "ollama_op": op, "wire": "ollama",
+                            "insecure": bool(body.get("insecure"))}
     if op == "copy":
         meta["from"] = body.get("source")
         meta["destination_model"] = body.get("destination")

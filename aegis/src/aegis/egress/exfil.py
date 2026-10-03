@@ -220,7 +220,11 @@ def analyze_url(url: str, *, params: Any, allowlist: list[str] | tuple[str, ...]
         hits.append(ExfilHit("shell_subst", 0.9, host, "shell substitution inside URL"))
     # ---- DNS labels
     if ipl is None:
-        sub = _registrable_split(host)
+        # parse_url lowercases the host; base64url labels are case-sensitive, so decode the
+        # labels from the original spelling (same length/positions for ASCII hosts).
+        low = url.lower()
+        at = low.find(host) if len(low) == len(url) else -1
+        sub = _registrable_split(url[at:at + len(host)] if at >= 0 else host)
         if len(host.split(".")) > params.dns_max_labels:
             hits.append(ExfilHit("dns_label", 0.6, host, "many DNS labels"))
         for lab in sub:

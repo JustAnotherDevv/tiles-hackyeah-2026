@@ -1,6 +1,7 @@
 // Approval detail pane: header, requester, bound payload, why-this-role, routing, votes and the
 // role-aware footer (Approve/Deny unlock or lock with the reason as the "view as" persona changes).
 // Owner: B18-dashboard-gov-approvals.
+import { displayTitle } from '@/components/governance/lib/format-gov';
 import { motion } from 'framer-motion';
 import { Check, Copy, ExternalLink, Hash, Inbox, Lock, LockOpen, Undo2, Users, X } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
@@ -120,7 +121,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
             <Copy className="size-3" />
           </button>
         </div>
-        <h2 className="mb-1 mt-2.5 text-[17px] font-semibold leading-6 tracking-[-0.015em] text-text-1">{req.title}</h2>
+        <h2 className="mb-1 mt-2.5 text-[17px] font-semibold leading-6 tracking-[-0.015em] text-text-1">{displayTitle(req.title)}</h2>
         {req.summary ? <p className="mb-2 text-[12.5px] text-text-3">{req.summary}</p> : null}
         <RequesterLine req={req} dir={dir} />
       </div>

@@ -326,9 +326,13 @@ def resolve_viewer(
     """Dashboard viewer from view-as (member id, role alias or short name) or the default."""
     value, _ = view_as_value(headers, query)
     member_id = resolve_alias(cache, value) if value else None
-    if value and member_id is None and value not in _warned_view_as:
-        _warned_view_as.add(value)
-        log.warning("unknown view-as value=%r; using default viewer", value[:64])
+    if value and member_id is None:
+        # Unknown ids and agent ids never fall back to the default viewer (an owner in the
+        # demo seed): they resolve to an anonymous, least-privilege identity that cannot vote.
+        if value not in _warned_view_as:
+            _warned_view_as.add(value)
+            log.warning("unknown view-as value=%r; using anonymous viewer", value[:64])
+        return viewer_identity(cache, None)
     if member_id is None:
         member_id = default_viewer_id(cache, configured_default)
     return viewer_identity(cache, member_id)

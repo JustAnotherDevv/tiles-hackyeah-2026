@@ -44,23 +44,39 @@ class LocalStack:
 
         self.tmp = Path(tempfile.mkdtemp(prefix="aegis-b22-"))
         self._env = pytest.MonkeyPatch()
-        for k, v in {"AEGIS_TEST_MODE": "1", "AEGIS_SEMANTIC": "off",
-                     "AEGIS_DATA_DIR": str(self.tmp / "data"), "AEGIS_FEED_URL": "disabled"}.items():
+        for k, v in {
+            "AEGIS_TEST_MODE": "1",
+            "AEGIS_SEMANTIC": "off",
+            "AEGIS_DATA_DIR": str(self.tmp / "data"),
+            "AEGIS_FEED_URL": "disabled",
+        }.items():
             self._env.setenv(k, v)
         self.llm = None
         if llm:
             from mocks.mock_llm.app import create_app as llm_app
 
             self.llm = ThreadedUvicorn(llm_app(data_dir=self.tmp / "llm"), name="mock-llm").start()
-        src = ROOT / "config" / "policy.yaml"
-        if not src.exists():
-            pytest.skip("config/policy.yaml missing")
+        # Golden copy first (plan 18 §2.3): live edits to config/policy.yaml never leak in.
+        src = next(
+            (
+                p
+                for p in (ROOT / "config" / "policy.golden.yaml", ROOT / "config" / "policy.yaml")
+                if p.exists()
+            ),
+            None,
+        )
+        if src is None:
+            pytest.skip("no policy (config/policy.golden.yaml missing)")
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
-            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")}
+            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
+        }
         # Distinct grants per test: identical calls within redeem_window_s count as one use.
         doc["approvals"]["defaults"]["redeem_window_s"] = 0.001
-        doc.setdefault("budgets", {})["rate"] = {"requests_per_min": 100000, "tool_calls_per_min": 100000}
+        doc.setdefault("budgets", {})["rate"] = {
+            "requests_per_min": 100000,
+            "tool_calls_per_min": 100000,
+        }
         if self.llm is not None:
             doc["providers"]["mock-anthropic"]["base_url"] = self.llm.url
             doc["providers"]["mock-openai"]["base_url"] = self.llm.url + "/v1"
@@ -76,9 +92,15 @@ class LocalStack:
                 from aegis.settings import get_settings
 
                 get_settings.cache_clear()
-            settings = Settings(data_dir=self.tmp / "data", policy=self.policy_path,
-                                ui_dist=self.tmp / "dist", test_mode=True, semantic="off",
-                                feed_url="disabled", hmac_key="b22-" + uuid.uuid4().hex)
+            settings = Settings(
+                data_dir=self.tmp / "data",
+                policy=self.policy_path,
+                ui_dist=self.tmp / "dist",
+                test_mode=True,
+                semantic="off",
+                feed_url="disabled",
+                hmac_key="b22-" + uuid.uuid4().hex,
+            )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
         except Exception as exc:  # boot error -> skip, never a red herring failure
@@ -108,12 +130,17 @@ class LocalStack:
             headers["X-Aegis-View-As"] = as_
         return self.http.request(method, path, headers=headers, **kw)
 
-    def guard(self, interaction: dict, agent: str | None = None, member: str | None = None,
-              **extra: Any) -> dict:
+    def guard(
+        self, interaction: dict, agent: str | None = None, member: str | None = None, **extra: Any
+    ) -> dict:
         ident = {k: v for k, v in (("agent_id", agent), ("member_id", member)) if v}
-        body = {"interaction": interaction, "identity": ident or None,
-                "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
-                "wait_s": 0, **extra}
+        body = {
+            "interaction": interaction,
+            "identity": ident or None,
+            "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
+            "wait_s": 0,
+            **extra,
+        }
         r = self.http.post("/v1/guard", json=body)
         assert r.status_code == 200, r.text
         return r.json()
@@ -126,21 +153,39 @@ def _tight_chaos(doc: dict) -> None:
     b["defaults"].update({"soft_pct": 80, "on_soft": "downgrade"})
     for lim in b["limits"]:
         if lim.get("scope") == CHAOS_SCOPE and lim.get("window") == "day":
-            lim.update({"usd": 0.02, "tokens": 100000, "on_hard": "block"})
+            lim.update({"usd": 0.02, "tokens": 100000, "on_hard": "block", "on_soft": "downgrade"})
     doc["models"]["downgrade"] = [{"from": "mock-sonnet", "to": "mock-echo"}]
 
 
 def _price(usage: dict) -> float:
-    return (usage.get("input_tokens", 0) * PRICE_IN + usage.get("output_tokens", 0) * PRICE_OUT) / 1e6
+    return (
+        usage.get("input_tokens", 0) * PRICE_IN + usage.get("output_tokens", 0) * PRICE_OUT
+    ) / 1e6
 
 
-def _msg(stack: LocalStack, text: str, *, agent: str = CHAOS, model: str = "mock-sonnet",
-         max_tokens: int = 256, session: str | None = None) -> httpx.Response:
-    headers = {"X-Aegis-Agent": agent, "X-Aegis-Session": session or f"ses_b22_{uuid.uuid4().hex[:8]}",
-               "X-Aegis-Wait": "0"}
-    return stack.http.post("/v1/messages", headers=headers, json={
-        "model": model, "max_tokens": max_tokens,
-        "messages": [{"role": "user", "content": text}]})
+def _msg(
+    stack: LocalStack,
+    text: str,
+    *,
+    agent: str = CHAOS,
+    model: str = "mock-sonnet",
+    max_tokens: int = 256,
+    session: str | None = None,
+) -> httpx.Response:
+    headers = {
+        "X-Aegis-Agent": agent,
+        "X-Aegis-Session": session or f"ses_b22_{uuid.uuid4().hex[:8]}",
+        "X-Aegis-Wait": "0",
+    }
+    return stack.http.post(
+        "/v1/messages",
+        headers=headers,
+        json={
+            "model": model,
+            "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": text}],
+        },
+    )
 
 
 def _usd_used(stack: LocalStack, scope: str = CHAOS_SCOPE) -> float:
@@ -165,9 +210,18 @@ def _llm_clear(stack: LocalStack) -> None:
 
 
 def _import_usage(stack: LocalStack, usd: float, scope: str = CHAOS_SCOPE) -> None:
-    r = stack.api("POST", "/api/budgets/usage", as_="u_katarzyna",
-                  json={"scope": scope, "window": "day", "dimension": "usd", "amount": usd,
-                        "reason": "B22 self-test fast-forward"})
+    r = stack.api(
+        "POST",
+        "/api/budgets/usage",
+        as_="u_katarzyna",
+        json={
+            "scope": scope,
+            "window": "day",
+            "dimension": "usd",
+            "amount": usd,
+            "reason": "B22 self-test fast-forward",
+        },
+    )
     if r.status_code in (404, 405, 501):
         pytest.skip("POST /api/budgets/usage not available")
     assert r.status_code == 200 and r.json().get("ok"), r.text
@@ -212,7 +266,9 @@ def test_b1_exact_accounting(fresh: LocalStack) -> None:
     before = _usd_used(fresh)
     expected = 0.0
     for i in range(3):
-        r = _msg(fresh, f"Summarise the EUR/PLN move, step {i}. " + "Lorem ipsum dolor sit amet. " * 4)
+        r = _msg(
+            fresh, f"Summarise the EUR/PLN move, step {i}. " + "Lorem ipsum dolor sit amet. " * 4
+        )
         assert r.status_code == 200, r.text
         assert r.headers.get("x-aegis-budget-remaining"), dict(r.headers)
         usage = r.json().get("usage") or {}
@@ -246,9 +302,6 @@ def test_b2_soft_limit_downgrades(fresh: LocalStack) -> None:
     assert r.status_code == 200, r.text
     log = _llm_log(fresh)
     assert log, "upstream never called"
-    if log[0]["model"] == "mock-sonnet" and r.headers.get("x-aegis-decision") == "log":
-        pytest.xfail("BUD-01 reached the soft limit (on_soft=downgrade, target mock-echo resolvable) "
-                     "but _downgrade() returned None -> logged as warn; request forwarded unchanged")
     assert log[0]["model"] == "mock-echo", log[0]["model"]
     assert r.headers.get("x-aegis-downgraded-from") == "mock-sonnet", dict(r.headers)
 
@@ -276,8 +329,12 @@ def test_b3_hard_limit_402_preflight(fresh: LocalStack) -> None:
 def test_b5_max_tokens_clamped(stack: LocalStack) -> None:
     _reset(stack)
     _llm_clear(stack)
-    r = _msg(stack, "Write a haiku about risk limits.", agent="trading-copilot@trading",
-             max_tokens=100000)
+    r = _msg(
+        stack,
+        "Write a haiku about risk limits.",
+        agent="trading-copilot@trading",
+        max_tokens=100000,
+    )
     assert r.status_code == 200, r.text
     log = _llm_log(stack)
     assert log, "upstream never called"
@@ -289,17 +346,31 @@ def test_b5_max_tokens_clamped(stack: LocalStack) -> None:
 # B6 · loop breaker (EXE-04): identical tool call repeated in one session
 # --------------------------------------------------------------------------------------
 def _fetch(stack: LocalStack, session: str) -> dict:
-    body = {"interaction": {"kind": "tool_call", "surface": "tool.input", "tool_name": "web.fetch_url",
-                            "tool_args": {"url": "https://docs.acme-capital.example/rates"},
-                            "destination": {"name": "web", "dest_class": "third_party"}},
-            "identity": {"agent_id": "trading-copilot@trading"}, "session_id": session, "wait_s": 0}
+    body = {
+        "interaction": {
+            "kind": "tool_call",
+            "surface": "tool.input",
+            "tool_name": "web.fetch_url",
+            "tool_args": {"url": "https://docs.acme-capital.example/rates"},
+            "destination": {"name": "web", "dest_class": "third_party"},
+        },
+        "identity": {"agent_id": "trading-copilot@trading"},
+        "session_id": session,
+        "wait_s": 0,
+    }
     r = stack.http.post("/v1/guard", json=body)
     assert r.status_code == 200, r.text
     out = r.json()
     if out["verdict"]["action"] == "allow":
         # The SDK executes the tool itself, then settles the hop (loop history counts executed calls).
-        c = stack.http.post("/v1/guard/complete", json={
-            "decision_id": out["decision_id"], "status_code": 200, "usage": {"tool_calls": 1}})
+        c = stack.http.post(
+            "/v1/guard/complete",
+            json={
+                "decision_id": out["decision_id"],
+                "status_code": 200,
+                "usage": {"tool_calls": 1},
+            },
+        )
         assert c.status_code == 200, c.text
     return out["verdict"]
 
@@ -333,7 +404,9 @@ def test_b7_rate_limit_429() -> None:
         codes = []
         last = None
         for i in range(5):
-            last = _msg(s, f"rate probe {i}", agent="trading-copilot@trading", session=ses, max_tokens=32)
+            last = _msg(
+                s, f"rate probe {i}", agent="trading-copilot@trading", session=ses, max_tokens=32
+            )
             codes.append(last.status_code)
             if last.status_code == 429:
                 break
@@ -352,8 +425,12 @@ def test_b7_rate_limit_429() -> None:
 def test_b8_kill_switch() -> None:
     s = LocalStack(_tight_chaos, llm=True)
     try:
-        r = s.api("POST", "/api/killswitch", as_="u_marek",
-                  json={"scope": CHAOS_SCOPE, "active": True, "reason": "B22 self-test"})
+        r = s.api(
+            "POST",
+            "/api/killswitch",
+            as_="u_marek",
+            json={"scope": CHAOS_SCOPE, "active": True, "reason": "B22 self-test"},
+        )
         if r.status_code in (404, 405, 501):
             pytest.skip("POST /api/killswitch not available")
         assert r.status_code == 200 and r.json()["status"] == "applied", r.text
@@ -366,8 +443,12 @@ def test_b8_kill_switch() -> None:
         assert _msg(s, "hello", agent="trading-copilot@trading", max_tokens=32).status_code == 200
 
         # Release by a member (the sponsor) is a loosening -> pending admin approval.
-        r = s.api("POST", "/api/killswitch", as_="u_tomasz",
-                  json={"scope": CHAOS_SCOPE, "active": False, "reason": "B22 release"})
+        r = s.api(
+            "POST",
+            "/api/killswitch",
+            as_="u_tomasz",
+            json={"scope": CHAOS_SCOPE, "active": False, "reason": "B22 release"},
+        )
         assert r.status_code == 200, r.text
         res = r.json()
         assert res["status"] == "pending_approval", res
@@ -405,7 +486,10 @@ def test_b4_hard_limit_requires_approval() -> None:
         r = s.api("POST", f"/api/approvals/{apr}/approve", as_="u_marek", json={})
         assert r.status_code == 200 and r.json()["status"] == "approved", r.text
         r = _msg(s, "need more budget", max_tokens=32)
-        assert r.status_code == 200 and "Mock model received" in r.text, (r.status_code, r.text[:300])
+        assert r.status_code == 200 and "Mock model received" in r.text, (
+            r.status_code,
+            r.text[:300],
+        )
     finally:
         s.stop()
 
@@ -424,9 +508,16 @@ def test_b9_lower_limit_below_spend() -> None:
         for lim in doc["budgets"]["limits"]:
             if lim.get("scope") == CHAOS_SCOPE and lim.get("window") == "day":
                 lim.update({"usd": 0.05, "on_hard": "block"})
-        r = s.api("POST", "/api/policy/apply", as_="u_katarzyna",
-                  json={"yaml": yaml.safe_dump(doc, sort_keys=False, allow_unicode=True),
-                        "base_version": pol["version"], "reason": "B22 tighten"})
+        r = s.api(
+            "POST",
+            "/api/policy/apply",
+            as_="u_katarzyna",
+            json={
+                "yaml": yaml.safe_dump(doc, sort_keys=False, allow_unicode=True),
+                "base_version": pol["version"],
+                "reason": "B22 tighten",
+            },
+        )
         assert r.status_code == 200 and r.json()["status"] == "applied", r.text
         r = _msg(s, "after the edit", max_tokens=32)
         assert r.status_code == 402, (r.status_code, r.text[:300])

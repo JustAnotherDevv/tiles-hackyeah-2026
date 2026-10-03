@@ -7,7 +7,7 @@
 <!--
   10 print-ready 1920x1080 slides. Source of the HackTribe PDF.
   Build: uv run --frozen python docs/submission/build.py collect render --pdf
-  Placeholders {{TBD: key}} are filled from docs/submission/numbers.json; unresolved ones render as [TBD: key].
+  Placeholders (TBD: key in double braces) are filled from docs/submission/numbers.json; unresolved ones render as a visible TBD chip.
   Screenshot slots (.shot[data-src]) load docs/assets/screens/*.png when present.
   Colours/typography from staging/design tokens (system font fallbacks, no CDN).
 -->
@@ -59,6 +59,7 @@
   .kpi-l{font-size:20px;color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-top:6px}
   .tbd{color:var(--approval);font-family:var(--mono);font-size:.8em;border:1.5px dashed var(--approval);
     border-radius:8px;padding:0 8px;white-space:nowrap}
+  .kpi .tbd{font-size:24px;letter-spacing:0;vertical-align:middle}
   .shot{border:1.5px solid var(--border-strong);border-radius:16px;background:
     repeating-linear-gradient(135deg,var(--surface-1) 0 22px,var(--surface-2) 22px 44px);
     display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
@@ -136,13 +137,13 @@
 <section class="slide" id="s5">
   <div class="kicker">Hybrid guardrails · OWASP 2026</div>
   <h2>Deterministic first, AI second, every hop</h2>
-  <div class="grid g2">
+  <div class="grid g2" style="flex:none">
     <div class="card"><h3>Deterministic tier <span style="color:var(--text-3);font-weight:500">µs–ms</span></h3>
       <ul class="b"><li>Unicode normalization: zero-width, tag characters, homoglyphs, base64 / hex</li><li>Secrets, command guard (<code>curl | sh</code>), SSRF guard</li><li>MCP poisoning scan + rug-pull pinning</li><li>Exfil-link stripping · signed exploit signatures</li></ul></div>
     <div class="card"><h3>Semantic tier <span style="color:var(--text-3);font-weight:500">local models, escalation only</span></h3>
       <ul class="b"><li>Injection classifier · Qwen3Guard · multilingual NER</li><li>Per-control <code>fail_mode</code>: model down → deterministic-only + <b>degraded</b> flag, never silent pass</li><li>Screens tool results, MCP descriptions, fetched pages, not just the prompt</li><li>Never authorizes anything: tools, budgets, approvals stay deterministic</li></ul></div>
   </div>
-  <div class="grid g3" style="flex:0;margin-top:26px">
+  <div class="grid g3" style="flex:none;margin-top:26px">
     <div class="card"><div class="kpi num">{{TBD: eval.detection_rate}}</div><div class="kpi-l">attack detection (balanced)</div></div>
     <div class="card"><div class="kpi num">{{TBD: eval.fpr}}</div><div class="kpi-l">false positives (balanced)</div></div>
     <div class="card"><div class="kpi num" style="font-size:40px">LLM {{TBD: coverage.llm}} · ASI {{TBD: coverage.asi}} · MCP {{TBD: coverage.mcp}}</div><div class="kpi-l">OWASP coverage (live)</div></div>
@@ -216,7 +217,7 @@
 <section class="slide" id="s9">
   <div class="kicker">Self-testing · performance</div>
   <h2>One command proves every control</h2>
-  <div class="grid g4" style="flex:0">
+  <div class="grid g4" style="flex:none">
     <div class="card"><div class="kpi num">{{TBD: tests.total}}</div><div class="kpi-l">test cases · <code>make test</code></div></div>
     <div class="card"><div class="kpi num">{{TBD: tests.failed}}</div><div class="kpi-l">failed</div></div>
     <div class="card"><div class="kpi num">{{TBD: perf.overhead_p50_ms}} / {{TBD: perf.overhead_p95_ms}}</div><div class="kpi-l">overhead p50 / p95 ms</div></div>

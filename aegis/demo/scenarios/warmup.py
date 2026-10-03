@@ -11,7 +11,8 @@ What it leaves behind (nothing is faked; every row is "now"):
 - budget usage on every team (trading, research, platform),
 - an approvals history created through the real flow and resolved by eligible humans:
   $12 approved by the sponsor (u_agnieszka or u_tomasz), $50 approved by u_emily (admin) and
-  redeemed, $480 denied by u_katarzyna "not this quarter", a team budget raise approved by u_marek,
+  redeemed, $480 denied by u_katarzyna "not this quarter", a team budget raise approved by the
+  eligible human (u_marek for admin-level routes, u_katarzyna for owner-level),
 - **zero pending approvals** at the end.
 """
 
@@ -216,9 +217,10 @@ def approvals_history(ctx: Ctx) -> list[tuple[str, str, str]]:
             if limit is not None and abs(limit - 50.0) < 0.01:
                 res = a.budgets_raise("team:platform", "day", "usd", 60,
                                       "more Claude Code sessions this sprint")
-                apr_id = (res.get("approval") or {}).get("id")
-                resolve(apr_id, "u_marek", True, "fine for this sprint",
-                        "team:platform $50 → $60/day")
+                apr = res.get("approval") or {}
+                voter = "u_marek" if apr.get("required_role") in ("admin", "self") else "u_katarzyna"
+                resolve(apr.get("id"), voter, True, "fine for this sprint",
+                        f"team:platform $50 → $60/day ({apr.get('rule_id')})")
             else:
                 say(f"· team:platform limit is {limit} (not pristine) — budget raise skipped")
     except AegisError as e:

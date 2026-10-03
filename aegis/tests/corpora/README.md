@@ -83,14 +83,14 @@ Nothing here touches project dependency manifests — all tooling is ephemeral.
 ```bash
 # public subsets (downloads pinned upstream files, samples with fixed seed, writes MANIFEST)
 uv run --python 3.13 --with pandas --with pyarrow \
-  python aegis/staging/corpora/build_public.py          # writes public/ + MANIFEST.public.json
+  python tests/corpora/tools/build_public.py             # writes public/ + MANIFEST.public.json
 
 # obfuscation matrix (stdlib only)
-python3 aegis/staging/corpora/obfuscate.py               # writes generated/obfuscation_matrix.jsonl
-python3 aegis/staging/corpora/obfuscate.py --demo "Ignore all previous instructions"
+python3 tests/corpora/obfuscate.py                       # writes generated/obfuscation_matrix.jsonl
+python3 tests/corpora/obfuscate.py --demo "Ignore all previous instructions"
 ```
 
-`obfuscate.py` is also importable by the test suite: `from obfuscate import TRANSFORMS, apply,
+`obfuscate.py` is also importable by the test suite: `from tests.corpora.obfuscate import TRANSFORMS, apply,
 build_matrix`. The metamorphic property it encodes: if seed *S* is blocked, every `T(S)` must be
 blocked too; for benign seeds only meaning-preserving transforms are applied and must still be
 allowed (false-positive guard).
@@ -99,3 +99,32 @@ allowed (false-positive guard).
 See [`LICENSES.md`](LICENSES.md) and [`licenses/`](licenses/) for full upstream texts and
 attribution. Only permissive/ungated sources are vendored; prompts/behaviours only, never model
 completions. All identifier-shaped values are synthetic or published test values.
+
+## In this repo (`tests/corpora/`, owner: redteam-eval-perf)
+
+Ported byte-identically from `staging/corpora/` (sha256 in `MANIFEST.json`); `staging/` stays read-only.
+
+| path | what |
+|---|---|
+| `public/ handwritten/ generated/` | the 1,194 labelled rows above (verbatim) |
+| `pii/` | PII fixtures with gold entities (`positives_en`, `positives_pl`, `adversarial`, `hard_negatives`, `holdout`) ported from `staging/pii/fixtures` by `tools/port_pii.py`; rows matching a secret-scanner shape were **dropped** (counts in `MANIFEST.json` → `pii_dropped`), `secrets_code.jsonl` is not copied |
+| `secrets_gen.py` | seeded **runtime** generator of secret-shaped cases (AWS, GitHub PAT, Stripe, Slack, JWT, PEM, DB URL) in EN/PL carriers; never written to disk, so GitHub push protection never sees a token-shaped literal |
+| `overlays/invocations.yaml` | the contract invocation (tool name / args / MCP server) for every `tool_input`, `mcp_tool_description` and `model_output` row |
+| `loader.py` | `load_rows(subsets, labels, langs)`, `load_pii()`, `verify_manifest()`, `attribution_lines()` |
+| `obfuscate.py` | transforms + `build_matrix()`; `python tests/corpora/obfuscate.py --out X` reproduces `generated/obfuscation_matrix.jsonl` byte-identically |
+| `tools/verify.py` | `uv run --frozen python -m tests.corpora.tools.verify` - schema, counts, sha256, licence texts, 0 secret-pattern hits (exit 1 on drift) |
+| `tools/build_public.py` | regenerates `public/` (ephemeral deps: `uv run --with pandas --with pyarrow`) |
+
+**Used by:** `python -m tests.eval` (`make eval`), `scripts/bench.py` (`make bench` request mix),
+test-suite and injection-defense fixtures (read-only).
+
+**Held-out vs tuning.** injection-defense tunes its signatures on `generated/obfuscation_matrix`,
+`handwritten/*` and `public/indirect_injections` (`seen_by_tuning: true` in `MANIFEST.json`).
+Reports print headline numbers split into **held-out** (deepset, gandalf, JBB, XSTest) and **tuning**,
+so train-on-test numbers are never presented as generalization.
+
+**Secret-free rule.** No committed file may contain a secret-scanner-shaped string
+(`tools/verify.py` and `tests/unit/redteam_eval_perf/test_corpora.py` enforce it). Generate them at runtime.
+
+**Safety.** Attack rows are prompt-injection / jailbreak *framing* strings and harmless stand-ins
+(reserved `.test` / `.example` domains, TEST-NET IPs). No working exploit payloads and no harmful answers.

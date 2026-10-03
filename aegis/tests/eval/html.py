@@ -17,7 +17,7 @@ main{max-width:1180px;margin:0 auto}h1{font-size:24px;margin:0 0 4px}h2{font-siz
 color:var(--t1)}.sub{color:var(--t3);font-size:13px}.card{background:var(--s1);border:1px solid var(--b);
 border-radius:12px;padding:16px 18px;margin:12px 0;overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13px}th{color:var(--t3);font-weight:500;text-align:left;
-padding:6px 8px;border-bottom:1px solid var(--b);white-space:nowrap}td{padding:6px 8px;border-bottom:1px solid
+padding:6px 8px;border-bottom:1px solid var(--b);white-space:nowrap}td{padding:6px 8px;white-space:nowrap;border-bottom:1px solid
 var(--bs);vertical-align:middle}td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 .mono{font-family:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
@@ -42,6 +42,11 @@ ACTION_FILL = {"block": "var(--m-block)", "redact": "var(--m-redact)", "require_
 
 def _pct(x: float | None, nd: int = 1) -> str:
     return "not measured" if x is None else f"{x * 100:.{nd}f}%"
+
+
+def _c(x: float | None) -> str:
+    """Table cell: '–' when the group has no rows of that label."""
+    return "–" if x is None else _pct(x)
 
 
 def _ci(c: Any) -> str:
@@ -170,8 +175,8 @@ def eval_html(doc: dict[str, Any]) -> str:
                  "<th>detected</th><th class=n>benign</th><th>FPR</th></tr>")
         for k, v in bal["by_category"].items():
             b.append(f"<tr><td class=mono>{escape(k)}</td><td class=n>{v['attack']['n']}</td>"
-                     f"<td>{_pct(v['attack']['rate'])}</td><td class=n>{v['benign']['n']}</td>"
-                     f"<td>{_pct(v['benign']['fpr'])}</td></tr>")
+                     f"<td>{_c(v['attack']['rate'])}</td><td class=n>{v['benign']['n']}</td>"
+                     f"<td>{_c(v['benign']['fpr'])}</td></tr>")
         b.append("</table></div><h2>Balanced · deciding controls</h2><div class=card><table><tr><th>control</th>"
                  "<th class=n>true positives</th><th class=n>false positives</th><th class=n>deciding</th></tr>")
         for c in bal["by_control"]:
@@ -186,7 +191,7 @@ def eval_html(doc: dict[str, Any]) -> str:
                 b.append(f"<tr><td class=mono>{escape(it['id'])}</td><td class=mono>{escape(it['category'])}</td>"
                          f"<td>{escape(it['lang'])}</td><td>{_tag(it['action'])}</td>"
                          f"<td class=mono>{escape(str(it.get('control_id') or ''))}</td>"
-                         f"<td>{escape(it.get('preview') or '')}</td></tr>")
+                         f"<td style='white-space:normal'>{escape(it.get('preview') or '')}</td></tr>")
             b.append("</table></div>")
     dlp = doc.get("dlp") or {}
     if dlp.get("runs"):
@@ -264,7 +269,14 @@ def bench_html(doc: dict[str, Any]) -> str:
         b.append("</table></div>")
     rl = doc.get("reload")
     if rl:
-        b.append(f"<h2>Policy reload</h2><div class=card class=mono>{escape(str(rl))}</div>")
+        b.append("<h2>Policy reload</h2><div class=card><table><tr><th>measurement</th><th class=n>p50</th>"
+                 "<th class=n>p95</th><th class=n>n</th><th>method</th></tr>")
+        for k, v in rl.items():
+            if isinstance(v, dict):
+                b.append(f"<tr><td class=mono>{escape(k)}</td><td class=n>{ms(v.get('p50'))}</td>"
+                         f"<td class=n>{ms(v.get('p95'))}</td><td class=n>{v.get('n')}</td>"
+                         f"<td style='white-space:normal' class=sub>{escape(str(v.get('method') or ''))}</td></tr>")
+        b.append("</table></div>")
     models = doc.get("models") or []
     if models:
         b.append("<h2>Model latency</h2><div class=card><table><tr><th>model</th><th>role</th><th class=n>p50</th>"

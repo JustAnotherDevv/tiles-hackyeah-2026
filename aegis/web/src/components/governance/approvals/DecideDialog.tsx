@@ -1,6 +1,7 @@
 // Approve (optional comment) / Deny (required reason ≥ 3 chars + preset chips) dialog.
 // POST /api/approvals/{id}/approve|deny?view_as=… → result toast (id apr-<id>); 403 shown verbatim.
 // Owner: B18-dashboard-gov-approvals.
+import { displayTitle } from '@/components/governance/lib/format-gov';
 import { Check, LoaderCircle, X } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -72,7 +73,7 @@ export function DecideDialog({ req, mode, open, onOpenChange, viewer, viewerName
             {deny ? <X className="size-4 text-block" /> : <Check className="size-4 text-allow" />}
             {deny ? 'Deny request' : approveLabel(req, viewer, { sponsorId })}
           </DialogTitle>
-          <DialogDescription className="text-text-2">{req.title}</DialogDescription>
+          <DialogDescription className="text-text-2">{displayTitle(req.title)}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center gap-2 text-xs text-text-3">
           <ApproverBadge level={req.required_role} size="sm" />

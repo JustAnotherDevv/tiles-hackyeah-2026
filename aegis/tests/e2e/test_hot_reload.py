@@ -46,23 +46,39 @@ class LocalStack:
 
         self.tmp = Path(tempfile.mkdtemp(prefix="aegis-b22-"))
         self._env = pytest.MonkeyPatch()
-        for k, v in {"AEGIS_TEST_MODE": "1", "AEGIS_SEMANTIC": "off",
-                     "AEGIS_DATA_DIR": str(self.tmp / "data"), "AEGIS_FEED_URL": "disabled"}.items():
+        for k, v in {
+            "AEGIS_TEST_MODE": "1",
+            "AEGIS_SEMANTIC": "off",
+            "AEGIS_DATA_DIR": str(self.tmp / "data"),
+            "AEGIS_FEED_URL": "disabled",
+        }.items():
             self._env.setenv(k, v)
         self.llm = None
         if llm:
             from mocks.mock_llm.app import create_app as llm_app
 
             self.llm = ThreadedUvicorn(llm_app(data_dir=self.tmp / "llm"), name="mock-llm").start()
-        src = ROOT / "config" / "policy.yaml"
-        if not src.exists():
-            pytest.skip("config/policy.yaml missing")
+        # Golden copy first (plan 18 §2.3): live edits to config/policy.yaml never leak in.
+        src = next(
+            (
+                p
+                for p in (ROOT / "config" / "policy.golden.yaml", ROOT / "config" / "policy.yaml")
+                if p.exists()
+            ),
+            None,
+        )
+        if src is None:
+            pytest.skip("no policy (config/policy.golden.yaml missing)")
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
-            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")}
+            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
+        }
         # Distinct grants per test: identical calls within redeem_window_s count as one use.
         doc["approvals"]["defaults"]["redeem_window_s"] = 0.001
-        doc.setdefault("budgets", {})["rate"] = {"requests_per_min": 100000, "tool_calls_per_min": 100000}
+        doc.setdefault("budgets", {})["rate"] = {
+            "requests_per_min": 100000,
+            "tool_calls_per_min": 100000,
+        }
         if self.llm is not None:
             doc["providers"]["mock-anthropic"]["base_url"] = self.llm.url
             doc["providers"]["mock-openai"]["base_url"] = self.llm.url + "/v1"
@@ -78,9 +94,15 @@ class LocalStack:
                 from aegis.settings import get_settings
 
                 get_settings.cache_clear()
-            settings = Settings(data_dir=self.tmp / "data", policy=self.policy_path,
-                                ui_dist=self.tmp / "dist", test_mode=True, semantic="off",
-                                feed_url="disabled", hmac_key="b22-" + uuid.uuid4().hex)
+            settings = Settings(
+                data_dir=self.tmp / "data",
+                policy=self.policy_path,
+                ui_dist=self.tmp / "dist",
+                test_mode=True,
+                semantic="off",
+                feed_url="disabled",
+                hmac_key="b22-" + uuid.uuid4().hex,
+            )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
         except Exception as exc:  # boot error -> skip, never a red herring failure
@@ -110,12 +132,17 @@ class LocalStack:
             headers["X-Aegis-View-As"] = as_
         return self.http.request(method, path, headers=headers, **kw)
 
-    def guard(self, interaction: dict, agent: str | None = None, member: str | None = None,
-              **extra: Any) -> dict:
+    def guard(
+        self, interaction: dict, agent: str | None = None, member: str | None = None, **extra: Any
+    ) -> dict:
         ident = {k: v for k, v in (("agent_id", agent), ("member_id", member)) if v}
-        body = {"interaction": interaction, "identity": ident or None,
-                "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
-                "wait_s": 0, **extra}
+        body = {
+            "interaction": interaction,
+            "identity": ident or None,
+            "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
+            "wait_s": 0,
+            **extra,
+        }
         r = self.http.post("/v1/guard", json=body)
         assert r.status_code == 200, r.text
         return r.json()
@@ -131,7 +158,7 @@ def gen_pesel() -> str:
     digits = [8, 5, 0, 7, 1, 2] + [random.randint(0, 9) for _ in range(4)]
     weights = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
     check = (10 - sum(d * w for d, w in zip(digits, weights, strict=True)) % 10) % 10
-    return "".join(map(str, digits + [check]))
+    return "".join(map(str, [*digits, check]))
 
 
 # ---- policy helpers -------------------------------------------------------------------
@@ -150,12 +177,18 @@ def _dump(doc: dict) -> str:
     return yaml.safe_dump(doc, sort_keys=False, allow_unicode=True)
 
 
-def _apply_text(s: LocalStack, text: str, base: int | None = None, as_: str = OWNER) -> httpx.Response:
+def _apply_text(
+    s: LocalStack, text: str, base: int | None = None, as_: str = OWNER
+) -> httpx.Response:
     if base is None:
         base = _policy(s)["version"]
     t0 = time.perf_counter()
-    r = s.api("POST", "/api/policy/apply", as_=as_, json={"yaml": text, "base_version": base,
-                                                         "reason": "B22 hot-reload self-test"})
+    r = s.api(
+        "POST",
+        "/api/policy/apply",
+        as_=as_,
+        json={"yaml": text, "base_version": base, "reason": "B22 hot-reload self-test"},
+    )
     if r.status_code in (404, 405, 501):
         pytest.skip("POST /api/policy/apply not available")
     if r.status_code == 200 and r.json().get("status") == "applied":
@@ -185,11 +218,19 @@ def _record_perf() -> None:
 
 
 def _prompt(s: LocalStack, text: str) -> tuple[dict, httpx.Response]:
-    body = {"interaction": {"kind": "model_call", "surface": "model.request", "direction": "out",
-                            "destination": {"name": "mock-anthropic", "dest_class": "remote"},
-                            "model": "mock-echo", "text": text},
-            "identity": {"agent_id": "trading-copilot@trading"},
-            "session_id": f"ses_b22_{uuid.uuid4().hex[:8]}", "wait_s": 0}
+    body = {
+        "interaction": {
+            "kind": "model_call",
+            "surface": "model.request",
+            "direction": "out",
+            "destination": {"name": "mock-anthropic", "dest_class": "remote"},
+            "model": "mock-echo",
+            "text": text,
+        },
+        "identity": {"agent_id": "trading-copilot@trading"},
+        "session_id": f"ses_b22_{uuid.uuid4().hex[:8]}",
+        "wait_s": 0,
+    }
     r = s.http.post("/v1/guard", json=body)
     assert r.status_code == 200, r.text
     return r.json()["verdict"], r
@@ -226,7 +267,12 @@ def restore(stack: LocalStack) -> Iterator[LocalStack]:
     yield stack
     if _policy(stack)["version"] != v0:
         with contextlib.suppress(Exception):
-            stack.api("POST", "/api/policy/rollback", as_=OWNER, json={"version": v0, "reason": "B22 restore"})
+            stack.api(
+                "POST",
+                "/api/policy/rollback",
+                as_=OWNER,
+                json={"version": v0, "reason": "B22 restore"},
+            )
 
 
 # --------------------------------------------------------------------------------------
@@ -261,7 +307,9 @@ def test_c2_matrix_cell_flip(restore: LocalStack) -> None:
 
     _edit(s, lambda d: d["destinations"]["matrix"]["CONFIDENTIAL"].update(remote="block"))
     v, _ = _prompt(s, text)
-    assert v["action"] == "block" and (v.get("primary") or {}).get("control_id") == "DLP-01", v.get("primary")
+    assert v["action"] == "block" and (v.get("primary") or {}).get("control_id") == "DLP-01", v.get(
+        "primary"
+    )
 
 
 # --------------------------------------------------------------------------------------
@@ -276,7 +324,9 @@ def test_c3_control_action_change(restore: LocalStack) -> None:
     _edit(s, lambda d: _control(d, "DLP-01").update(action="block"))
     v, _ = _prompt(s, text)
     if v["action"] == "redact":
-        pytest.xfail("DLP-01 follows destinations.matrix cells; control `action: block` does not override redact")
+        pytest.xfail(
+            "DLP-01 follows destinations.matrix cells; control `action: block` does not override redact"
+        )
     assert v["action"] == "block", v.get("primary")
 
 
@@ -320,7 +370,9 @@ def test_c5_threshold_flip(restore: LocalStack) -> None:
             text, score = cand, sc
             break
     if text is None:
-        pytest.xfail("heuristic score 0 (INJ-02 heuristic scores none of the mild prompts in (0, 0.99))")
+        pytest.xfail(
+            "heuristic score 0 (INJ-02 heuristic scores none of the mild prompts in (0, 0.99))"
+        )
     _edit(s, lambda d: _control(d, "INJ-02").update(threshold=max(0.01, round(score / 2, 3))))
     v, _ = _prompt(s, text)
     assert _blocked_by(v, "INJ-02"), _by(v, "INJ-02")
@@ -344,7 +396,9 @@ def test_c6_invalid_yaml_rejected(stack: LocalStack) -> None:
     v, _ = _prompt(stack, f"key {gen_aws_key_id()}")
     assert _blocked_by(v, "DLP-02"), v.get("primary")
 
-    r = stack.api("GET", "/api/audit", as_=OWNER, params={"event_type": "policy.rejected", "limit": 50})
+    r = stack.api(
+        "GET", "/api/audit", as_=OWNER, params={"event_type": "policy.rejected", "limit": 50}
+    )
     if r.status_code == 200:
         assert r.json().get("items"), "no policy.rejected audit event"
 
@@ -371,7 +425,8 @@ def test_c8_selftest_gate(stack: LocalStack) -> None:
     pol = _policy(stack)
     doc = yaml.safe_load(pol["yaml"])
     doc.setdefault("tests", []).append(
-        {"name": "b22-bogus", "text": "hello there", "expect": "block", "control": "DLP-02"})
+        {"name": "b22-bogus", "text": "hello there", "expect": "block", "control": "DLP-02"}
+    )
     text = _dump(doc)
     r = stack.api("POST", "/api/policy/validate", as_=OWNER, json={"yaml": text})
     if r.status_code in (404, 501):
@@ -398,12 +453,26 @@ def test_c9_custom_rule_with_tests(restore: LocalStack) -> None:
     def add_rule(doc: dict) -> None:
         c = _control(doc, "CUS-01")
         c.setdefault("params", {}).setdefault("rules", []).append(
-            {"id": "orion", "text": "Orion is confidential", "keywords": [code], "action": "block"})
-        c.setdefault("tests", []).extend([
-            {"name": "orion-blocked", "text": f"Send the {code} deck", "destination": "remote",
-             "expect": "block", "control": "CUS-01"},
-            {"name": "orion-benign", "text": "The Orion constellation is visible tonight",
-             "destination": "remote", "expect": "allow", "control": "CUS-01"}])
+            {"id": "orion", "text": "Orion is confidential", "keywords": [code], "action": "block"}
+        )
+        c.setdefault("tests", []).extend(
+            [
+                {
+                    "name": "orion-blocked",
+                    "text": f"Send the {code} deck",
+                    "destination": "remote",
+                    "expect": "block",
+                    "control": "CUS-01",
+                },
+                {
+                    "name": "orion-benign",
+                    "text": "The Orion constellation is visible tonight",
+                    "destination": "remote",
+                    "expect": "allow",
+                    "control": "CUS-01",
+                },
+            ]
+        )
 
     _edit(s, add_rule)
     v, _ = _prompt(s, f"Draft the {code} board memo")

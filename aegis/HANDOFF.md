@@ -34,50 +34,24 @@ Requirements & product vision: `docs/BRIEF.md`.
 | Research (7 reports) | `/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/research/goldman/01…07` |
 | Downloaded models (gitignored) | `models/`; Ollama aliases `aegis-guard` (Qwen3Guard-0.6B), `aegis-judge` (Qwen3.5-0.8B), plus `qwen3:0.6b` |
 
-## Snapshot (orchestrator-maintained) — last update Sat 23:20 (ALL AGENTS STOPPED by user request)
+## Snapshot (orchestrator-maintained) — last update Sun 00:10
 | Phase | Status |
 |---|---|
-| 0 Research (7 reports) | ✅ done |
-| 1 Staging artifacts (10 packages) | ✅ done, all tested |
-| 2 Contracts (`docs/CONTRACTS.md`) | ✅ done |
-| 3 Workstream plans | ✅ 20/20 done (`docs/plan/01…20-*.md`) |
-| 4 Synthesis | ✅ **Addendum A** (A-01…A-58, at the END of `docs/CONTRACTS.md`, from ~line 3491; overrides earlier text) + seed fixes SF-01…SF-27 in `docs/seed-fixes/`; `docs/MASTER_PLAN.md`, `docs/TASKS.md` (365 tasks + 269 verifications + INT-01..16 / KI-01..05), `docs/plan/BUNDLES.json` (25 bundles), `docs/plan/DEPENDENCIES.json` |
-| 5 Scaffold | ✅ commit `d02636d` — `make setup`, `make gateway`, `make web`, `make test` |
-| 6 Build fleet | 🟡 **PARTIAL.** Wave 1 (B01–B20) ran ~20 min (22:55–23:17) and was stopped mid-task. ~565 files written, all uncommitted work is saved in WIP commit (see Progress log). **No bundle finished; no `docs/status/*.md` written yet.** Wave 2 (B21–B25) not started. |
-| 7 Integration & verification | ⏳ not started |
-| 8 Submission | ⏳ not started (drafts in `staging/submission/`) |
+| 0–5 Research → scaffold | ✅ done |
+| 6 Build wave 1 (B01–B20) | ✅ **all 20 finished** (Sat 23:25–Sun 00:08), each with `docs/status/<ID>.md`; committed `494cf7e` |
+| 6 Build wave 2 (B21–B25) | 🟡 running (B21 harness, B22 functional, B23 demo agents, B24 eval/perf, B25 docs) |
+| 7 Integration & verification | 🟡 starting: snippet merge, Makefile targets, cross-bundle fixes, live stack, demo scenes F1–F10 |
+| 8 Submission | ⏳ (B25 drafting final docs; numbers from reports/* only) |
+| Huawei "Aegis Pocket" | 🟡 app being built on branch `feature/aegis-pocket` in parent repo (see ../HUAWEI_HANDOFF.md) |
 
-**Health at stop (23:17):** `uv run --frozen python -c "import aegis, aegis.app"` ✅ · `python -m compileall src` ✅ · `cd web && npm run build` ✅ (bundle 1.07 MB, fine). Unit tests not run.
-
-### Bundle state at stop (resume each from here — don't redo)
-| Bundle | Files | Done (from logs) | Was doing when stopped → next |
-|---|---|---|---|
-| B01-gateway-core | 25 | GW-01..06 importable: settings, log, core.{crypto,paths,errors,deps,runtime,nulls,bus,db,sessions,discovery,pipeline}, `app.create_app` (+`route_table`); gateway boots with Null fallbacks. NOTE FastAPI 0.142: use `aegis.app.route_table(app)` | bus/events tests → routes health/events/guard/playground/ui, CLI, tests; apply Addendum A-01/06/07/08 |
-| B02-gateway-proxy | 28 | GW-08/09/10: core/timing, proxy/{router,upstream,blocking,sse,streaming,jpath,flow}, adapters anthropic/openai/ollama, routes proxy_anthropic/openai/ollama, `config/snippets/core-gateway.yaml`; Addendum applied | main proxy test GW-V08/V09 → remaining tests, GW-16 optional |
-| B03-policy-engine | 19 | POL-02: `config/policy.yaml` (+golden) from seed-fixes, 39 controls, 82 inline tests, validates clean; `config/profiles/{permissive,balanced,strict,paranoid}.yaml` | → POL-01/05 store + routes, hot reload, self-test gate, governed apply |
-| B04-redaction-engine | 38 | engine skeleton + detectors ported (details not logged) | smoke test → verify RED tasks vs plan 03, tests |
-| B05-metadata-egress | 29 | META-01/02 done, META-03 control written; Addendum adopted | DLP-06 tests → META-04..08, `/egress` |
-| B06-injection-defense | 12 | INJ skeleton (aegis.injection.normalize + control stubs) | mid-edit → INJ tasks per plan 05 |
-| B07-semantic-models | 16 | SEM-02/06/07/08/09: heuristic, resilience, ONNX/embeddings (shared XLM-R vocab), Ollama guard, engine w/ cache+breakers; live p50: horizon 13 ms, minilm 1.4 ms, ner 5.7 ms, guard 227 ms | CUS-01 → INJ-03/CUS-01 controls, snippet, tests |
-| B08-budgets-ledger | 23 | BUD-02..09: pricing.yaml, ledger reserve/settle, SQLite write-behind + demo seed, BUD-01/02/EXE-04 controls (kill=429 per A-07), `/api/budgets*`, `/api/killswitch` | route file → snippet + unit tests |
-| B09-org-rbac | 25 | ORG-01 interfaces (aegis.org.service, aegis.org.seed, routes/org.py, GOV-01/02); `config/org.seed.yaml` from seed-fixes | reading Addendum → ORG-02.. + tests |
-| B10-approvals-engine | 22 | full ApprovalService, GOV-05, `api/routes/approvals.py` | unit tests (conftest fakes) → snippet + tests |
-| B11-action-guards | 24 | ACT-01: `aegis.actions.classify`, 9 controls (GOV-03/04, ACT-01..04, EXE-01..03) with stub evaluate | controls (shell analysis, taint helpers) → ACT-02..07 |
-| B12-mcp-proxy | 33 | MCP-01..07 surfaces importable (aegis.mcp.*, controls MCP-01..04, routes mcp.py/mcp_admin.py) | MCP-04 control → mock_mcp servers + tests |
-| B13-claude-code | 21 | CC-01: route `POST /v1/hooks/claude-code` (+status), integrations/claude_code/*, `scripts/aegis-hook` fail-closed | apply Addendum (deny prefix `[Aegis] <ID>: `, 600 s completion, meta.cwd, GOV-06 real control, response headers) → profile.py, tests |
-| B14-threat-feed | 50 | TI-01..04: matchers (87/87 vectors), feed_service/signatures (21, TI-022 draft), keygen → `config/feeds/feed_pubkey.b64` + seed bundle; private key only in `feed_service/state/` (must stay gitignored) | feed_service/build.py → FeedManager TI-06, SIG-01, routes |
-| B15-audit-metrics | 20 | AUD skeleton (not logged in detail) | reading Addendum → AUD tasks per plan 14 |
-| B16-dashboard-shell | 68 | UIS-01..06 public surface STABLE (`@/api/client`, `@/api/sse`, `@/api/hooks`, `@/components/shell`, `@/components/charts`, `@/lib/colors`, Button/Badge variants). Shell toasts SSE events (pages must not) | charts BarList/Gauge → app frame + overview page |
-| B17-dashboard-security | 37 | UIX-01 foundations (types, libs, atoms, mocks) | UIX-03 decision trace drawer → rest of plan 16 |
-| B18-dashboard-gov-approvals | 28 | UIG-01: components/governance/*, mocks/governance/* (govStore API for B19), 3 page stubs | UIG-02 approvals inbox → rest |
-| B19-dashboard-gov-policy | 19 | budgets page + policy editor in progress | policy page state hook (UIG-04) → rest |
-| B20-demo-stack | 8 | DEMO-01 SDK surface (`aegis.sdk` AegisClient/AegisAdmin, mocks/__init__ helpers) | mock_llm → rest of plan 20 |
-| B21–B25 (wave 2) | 0 | not started | start after wave 1 |
-
-### Known issues (still open)
-- BEFORE FIRST PUSH: `staging/pii/fixtures` (in commit d02636d) contains realistic fake keys (sk_live_, ghp_, sk-ant-) → GitHub push protection will block. Integrator: drop secret-shaped fixtures from history and generate them at runtime (plan 19 approach). Also confirm `feed_service/state/` (feed private key) is gitignored.
-- Each workstream ships a policy snippet under `config/snippets/` — the integrator must merge them into `config/policy.yaml` (see MASTER_PLAN critical path / INT tasks).
-- Two-person = owner + a different admin (A-xx); kill switch = 429 "killed" (never 403); budget stop = 402; policy block on model proxies = synthetic 200 (A-07).
+### Integration todos collected from status files (Phase 7)
+- Merge `config/snippets/*` → `config/policy.yaml` with `uv run --frozen python -m aegis.policy.snippets merge` (B03 rehearsal: 16 snippets, 183 self-tests green). Sync `docs/seed-fixes/policy.yaml` (on_soft: warn for chaos-agent; poisoned-stdio server).
+- Fix `src/aegis/injection/canary.py:55` IndexError (INJ-04 internal error → allow) (B03 report).
+- `/healthz`: feed state `seed` should count as ok (B01). EXE-03 live entry lacks `action` (B11). DLP-03 legacy params (B05). SIG-02 params + `ollama_op` on Ollama route; start feed before gateway (B14). org-rbac approval rules at top of `approvals.rules` (B09).
+- Makefile targets: `up demo demo-preflight demo-reset stack-check` (B20), test/eval/bench (B21/B24), `claude` (B13). Run `demo/claude/reset.sh --clean` before commits (B13).
+- Demo scene 4: INJ-02 threshold 0.80 in snippet; the scene prompt scores 0.70 with semantic off — align runbook/playground preset "Borderline" (B06/B17).
+- Dashboard: shell page registry "Cannot access 'meta' before initialization" after hot edits only (B17); render `meta.inj` (B06).
+- Before first push: drop secret-shaped fixtures in `staging/pii/fixtures` (commit d02636d) from history; `feed_service/state/` is ignored (.gitignore:21).
 
 ## How to continue — with parallel agents (for a fresh orchestrator)
 1. Read this file → `docs/BRIEF.md` → `docs/MASTER_PLAN.md` → `docs/plan/BUNDLES.json` → `docs/plan/_IMPLEMENTER_INSTRUCTIONS.md`. Check `git log` and the Progress log tail.
@@ -230,3 +204,15 @@ Requirements & product vision: `docs/BRIEF.md`.
 - [00:03] [B17-dashboard-security] DONE: UIX-01..15 done (+UIX-18 ChainBlocks); 7 pages under /security/*; tsc 0 errors, eslint 0 errors, node lib tests 10/10, mock scenarios checked in browser (5188). Not done: UIX-16/17, sig sparklines. Status: docs/status/B17-dashboard-security.md (integration_todos: confirm presets live, B16 HMR registry cycle)
 - [00:04] [B22-test-suite-functional] TEST-15 test_audit_privacy.py 6/6 pass (chain verify, exports admin-only, 0 raw PESEL/PAN/AWS/email hits in data dir+exports+decisions, byte-flip detected); next TEST-16 errors
 - [00:04] [B03-policy-engine] DONE musts+POL-12/13/14/16. tests/unit/policy_engine 38 passed, ruff clean, V02/V04/V09/V10 ok. Snippet merge: 'uv run --frozen python -m aegis.policy.snippets merge' (rehearsed: 16 snippets, 395 changes, 0 errors, merged policy 183/183 self-tests) - NOT run on live policy (integrator). Fixed self-test headers extra + profile-switch gate. Bugs for others: injection/canary.py:55 IndexError (INJ-04 degrades). Status: docs/status/B03-policy-engine.md
+- [00:05] [orchestrator] Wave 1 complete (20/20 status files); committed 494cf7e. Phase 7 integration starting; wave 2 still running.
+- [00:06] [B22-test-suite-functional] TEST-16 done: tests/cases/errors.yaml (7 cases, schema-valid; 6 pass + MCP case skips w/o upstream) + test_errors.py 10/10; next TEST-19 streaming/egress
+- [00:08] [B21-test-suite-harness] DONE TEST-01..08,13,17,18,20,21(light). make test-e2e 33.5 s / 267 MB: 937 matrix entries, 873 pass, 15 pass_other, 45 xfail, 0 UNTESTED, 3 core FAIL = product gaps (CUS-01 PL no-diacritics [B07], DLP-04 DNS-label exfil [B05], SIG-01 TI-019 mention-vs-use FP [B14]); also injection/canary.py:55 IndexError [B06]. Reports in reports/. Status: docs/status/B21-test-suite-harness.md
+- [00:08] [B22-test-suite-functional] TEST-19 test_streaming_egress.py 6/6 pass (SSE well-formed w/o key, md beacon stripped + sink 0, canary, openai usage, /egress DLP-04 403 + benign 200 sink 1); next could TEST-22/23
+- [00:09] [INT-A] INT-05 snippet merge done: 16 snippets, 395 changes, 0 errors; config/policy.yaml == golden; legacy DLP-03 strip_body_fields dropped; selftest 183/183 (gate 0); canary.py IndexError fixed; seed-fixes synced (chaos on_soft warn, poisoned-stdio)
+- [00:09] [B23-demo-agents] DEMO-12 scenes s1-s8 + run.py + tail.py + PROMPTS.md + payloads/{pii,aws_key(template+render.py),setup_md,ti022,curl_sh}.json; V13 rehearsal on private stack (+private feed copy): s1,s3,s4,s5(+tamper),s6,s7,s8 PASS, s2 fixed (PostToolUse neutralise parsed) PASS. next: unit tests, research agent
+- [00:10] [B24-redteam-eval-perf] EVAL-01..13 done (09 semantic implemented, not run - no models), 14 partial, 15/16 skipped. V01-V06,V08-V10,V12 pass (44 unit tests). make eval --quick ~6 s, make bench --quick ~14 s; real det reports in reports/ (eval/heatmap/bench/deck_numbers). Integrator: final 'make eval && make bench' with models; todos in docs/status/B24-redteam-eval-perf.md (INJ-04 canary IndexError, IP/MAC not redacted in DLP leg).
+- [00:14] [B22-test-suite-functional] TEST-22 (test_semantic.py + fixtures/corpora/semantic_gate.jsonl, skips when off) + TEST-23 (test_reload_watch.py slow, 3/3 + latency smoke) done. REGRESSION (not mine): config/policy.yaml 00:08 added 2 more 'session:*' limit entries -> /api/budgets/raise 60->75 diff now includes spurious budget.remove(session:*) changes -> rule raise-other (owner) instead of raise-team-small (admin): F5 demo flow broken; test_a9_budget_raise_governed FAILS (owners: B03 diff/selectors or B08 raise patch)
+- [00:16] [B22-test-suite-functional] DONE: TEST-09/10/11/12/14/15/16/19/22/23 (TEST-24 skipped: A-53 gives /api/selftest to audit-metrics). All 10 owned e2e modules together: 79 cases 76 pass / 2 xfail (view-as agent->owner fallback B09; INJ-02 heuristic score 0) / 1 skip (semantic off), 44 s, 267 MB; ruff clean. 00:08 budget-raise regression resolved by 00:14 policy. Bug for B06: injection/canary.py:53 IndexError. Status docs/status/B22-test-suite-functional.md
+- [00:16] [B25-docs-submission] DONE must+should (DEMO-08/09/14/15; DEMO-16 pipeline ready, real pass pending final reports; DEMO-18 partial: video/cards.html+captions.srt). V14 pytest tests/unit/docs_submission 22 pass + build.py --check OK; V15 10-page PDF docs/submission/out/ (numbers [TBD]); 4 sample policies validate + selftest pass. Final pass: build.py collect --url :8787 && render --pdf --check && apply. Status: docs/status/B25-docs-submission.md
+- [00:19] [INT-A] fixes: X-Aegis-View-As unknown/agent id -> anonymous viewer (never owner) + regression tests (org_rbac unit, B22 A3 xfail flipped to hard assert, 16/16); DLP-04 base64url DNS labels (host was lowercased before decoding); TI-019 skips quoted mentions + new 'feed_service reseed' cmd re-signed seed bundle (same key b147d42c, 20 sigs); profile knobs the merge pinned were unpinned (15) so profiles still vary; policy diff keys budgets.limits by match_agents (F5 raise no longer emits budget.remove); healthz feed seed=ok; ollama_op meta. heuristic.py NOT touched (DET owns).
+- [00:19] [B23-demo-agents] DONE DEMO-06/10/11/12/13 (DEMO-17 cut: planner is B20 path). V08 V09 V11(41/41) V12 PASS; V10 PASS needs config/policy.yaml:170 on_soft: warn; V13 8/9 PASS (s8 FAIL = B03/B08 raise routing bug: pristine policy -> 'session:* limit removed' -> raise-other/owner). 22 unit tests pass, ruff clean, stack stopped. Status + Makefile alias lines: docs/status/B23-demo-agents.md

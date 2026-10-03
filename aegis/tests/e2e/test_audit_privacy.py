@@ -42,23 +42,39 @@ class LocalStack:
 
         self.tmp = Path(tempfile.mkdtemp(prefix="aegis-b22-"))
         self._env = pytest.MonkeyPatch()
-        for k, v in {"AEGIS_TEST_MODE": "1", "AEGIS_SEMANTIC": "off",
-                     "AEGIS_DATA_DIR": str(self.tmp / "data"), "AEGIS_FEED_URL": "disabled"}.items():
+        for k, v in {
+            "AEGIS_TEST_MODE": "1",
+            "AEGIS_SEMANTIC": "off",
+            "AEGIS_DATA_DIR": str(self.tmp / "data"),
+            "AEGIS_FEED_URL": "disabled",
+        }.items():
             self._env.setenv(k, v)
         self.llm = None
         if llm:
             from mocks.mock_llm.app import create_app as llm_app
 
             self.llm = ThreadedUvicorn(llm_app(data_dir=self.tmp / "llm"), name="mock-llm").start()
-        src = ROOT / "config" / "policy.yaml"
-        if not src.exists():
-            pytest.skip("config/policy.yaml missing")
+        # Golden copy first (plan 18 §2.3): live edits to config/policy.yaml never leak in.
+        src = next(
+            (
+                p
+                for p in (ROOT / "config" / "policy.golden.yaml", ROOT / "config" / "policy.yaml")
+                if p.exists()
+            ),
+            None,
+        )
+        if src is None:
+            pytest.skip("no policy (config/policy.golden.yaml missing)")
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
-            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")}
+            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
+        }
         # Distinct grants per test: identical calls within redeem_window_s count as one use.
         doc["approvals"]["defaults"]["redeem_window_s"] = 0.001
-        doc.setdefault("budgets", {})["rate"] = {"requests_per_min": 100000, "tool_calls_per_min": 100000}
+        doc.setdefault("budgets", {})["rate"] = {
+            "requests_per_min": 100000,
+            "tool_calls_per_min": 100000,
+        }
         if self.llm is not None:
             doc["providers"]["mock-anthropic"]["base_url"] = self.llm.url
             doc["providers"]["mock-openai"]["base_url"] = self.llm.url + "/v1"
@@ -74,9 +90,15 @@ class LocalStack:
                 from aegis.settings import get_settings
 
                 get_settings.cache_clear()
-            settings = Settings(data_dir=self.tmp / "data", policy=self.policy_path,
-                                ui_dist=self.tmp / "dist", test_mode=True, semantic="off",
-                                feed_url="disabled", hmac_key="b22-" + uuid.uuid4().hex)
+            settings = Settings(
+                data_dir=self.tmp / "data",
+                policy=self.policy_path,
+                ui_dist=self.tmp / "dist",
+                test_mode=True,
+                semantic="off",
+                feed_url="disabled",
+                hmac_key="b22-" + uuid.uuid4().hex,
+            )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
         except Exception as exc:  # boot error -> skip, never a red herring failure
@@ -106,12 +128,17 @@ class LocalStack:
             headers["X-Aegis-View-As"] = as_
         return self.http.request(method, path, headers=headers, **kw)
 
-    def guard(self, interaction: dict, agent: str | None = None, member: str | None = None,
-              **extra: Any) -> dict:
+    def guard(
+        self, interaction: dict, agent: str | None = None, member: str | None = None, **extra: Any
+    ) -> dict:
         ident = {k: v for k, v in (("agent_id", agent), ("member_id", member)) if v}
-        body = {"interaction": interaction, "identity": ident or None,
-                "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
-                "wait_s": 0, **extra}
+        body = {
+            "interaction": interaction,
+            "identity": ident or None,
+            "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
+            "wait_s": 0,
+            **extra,
+        }
         r = self.http.post("/v1/guard", json=body)
         assert r.status_code == 200, r.text
         return r.json()
@@ -121,7 +148,7 @@ class LocalStack:
 def _pesel() -> str:
     d = [9, 2, 0, 3, 1, 5] + [random.randint(0, 9) for _ in range(4)]
     w = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
-    return "".join(map(str, d + [(10 - sum(a * b for a, b in zip(d, w, strict=True)) % 10) % 10]))
+    return "".join(map(str, [*d, (10 - sum(a * b for a, b in zip(d, w, strict=True)) % 10) % 10]))
 
 
 def _pan() -> str:
@@ -130,11 +157,13 @@ def _pan() -> str:
     for i, dgt in enumerate(reversed(body)):
         x = dgt * 2 if i % 2 == 0 else dgt
         total += x - 9 if x > 9 else x
-    return "".join(map(str, body + [(10 - total % 10) % 10]))
+    return "".join(map(str, [*body, (10 - total % 10) % 10]))
 
 
 def _aws_key() -> str:
-    return "AK" + "IA" + "".join(random.choice(string.ascii_uppercase + "234567") for _ in range(16))
+    return (
+        "AK" + "IA" + "".join(random.choice(string.ascii_uppercase + "234567") for _ in range(16))
+    )
 
 
 def _email() -> str:
@@ -155,20 +184,47 @@ def secrets(stack: LocalStack) -> dict[str, str]:
     """Drive traffic carrying sensitive values through guard, proxy and hook surfaces."""
     vals = {"pesel": _pesel(), "pan": _pan(), "aws": _aws_key(), "email": _email()}
     agent = {"X-Aegis-Agent": "trading-copilot@trading"}
-    for text in (f"Client PESEL {vals['pesel']}, email {vals['email']}",
-                 f"Card {vals['pan']} for the refund",
-                 f"use key {vals['aws']} for the deploy"):
-        stack.http.post("/v1/guard", json={
-            "interaction": {"kind": "model_call", "surface": "model.request", "direction": "out",
-                            "destination": {"name": "mock-anthropic", "dest_class": "remote"},
-                            "model": "mock-echo", "text": text},
-            "identity": {"agent_id": "trading-copilot@trading"}, "wait_s": 0})
-        stack.http.post("/v1/messages", headers=agent, json={
-            "model": "mock-echo", "max_tokens": 64, "messages": [{"role": "user", "content": text}]})
-    stack.http.post("/v1/hooks/claude-code", headers={"X-Aegis-Agent": "claude-code@platform"}, json={
-        "session_id": str(uuid.uuid4()), "transcript_path": "/tmp/aegis-demo/t.jsonl", "cwd": "/tmp/aegis-demo",
-        "permission_mode": "default", "hook_event_name": "UserPromptSubmit",
-        "prompt": f"deploy with {vals['aws']} and email {vals['email']}"})
+    for text in (
+        f"Client PESEL {vals['pesel']}, email {vals['email']}",
+        f"Card {vals['pan']} for the refund",
+        f"use key {vals['aws']} for the deploy",
+    ):
+        stack.http.post(
+            "/v1/guard",
+            json={
+                "interaction": {
+                    "kind": "model_call",
+                    "surface": "model.request",
+                    "direction": "out",
+                    "destination": {"name": "mock-anthropic", "dest_class": "remote"},
+                    "model": "mock-echo",
+                    "text": text,
+                },
+                "identity": {"agent_id": "trading-copilot@trading"},
+                "wait_s": 0,
+            },
+        )
+        stack.http.post(
+            "/v1/messages",
+            headers=agent,
+            json={
+                "model": "mock-echo",
+                "max_tokens": 64,
+                "messages": [{"role": "user", "content": text}],
+            },
+        )
+    stack.http.post(
+        "/v1/hooks/claude-code",
+        headers={"X-Aegis-Agent": "claude-code@platform"},
+        json={
+            "session_id": str(uuid.uuid4()),
+            "transcript_path": "/tmp/aegis-demo/t.jsonl",
+            "cwd": "/tmp/aegis-demo",
+            "permission_mode": "default",
+            "hook_event_name": "UserPromptSubmit",
+            "prompt": f"deploy with {vals['aws']} and email {vals['email']}",
+        },
+    )
     return vals
 
 
@@ -211,16 +267,22 @@ def test_g3_no_raw_sensitive_values_anywhere(stack: LocalStack, secrets: dict[st
             d = stack.api("GET", f"/api/decisions/{item['id']}", as_=ADMIN)
             if d.status_code == 200:
                 detail = d.json()
-                detail.pop("wire", None)  # live wire capture is in-memory by design (rt.pipeline.wire)
+                detail.pop(
+                    "wire", None
+                )  # live wire capture is in-memory by design (rt.pipeline.wire)
                 import json as _json
 
-                hits += privacy.scan_bytes(_json.dumps(detail).encode(), f"decision {item['id']}", values)
+                hits += privacy.scan_bytes(
+                    _json.dumps(detail).encode(), f"decision {item['id']}", values
+                )
     data_dir = stack.tmp / "data"
     files = [p for p in data_dir.rglob("*") if p.is_file()]
     assert files, "no data files written"
     hits += privacy.scan_paths(files, values)
-    report = [f"{getattr(h, 'where', '?')}: {getattr(h, 'label', '?')} ({getattr(h, 'masked', '')})"
-              for h in hits]
+    report = [
+        f"{getattr(h, 'where', '?')}: {getattr(h, 'label', '?')} ({getattr(h, 'masked', '')})"
+        for h in hits
+    ]
     assert not hits, "raw sensitive values persisted:\n" + "\n".join(report[:20])
 
 

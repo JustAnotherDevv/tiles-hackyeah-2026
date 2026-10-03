@@ -47,23 +47,39 @@ class LocalStack:
 
         self.tmp = Path(tempfile.mkdtemp(prefix="aegis-b22-"))
         self._env = pytest.MonkeyPatch()
-        for k, v in {"AEGIS_TEST_MODE": "1", "AEGIS_SEMANTIC": "off",
-                     "AEGIS_DATA_DIR": str(self.tmp / "data"), "AEGIS_FEED_URL": "disabled"}.items():
+        for k, v in {
+            "AEGIS_TEST_MODE": "1",
+            "AEGIS_SEMANTIC": "off",
+            "AEGIS_DATA_DIR": str(self.tmp / "data"),
+            "AEGIS_FEED_URL": "disabled",
+        }.items():
             self._env.setenv(k, v)
         self.llm = None
         if llm:
             from mocks.mock_llm.app import create_app as llm_app
 
             self.llm = ThreadedUvicorn(llm_app(data_dir=self.tmp / "llm"), name="mock-llm").start()
-        src = ROOT / "config" / "policy.yaml"
-        if not src.exists():
-            pytest.skip("config/policy.yaml missing")
+        # Golden copy first (plan 18 §2.3): live edits to config/policy.yaml never leak in.
+        src = next(
+            (
+                p
+                for p in (ROOT / "config" / "policy.golden.yaml", ROOT / "config" / "policy.yaml")
+                if p.exists()
+            ),
+            None,
+        )
+        if src is None:
+            pytest.skip("no policy (config/policy.golden.yaml missing)")
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
-            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")}
+            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
+        }
         # Distinct grants per test: identical calls within redeem_window_s count as one use.
         doc["approvals"]["defaults"]["redeem_window_s"] = 0.001
-        doc.setdefault("budgets", {})["rate"] = {"requests_per_min": 100000, "tool_calls_per_min": 100000}
+        doc.setdefault("budgets", {})["rate"] = {
+            "requests_per_min": 100000,
+            "tool_calls_per_min": 100000,
+        }
         if self.llm is not None:
             doc["providers"]["mock-anthropic"]["base_url"] = self.llm.url
             doc["providers"]["mock-openai"]["base_url"] = self.llm.url + "/v1"
@@ -79,9 +95,15 @@ class LocalStack:
                 from aegis.settings import get_settings
 
                 get_settings.cache_clear()
-            settings = Settings(data_dir=self.tmp / "data", policy=self.policy_path,
-                                ui_dist=self.tmp / "dist", test_mode=True, semantic="off",
-                                feed_url="disabled", hmac_key="b22-" + uuid.uuid4().hex)
+            settings = Settings(
+                data_dir=self.tmp / "data",
+                policy=self.policy_path,
+                ui_dist=self.tmp / "dist",
+                test_mode=True,
+                semantic="off",
+                feed_url="disabled",
+                hmac_key="b22-" + uuid.uuid4().hex,
+            )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
         except Exception as exc:  # boot error -> skip, never a red herring failure
@@ -111,12 +133,17 @@ class LocalStack:
             headers["X-Aegis-View-As"] = as_
         return self.http.request(method, path, headers=headers, **kw)
 
-    def guard(self, interaction: dict, agent: str | None = None, member: str | None = None,
-              **extra: Any) -> dict:
+    def guard(
+        self, interaction: dict, agent: str | None = None, member: str | None = None, **extra: Any
+    ) -> dict:
         ident = {k: v for k, v in (("agent_id", agent), ("member_id", member)) if v}
-        body = {"interaction": interaction, "identity": ident or None,
-                "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
-                "wait_s": 0, **extra}
+        body = {
+            "interaction": interaction,
+            "identity": ident or None,
+            "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
+            "wait_s": 0,
+            **extra,
+        }
         r = self.http.post("/v1/guard", json=body)
         assert r.status_code == 200, r.text
         return r.json()
@@ -138,13 +165,13 @@ def _start_mcp_upstream(tmp: Path) -> tuple[Any, str]:
             STATE.reset() if hasattr(STATE, "reset") else None
         srv = ThreadedUvicorn(mock_app(data_dir=tmp, log_to_file=False), name="mock-mcp").start()
         return srv, "mock_mcp"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(repr(exc))
     try:
         from tests.lib.fakes.mcp import create_app as fake_app
 
         return ThreadedUvicorn(fake_app(), name="fake-mcp").start(), "fake"
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         errors.append(repr(exc))
     pytest.skip(f"no MCP upstream could start: {errors}")
 
@@ -152,16 +179,22 @@ def _start_mcp_upstream(tmp: Path) -> tuple[Any, str]:
 class Mcp:
     """Minimal Streamable-HTTP JSON-RPC client through the gateway."""
 
-    def __init__(self, s: LocalStack, server: str, agent: str = "trading-copilot@trading",
-                 wait: int = 0):
+    def __init__(
+        self, s: LocalStack, server: str, agent: str = "trading-copilot@trading", wait: int = 0
+    ):
         self.s, self.server, self.agent, self.wait = s, server, agent, wait
         self.sid: str | None = None
         self.session = f"ses_b22_mcp_{uuid.uuid4().hex[:8]}"
         self.ids = itertools.count(1)
 
     def post(self, payload: dict, timeout: float = 30) -> tuple[httpx.Response, dict]:
-        h = {"Accept": "application/json, text/event-stream", "MCP-Protocol-Version": PROTOCOL,
-             "X-Aegis-Agent": self.agent, "X-Aegis-Session": self.session, "X-Aegis-Wait": str(self.wait)}
+        h = {
+            "Accept": "application/json, text/event-stream",
+            "MCP-Protocol-Version": PROTOCOL,
+            "X-Aegis-Agent": self.agent,
+            "X-Aegis-Session": self.session,
+            "X-Aegis-Wait": str(self.wait),
+        }
         if self.sid:
             h["Mcp-Session-Id"] = self.sid
         r = self.s.http.post(f"/mcp/{self.server}", json=payload, headers=h, timeout=timeout)
@@ -179,13 +212,21 @@ class Mcp:
         return r, msg
 
     def rpc(self, method: str, params: dict | None = None, timeout: float = 30) -> dict:
-        _, msg = self.post({"jsonrpc": "2.0", "id": next(self.ids), "method": method,
-                            "params": params or {}}, timeout)
+        _, msg = self.post(
+            {"jsonrpc": "2.0", "id": next(self.ids), "method": method, "params": params or {}},
+            timeout,
+        )
         return msg
 
     def init(self) -> Mcp:
-        self.rpc("initialize", {"protocolVersion": PROTOCOL, "capabilities": {},
-                                "clientInfo": {"name": "aegis-b22", "version": "1"}})
+        self.rpc(
+            "initialize",
+            {
+                "protocolVersion": PROTOCOL,
+                "capabilities": {},
+                "clientInfo": {"name": "aegis-b22", "version": "1"},
+            },
+        )
         self.post({"jsonrpc": "2.0", "method": "notifications/initialized"})
         return self
 
@@ -223,8 +264,11 @@ class McpStack:
             raise
 
     def upstream_calls(self, server: str | None = None) -> list[dict]:
-        r = httpx.get(self.upstream.url + "/_mock/requests", params={"server": server} if server else None,
-                      timeout=10)
+        r = httpx.get(
+            self.upstream.url + "/_mock/requests",
+            params={"server": server} if server else None,
+            timeout=10,
+        )
         return r.json().get("items") or []
 
     def stop(self) -> None:
@@ -248,8 +292,13 @@ def ms() -> Iterator[McpStack]:
 @pytest.mark.aegis(suite="mcp", control="MCP-01", polarity="attack")
 def test_f1_unknown_server(ms: McpStack) -> None:
     msg = Mcp(ms.gw, "not-a-registered-server").rpc(
-        "initialize", {"protocolVersion": PROTOCOL, "capabilities": {},
-                       "clientInfo": {"name": "aegis-b22", "version": "1"}})
+        "initialize",
+        {
+            "protocolVersion": PROTOCOL,
+            "capabilities": {},
+            "clientInfo": {"name": "aegis-b22", "version": "1"},
+        },
+    )
     assert (msg.get("error") or {}).get("code") == -32001, msg
 
 
@@ -263,7 +312,9 @@ def test_f2_poisoned_tool_hidden(ms: McpStack) -> None:
         srv = next((x for x in r.json().get("items") or [] if x.get("name") == "poisoned"), None)
         tools = {t.get("name"): t for t in (srv or {}).get("tools") or []}
         if "add" in tools:
-            assert tools["add"].get("status") in ("quarantined", "blocked", "poisoned"), tools["add"]
+            assert tools["add"].get("status") in ("quarantined", "blocked", "poisoned"), tools[
+                "add"
+            ]
 
 
 @pytest.mark.aegis(suite="mcp", control="MCP-03", polarity="attack")
@@ -277,8 +328,11 @@ def test_f3_rug_pull(ms: McpStack) -> None:
     try:
         listed = {t["name"]: t for t in c.tools()}
         changed = listed.get("get_exchange_rate")
-        assert changed is None or "memo" not in json.dumps(changed.get("inputSchema") or {}) or \
-            "[Aegis]" in (changed.get("description") or ""), changed
+        assert (
+            changed is None
+            or "memo" not in json.dumps(changed.get("inputSchema") or {})
+            or "[Aegis]" in (changed.get("description") or "")
+        ), changed
         blocked = c.call("get_exchange_rate", {"base": "EUR", "quote": "PLN"})
         assert _is_error(blocked), blocked
         assert "MCP-03" in _text(blocked) or "MCP-03" in json.dumps(blocked), blocked
@@ -298,17 +352,21 @@ def test_f3_rug_pull(ms: McpStack) -> None:
 
 @pytest.mark.aegis(suite="mcp", control="ACT-01", polarity="attack")
 def test_f4_held_spend_released(ms: McpStack) -> None:
-    before = len([c for c in ms.upstream_calls("marketpulse") if c.get("tool") == "purchase_subscription"])
+    before = len(
+        [c for c in ms.upstream_calls("marketpulse") if c.get("tool") == "purchase_subscription"]
+    )
     c = Mcp(ms.gw, "marketpulse", wait=8).init()
     ref = uuid.uuid4().hex[:6]
     out: dict[str, Any] = {}
 
     def held() -> None:
-        out["msg"] = c.call("purchase_subscription",
-                            {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50,
-                             "ref": ref} if ms.kind == "fake" else
-                            {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50},
-                            timeout=40)
+        out["msg"] = c.call(
+            "purchase_subscription",
+            {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50, "ref": ref}
+            if ms.kind == "fake"
+            else {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50},
+            timeout=40,
+        )
 
     t = threading.Thread(target=held, daemon=True)
     t.start()
@@ -316,9 +374,13 @@ def test_f4_held_spend_released(ms: McpStack) -> None:
     deadline = time.monotonic() + 6
     while apr is None and time.monotonic() < deadline:
         time.sleep(0.2)
-        items = ms.gw.api("GET", "/api/approvals", as_="u_emily", params={"status": "pending"}).json()
+        items = ms.gw.api(
+            "GET", "/api/approvals", as_="u_emily", params={"status": "pending"}
+        ).json()
         for it in items.get("items") or []:
-            if it.get("action_type", "").startswith("spend.") and "marketpulse" in (it.get("resource") or ""):
+            if it.get("action_type", "").startswith("spend.") and "marketpulse" in (
+                it.get("resource") or ""
+            ):
                 apr = it["id"]
     assert apr, "held call never produced a pending approval"
     r = ms.gw.api("POST", f"/api/approvals/{apr}/approve", as_="u_emily", json={"comment": "ok"})
@@ -326,7 +388,9 @@ def test_f4_held_spend_released(ms: McpStack) -> None:
     t.join(timeout=30)
     msg = out.get("msg") or {}
     assert not _is_error(msg), msg
-    after = [c for c in ms.upstream_calls("marketpulse") if c.get("tool") == "purchase_subscription"]
+    after = [
+        c for c in ms.upstream_calls("marketpulse") if c.get("tool") == "purchase_subscription"
+    ]
     assert len(after) - before == 1, after[:3]
 
 
@@ -335,11 +399,17 @@ def test_f5_args_exfil_blocked(ms: McpStack) -> None:
     pan = "4111 1111 1111 1111"  # public test card number (Luhn-valid, never real)
     before = len(ms.upstream_calls("mailer"))
     c = Mcp(ms.gw, "mailer").init()
-    msg = c.call("send_email", {"to": "someone@client-portal.example", "subject": "card",
-                                "body": f"Card on file: {pan}"})
+    msg = c.call(
+        "send_email",
+        {"to": "someone@client-portal.example", "subject": "card", "body": f"Card on file: {pan}"},
+    )
     assert _is_error(msg), msg
     with contextlib.suppress(Exception):
-        apr = ((msg.get("result") or {}).get("_meta") or {}).get("io.aegis/decision", {}).get("approval_id")
+        apr = (
+            ((msg.get("result") or {}).get("_meta") or {})
+            .get("io.aegis/decision", {})
+            .get("approval_id")
+        )
         if apr:
             ms.gw.api("POST", f"/api/approvals/{apr}/cancel", as_="u_katarzyna", json={})
     assert len(ms.upstream_calls("mailer")) == before, "the email reached the upstream mock"

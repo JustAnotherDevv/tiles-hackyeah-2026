@@ -16,7 +16,7 @@ import { DecisionTrace, type TraceTab } from '@/components/security/decision';
 import { useAgentsIndex, useControlsCatalog, useCurrentVersions } from '@/components/security/hooks';
 import { buildTrace } from '@/components/security/lib/trace';
 import { PreviewText } from '@/components/security/live';
-import { detailFromPlayground, destClassOf } from '@/components/security/playground/adapter';
+import { closestCall, detailFromPlayground, destClassOf } from '@/components/security/playground/adapter';
 import { formFromPreset, INITIAL_FORM, parseToolArgs, PlaygroundForm, PresetPicker, type PlaygroundFormState } from '@/components/security/playground/PlaygroundForm';
 import { presetById, PRESETS } from '@/components/security/playground/presets';
 import { FlowStrip, RunHistory, ScanningControls, useRevealSchedule, VerdictHero, type RunRecord } from '@/components/security/playground/visuals';
@@ -273,7 +273,7 @@ export default function PlaygroundPage() {
               {done ? (
                 <VerdictHero
                   action={run.detail.action}
-                  controlId={run.detail.control_id}
+                  controlId={run.detail.control_id ?? (run.detail.action === 'allow' ? (closestCall(run.detail.decisions)?.control_id ?? null) : null)}
                   reason={run.detail.reason}
                   score={run.detail.score}
                   threshold={run.detail.threshold}

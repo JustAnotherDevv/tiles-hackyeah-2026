@@ -93,13 +93,14 @@ def control_status(
     entries: list[Entry],
     live: dict[str, Any] | None,
     static: dict[str, int] | None = None,
+    registry_known: bool = False,
 ) -> str:
     if live is not None:
         if live.get("enabled") is False or live.get("mode") == "off":
             return "DISABLED"
         if live.get("implemented") is False:
             return "NOT_IMPLEMENTED"
-    elif live is None and RESULTS.controls_live and cid in BY_ID:
+    elif live is None and registry_known and cid in BY_ID:
         return "NOT_IMPLEMENTED"
     blocks = sum(e.column in ("attack", "redact") for e in entries)
     allows = sum(e.column == "benign" for e in entries)
@@ -137,7 +138,13 @@ def build_rows(rec: Recorder | None = None) -> list[dict[str, Any]]:
                 "control_id": cid,
                 "family": cid.split("-")[0],
                 "name": cat.name if cat else (live or {}).get("name", cid),
-                "status": control_status(cid, es, live, rec.static_coverage.get(cid)),
+                "status": control_status(
+                    cid,
+                    es,
+                    live,
+                    rec.static_coverage.get(cid),
+                    registry_known=bool(rec.controls_live),
+                ),
                 "enabled": (live or {}).get("enabled") if live else None,
                 "mode": (live or {}).get("mode") if live else None,
                 "implemented": (live or {}).get("implemented") if live else None,

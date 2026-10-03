@@ -66,6 +66,15 @@ async def det_stage(a: argparse.Namespace, target: Any, up: Any, slow: Any, mix:
             p = await run_profile(cl, s, mix, tag="d")
             doc["profiles"].append(p)
             say(_line(p))
+        if a.sizes and target.kind != "live":
+            from tests.bench.mix import build_mix
+
+            for kb in (0.5, 2, 8, 32):
+                p = await run_profile(cl, ProfileSpec(f"sizes-det-{kb:g}kb", f"POST /v1/guard, payload padded to {kb:g} KB",
+                                                      "deterministic", "/v1/guard", 1, requests=200, warmup=5),
+                                      build_mix(200, pad_to_bytes=int(kb * 1024)), tag=f"z{kb:g}")
+                doc["profiles"].append(p)
+                say(_line(p))
         if q or a.no_proxy or target.kind == "live" or up is None:
             return
         import httpx
@@ -250,9 +259,10 @@ async def run(a: argparse.Namespace) -> dict[str, Any]:
     elif problems or any(p["errors"] > 0.01 * max(1, p["requests"]) for p in doc["profiles"]):
         doc["status"] = "partial"
     try:
-        import psutil
+        import resource
 
-        doc["machine"]["bench_peak_rss_mb"] = round(psutil.Process().memory_info().rss / 2**20, 1)
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss  # bytes on macOS, KiB on Linux
+        doc["machine"]["bench_peak_rss_mb"] = round(peak / (2**20 if sys.platform == "darwin" else 2**10), 1)
     except Exception:
         pass
     return doc

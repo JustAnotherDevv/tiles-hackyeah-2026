@@ -4,7 +4,7 @@ All upstream sources below were re-verified live on **2026-10-03** via the Huggi
 (`/api/datasets/...`) and the GitHub API (`gh api repos/...`). Only **permissive / ungated**
 sources are vendored here. Full upstream licence texts are in [`licenses/`](licenses/).
 Per-file SHA-256 of every upstream artifact and every generated subset is recorded in
-[`MANIFEST.public.json`](MANIFEST.public.json).
+[`MANIFEST.json`](MANIFEST.json) (upstream pins under `upstream`).
 
 We vendor **prompt / behaviour strings only** — never model completions, and never harmful
 answer text. JailbreakBench "harmful" rows are the *goal* strings (the thing to refuse), used

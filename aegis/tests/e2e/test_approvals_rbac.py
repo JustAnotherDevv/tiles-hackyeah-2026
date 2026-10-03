@@ -42,23 +42,39 @@ class LocalStack:
 
         self.tmp = Path(tempfile.mkdtemp(prefix="aegis-b22-"))
         self._env = pytest.MonkeyPatch()
-        for k, v in {"AEGIS_TEST_MODE": "1", "AEGIS_SEMANTIC": "off",
-                     "AEGIS_DATA_DIR": str(self.tmp / "data"), "AEGIS_FEED_URL": "disabled"}.items():
+        for k, v in {
+            "AEGIS_TEST_MODE": "1",
+            "AEGIS_SEMANTIC": "off",
+            "AEGIS_DATA_DIR": str(self.tmp / "data"),
+            "AEGIS_FEED_URL": "disabled",
+        }.items():
             self._env.setenv(k, v)
         self.llm = None
         if llm:
             from mocks.mock_llm.app import create_app as llm_app
 
             self.llm = ThreadedUvicorn(llm_app(data_dir=self.tmp / "llm"), name="mock-llm").start()
-        src = ROOT / "config" / "policy.yaml"
-        if not src.exists():
-            pytest.skip("config/policy.yaml missing")
+        # Golden copy first (plan 18 §2.3): live edits to config/policy.yaml never leak in.
+        src = next(
+            (
+                p
+                for p in (ROOT / "config" / "policy.golden.yaml", ROOT / "config" / "policy.yaml")
+                if p.exists()
+            ),
+            None,
+        )
+        if src is None:
+            pytest.skip("no policy (config/policy.golden.yaml missing)")
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
-            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")}
+            k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
+        }
         # Distinct grants per test: identical calls within redeem_window_s count as one use.
         doc["approvals"]["defaults"]["redeem_window_s"] = 0.001
-        doc.setdefault("budgets", {})["rate"] = {"requests_per_min": 100000, "tool_calls_per_min": 100000}
+        doc.setdefault("budgets", {})["rate"] = {
+            "requests_per_min": 100000,
+            "tool_calls_per_min": 100000,
+        }
         if self.llm is not None:
             doc["providers"]["mock-anthropic"]["base_url"] = self.llm.url
             doc["providers"]["mock-openai"]["base_url"] = self.llm.url + "/v1"
@@ -74,9 +90,15 @@ class LocalStack:
                 from aegis.settings import get_settings
 
                 get_settings.cache_clear()
-            settings = Settings(data_dir=self.tmp / "data", policy=self.policy_path,
-                                ui_dist=self.tmp / "dist", test_mode=True, semantic="off",
-                                feed_url="disabled", hmac_key="b22-" + uuid.uuid4().hex)
+            settings = Settings(
+                data_dir=self.tmp / "data",
+                policy=self.policy_path,
+                ui_dist=self.tmp / "dist",
+                test_mode=True,
+                semantic="off",
+                feed_url="disabled",
+                hmac_key="b22-" + uuid.uuid4().hex,
+            )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
         except Exception as exc:  # boot error -> skip, never a red herring failure
@@ -106,12 +128,17 @@ class LocalStack:
             headers["X-Aegis-View-As"] = as_
         return self.http.request(method, path, headers=headers, **kw)
 
-    def guard(self, interaction: dict, agent: str | None = None, member: str | None = None,
-              **extra: Any) -> dict:
+    def guard(
+        self, interaction: dict, agent: str | None = None, member: str | None = None, **extra: Any
+    ) -> dict:
         ident = {k: v for k, v in (("agent_id", agent), ("member_id", member)) if v}
-        body = {"interaction": interaction, "identity": ident or None,
-                "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
-                "wait_s": 0, **extra}
+        body = {
+            "interaction": interaction,
+            "identity": ident or None,
+            "session_id": extra.pop("session_id", f"ses_b22_{uuid.uuid4().hex[:10]}"),
+            "wait_s": 0,
+            **extra,
+        }
         r = self.http.post("/v1/guard", json=body)
         assert r.status_code == 200, r.text
         return r.json()
@@ -122,9 +149,14 @@ def _mcp(tool: str, args: dict, server: str | None = None, *, ref: str | None = 
     server = server or tool.split(".", 1)[0]
     if ref:
         args = {**args, "ref": ref}
-    return {"kind": "mcp", "surface": "mcp.call", "mcp_server": server,
-            "destination": {"name": f"mcp:{server}", "dest_class": "third_party"},
-            "tool_name": tool, "tool_args": args}
+    return {
+        "kind": "mcp",
+        "surface": "mcp.call",
+        "mcp_server": server,
+        "destination": {"name": f"mcp:{server}", "dest_class": "third_party"},
+        "tool_name": tool,
+        "tool_args": args,
+    }
 
 
 def _action(out: dict) -> str:
@@ -134,8 +166,11 @@ def _action(out: dict) -> str:
 def _apr_id(out: dict) -> str | None:
     v = out.get("verdict") or {}
     prim = v.get("primary") or {}
-    return ((out.get("approval") or {}).get("id") or prim.get("approval_id")
-            or (v.get("approval") or {}).get("id"))
+    return (
+        (out.get("approval") or {}).get("id")
+        or prim.get("approval_id")
+        or (v.get("approval") or {}).get("id")
+    )
 
 
 def _skip_if_missing(r: httpx.Response, what: str) -> None:
@@ -173,21 +208,33 @@ def _cancel_leftovers(request: pytest.FixtureRequest) -> Iterator[None]:
 
 def _pending(stack: LocalStack, out: dict) -> str:
     prim = (out.get("verdict") or {}).get("primary") or {}
-    assert _action(out) == "require_approval", (_action(out), prim.get("control_id"), prim.get("reason"))
+    assert _action(out) == "require_approval", (
+        _action(out),
+        prim.get("control_id"),
+        prim.get("reason"),
+    )
     apr = _apr_id(out)
     assert apr and apr.startswith("apr_"), out
     return apr
 
 
 # Spend calls (tool names + catalog plans from config/org.seed.yaml).
-MP_50 = ("marketpulse.purchase_subscription",
-         {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50})
-GPU_480 = ("payments.create_charge",
-           {"vendor": "gpucloud", "plan": "a100-24h-reservation", "amount_usd": 480})
-GPU_1500 = ("payments.create_charge",
-            {"vendor": "gpucloud", "plan": "a100-cluster-week", "amount_usd": 1500})
-DATA_12 = ("payments.create_charge",
-           {"vendor": "opendata-shop", "plan": "eu-equities-2025-csv", "amount_usd": 12})
+MP_50 = (
+    "marketpulse.purchase_subscription",
+    {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50},
+)
+GPU_480 = (
+    "payments.create_charge",
+    {"vendor": "gpucloud", "plan": "a100-24h-reservation", "amount_usd": 480},
+)
+GPU_1500 = (
+    "payments.create_charge",
+    {"vendor": "gpucloud", "plan": "a100-cluster-week", "amount_usd": 1500},
+)
+DATA_12 = (
+    "payments.create_charge",
+    {"vendor": "opendata-shop", "plan": "eu-equities-2025-csv", "amount_usd": 12},
+)
 
 
 # --------------------------------------------------------------------------------------
@@ -228,7 +275,10 @@ def test_a1_member_cannot_approve_admin_level(stack: LocalStack) -> None:
 def test_a2_admin_cannot_approve_owner_level(stack: LocalStack) -> None:
     ref = uuid.uuid4().hex[:8]
     apr = _pending(stack, stack.guard(_mcp(*GPU_480, ref=ref), agent="claude-code@platform"))
-    assert stack.api("GET", f"/api/approvals/{apr}", as_="u_katarzyna").json()["required_role"] == "owner"
+    assert (
+        stack.api("GET", f"/api/approvals/{apr}", as_="u_katarzyna").json()["required_role"]
+        == "owner"
+    )
     for who in ("u_emily", "u_marek", "u_tomasz"):
         r = stack.api("POST", f"/api/approvals/{apr}/approve", as_=who, json={})
         assert r.status_code == 403, f"{who}: {r.status_code} {r.text}"
@@ -245,12 +295,16 @@ def test_a3_sponsor_self_approval(stack: LocalStack) -> None:
     ref = uuid.uuid4().hex[:8]
     apr = _pending(stack, stack.guard(_mcp(*DATA_12, ref=ref), agent="research-agent@research"))
     req = stack.api("GET", f"/api/approvals/{apr}", as_="u_agnieszka").json()
-    assert req["required_role"] == "self", {k: req.get(k) for k in ("required_role", "rule_id", "status")}
+    assert req["required_role"] == "self", {
+        k: req.get(k) for k in ("required_role", "rule_id", "status")
+    }
     assert req.get("rule_id") in (None, "spend-self"), req.get("rule_id")
 
     r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_james", json={})
     assert r.status_code == 403, r.text
-    assert stack.api("GET", f"/api/approvals/{apr}", as_="u_agnieszka").json()["status"] == "pending"
+    assert (
+        stack.api("GET", f"/api/approvals/{apr}", as_="u_agnieszka").json()["status"] == "pending"
+    )
 
     r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_agnieszka", json={})
     assert r.status_code == 200, r.text
@@ -265,18 +319,23 @@ def test_a3_agents_never_vote(stack: LocalStack) -> None:
     ref = uuid.uuid4().hex[:8]
     apr = _pending(stack, stack.guard(_mcp(*DATA_12, ref=ref), agent="research-agent@research"))
     data = stack.api("GET", f"/api/approvals/{apr}", as_="u_agnieszka").json()
-    req = ApprovalRequest.model_validate({k: v for k, v in data.items() if k not in ("can_vote", "why_not")})
-    agent = Identity(org_id="acme-capital", team_id="research", agent_id="research-agent@research",
-                     role="agent")
+    req = ApprovalRequest.model_validate(
+        {k: v for k, v in data.items() if k not in ("can_vote", "why_not")}
+    )
+    agent = Identity(
+        org_id="acme-capital", team_id="research", agent_id="research-agent@research", role="agent"
+    )
     ok, why = stack.rt.approvals.can_approve(agent, req)
     assert ok is False and why, (ok, why)
 
     r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="research-agent@research", json={})
-    if r.status_code == 200:
-        voters = [v.get("member_id") for v in r.json().get("votes") or []]
-        pytest.xfail(f"X-Aegis-View-As=<agent id> falls back to the default viewer; vote recorded "
-                     f"as {voters} (org-rbac viewer resolution should 4xx unknown members)")
+    # INT-A fix: unknown / agent view-as ids resolve to an anonymous viewer (never the owner)
     assert 400 <= r.status_code < 500, r.text
+    r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="nobody@nowhere", json={})
+    assert 400 <= r.status_code < 500, r.text
+    assert (
+        stack.api("GET", f"/api/approvals/{apr}", as_="u_agnieszka").json()["status"] == "pending"
+    )
 
 
 # --------------------------------------------------------------------------------------
@@ -284,15 +343,23 @@ def test_a3_agents_never_vote(stack: LocalStack) -> None:
 # --------------------------------------------------------------------------------------
 @pytest.mark.aegis(suite="approvals", control="GOV-04", polarity="attack")
 def test_a4_separation_of_duties(stack: LocalStack) -> None:
-    draft = {"kind": "action", "action_type": "spend.subscription", "title": "B22 manual $50 request",
-             "summary": "self-test", "amount_usd": 50, "resource": "vendor:marketpulse",
-             "labels": {"vendor_approved": "true", "recurring": "monthly"}}
+    draft = {
+        "kind": "action",
+        "action_type": "spend.subscription",
+        "title": "B22 manual $50 request",
+        "summary": "self-test",
+        "amount_usd": 50,
+        "resource": "vendor:marketpulse",
+        "labels": {"vendor_approved": "true", "recurring": "monthly"},
+    }
     r = stack.api("POST", "/api/approvals", as_="u_marek", json=draft)
     _skip_if_missing(r, "POST /api/approvals")
     assert r.status_code in (200, 201), r.text
     req = r.json()
     if req.get("status") != "pending":
-        pytest.xfail(f"manual draft not pending (status={req.get('status')}, role={req.get('required_role')})")
+        pytest.xfail(
+            f"manual draft not pending (status={req.get('status')}, role={req.get('required_role')})"
+        )
     assert req["required_role"] == "admin", req
     apr = req["id"]
     r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_marek", json={})
@@ -330,8 +397,14 @@ def test_a5_two_person_rule(stack: LocalStack) -> None:
     assert r.json()["status"] == "approved"
 
     # A fresh request: any eligible deny -> denied.
-    apr2 = _pending(stack, stack.guard(_mcp(*GPU_1500, ref=ref + "-2"), agent="claude-code@platform",
-                                       session_id=f"ses_b22_{uuid.uuid4().hex[:8]}"))
+    apr2 = _pending(
+        stack,
+        stack.guard(
+            _mcp(*GPU_1500, ref=ref + "-2"),
+            agent="claude-code@platform",
+            session_id=f"ses_b22_{uuid.uuid4().hex[:8]}",
+        ),
+    )
     assert apr2 != apr
     r = stack.api("POST", f"/api/approvals/{apr2}/deny", as_="u_emily", json={"comment": "no"})
     assert r.status_code == 200, r.text
@@ -343,8 +416,10 @@ def test_a5_two_person_rule(stack: LocalStack) -> None:
 # --------------------------------------------------------------------------------------
 @pytest.mark.aegis(suite="approvals", control="ACT-01", polarity="attack")
 def test_a6_hard_cap_blocks_without_approval(stack: LocalStack) -> None:
-    out = stack.guard(_mcp("payments.create_charge", {"vendor": "gpucloud", "amount_usd": 5000.01}),
-                      agent="claude-code@platform")
+    out = stack.guard(
+        _mcp("payments.create_charge", {"vendor": "gpucloud", "amount_usd": 5000.01}),
+        agent="claude-code@platform",
+    )
     assert _action(out) == "block", out.get("verdict")
     assert _apr_id(out) is None
 
@@ -356,23 +431,37 @@ def test_a6_hard_cap_blocks_without_approval(stack: LocalStack) -> None:
 def test_a7_grant_bound_to_exact_params_single_use(stack: LocalStack) -> None:
     ref = uuid.uuid4().hex[:8]
     ses = f"ses_b22_{uuid.uuid4().hex[:8]}"
-    apr = _pending(stack, stack.guard(_mcp(*MP_50, ref=ref), agent="trading-copilot@trading", session_id=ses))
+    apr = _pending(
+        stack, stack.guard(_mcp(*MP_50, ref=ref), agent="trading-copilot@trading", session_id=ses)
+    )
     r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_emily", json={})
     assert r.status_code == 200 and r.json()["status"] == "approved", r.text
 
-    bigger = ("marketpulse.purchase_subscription",
-              {"vendor": "marketpulse", "plan": "mp-enterprise-annual", "amount_usd": 4800})
-    out = stack.guard(_mcp(*bigger, ref=ref), agent="trading-copilot@trading", approval_id=apr, session_id=ses)
+    bigger = (
+        "marketpulse.purchase_subscription",
+        {"vendor": "marketpulse", "plan": "mp-enterprise-annual", "amount_usd": 4800},
+    )
+    out = stack.guard(
+        _mcp(*bigger, ref=ref), agent="trading-copilot@trading", approval_id=apr, session_id=ses
+    )
     assert _action(out) in ("require_approval", "block"), out.get("verdict")
 
-    out = stack.guard(_mcp(*MP_50, ref=ref), agent="trading-copilot@trading", approval_id=apr, session_id=ses)
+    out = stack.guard(
+        _mcp(*MP_50, ref=ref), agent="trading-copilot@trading", approval_id=apr, session_id=ses
+    )
     assert _action(out) == "allow", out.get("verdict")
 
     # Second use of the single-use grant, outside the redeem window semantics (new session).
-    out = stack.guard(_mcp(*MP_50, ref=ref), agent="trading-copilot@trading", approval_id=apr,
-                      session_id=f"ses_b22_{uuid.uuid4().hex[:8]}")
+    out = stack.guard(
+        _mcp(*MP_50, ref=ref),
+        agent="trading-copilot@trading",
+        approval_id=apr,
+        session_id=f"ses_b22_{uuid.uuid4().hex[:8]}",
+    )
     if _action(out) == "allow":
-        pytest.xfail("single-use grant redeemed twice (redeem_window_s may count it as the same use)")
+        pytest.xfail(
+            "single-use grant redeemed twice (redeem_window_s may count it as the same use)"
+        )
     assert _action(out) in ("require_approval", "block"), out.get("verdict")
 
 
@@ -390,8 +479,10 @@ def test_a7_grant_bound_to_exact_params_single_use(stack: LocalStack) -> None:
 )
 @pytest.mark.aegis(suite="approvals", control="ACT-02", polarity="attack")
 def test_a8_data_access_routing(stack: LocalStack, sql: str, expect: str, role: str | None) -> None:
-    out = stack.guard(_mcp("acme-db.query", {"sql": sql, "database": "acme-prod-pg"}),
-                      agent="trading-copilot@trading")
+    out = stack.guard(
+        _mcp("acme-db.query", {"sql": sql, "database": "acme-prod-pg"}),
+        agent="trading-copilot@trading",
+    )
     act = _action(out)
     if expect == "block":
         assert act == "block", out.get("verdict")
@@ -425,9 +516,18 @@ def test_a9_budget_raise_governed() -> None:
     s = LocalStack()  # fresh stack: this test mutates the policy
     try:
         v0 = _policy(s)["version"]
-        r = s.api("POST", "/api/budgets/raise", as_="u_piotr",
-                  json={"scope": "team:trading", "window": "day", "dimension": "usd",
-                        "new_limit": 75, "reason": "B22 self-test"})
+        r = s.api(
+            "POST",
+            "/api/budgets/raise",
+            as_="u_piotr",
+            json={
+                "scope": "team:trading",
+                "window": "day",
+                "dimension": "usd",
+                "new_limit": 75,
+                "reason": "B22 self-test",
+            },
+        )
         _skip_if_missing(r, "POST /api/budgets/raise")
         assert r.status_code == 200, r.text
         res = r.json()
@@ -435,7 +535,10 @@ def test_a9_budget_raise_governed() -> None:
         apr = (res.get("approval") or {}).get("id") or res.get("approval_id")
         assert (res.get("approval") or {}).get("required_role", "admin") == "admin"
 
-        assert s.api("POST", f"/api/approvals/{apr}/approve", as_="u_piotr", json={}).status_code == 403
+        assert (
+            s.api("POST", f"/api/approvals/{apr}/approve", as_="u_piotr", json={}).status_code
+            == 403
+        )
         r = s.api("POST", f"/api/approvals/{apr}/approve", as_="u_emily", json={})
         assert r.status_code == 200, r.text
         body = r.json()
@@ -446,16 +549,28 @@ def test_a9_budget_raise_governed() -> None:
         assert _limit(pol["doc"], "team:trading", "day") == 75
 
         # 75 -> 200 more than doubles the team budget (raise-large) -> owner: admin 403, owner ok.
-        r = s.api("POST", "/api/budgets/raise", as_="u_piotr",
-                  json={"scope": "team:trading", "window": "day", "dimension": "usd",
-                        "new_limit": 200, "reason": "B22 big raise"})
+        r = s.api(
+            "POST",
+            "/api/budgets/raise",
+            as_="u_piotr",
+            json={
+                "scope": "team:trading",
+                "window": "day",
+                "dimension": "usd",
+                "new_limit": 200,
+                "reason": "B22 big raise",
+            },
+        )
         res = r.json()
         assert res["status"] == "pending_approval", res
         apr2 = (res.get("approval") or {}).get("id") or res.get("approval_id")
         req2 = s.api("GET", f"/api/approvals/{apr2}", as_="u_katarzyna").json()
         if req2["required_role"] != "owner":
             pytest.xfail(f"75->200 routed to {req2['required_role']} (expected owner)")
-        assert s.api("POST", f"/api/approvals/{apr2}/approve", as_="u_emily", json={}).status_code == 403
+        assert (
+            s.api("POST", f"/api/approvals/{apr2}/approve", as_="u_emily", json={}).status_code
+            == 403
+        )
         r = s.api("POST", f"/api/approvals/{apr2}/approve", as_="u_katarzyna", json={})
         assert r.status_code == 200 and r.json()["status"] == "approved", r.text
         assert _limit(_policy(s)["doc"], "team:trading", "day") == 200
@@ -477,8 +592,12 @@ def test_a9_disable_control_needs_owner_owner_applies_directly() -> None:
     try:
         pol = _policy(s)
         v0, text = pol["version"], pol["yaml"]
-        r = s.api("POST", "/api/policy/apply", as_="u_marek",
-                  json={"yaml": _disable_dlp02(text), "base_version": v0, "reason": "B22"})
+        r = s.api(
+            "POST",
+            "/api/policy/apply",
+            as_="u_marek",
+            json={"yaml": _disable_dlp02(text), "base_version": v0, "reason": "B22"},
+        )
         _skip_if_missing(r, "POST /api/policy/apply")
         assert r.status_code == 200, r.text
         res = r.json()
@@ -487,8 +606,12 @@ def test_a9_disable_control_needs_owner_owner_applies_directly() -> None:
         assert _policy(s)["version"] == v0
 
         # Owner edits directly (non-two-person level) -> applied.
-        r = s.api("POST", "/api/policy/apply", as_="u_katarzyna",
-                  json={"yaml": _disable_dlp02(text), "base_version": v0, "reason": "B22 owner"})
+        r = s.api(
+            "POST",
+            "/api/policy/apply",
+            as_="u_katarzyna",
+            json={"yaml": _disable_dlp02(text), "base_version": v0, "reason": "B22 owner"},
+        )
         assert r.status_code == 200, r.text
         res = r.json()
         if res["status"] == "pending_approval":
@@ -560,9 +683,13 @@ def test_a11_expiry() -> None:
 def test_a12_audit_trail_has_votes(stack: LocalStack) -> None:
     ref = uuid.uuid4().hex[:8]
     apr = _pending(stack, stack.guard(_mcp(*MP_50, ref=ref), agent="trading-copilot@trading"))
-    assert stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_marek", json={}).status_code == 200
-    r = stack.api("GET", "/api/audit", as_="u_emily",
-                  params={"event_type": "approval.decided", "limit": 1000})
+    assert (
+        stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_marek", json={}).status_code
+        == 200
+    )
+    r = stack.api(
+        "GET", "/api/audit", as_="u_emily", params={"event_type": "approval.decided", "limit": 1000}
+    )
     _skip_if_missing(r, "GET /api/audit")
     assert r.status_code == 200, r.text
     items = r.json().get("items") or []

@@ -1,5 +1,6 @@
 // Approvals page helpers: resolve the vote state (server truth first), list filtering and toasts.
 // Owner: B18-dashboard-gov-approvals.
+import { displayTitle } from '@/components/governance/lib/format-gov';
 import { toast } from 'sonner';
 import type { ApprovalRequest } from '@/api/types';
 import type { Directory } from '../hooks';
@@ -54,7 +55,7 @@ function timeOf(iso: string | null | undefined): string {
 export function toastDecision(res: ApprovalRequest, action: 'approve' | 'deny' | 'cancel', actorName: string): void {
   const id = `apr-${res.id}`;
   if (action === 'cancel') {
-    toast.info('Request cancelled', { id, description: `${res.title} — the requester receives 403 approval_denied (cancelled).` });
+    toast.info('Request cancelled', { id, description: `${displayTitle(res.title)} — the requester receives 403 approval_denied (cancelled).` });
     return;
   }
   if (action === 'deny' || res.status === 'denied') {
@@ -72,7 +73,7 @@ export function toastDecision(res: ApprovalRequest, action: 'approve' | 'deny' |
   const pv = typeof ex.policy_version === 'number' ? ex.policy_version : null;
   if (pv !== null) {
     const ms = typeof ex.latency_ms === 'number' ? ` in ${Math.round(ex.latency_ms)} ms` : '';
-    toast.success(`Applied as policy v${pv}${ms}`, { id, description: `${res.title} · approved by ${actorName}` });
+    toast.success(`Applied as policy v${pv}${ms}`, { id, description: `${displayTitle(res.title)} · approved by ${actorName}` });
     return;
   }
   const until = typeof ex.grant_expires_at === 'string' ? ex.grant_expires_at : res.expires_at;

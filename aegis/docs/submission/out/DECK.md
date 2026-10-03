@@ -5,8 +5,8 @@
 > **Source of the PDF:** `deck/deck.html` (10 print-ready 1920×1080 slides, dashboard design tokens, system
 > fonts, no CDN) → `uv run --frozen python docs/submission/build.py collect render --pdf` →
 > `out/Aegis_HackYeah2026_GS_AIControlLayer.pdf`. Edit copy in **both** this file and `deck.html`.
-> **Numbers:** `[TBD: key]` placeholders are filled from `numbers.json` (collected from `reports/`);
-> unresolved ones render as a visible `[TBD: key]`. Never ship a number that wasn't measured; a target must
+> **Numbers:** `{{TBD: …}}` placeholders are filled from `numbers.json` (collected from `reports/`);
+> unresolved ones render as a visible `[TBD: …]`. Never ship a number that wasn't measured; a target must
 > say "target".
 > **Screenshots:** slots load `docs/assets/screens/<name>.png` when present (capture after `make demo`
 > warm-up: `build.py --screens --url http://127.0.0.1:8787`, or by hand at 1920×1080), else a labelled frame.
@@ -66,8 +66,8 @@ deterministic first, AI second."
 - **Destination-aware:** raw to local Ollama, tokenized to a remote model, tokenized or blocked to a third party.
 - Reversible placeholders (`[PESEL_1]`), stable per session, restored only for the local user.
 - **PCI:** CVV dropped, never vaulted; PAN shown as first 6 / last 4; audit stores keyed HMACs.
-- Measured on our redaction fixture set (626 cases): leak rate on validated types
-  0 %, precision 1.0, recall 1.0, p95 0.35 ms.
+- Measured on our redaction fixture set ([TBD: dlp.cases] cases): leak rate on validated types
+  [TBD: dlp.leak_rate_validated], precision [TBD: dlp.precision], recall [TBD: dlp.recall], p95 [TBD: dlp.latency_p95_ms] ms.
 - Visual: Wire view screenshot (`screens/wire.png`).
 
 *Notes (35 s):* "This is the headline: data minimization before egress, on the laptop. Validators keep
@@ -80,7 +80,7 @@ precision high, NER catches names, placeholders keep the model useful, real valu
 - Semantic (local models, escalation only): injection classifier, Qwen3Guard, multilingual NER. Per-control
   `fail_mode`; model down → deterministic-only + `degraded` flag, never silent pass-through.
 - Screens untrusted content too: tool results, MCP descriptions, fetched pages.
-- Red-team eval (balanced): detection 66.7 % at 1.6 % false positives.
+- Red-team eval (balanced): detection [TBD: eval.detection_rate] at [TBD: eval.fpr] false positives.
 - OWASP coverage (live from the catalog): LLM [TBD: coverage.llm] · ASI [TBD: coverage.asi] · MCP [TBD: coverage.mcp].
 
 *Notes (30 s):* "Judges will attack the gaps: a tool result, an MCP description, a base64 payload. We
@@ -123,7 +123,7 @@ straight into a SIEM."
 
 ## Slide 9: One command proves every control
 
-- `make test`: 6 cases · 0 failed · 3 s; no model needed;
+- `make test`: [TBD: tests.total] cases · [TBD: tests.failed] failed · [TBD: tests.duration_s] s; no model needed;
   semantic cases skipped with a reason when models are absent.
 - Per-control matrix: must-block / must-allow / must-redact; asserts *which* control decided; UNTESTED fails the run.
 - False-positive wall: "kill switch", "execute the order", "egzekucja zlecenia" must pass.

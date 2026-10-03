@@ -60,7 +60,8 @@ COMPONENTS = (
 )
 
 _FEED_MAP = {
-    "ok": "ok", "stale": "stale", "seed": "degraded", "disabled": "off",
+    # seed = verified signed seed bundle loaded (feed service not yet reached): fine for the demo
+    "ok": "ok", "stale": "stale", "seed": "ok", "disabled": "off",
     "rejected": "degraded", "unreachable": "degraded",
 }
 

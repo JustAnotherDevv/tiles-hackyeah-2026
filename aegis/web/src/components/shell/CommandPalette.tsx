@@ -11,7 +11,7 @@ import { Command, CommandDialog, CommandEmpty, CommandGroup, CommandInput, Comma
 import { ROLE_COLORS } from '@/lib/colors';
 import { resolveIcon } from '@/lib/icons';
 import { isMockForced, setMockForced } from '@/lib/mockMode';
-import { isLocked, pages } from '@/lib/registry';
+import { getPages, isLocked } from '@/lib/registry';
 import { mockAuditVerify } from '@/mocks/shell/posture';
 import { Avatar } from './IdentityChip';
 import { RoleBadge } from './RoleBadge';
@@ -48,7 +48,7 @@ export function CommandPalette() {
     setOpen(false);
     fn();
   };
-  const navPages = pages.filter((p) => p.meta.nav);
+  const navPages = getPages().filter((p) => p.meta.nav);
   return (
     <CommandDialog open={open} onOpenChange={setOpen} title="Command palette" description="Jump to a page, switch viewer or run an action" className="sm:max-w-[620px]">
       <Command loop className="bg-popover">

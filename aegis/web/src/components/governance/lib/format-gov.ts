@@ -206,3 +206,13 @@ export function firstName(name: string | null | undefined): string {
   if (!name) return '';
   return name.split(/\s+/)[0];
 }
+
+/**
+ * Approval titles pass through the gateway's log-safe preview, which writes "@" as "(at)" — that also
+ * mangles agent ids ("trading-copilot(at)trading"). Restore only the agent-id shape `name(at)team`
+ * (no dot / "(dot)" after it), so masked e-mail addresses stay masked.
+ */
+export function displayTitle(title: string | null | undefined): string {
+  if (!title) return '';
+  return title.replace(/\b([a-z][a-z0-9_-]*)\(at\)([a-z][a-z0-9_-]*)\b(?![.(\w-])/g, '$1@$2');
+}

@@ -6,7 +6,7 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { useViewAs } from '@/api/hooks';
 import { GovernanceToaster } from '@/components/governance/GovernanceToaster';
 import { useHotkeys } from '@/lib/hotkeys';
-import { pages } from '@/lib/registry';
+import { getPages } from '@/lib/registry';
 import { readString, STORAGE_KEYS, writeString } from '@/lib/storage';
 import { CommandPalette } from './CommandPalette';
 import { EventToasts } from './EventToasts';
@@ -36,7 +36,7 @@ export function AppShell() {
 
   const sequences = useMemo(() => {
     const out: Record<string, () => void> = {};
-    for (const p of pages) {
+    for (const p of getPages()) {
       const sc = p.meta.shortcut?.trim().toLowerCase();
       if (!sc || out[sc] || p.meta.path.includes(':')) continue;
       out[sc] = () => navigate(p.meta.path);

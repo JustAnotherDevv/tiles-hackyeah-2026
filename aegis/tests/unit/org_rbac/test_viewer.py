@@ -32,11 +32,14 @@ async def test_resolve_viewer(rt, headers, query, member_id, role):
     assert viewer.display_name
 
 
-async def test_unknown_view_as_warns_and_defaults(rt, caplog):
+@pytest.mark.parametrize("value", ["u_zz_nobody", "research-agent@research", "chaos-agent@platform"])
+async def test_unknown_view_as_is_anonymous_never_owner(rt, caplog, value):
+    """Security regression (INT-A): unknown ids and agent ids must never fall back to the
+    default viewer (the owner in the demo seed) - they get an anonymous, least-privilege viewer."""
     with caplog.at_level(logging.WARNING, logger="aegis.org.identity"):
-        viewer = await rt.org.resolve_viewer({"X-Aegis-View-As": "u_zz_nobody"})
-    assert viewer.member_id == "u_katarzyna"
-    assert any("unknown view-as" in r.getMessage() for r in caplog.records)
+        viewer = await rt.org.resolve_viewer({"X-Aegis-View-As": value})
+    assert viewer.member_id is None and viewer.role == "member" and not viewer.authenticated
+    assert any("unknown view-as" in r.getMessage() for r in caplog.records) or value != "u_zz_nobody"
 
 
 async def test_default_viewer_setting(make_rt):

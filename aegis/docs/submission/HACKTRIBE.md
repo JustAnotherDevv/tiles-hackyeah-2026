@@ -1,9 +1,9 @@
 # HackTribe submission: Aegis (Goldman Sachs · AI Control Layer)
 
 > Paste only what sits **inside** the `text` blocks. Everything outside them is notes for the team.
-> `docs/submission/build.py --check` counts words between the `<!-- description:start -->` and
-> `<!-- description:end -->` markers (title ≤ 5 words, description ≤ 500 words **including the team lines**).
-> `{{TBD: key}}` placeholders are replaced by `build.py render` from `docs/submission/numbers.json`
+> `docs/submission/build.py --check` counts words inside the marked description block
+> (title ≤ 5 words, description ≤ 500 words **including the team lines**).
+> `{{TBD: …}}` placeholders are replaced by `build.py render` from `docs/submission/numbers.json`
 > (collected from `reports/`); the rendered copy is `docs/submission/out/HACKTRIBE.md`. Paste from `out/`.
 
 ## 0. Before you paste

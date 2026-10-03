@@ -367,6 +367,8 @@ class OrgServiceImpl:
         if token and presented and _hmac.compare_digest(presented.encode(), token.encode()):
             value, _ = identity.view_as_value(headers, query)
             mid = identity.resolve_alias(self.cache, value) if value else None
+            if value and mid is None:  # unknown / agent id -> anonymous, never the default
+                return identity.viewer_identity(self.cache, None)
             mid = mid or identity.default_viewer_id(self.cache, configured)
             return identity.viewer_identity(self.cache, mid, authenticated=True)
         return identity.viewer_identity(self.cache, None)

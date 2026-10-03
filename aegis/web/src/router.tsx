@@ -11,7 +11,7 @@ import { LockedPage } from '@/components/shell/LockedPage';
 import { NotFound } from '@/components/shell/NotFound';
 import { RouteError } from '@/components/shell/RouteError';
 import { useMotionSafe } from '@/lib/motion';
-import { isLocked, pages, type PageEntry } from '@/lib/registry';
+import { getPages, isLocked, type PageEntry } from '@/lib/registry';
 
 const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
 
@@ -47,7 +47,7 @@ export const router = createBrowserRouter(
     {
       element: <AppShell />,
       errorElement: <RouteError />,
-      children: [...pages.map((p) => ({ path: p.meta.path, element: <PageFrame page={p} /> })), { path: '*', element: <NotFound /> }],
+      children: [...getPages().map((p) => ({ path: p.meta.path, element: <PageFrame page={p} /> })), { path: '*', element: <NotFound /> }],
     },
   ],
   { basename },

@@ -92,13 +92,22 @@ async def test_f5_budget_raise_end_to_end(live):
     if r.status_code == 200 and isinstance(r.json().get("doc"), dict):
         assert _limit(r.json()["doc"], "team:trading", "day") == 75
 
-    types = []
-    for et in ("approval.created", "approval.decided", "approval.executed", "policy.applied"):
-        events, _ = await rt.audit.query(event_type=et, limit=200)
-        if et.startswith("approval."):
-            events = [e for e in events if (e.data or {}).get("approval_id") == apr_id]
-        if events:
-            types.append(et)
+    # the audit SQLite projection is write-behind (B15: lags the chain by up to ~20 ms, more
+    # under load / right after a policy apply) -> poll briefly instead of a one-shot query
+    import asyncio
+
+    types: list[str] = []
+    for _ in range(40):
+        types = []
+        for et in ("approval.created", "approval.decided", "approval.executed", "policy.applied"):
+            events, _ = await rt.audit.query(event_type=et, limit=200)
+            if et.startswith("approval."):
+                events = [e for e in events if (e.data or {}).get("approval_id") == apr_id]
+            if events:
+                types.append(et)
+        if types[:3] == ["approval.created", "approval.decided", "approval.executed"]:
+            break
+        await asyncio.sleep(0.05)
     assert types[:3] == ["approval.created", "approval.decided", "approval.executed"], types
 
 

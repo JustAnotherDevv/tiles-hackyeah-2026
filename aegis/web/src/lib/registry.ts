@@ -22,37 +22,78 @@ export const SECTION_ORDER: NavSection[] = ['Overview', 'Security', 'Governance'
 
 const modules = import.meta.glob<PageModule>('../pages/**/*.page.tsx', { eager: true });
 
-function load(): PageEntry[] {
+function load(): { entries: PageEntry[]; complete: boolean } {
   const seen = new Set<string>();
   const out: PageEntry[] = [];
+  let complete = true;
   for (const [file, mod] of Object.entries(modules)) {
-    const okDefault = typeof mod.default === 'function' || (typeof mod.default === 'object' && mod.default !== null);
-    if (!okDefault || !mod.meta?.path || !mod.meta.title) {
+    // Reading `meta`/`default` can throw a TDZ ReferenceError while a page module is still
+    // evaluating (registry -> page -> @/components/shell -> AppShell -> registry cycle, seen after
+    // Vite HMR edits). Skip that module for now and retry on the next access instead of crashing.
+    let meta: PageMeta | undefined;
+    let Component: unknown;
+    try {
+      meta = mod.meta;
+      Component = mod.default;
+    } catch {
+      complete = false;
+      continue;
+    }
+    const okDefault = typeof Component === 'function' || (typeof Component === 'object' && Component !== null);
+    if (!okDefault || !meta?.path || !meta.title) {
       console.warn(`[aegis] page ${file} skipped: needs default component + meta {path, title}`);
       continue;
     }
-    if (seen.has(mod.meta.path)) {
-      console.warn(`[aegis] page ${file} skipped: duplicate path ${mod.meta.path}`);
+    if (seen.has(meta.path)) {
+      console.warn(`[aegis] page ${file} skipped: duplicate path ${meta.path}`);
       continue;
     }
-    seen.add(mod.meta.path);
-    const section: NavSection = SECTION_ORDER.includes(mod.meta.section) ? mod.meta.section : 'System';
-    if (section !== mod.meta.section) console.warn(`[aegis] page ${file}: unknown section "${mod.meta.section}", using System`);
+    seen.add(meta.path);
+    const section: NavSection = SECTION_ORDER.includes(meta.section) ? meta.section : 'System';
+    if (section !== meta.section) console.warn(`[aegis] page ${file}: unknown section "${meta.section}", using System`);
     out.push({
       file,
-      Component: mod.default as ComponentType,
-      meta: { order: 100, minRole: 'member', nav: true, badge: null, ...mod.meta, section },
+      Component: Component as ComponentType,
+      meta: { order: 100, minRole: 'member', nav: true, badge: null, ...meta, section },
     });
   }
-  return out.sort(
+  out.sort(
     (a, b) =>
       SECTION_ORDER.indexOf(a.meta.section) - SECTION_ORDER.indexOf(b.meta.section) ||
       a.meta.order - b.meta.order ||
       a.meta.title.localeCompare(b.meta.title),
   );
+  return { entries: out, complete };
 }
 
-export const pages: PageEntry[] = load();
+let cache: PageEntry[] | null = null;
+
+/**
+ * Discovered pages, computed lazily on first use (never at module-evaluation time) so that an
+ * import cycle through a page module cannot throw "Cannot access 'meta' before initialization".
+ */
+export function getPages(): PageEntry[] {
+  if (cache) return cache;
+  const { entries, complete } = load();
+  if (complete) cache = entries;
+  return entries;
+}
+
+/** Back-compat array view (`pages.map`, `for…of`, `length`) that resolves lazily. */
+export const pages: PageEntry[] = new Proxy([] as PageEntry[], {
+  get: (_t, key) => {
+    const list = getPages();
+    const v = Reflect.get(list, key, list) as unknown;
+    return typeof v === 'function' ? (v as (...a: unknown[]) => unknown).bind(list) : v;
+  },
+  has: (_t, key) => Reflect.has(getPages(), key),
+  ownKeys: () => Reflect.ownKeys(getPages()),
+  getOwnPropertyDescriptor: (_t, key) => {
+    const d = Reflect.getOwnPropertyDescriptor(getPages(), key);
+    if (d) d.configurable = true;
+    return d;
+  },
+});
 /** Alias used by the shell plan (docs/plan/15-dashboard-shell.md §4.2). */
 export const PAGES = pages;
 
@@ -64,13 +105,13 @@ export function isLocked(meta: PageMeta, role: ViewRole): boolean {
 export function navSections(_role?: ViewRole): { section: NavSection; pages: PageEntry[] }[] {
   return SECTION_ORDER.map((section) => ({
     section,
-    pages: pages.filter((p) => p.meta.section === section && p.meta.nav),
+    pages: getPages().filter((p) => p.meta.section === section && p.meta.nav),
   })).filter((s) => s.pages.length > 0);
 }
 
 /** Page whose meta.path matches a router pathname (params supported), for crumbs and titles. */
 export function findPage(pathname: string): PageEntry | undefined {
-  return pages.find((p) => matchPath({ path: p.meta.path, end: true }, pathname));
+  return getPages().find((p) => matchPath({ path: p.meta.path, end: true }, pathname));
 }
 
 /** Lowest role that unlocks the page (for "Requires admin" hints). */

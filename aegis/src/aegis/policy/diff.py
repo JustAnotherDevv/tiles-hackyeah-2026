@@ -106,7 +106,12 @@ def _walk(a: Any, b: Any, parts: list[Any], path: str, norm: tuple[str, ...], ou
         dict_list = all(isinstance(x, dict) for x in a + b) and (a or b)
         if keys and dict_list:
             def ident(item: dict[str, Any]) -> tuple[Any, ...]:
-                return tuple(str(item.get(k)) for k in keys)
+                base = tuple(str(item.get(k)) for k in keys)
+                if norm == ("budgets", "limits"):
+                    # several `session:*` limits differ only by match_agents (budgets-ledger)
+                    ma = item.get("match_agents")
+                    return (*base, str(sorted(ma) if isinstance(ma, list) else ma))
+                return base
 
             amap = {ident(x): x for x in a}
             bmap = {ident(x): x for x in b}

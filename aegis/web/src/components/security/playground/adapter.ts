@@ -28,12 +28,20 @@ export function kindOf(surface: Surface): Kind {
   return 'model_call';
 }
 
+/** For an `allow` verdict: the enforce-mode control that came closest to its threshold (e.g. INJ-02 0.70 < 0.80). */
+export function closestCall(decisions: { control_id: string; action: string; mode: string; score: number | null; threshold: number | null }[] | undefined) {
+  const scored = (decisions ?? []).filter((d) => d.mode === 'enforce' && d.action === 'allow' && typeof d.score === 'number' && d.score > 0 && typeof d.threshold === 'number' && d.threshold > 0);
+  if (!scored.length) return null;
+  return scored.sort((a, b) => (b.score as number) / (b.threshold as number) - (a.score as number) / (a.threshold as number))[0];
+}
+
 export function detailFromPlayground(resp: PlaygroundResponse, req: PlaygroundRequest, viewerId?: string | null): DecisionDetail {
   const v = resp.verdict;
   const surface: Surface = req.surface ?? 'prompt.user';
   const direction: Direction = IN_SURFACES.has(surface) ? 'in' : 'out';
   const destClass = destClassOf(req.destination);
   const primary = v.primary ?? null;
+  const near = primary ? null : closestCall(v.decisions);
   const controls: ControlHit[] = (v.decisions ?? [])
     .filter((d) => d.action !== 'allow')
     .map((d) => ({ control_id: d.control_id, action: d.action, mode: d.mode, score: d.score, latency_ms: d.latency_ms, degraded: d.degraded }));
@@ -68,9 +76,9 @@ export function detailFromPlayground(resp: PlaygroundResponse, req: PlaygroundRe
     session_id: 'playground',
     source: 'playground',
     control_id: primary?.control_id ?? null,
-    reason: primary?.reason ?? (v.action === 'allow' ? 'No control fired — request allowed.' : ''),
-    score: primary?.score ?? null,
-    threshold: primary?.threshold ?? null,
+    reason: primary?.reason ?? (v.action === 'allow' ? (near ? `Allowed — closest call ${near.control_id}: score ${(near.score as number).toFixed(2)} < threshold ${(near.threshold as number).toFixed(2)}.` : 'No control fired — request allowed.') : ''),
+    score: primary?.score ?? (v.action === 'allow' ? (near?.score ?? null) : null),
+    threshold: primary?.threshold ?? (v.action === 'allow' ? (near?.threshold ?? null) : null),
     controls,
     redaction_count: redactions.length,
     entities,

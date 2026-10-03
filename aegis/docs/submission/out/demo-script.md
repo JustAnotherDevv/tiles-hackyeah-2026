@@ -225,7 +225,7 @@ are refused, and every signature carries its own test vectors."
 
 **DO**
 1. Bottom terminal: the `make test` matrix. Point at per-control rows and the totals line
-   (`6 cases · 0 failed`).
+   (`[TBD: tests.total] cases · [TBD: tests.failed] failed`).
 2. **Perf** page: overhead p50/p95 ([TBD: perf.overhead_p50_ms] / [TBD: perf.overhead_p95_ms] ms) vs model time.
 3. Audit: **Export (OCSF)**, then **Verify** → "chain OK ([TBD: audit.records] records)" (or `make verify-audit`).
 
@@ -289,7 +289,7 @@ to the Agent Control Standard dispositions (allow / modify / deny / ask).
 
 **Q6. False positives?** Checksum validators instead of bare regex; tokenize rather than block;
 destination-aware rules; a finance false-positive wall in the suite ("kill switch", "execute the order",
-"egzekucja zlecenia"). Measured FPR at balanced: 1.6 % (`make eval`).
+"egzekucja zlecenia"). Measured FPR at balanced: [TBD: eval.fpr] (`make eval`).
 
 **Q7. Obfuscation (base64, leetspeak, invisible Unicode, Polish)?** Everything is normalized first (NFKC,
 zero-width and tag-character stripping, homoglyphs, de-leet, diacritic folding, base64/hex decoding to depth
