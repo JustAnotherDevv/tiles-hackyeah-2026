@@ -1,0 +1,43 @@
+id: AEGIS-TI-018
+title: Model namespace reuse / unpinned model revision
+description: >-
+  Unit 42 (2025) showed deleted Hugging Face author namespaces can be re-registered
+  and poisoned, affecting managed catalogs. Matches downloads from namespaces flagged
+  as re-registered, and downloads pinned to a mutable ref (main/master/HEAD) rather
+  than a 40-hex commit. Approval required so a human confirms provenance and pins a
+  commit. (The flagged namespaces here are demo placeholders.)
+status: stable
+severity: medium
+confidence: medium
+aliases: []
+references:
+  - https://unit42.paloaltonetworks.com/model-namespace-reuse/
+tags: [LLM04:2026, ASI04, supply-chain]
+published: "2025-01-01"
+modified: "2026-10-03"
+applies_to: [model_download]
+matcher:
+  any_of:
+    - type: url
+      host_in: [huggingface.co]
+      path_regex: '(?i)^/(ghost-author-demo|orphaned-ns-demo)/'
+    - type: url
+      host_in: [huggingface.co]
+      path_regex: '(?i)/resolve/(main|master|head)/'
+action: require_approval
+message: "Model download from a re-registered namespace or an unpinned revision. Approval required; pin a commit hash."
+tests:
+  positive:
+    - name: download from a flagged re-registered namespace
+      surface: model_download
+      url: "https://huggingface.co/ghost-author-demo/base-model/resolve/0123456789abcdef0123456789abcdef01234567/model.safetensors"
+    - name: download pinned to the mutable main ref
+      surface: model_download
+      url: "https://huggingface.co/acme-org/demo-model/resolve/main/model.safetensors"
+  negative:
+    - name: download pinned to a full commit hash
+      surface: model_download
+      url: "https://huggingface.co/acme-org/demo-model/resolve/0123456789abcdef0123456789abcdef01234567/model.safetensors"
+    - name: browsing the repo tree (not a resolve download)
+      surface: model_download
+      url: "https://huggingface.co/acme-org/demo-model/tree/main"

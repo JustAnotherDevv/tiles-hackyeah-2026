@@ -1,0 +1,53 @@
+# NOTE: anchor root-only paths with a leading "/" - e.g. src/aegis/policy/data/ and staging/models/
+# must stay tracked.
+
+# ---- Python / tooling
+/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+*.egg-info/
+
+# ---- Node / web
+node_modules/
+/web/dist/
+*.tsbuildinfo
+
+# ---- runtime state (CONTRACTS section 6.2) - never commit
+/data/
+/feed_service/state/
+/reports/*
+!/reports/.gitkeep
+!/reports/eval.json
+!/reports/bench.json
+!/reports/heatmap.json
+!/reports/deck_numbers.md
+!/reports/*.html
+
+# ---- model weights (semantic-models; ~0.8 GB)
+/models/
+
+# ---- secrets & keys
+.env
+.env.*
+!.env.example
+*.p12
+*.pfx
+*.pem
+*.key
+!staging/feed-seed/keys/feed-public.key
+/keys/
+demo/claude/.agent_key
+
+# ---- spike artefacts (local paths, session ids)
+staging/**/logs/
+staging/**/runs/
+
+# ---- OS / editors
+.DS_Store
+.idea/
+.vscode/
+*.swp

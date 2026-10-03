@@ -1,0 +1,101 @@
+{
+  "seed": 20261003,
+  "generated_by": "build_public.py",
+  "upstream": {
+    "deepset_train": {
+      "url": "https://huggingface.co/datasets/deepset/prompt-injections/resolve/4f61ecb038e9c3fb77e21034b22511b523772cdd/data/train-00000-of-00001-9564e8b05b4757ab.parquet",
+      "sha256": "2e10bc7ab30f542c97e4e83e2a5683000b5057d25ec10908784c631d44124c04",
+      "bytes": 40323
+    },
+    "deepset_test": {
+      "url": "https://huggingface.co/datasets/deepset/prompt-injections/resolve/4f61ecb038e9c3fb77e21034b22511b523772cdd/data/test-00000-of-00001-701d16158af87368.parquet",
+      "sha256": "39ac797cabc157eeed58435a08593b2952bb6cb16fc394a2d383f447cc7b246e",
+      "bytes": 10892
+    },
+    "gandalf_train": {
+      "url": "https://huggingface.co/datasets/Lakera/gandalf_ignore_instructions/resolve/04737b65e90a6794ec227012e4a255a7def6344b/data/train-00000-of-00001-ded53be747ff55cd.parquet",
+      "sha256": "5b6acf3e5a5998d21f8e1222bb45bbdec25a14408747b1cd63bebef4a75fa439",
+      "bytes": 36715
+    },
+    "gandalf_test": {
+      "url": "https://huggingface.co/datasets/Lakera/gandalf_ignore_instructions/resolve/04737b65e90a6794ec227012e4a255a7def6344b/data/test-00000-of-00001-bc92128b9288a6d1.parquet",
+      "sha256": "56b646d133335ebc535266bd55dbe1b5bee7caa4b95bf49d040684b9b5dd9972",
+      "bytes": 7336
+    },
+    "jbb_harmful": {
+      "url": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors/resolve/886acc352a31533ffbcf4ef22c744658688086fc/data/harmful-behaviors.csv",
+      "sha256": "4a8ec6832056b631eb092dccc60d37a61c3d441268268888b3d006288afeffa1",
+      "bytes": 23116
+    },
+    "jbb_benign": {
+      "url": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors/resolve/886acc352a31533ffbcf4ef22c744658688086fc/data/benign-behaviors.csv",
+      "sha256": "3cda234d21a991fa309bbfea4b6d9dae31ccdf8e9d452424b6a983e4fdc33468",
+      "bytes": 20570
+    },
+    "xstest": {
+      "url": "https://raw.githubusercontent.com/paul-rottger/xstest/main/xstest_prompts.csv",
+      "sha256": "11783fb294ed017473ee53c207d71f2161c7672c8d0b037501e78387f801cb5a",
+      "bytes": 38719
+    },
+    "bipia_text": {
+      "url": "https://raw.githubusercontent.com/microsoft/BIPIA/main/benchmark/text_attack_test.json",
+      "sha256": "75750e7b4e8b34e8f9d88d89b357aeaaf02bd07f9e493ccd37eda74a0cd7c7f8",
+      "bytes": 6322
+    },
+    "injecagent_dh": {
+      "url": "https://raw.githubusercontent.com/uiuc-kang-lab/InjecAgent/main/data/test_cases_dh_base.json",
+      "sha256": "0a8186468d21389af432e8c7b399ae42264d1b93a07b65c7a489468508604305",
+      "bytes": 672918
+    },
+    "injecagent_ds": {
+      "url": "https://raw.githubusercontent.com/uiuc-kang-lab/InjecAgent/main/data/test_cases_ds_base.json",
+      "sha256": "4daab35c62a3845e8b9400f4dca58b9c9f37e57cd33b2337552557fbb26282e9",
+      "bytes": 765370
+    }
+  },
+  "outputs": [
+    {
+      "file": "public/deepset_prompt_injections.jsonl",
+      "rows": 150,
+      "labels": {
+        "attack": 75,
+        "benign": 75
+      },
+      "sha256": "229208fce3646e72ae96d039aa85730038ac062fd9adbd1ea8b3432066728cce"
+    },
+    {
+      "file": "public/lakera_gandalf.jsonl",
+      "rows": 150,
+      "labels": {
+        "attack": 150
+      },
+      "sha256": "fa1179222758dc30f0d198cbafaa01ae55929f8da3880d6b2799ded67f663f26"
+    },
+    {
+      "file": "public/jailbreakbench_behaviors.jsonl",
+      "rows": 200,
+      "labels": {
+        "attack": 100,
+        "benign": 100
+      },
+      "sha256": "f5bf66c2240af094ad9c96beb8f915862319d14c94b032e1e2b2fbf7508e28bd"
+    },
+    {
+      "file": "public/xstest_safe.jsonl",
+      "rows": 200,
+      "labels": {
+        "benign": 200
+      },
+      "sha256": "7ce2724dbf5ae55a8379ddd2c49d8a71976c7e7659086d1061061b55f59f60a1"
+    },
+    {
+      "file": "public/indirect_injections.jsonl",
+      "rows": 65,
+      "labels": {
+        "attack": 45,
+        "benign": 20
+      },
+      "sha256": "34b3853af1e9b4473e6839d73ff0c950ccc8349f44c59ce24d9c3c62944ee03b"
+    }
+  ]
+}

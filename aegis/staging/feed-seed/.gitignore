@@ -1,0 +1,5 @@
+# Generated, signed artifacts (reproducible via sign.py). Keep the dir, drop contents.
+dist/*.json
+# Python caches
+__pycache__/
+*.pyc

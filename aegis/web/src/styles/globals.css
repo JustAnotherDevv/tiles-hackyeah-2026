@@ -1,0 +1,173 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./shadcn.css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/jetbrains-mono";
+@import "./tokens.css";
+
+/* Aegis global styles. Owner: dashboard-shell (scaffold seeded this file; safe to refine). */
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Geist Variable", "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: var(--font-sans);
+  --font-mono: "Geist Mono Variable", "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Aegis extensions -> bg-surface-2, text-text-3, border-border-strong, text-allow, bg-block/10 … */
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-surface-4: var(--surface-4);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-text-1: var(--text-1);
+  --color-text-2: var(--text-2);
+  --color-text-3: var(--text-3);
+  --color-text-4: var(--text-4);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-allow: var(--allow);
+  --color-log: var(--log);
+  --color-redact: var(--redact);
+  --color-approval: var(--approval);
+  --color-block: var(--block);
+  --color-downgrade: var(--downgrade);
+  --color-chart-allow: var(--chart-allow);
+  --color-chart-log: var(--chart-log);
+  --color-chart-redact: var(--chart-redact);
+  --color-chart-approval: var(--chart-approval);
+  --color-chart-block: var(--chart-block);
+  --color-role-owner: var(--role-owner);
+  --color-role-admin: var(--role-admin);
+  --color-role-member: var(--role-member);
+  --color-role-agent: var(--role-agent);
+
+  /* radii (DESIGN_TOKENS §4) */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-4xl: 28px;
+
+  /* type scale (DESIGN_TOKENS §3) */
+  --text-2xs: 10.5px;
+  --text-2xs--line-height: 14px;
+  --text-xs: 11.5px;
+  --text-xs--line-height: 16px;
+  --text-sm: 12.5px;
+  --text-sm--line-height: 18px;
+  --text-base: 13.5px;
+  --text-base--line-height: 20px;
+  --text-md: 15px;
+  --text-md--line-height: 22px;
+  --text-lg: 18px;
+  --text-lg--line-height: 26px;
+  --text-xl: 22px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 44px;
+  --text-3xl--line-height: 48px;
+
+  /* elevation (DESIGN_TOKENS §4) */
+  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.035), 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 6px 16px -8px rgba(0, 0, 0, 0.5);
+  --shadow-raised: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-pop: 0 0 0 1px #2a2f37, 0 16px 40px -12px rgba(0, 0, 0, 0.8), 0 4px 10px -2px rgba(0, 0, 0, 0.5);
+  --shadow-drawer: -1px 0 0 0 #2a2f37, -32px 0 80px -24px rgba(0, 0, 0, 0.85);
+
+  /* motion (DESIGN_TOKENS §5) */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-ping-dot: ping-dot 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  --animate-page-in: page-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-row-in: row-in 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes ping-dot {
+    0% { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(1.9); opacity: 0; }
+  }
+  @keyframes page-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes row-in {
+    0% { background-color: rgba(99, 102, 241, 0.14); }
+    100% { background-color: transparent; }
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    color-scheme: dark;
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-size: 13.5px;
+    line-height: 20px;
+    font-feature-settings: "ss01", "cv11";
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgba(129, 140, 248, 0.65);
+  }
+  code, kbd, samp, pre {
+    @apply font-mono;
+  }
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

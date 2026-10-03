@@ -1,0 +1,594 @@
+# =============================================================================
+#  Aegis - demo organization seed: "Acme Capital"
+# =============================================================================
+#
+#  WHAT THIS FILE IS
+#    The initial state of the demo organization: who the humans are, which
+#    AI agents exist (as service identities), their API keys, the team
+#    budgets, and the inventory of resources that agent actions touch
+#    (databases/tables with sensitivity, SaaS vendors, external hosts).
+#
+#  HOW IT IS USED
+#    * Loaded once into SQLite on first boot, or on `aegis seed --reset`
+#      (also called by `make demo-preflight`).
+#    * After seeding, the SQLite tables are the source of truth for org data.
+#      Budgets in particular change through APPROVED `config_change.budget_increase`
+#      requests (see approvals.yaml); they are not edited here at runtime.
+#    * policy.yaml can still override any budget live via
+#      `budgets.limit_overrides` (judge lever). Precedence:
+#        policy.yaml limit_overrides  >  SQLite (seeded from here, changed by approvals)
+#
+#  RELATION TO THE OTHER SEED FILES
+#    org.seed.yaml   -> WHO and WHAT (identities, teams, budgets, resources)
+#    policy.yaml     -> HOW traffic is governed (controls, profiles, budgets rules)
+#    approvals.yaml  -> WHO MAY APPROVE WHAT (approval matrix)
+#    SCENARIOS.md    -> 12 demo walkthroughs tying the three together
+#
+#  CONVENTIONS
+#    * ids are stable slugs. Humans: `u_<firstname>`. Agents: `<name>@<team>`.
+#    * Money is USD. `tokens` = input + output tokens (the ledger may split them).
+#    * `local_compute_s` = Ollama load + prompt_eval + eval seconds (ns / 1e9),
+#      priced with a shadow price from policy.yaml `budgets.cost_table`.
+#    * Budget windows are calendar windows in the org timezone
+#      (daily resets 00:00 Europe/Warsaw, monthly on the 1st).
+#    * ALL emails use the reserved `.example` TLD. ALL people are fictional.
+#    * ALL API keys are FAKE demo values: prefix `aegis_demo_`, low entropy,
+#      suffix `_NOT_A_SECRET`. They are safe to commit. A real deployment would
+#      store only `key_hmac` (HMAC-SHA256 with a server-side pepper) and show
+#      the plaintext exactly once at creation.
+#
+#  NOTE FOR THE IMPLEMENTER
+#    Field names here are proposals. CONTRACTS.md is authoritative; adapt names
+#    to the final schema but keep the semantics (sponsor, scope, sensitivity...).
+# =============================================================================
+
+schema: aegis.org-seed/v1
+seed_version: 2026.10.04-1
+
+# -----------------------------------------------------------------------------
+# Organization
+# -----------------------------------------------------------------------------
+org:
+  id: acme-capital
+  name: Acme Capital
+  legal_name: Acme Capital Sp. z o.o.          # fictional
+  description: >
+    Mid-size Kraków-based investment firm. Trading desk uses a remote AI copilot,
+    Research runs a local-first agent on Ollama, Platform engineers use Claude Code.
+    Everything goes through the Aegis gateway.
+  timezone: Europe/Warsaw
+  currency: USD
+  locale: [en-GB, pl-PL]
+  email_domain: acme-capital.example
+  internal_domains: [acme-capital.example, corp.acme-capital.example]  # used by DLP-03 / ACT-03
+  # Which policy file + profile the org starts on. The profile itself lives in
+  # policy.yaml (`profile:`); this is only the value written at seed time.
+  policy_ref: policy.yaml
+  initial_profile: balanced
+
+# -----------------------------------------------------------------------------
+# Roles (organization-level). Approval routing in approvals.yaml uses these.
+#   rank is used for ">= role" comparisons: an owner can fill an admin slot,
+#   an admin can fill a self slot (when allowed), never the other way round.
+# -----------------------------------------------------------------------------
+roles:
+  - id: owner
+    rank: 30
+    description: Ultimate authority. Org-level budgets, high-value spend, prod writes, two-person co-signer.
+  - id: admin
+    rank: 20
+    description: Runs teams and policy day to day. Team budgets up to 2x, PII data access, mid-value spend.
+  - id: member
+    rank: 10
+    description: Uses AI tools. Can request anything; can self-approve only rules marked `self`.
+  # Agents are NOT a role. They are service identities (see `agents:` below):
+  # they can REQUEST approvals but can NEVER approve anything.
+
+# -----------------------------------------------------------------------------
+# Teams
+#   lead: the admin who sees this team's queue first (any admin may still act,
+#   unless approvals.yaml says `same_team_required: true`).
+#   data_ceiling: highest data class the team's agents may ever touch without
+#   an approval (checked by ACT-02 together with table sensitivity).
+# -----------------------------------------------------------------------------
+teams:
+  - id: trading
+    name: Trading
+    description: Equities and FX desk. Remote AI copilot, market-data SaaS, client comms.
+    lead: u_emily
+    data_ceiling: CONFIDENTIAL
+    default_destination_tier: T1        # remote models allowed (with tokenization)
+    color: "#f59e0b"
+
+  - id: research
+    name: Research
+    description: Equity research. Local-first - prefers Ollama so client data never leaves the laptop.
+    lead: u_emily                        # small org: Trading head also covers Research
+    data_ceiling: CONFIDENTIAL
+    default_destination_tier: T0        # local only by default
+    color: "#10b981"
+
+  - id: platform
+    name: Platform
+    description: Internal engineering, infra and the AI platform itself (runs Aegis).
+    lead: u_marek
+    data_ceiling: INTERNAL
+    default_destination_tier: T1
+    color: "#3b82f6"
+
+# -----------------------------------------------------------------------------
+# Members (humans). 1 owner, 2 admins, 5 members.
+#   view_as_label: text in the dashboard's "view as" role switcher (demo auth).
+#   sponsor_of: agents this human is accountable for. For an agent's request,
+#   the SPONSOR fills the `self` approval slot (an agent never approves itself).
+# -----------------------------------------------------------------------------
+members:
+  - id: u_katarzyna
+    name: Katarzyna Wiśniewska
+    email: katarzyna.wisniewska@acme-capital.example
+    role: owner
+    title: Managing Partner & Chief Risk Officer
+    teams: [trading, research, platform]
+    locale: pl-PL
+    view_as_label: "Owner - Katarzyna (CRO)"
+    avatar_color: "#7c3aed"
+
+  - id: u_marek
+    name: Marek Kowalczyk
+    email: marek.kowalczyk@acme-capital.example
+    role: admin
+    title: Head of Platform & AI Security
+    teams: [platform]
+    locale: pl-PL
+    view_as_label: "Admin - Marek (Platform)"
+    avatar_color: "#3b82f6"
+    # Designated owner delegate for escalation when the owner is unreachable.
+    # Delegation never satisfies a two-person rule on its own (see approvals.yaml).
+    owner_delegate: true
+
+  - id: u_emily
+    name: Emily Carter
+    email: emily.carter@acme-capital.example
+    role: admin
+    title: Head of Trading & Research
+    teams: [trading, research]
+    locale: en-GB
+    view_as_label: "Admin - Emily (Trading)"
+    avatar_color: "#f59e0b"
+
+  - id: u_piotr
+    name: Piotr Zieliński
+    email: piotr.zielinski@acme-capital.example
+    role: member
+    title: Senior Trader
+    teams: [trading]
+    locale: pl-PL
+    view_as_label: "Member - Piotr (Trader)"
+    sponsor_of: [trading-copilot@trading]
+    avatar_color: "#ef4444"
+
+  - id: u_olivia
+    name: Olivia Bennett
+    email: olivia.bennett@acme-capital.example
+    role: member
+    title: Quant Analyst
+    teams: [trading]
+    locale: en-GB
+    view_as_label: "Member - Olivia (Quant)"
+    avatar_color: "#ec4899"
+
+  - id: u_agnieszka
+    name: Agnieszka Lewandowska
+    email: agnieszka.lewandowska@acme-capital.example
+    role: member
+    title: Equity Research Analyst
+    teams: [research]
+    locale: pl-PL
+    view_as_label: "Member - Agnieszka (Research)"
+    sponsor_of: [research-agent@research]
+    avatar_color: "#10b981"
+
+  - id: u_james
+    name: James O'Connor
+    email: james.oconnor@acme-capital.example
+    role: member
+    title: Research Data Scientist
+    teams: [research]
+    locale: en-GB
+    view_as_label: "Member - James (Data Science)"
+    avatar_color: "#14b8a6"
+
+  - id: u_tomasz
+    name: Tomasz Wójcik
+    email: tomasz.wojcik@acme-capital.example
+    role: member
+    title: Platform / SRE Engineer (red team rota)
+    teams: [platform]
+    locale: pl-PL
+    view_as_label: "Member - Tomasz (SRE)"
+    sponsor_of: [claude-code@platform, chaos-agent@platform]
+    avatar_color: "#64748b"
+
+# -----------------------------------------------------------------------------
+# Agents (service identities)
+#   kind:          coding_agent | local_agent | remote_agent | red_team
+#   location:      where the agent process runs (for the architecture view)
+#   sponsor:       accountable human (fills `self` approval slots)
+#   models:        allowlist enforced by GOV-02 (policy.yaml has the model registry
+#                  with tiers T0/T1; ids must exist there)
+#   max_destination_tier: highest trust tier this agent may send data to
+#                  (T0 local/internal, T1 approved remote model, T2 third party)
+#   tools:         allow/deny globs enforced by GOV-03 (Claude Code tool names,
+#                  MCP tools as mcp__<server>__<tool>, HTTP tools as http.<verb>)
+#   data_grants:   standing (pre-approved) DB access. Anything beyond -> ACT-02
+#                  raises an approval request routed by approvals.yaml.
+#   action_types:  which agent_action approval types this agent may even REQUEST
+#                  (anything else is blocked outright by GOV-03).
+#   profile_override: optional per-agent strictness profile (policy.yaml).
+# -----------------------------------------------------------------------------
+agents:
+  - id: claude-code@platform
+    display_name: Claude Code (Platform)
+    kind: coding_agent
+    team: platform
+    sponsor: u_tomasz
+    location: local_process            # developer laptop; model calls go remote via the gateway
+    description: >
+      Claude Code CLI launched with `claude --settings demo/claude-settings.json`.
+      Model traffic via ANTHROPIC_BASE_URL=http://127.0.0.1:8787, tool calls via a
+      fail-closed PreToolUse hook, MCP servers via the Aegis MCP proxy.
+    integration:
+      model_gateway: anthropic          # /v1/messages ingress
+      hooks: [PreToolUse, PostToolUse, UserPromptSubmit]
+      mcp_proxy: true
+    models:
+      default: anthropic/claude-sonnet-5-5
+      allowed:
+        - anthropic/claude-opus-5-5
+        - anthropic/claude-sonnet-5-5
+        - anthropic/claude-haiku-4-5     # Claude Code uses a small model for background tasks
+        - ollama/qwen3.5:0.8b            # downgrade target when budget is tight
+    max_destination_tier: T1
+    tools:
+      allow: [Read, Glob, Grep, Edit, Write, Bash, TodoWrite, "mcp__filesystem__*", "mcp__acme-crm__lookup_*", "mcp__acme-db__query"]
+      deny: ["mcp__acme-crm__export_*", WebFetch]        # WebFetch only via http tools proxied by Aegis
+    data_grants:
+      - {database: acme-staging-pg, tables: ["*"], operations: [read, write]}
+      - {database: acme-prod-pg, tables: [market_prices, research_notes], operations: [read]}
+    action_types: [spend, data_access, external_send, code_exec, deploy]
+    status: active
+
+  - id: research-agent@research
+    display_name: Research Agent (local)
+    kind: local_agent
+    team: research
+    sponsor: u_agnieszka
+    location: local_process
+    description: >
+      Python agent on the laptop talking to local Ollama only (Qwen3.5 0.8B).
+      Reads research notes and filings, may query the customer table for
+      coverage lists. Local-first: nothing it sees leaves T0 unless approved.
+    integration:
+      model_gateway: ollama             # /api/chat ingress (native, for compute-seconds)
+      hooks: []
+      mcp_proxy: true
+    models:
+      default: ollama/qwen3.5:0.8b
+      allowed: [ollama/qwen3.5:0.8b]
+    max_destination_tier: T0           # local only; any T1/T2 egress -> blocked by GOV-02 / ACT-03
+    tools:
+      allow: ["mcp__acme-db__query", "mcp__filesystem__read_*", "http.get:*.acme-capital.example", "mcp__marketpulse__get_quote"]
+      deny: ["http.post:*", "mcp__*__send_*"]
+    data_grants:
+      - {database: acme-prod-pg, tables: [research_notes, market_prices], operations: [read]}
+    action_types: [spend, data_access]
+    status: active
+
+  - id: trading-copilot@trading
+    display_name: Trading Copilot (remote)
+    kind: remote_agent
+    team: trading
+    sponsor: u_piotr
+    location: remote_saas              # agent logic hosted remotely; calls home through Aegis
+    description: >
+      Desk copilot on a remote model (Anthropic or OpenRouter if keys exist,
+      otherwise the mock LLM). Drafts client emails, looks up positions,
+      subscribes to data feeds. Client PII is tokenized before it leaves.
+    integration:
+      model_gateway: openai             # OpenAI-compatible /v1/chat/completions ingress
+      hooks: []
+      mcp_proxy: true
+    models:
+      default: anthropic/claude-haiku-4-5
+      allowed:
+        - anthropic/claude-haiku-4-5
+        - anthropic/claude-sonnet-5-5
+        - openrouter/meta-llama/llama-3.3-70b-instruct
+        - ollama/qwen3.5:0.8b            # downgrade target
+    max_destination_tier: T1
+    tools:
+      allow: ["mcp__acme-crm__lookup_*", "mcp__acme-db__query", "mcp__marketpulse__*", "mcp__mailer__send_email", "saas.purchase_subscription", "http.get:*"]
+      deny: ["mcp__acme-crm__delete_*", "trade.execute"]   # it may DRAFT trades, never execute
+    data_grants:
+      - {database: acme-prod-pg, tables: [market_prices, positions], operations: [read]}
+    action_types: [spend, data_access, external_send]
+    status: active
+
+  - id: chaos-agent@platform
+    display_name: Chaos Agent (red team)
+    kind: red_team
+    team: platform
+    sponsor: u_tomasz
+    location: local_process
+    description: >
+      Scripted adversarial agent used in demos and the self-test suite:
+      prompt injection, PII exfiltration, runaway loops, $5k purchase attempts,
+      poisoned MCP servers, prod DROP TABLE. Tight budgets so it trips fast.
+      It is a normal identity - Aegis gives it no special treatment.
+    integration:
+      model_gateway: openai
+      hooks: []
+      mcp_proxy: true
+    models:
+      default: ollama/qwen3.5:0.8b
+      allowed: [ollama/qwen3.5:0.8b, anthropic/claude-haiku-4-5]
+    max_destination_tier: T1
+    tools:
+      allow: ["*"]                       # deliberately broad: every other control has to catch it
+      deny: []
+    data_grants: []
+    action_types: [spend, data_access, external_send, code_exec, deploy]
+    profile_override: null               # set to `strict` to show per-agent profiles
+    demo: true
+    status: active
+
+# -----------------------------------------------------------------------------
+# API keys (FAKE, demo only). Every agent has one key; Claude Code reads its key
+# from ANTHROPIC_AUTH_TOKEN, the others from X-Aegis-Key / Authorization: Bearer.
+#   scopes: ingress surfaces the key may use (GOV-01)
+#   key:    plaintext demo value - SAFE TO COMMIT, see header
+# -----------------------------------------------------------------------------
+api_keys:
+  - key_id: key_cc_platform_01
+    principal: claude-code@platform
+    key: aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET
+    scopes: [anthropic.messages, mcp, hooks]
+    created_by: u_marek
+    created_at: "2026-10-03T11:00:00+02:00"
+    expires_at: "2026-10-31T23:59:59+01:00"
+
+  - key_id: key_research_01
+    principal: research-agent@research
+    key: aegis_demo_research_agent_0000000000000002_NOT_A_SECRET
+    scopes: [ollama.chat, ollama.embed, mcp]
+    created_by: u_emily
+    created_at: "2026-10-03T11:00:00+02:00"
+    expires_at: "2026-10-31T23:59:59+01:00"
+
+  - key_id: key_trading_copilot_01
+    principal: trading-copilot@trading
+    key: aegis_demo_trading_copilot_0000000000000003_NOT_A_SECRET
+    scopes: [openai.chat, mcp, actions]
+    created_by: u_emily
+    created_at: "2026-10-03T11:00:00+02:00"
+    expires_at: "2026-10-31T23:59:59+01:00"
+
+  - key_id: key_chaos_01
+    principal: chaos-agent@platform
+    key: aegis_demo_chaos_agent_0000000000000004_NOT_A_SECRET
+    scopes: [openai.chat, ollama.chat, mcp, actions, hooks]
+    created_by: u_marek
+    created_at: "2026-10-03T11:00:00+02:00"
+    expires_at: "2026-10-04T23:59:59+02:00"     # short-lived on purpose
+
+  - key_id: key_revoked_demo
+    principal: chaos-agent@platform
+    key: aegis_demo_revoked_key_0000000000000099_NOT_A_SECRET
+    scopes: [openai.chat]
+    created_by: u_marek
+    created_at: "2026-10-01T09:00:00+02:00"
+    revoked_at: "2026-10-02T09:00:00+02:00"     # GOV-01 should_block example uses this key
+
+# Control-plane token for /admin/* (kill switch, feed rollback). Separate from
+# agent keys, never accepted on agent ingress (research 04 §3.8). FAKE.
+control_plane:
+  admin_token: aegis_demo_admin_token_0000000000000000_NOT_A_SECRET
+  dashboard_auth: view_as            # demo: role switcher, no login (BRIEF §4)
+
+# -----------------------------------------------------------------------------
+# Budgets (amounts). The RULES (soft thresholds, downgrade ladder, cost table,
+# loop limits) live in policy.yaml `budgets:` / BUD-01 / BUD-02 / EXE-04.
+#
+# Hierarchy: org -> team -> agent -> session. A request must fit EVERY level.
+# Teams may oversubscribe the org (sum of team caps > org cap is allowed);
+# the org cap is still the hard ceiling.
+# -----------------------------------------------------------------------------
+budgets:
+  org:
+    usd:             {daily: 150.00,   monthly: 3000.00}
+    tokens:          {daily: 12000000, monthly: 240000000}
+    local_compute_s: {daily: 14400,    monthly: 300000}     # 4 h/day of Ollama time
+
+  teams:
+    trading:
+      usd:             {daily: 60.00,   monthly: 1200.00}
+      tokens:          {daily: 4000000, monthly: 80000000}
+      local_compute_s: {daily: 1800,    monthly: 36000}
+    research:                                              # local-first: low USD, high compute
+      usd:             {daily: 15.00,   monthly: 300.00}
+      tokens:          {daily: 1500000, monthly: 30000000}
+      local_compute_s: {daily: 7200,    monthly: 150000}
+    platform:
+      usd:             {daily: 50.00,   monthly: 1000.00}
+      tokens:          {daily: 6000000, monthly: 120000000}
+      local_compute_s: {daily: 3600,    monthly: 72000}
+
+  agents:
+    claude-code@platform:
+      usd:             {daily: 30.00}
+      tokens:          {daily: 5000000}
+      session:         {usd: 5.00, tokens: 3000000, steps: 300, tool_calls: 400, wall_s: 7200}
+      max_parallel: 4
+    research-agent@research:
+      usd:             {daily: 2.00}                       # shadow-priced local compute only
+      local_compute_s: {daily: 5400}
+      session:         {local_compute_s: 600, steps: 40, tool_calls: 30, wall_s: 900}
+      max_concurrent_local: 1                              # 8 GB laptop: one inference at a time
+    trading-copilot@trading:
+      usd:             {daily: 20.00}
+      tokens:          {daily: 1500000}
+      session:         {usd: 1.00, tokens: 200000, steps: 30, tool_calls: 20, wall_s: 600}
+    chaos-agent@platform:                                  # tiny on purpose: trips in seconds
+      usd:             {daily: 0.50}
+      tokens:          {daily: 100000}
+      local_compute_s: {daily: 120}
+      session:         {usd: 0.10, tokens: 20000, steps: 15, tool_calls: 10, wall_s: 120}
+
+  # Members' own direct usage (playground, CLI) - optional, defaults if absent.
+  member_defaults:
+    usd: {daily: 5.00}
+    tokens: {daily: 500000}
+
+# -----------------------------------------------------------------------------
+# Resources that agent ACTIONS touch. Approval routing uses these attributes:
+#   * database.environment (prod|staging) and table.sensitivity
+#     (PUBLIC < INTERNAL < CONFIDENTIAL < RESTRICTED, same scale as policy.yaml
+#     data_classes) drive ACT-02 / APR-DATA-* rules.
+#   * vendor.approved and plan price drive ACT-01 / APR-SPEND-* rules.
+#   * external host tier drives ACT-03 / APR-SEND-* rules.
+# Mocks run on ports 8791-8799 (suggested mapping; CONTRACTS.md is authoritative).
+# -----------------------------------------------------------------------------
+resources:
+  databases:
+    - id: acme-prod-pg
+      engine: postgres
+      environment: prod
+      mock: {service: mock_db, port: 8794}
+      tables:
+        - name: customers
+          sensitivity: CONFIDENTIAL
+          categories: [pii]
+          contains: [PERSON, EMAIL, PHONE, PL_PESEL, IBAN, POSTAL_ADDRESS, DATE_OF_BIRTH]
+          description: Retail and institutional client master data (fictional rows).
+        - name: payment_cards
+          sensitivity: RESTRICTED
+          categories: [pci]
+          contains: [CREDIT_CARD, CARD_EXPIRY]
+          description: Tokenized card-on-file data. Agents may never read raw PANs.
+        - name: trades
+          sensitivity: CONFIDENTIAL
+          categories: [mnpi]
+          description: Executed trades (material non-public information).
+        - name: positions
+          sensitivity: CONFIDENTIAL
+          categories: [mnpi]
+        - name: research_notes
+          sensitivity: INTERNAL
+          categories: []
+        - name: market_prices
+          sensitivity: PUBLIC
+          categories: []
+
+    - id: acme-staging-pg
+      engine: postgres
+      environment: staging
+      mock: {service: mock_db, port: 8794, schema: staging}
+      tables:
+        - {name: customers_synthetic, sensitivity: INTERNAL, categories: [synthetic]}
+        - {name: trades_synthetic,    sensitivity: INTERNAL, categories: [synthetic]}
+        - {name: market_prices,       sensitivity: PUBLIC,   categories: []}
+
+  # SaaS vendors an agent can buy from (ACT-01 / spend approvals).
+  vendors:
+    - id: marketpulse
+      name: MarketPulse Pro
+      category: market_data_saas
+      approved: true                      # on the approved-vendor list
+      host: api.marketpulse.example
+      plans:
+        - {id: mp-pro-monthly, usd: 50.00, recurring: monthly}   # the "$50 subscription" scenario
+        - {id: mp-enterprise-annual, usd: 4800.00, recurring: yearly}
+    - id: opendata-shop
+      name: OpenData Shop
+      category: dataset
+      approved: true
+      host: shop.opendata.example
+      plans:
+        - {id: eu-equities-2025-csv, usd: 12.00, recurring: none}  # the self-approve scenario
+    - id: gpucloud
+      name: BurstGPU Cloud
+      category: compute
+      approved: true
+      host: api.burstgpu.example
+      plans:
+        - {id: a100-24h-reservation, usd: 480.00, recurring: none} # the owner scenario
+    - id: shady-signals
+      name: Shady Signals Ltd
+      category: market_data_saas
+      approved: false                     # unknown vendor -> stricter routing in strict profile
+      host: signals.shady.example
+      plans:
+        - {id: alpha-signals, usd: 15.00, recurring: monthly}
+
+  # Outbound destinations for ACT-03 (external send) and DLP-04/06 allowlists.
+  external_hosts:
+    - {host: smtp.acme-capital.example,  tier: T0, purpose: internal mail relay}
+    - {host: api.marketpulse.example,    tier: T2, purpose: market data SaaS (approved vendor)}
+    - {host: hooks.slack.example,        tier: T2, purpose: team chat webhook}
+    - {host: client-portal.example,      tier: T2, purpose: external client portal}
+    - {host: paste.exfil.example,        tier: T2, purpose: "known-bad sink used by chaos-agent (mock :8793)", denylisted: true}
+
+  # Model hosts are declared in policy.yaml `models:` (tiers T0/T1).
+
+# -----------------------------------------------------------------------------
+# Demo state (OPTIONAL). Pre-populates counters and history so the dashboard
+# is not empty when the demo starts. `aegis seed --reset --no-demo-state`
+# skips this block. Values are relative to "now" at seed time.
+# -----------------------------------------------------------------------------
+demo_state:
+  budget_usage:                       # used so far in the current windows
+    org:             {usd_today: 62.30, usd_mtd: 1088.40, tokens_today: 4100000, local_compute_s_today: 6120}
+    team/trading:    {usd_today: 38.40, usd_mtd: 310.20,  tokens_today: 2200000, local_compute_s_today: 240}
+    # Trading MTD after 4 days projects to ~USD 2,400 (200% of monthly cap):
+    # the dashboard forecast motivates the budget_increase scenario (SCENARIOS.md #6).
+    team/research:   {usd_today: 1.10,  usd_mtd: 61.20,   tokens_today: 300000,  local_compute_s_today: 4950}
+    team/platform:   {usd_today: 22.80, usd_mtd: 717.00,  tokens_today: 1600000, local_compute_s_today: 930}
+    agent/claude-code@platform:    {usd_today: 18.90}
+    agent/trading-copilot@trading: {usd_today: 9.75}
+    agent/research-agent@research: {usd_today: 0.99, local_compute_s_today: 4950}
+    agent/chaos-agent@platform:    {usd_today: 0.00}
+
+  approval_history:                   # resolved requests for the history table
+    - id: APR-2026-0001
+      type: agent_action.spend
+      requester: research-agent@research
+      summary: "Buy 'EU equities 2025' dataset from OpenData Shop - USD 12.00 one-off"
+      rule: APR-SPEND-SELF
+      status: approved
+      approved_by: [u_agnieszka]
+      requested_at: "-1d 10:12"
+      resolved_at: "-1d 10:13"
+    - id: APR-2026-0002
+      type: config_change.model_allow
+      requester: u_james
+      summary: "Allow openrouter/meta-llama/llama-3.3-70b-instruct for team research"
+      rule: APR-MODEL-REMOTE
+      status: denied
+      approved_by: []
+      denied_by: u_emily
+      deny_reason: "Research stays local-first; use the local model."
+      requested_at: "-1d 14:40"
+      resolved_at: "-1d 15:02"
+    - id: APR-2026-0003
+      type: agent_action.external_send
+      requester: trading-copilot@trading
+      summary: "Email weekly desk note to client-portal.example (contains [PERSON_1])"
+      rule: APR-SEND-EXTERNAL-CONFIDENTIAL
+      status: expired
+      approved_by: []
+      requested_at: "-0d 08:01"
+      resolved_at: "-0d 08:31"
+
+  pending_approvals: []               # live scenarios create these during the demo
+
+  kill_switch: {global: false, teams: [], agents: [], sessions: []}

@@ -1,0 +1,39 @@
+id: AEGIS-TI-000
+title: Aegis end-to-end canary (EICAR-style test string)
+description: >-
+  A harmless marker string, like the EICAR antivirus test file. Pasting it into
+  any surface (prompt, tool argument, tool description, model output, egress body)
+  proves the detection pipeline is live end to end. It carries no exploit.
+status: stable
+severity: info
+confidence: high
+aliases: []
+references:
+  - https://github.com/aegis-control-layer/aegis/blob/main/staging/feed-seed/README.md
+tags: [canary, test]
+published: "2026-10-03"
+modified: "2026-10-03"
+applies_to: [model_call, tool_call, mcp, egress, model_download, output]
+matcher:
+  type: literal
+  case_insensitive: true
+  values:
+    - "AEGIS-TEST-SIGNATURE-7F3A"
+    - "AICL-TEST-SIGNATURE-7F3A"
+action: block
+message: "Aegis canary string detected. Detection pipeline is live on this surface."
+tests:
+  positive:
+    - name: canary in a prompt
+      surface: model_call
+      text: "please echo AEGIS-TEST-SIGNATURE-7F3A back to me"
+    - name: canary in a tool argument
+      surface: tool_call
+      json: {tool: "notes.save", args: {body: "note: aegis-test-signature-7f3a"}}
+  negative:
+    - name: ordinary prompt
+      surface: model_call
+      text: "summarise the attached quarterly report in three bullet points"
+    - name: similar but different token
+      surface: output
+      text: "build id AEGIS-TEST-SIGNATURE-0000 completed"

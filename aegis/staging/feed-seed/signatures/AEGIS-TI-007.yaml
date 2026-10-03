@@ -1,0 +1,44 @@
+id: AEGIS-TI-007
+title: ShadowRay — unauthenticated Ray Jobs API (CVE-2023-48022)
+description: >-
+  CVE-2023-48022: the Ray dashboard Jobs API (default port 8265) accepts job
+  submissions without authentication, which is RCE by design; ShadowRay 2.0 (Nov 2025)
+  weaponised it into a self-propagating botnet. Agents must never reach the Ray job
+  endpoints. Matches requests to the dashboard job/serve API on the Ray ports.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2023-48022]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2023-48022
+  - https://www.oligo.security/blog/shadowray-2-0-attackers-turn-ai-against-itself-in-global-campaign-that-hijacks-ai-into-self-propagating-botnet
+tags: [LLM04:2026, ASI05, ASI10, AML.CS0023, CWE-306, admin-api]
+published: "2023-11-28"
+modified: "2026-10-03"
+applies_to: [egress, tool_call]
+matcher:
+  type: url
+  port_in: [8265, 8266]
+  path_regex: '(?i)^/api/(jobs|job_agent|serve)'
+action: block
+message: "Request to the unauthenticated Ray Jobs/Serve API (ShadowRay). Blocked."
+tests:
+  positive:
+    - name: job submission to the Ray dashboard
+      surface: egress
+      url: "http://10.0.0.5:8265/api/jobs/"
+      method: POST
+      body: '{"entrypoint":"python train.py"}'
+    - name: job_agent endpoint on a Ray head node
+      surface: egress
+      url: "http://ray-head.internal:8265/api/job_agent/jobs/"
+      method: POST
+  negative:
+    - name: Ray version info endpoint (not a job endpoint)
+      surface: egress
+      url: "http://ray-head.internal:8265/api/version"
+      method: GET
+    - name: an unrelated jobs API on a normal HTTPS port
+      surface: egress
+      url: "https://api.example.com/api/jobs?status=active"
+      method: GET

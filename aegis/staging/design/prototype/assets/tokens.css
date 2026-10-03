@@ -1,0 +1,114 @@
+/* ==========================================================================
+   Aegis design tokens — source of truth for the prototype.
+   Mirrors staging/design/DESIGN_TOKENS.md 1:1. Dark-first (security-ops).
+   ========================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* ---- Neutral surfaces (cool graphite, 6 steps) ---- */
+  --bg:              #07080A;  /* app canvas */
+  --bg-sidebar:      #0A0B0E;  /* sidebar / topbar */
+  --surface-1:       #0E1013;  /* card */
+  --surface-2:       #13161A;  /* raised: hover row, input, secondary button */
+  --surface-3:       #191C21;  /* popover, drawer, modal */
+  --surface-4:       #20242A;  /* pressed / selected */
+  --border-subtle:   #15181C;  /* row dividers inside cards */
+  --border:          #1E2228;  /* card + input borders */
+  --border-strong:   #2A2F37;  /* focus-adjacent, popovers, hover borders */
+
+  /* ---- Text (contrast vs --surface-1) ---- */
+  --text-1:          #ECEEF1;  /* 16.4:1 primary */
+  --text-2:          #A2A8B3;  /*  8.0:1 secondary */
+  --text-3:          #7A808C;  /*  4.8:1 muted / labels */
+  --text-4:          #4B5160;  /*  2.4:1 disabled, decorative only */
+
+  /* ---- Brand (Aegis Iris) ---- */
+  --primary:         #6D5DFC;  /* button bg; white text 4.54:1 */
+  --primary-hover:   #7B6CFF;
+  --primary-press:   #5E4FE6;
+  --primary-fg:      #FFFFFF;
+  --accent-fg:       #9A8CFF;  /* brand-coloured text/icons on dark (6.9:1) */
+  --accent-subtle:   rgba(124, 108, 255, 0.12);
+  --accent-border:   rgba(124, 108, 255, 0.32);
+
+  /* ---- Decision semantics: UI (badges, text, dots) ---- */
+  --allow:           #3CCB7F;  --allow-subtle:    rgba(60, 203, 127, 0.10);  --allow-border:    rgba(60, 203, 127, 0.26);
+  --redact:          #5BA4F5;  --redact-subtle:   rgba(91, 164, 245, 0.10);  --redact-border:   rgba(91, 164, 245, 0.28);
+  --approval:        #E8A93A;  --approval-subtle: rgba(232, 169, 58, 0.10);  --approval-border: rgba(232, 169, 58, 0.28);
+  --block:           #F2556F;  --block-subtle:    rgba(242, 85, 111, 0.10);  --block-border:    rgba(242, 85, 111, 0.30);
+  --downgrade:       #F08A4B;  --downgrade-subtle:rgba(240, 138, 75, 0.10);  --downgrade-border:rgba(240, 138, 75, 0.28);
+  --neutral:         #8C93A0;  --neutral-subtle:  rgba(140, 147, 160, 0.10); --neutral-border:  rgba(140, 147, 160, 0.24);
+
+  /* ---- Decision semantics: chart marks (validated: OKLCH L 0.48–0.67, CVD ΔE ≥ 8 adjacent) ---- */
+  --chart-allow:     #1E9F68;
+  --chart-redact:    #3987E5;
+  --chart-approval:  #C98500;
+  --chart-block:     #E5446D;
+
+  /* ---- Categorical (teams / entities) — fixed order, never cycled ---- */
+  --cat-1: #3987E5;  /* blue    — Trading            */
+  --cat-2: #D95926;  /* orange  — Research           */
+  --cat-3: #199E70;  /* aqua    — Risk & Compliance  */
+  --cat-4: #C98500;  /* yellow  — Engineering        */
+  --cat-5: #D55181;  /* magenta — Client Services    */
+
+  /* ---- Chart chrome ---- */
+  --chart-grid:      #1A1E24;
+  --chart-axis:      #2A2F37;
+  --chart-label:     #7A808C;
+
+  /* ---- Typography ---- */
+  --font-sans: "Geist", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Geist Mono", "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --text-2xs: 10.5px;  /* micro caps, chart ticks          lh 14 */
+  --text-xs:  11.5px;  /* badges, table headers            lh 16 */
+  --text-sm:  12.5px;  /* secondary copy, mono IDs         lh 18 */
+  --text-base:13.5px;  /* body / table cells               lh 20 */
+  --text-md:  15px;    /* drawer titles                    lh 22 */
+  --text-lg:  18px;    /* section headers                  lh 26 */
+  --text-xl:  22px;    /* page titles                      lh 28 */
+  --text-2xl: 28px;    /* KPI values                       lh 32 */
+  --text-3xl: 44px;    /* hero figure (one per view)       lh 48 */
+
+  /* ---- Spacing (4px grid) ---- */
+  --space-0_5: 2px; --space-1: 4px; --space-1_5: 6px; --space-2: 8px; --space-3: 12px;
+  --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+
+  /* ---- Radii ---- */
+  --radius-xs: 4px;   /* chips inside tables, kbd */
+  --radius-sm: 6px;   /* badges, small buttons */
+  --radius-md: 8px;   /* buttons, inputs, nav items */
+  --radius-lg: 12px;  /* cards */
+  --radius-xl: 16px;  /* drawer, modal, command palette */
+  --radius-full: 999px;
+
+  /* ---- Elevation (no glows: hairline + inset highlight + soft drop) ---- */
+  --shadow-card:   inset 0 1px 0 0 rgba(255,255,255,0.035), 0 1px 2px 0 rgba(0,0,0,0.40), 0 6px 16px -8px rgba(0,0,0,0.50);
+  --shadow-raised: inset 0 1px 0 0 rgba(255,255,255,0.05), 0 1px 2px 0 rgba(0,0,0,0.50);
+  --shadow-pop:    0 0 0 1px var(--border-strong), 0 16px 40px -12px rgba(0,0,0,0.80), 0 4px 10px -2px rgba(0,0,0,0.50);
+  --shadow-drawer: -1px 0 0 0 var(--border-strong), -32px 0 80px -24px rgba(0,0,0,0.85);
+  --ring-focus:    0 0 0 2px var(--bg), 0 0 0 4px rgba(124,108,255,0.65);
+
+  /* ---- Motion ---- */
+  --dur-instant: 80ms;   /* hover colour */
+  --dur-fast:    140ms;  /* buttons, toggles, chips */
+  --dur-base:    220ms;  /* tabs, segmented indicator, dropdowns */
+  --dur-slow:    360ms;  /* drawer, modal, page transition */
+  --dur-slower:  640ms;  /* chart grow, number tween */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);     /* expo-out — default for enter */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);    /* moves between two states */
+  --ease-in:     cubic-bezier(0.7, 0, 0.84, 0);     /* exits */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* toasts, badges (tiny overshoot) */
+
+  /* ---- Layout ---- */
+  --sidebar-w: 236px;
+  --topbar-h: 52px;
+  --drawer-w: 600px;
+  --row-h: 38px;
+  --content-max: 1680px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; --dur-slower: 1ms; }
+}

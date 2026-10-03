@@ -1,0 +1,14 @@
+# Aegis content guard: Qwen3Guard-Gen-0.6B Q4_K_M (QuantFactory GGUF).
+# The GGUF's auto-converted template is garbled (renders only .System with the RESPONSE-mode
+# prompt and drops .Prompt). Replace it with a pass-through so the gateway sends the exact
+# official prompt (built in ollama_guard.build_prompt) - still send raw:true.
+# download_models.sh replaces __MODEL_BLOB__ with the local blob path and runs
+#   ollama create aegis-guard -f <generated Modelfile>
+FROM __MODEL_BLOB__
+TEMPLATE """{{ .Prompt }}"""
+PARAMETER temperature 0
+PARAMETER top_k 1
+PARAMETER num_ctx 2048
+PARAMETER num_predict 32
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|im_start|>"

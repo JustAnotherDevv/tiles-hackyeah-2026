@@ -1,0 +1,49 @@
+id: AEGIS-TI-005
+title: GGUF / chat-template Jinja2 SSTI ("Llama Drama")
+description: >-
+  CVE-2024-34359: an unsandboxed Jinja2 chat_template embedded in GGUF metadata
+  (llama-cpp-python 0.2.30-0.2.71) leads to RCE. Also covers Ollama Modelfile
+  TEMPLATE strings supplied to /api/create. Matches Python object-introspection
+  gadget tokens (__class__/__mro__/__subclasses__/__globals__/__builtins__) that
+  appear in a template but never in a legitimate chat template. The vectors use the
+  introspection fragment only (no execution chain).
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2024-34359]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2024-34359
+tags: [LLM04:2026, ASI05, CWE-1336, CWE-94]
+published: "2024-05-07"
+modified: "2026-10-03"
+applies_to: [model_download, egress]
+matcher:
+  type: regex
+  field: all
+  pattern: '(?i)__(class|mro|subclasses|globals|builtins|base|bases|init)__|\bcycler\.__init__\b|\bself\._TemplateReference__'
+action: block
+message: "Chat template / GGUF metadata contains Python introspection gadgets (SSTI). Blocked."
+tests:
+  positive:
+    - name: GGUF chat_template with SSTI introspection fragment
+      surface: model_download
+      filename: model.gguf.json
+      json:
+        general.architecture: "llama"
+        tokenizer.chat_template: "{{ ''.__class__.__mro__ }}"
+    - name: Ollama Modelfile TEMPLATE with introspection gadget
+      surface: egress
+      url: "http://127.0.0.1:11434/api/create"
+      method: POST
+      body: '{"name":"demo","modelfile":"FROM llama3\nTEMPLATE \"{{ cycler.__init__.__globals__ }}\""}'
+  negative:
+    - name: ordinary chat template
+      surface: model_download
+      filename: model.gguf.json
+      json:
+        tokenizer.chat_template: "{% for m in messages %}{{ m.role }}: {{ m.content }}\n{% endfor %}"
+    - name: ordinary Modelfile create
+      surface: egress
+      url: "http://127.0.0.1:11434/api/create"
+      method: POST
+      body: '{"name":"mymodel","modelfile":"FROM llama3\nPARAMETER temperature 0.7"}'

@@ -1,0 +1,20 @@
+{
+  "version": "spike-2026-10-03.1",
+  "servers": {
+    "crm":      { "url": "http://127.0.0.1:8791/mcp", "trust": "external" },
+    "poisoned": { "url": "http://127.0.0.1:8792/mcp", "trust": "external" },
+    "rugpull":  { "url": "http://127.0.0.1:8793/mcp", "trust": "external" }
+  },
+  "poison_threshold": 3,
+  "max_description_len": 2000,
+  "on_definition_change": "block",
+  "new_tool_after_baseline": "quarantine",
+  "unvetted_call": "block",
+  "secrets_action": "block",
+  "hidden_payload_action": "block",
+  "large_blob_action": { "internal": "allow", "external": "block" },
+  "pii_action": { "internal": "allow", "external": "redact" },
+  "max_encoded_len": 512,
+  "result_injection_action": "sanitize",
+  "result_secrets_action": "redact"
+}

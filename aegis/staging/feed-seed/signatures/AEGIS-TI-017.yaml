@@ -1,0 +1,54 @@
+id: AEGIS-TI-017
+title: Compromised AI packages and MCP servers (known-bad versions + IOCs)
+description: >-
+  Real supply-chain compromises: postmark-mcp npm 1.0.16 (Sep 2025, silently BCC'd
+  all mail to giftshop.club), litellm PyPI 1.82.7/1.82.8 (Mar 2026, litellm_init.pth
+  stealer), mistralai PyPI 2.4.6 (May 2026, /tmp/transformers.pyz), Amazon Q VS Code
+  extension 1.84.0 (CVE-2025-8217). Matches the exact bad versions (OSV-style) and
+  the published indicators of compromise.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2025-8217]
+references:
+  - https://www.koi.ai/blog/postmark-mcp-npm-malicious-backdoor-email-theft
+  - https://docs.mistral.ai/resources/security-advisories/MAI-2026-002
+tags: [LLM04:2026, ASI04, MCP04:2025, supply-chain]
+published: "2025-09-25"
+modified: "2026-10-03"
+applies_to: [tool_call, output, egress]
+matcher:
+  any_of:
+    - type: package
+      packages:
+        - {ecosystem: npm, name: "postmark-mcp", versions: ["1.0.16"], ref: koi-2025-09}
+        - {ecosystem: pypi, name: "litellm", versions: ["1.82.7", "1.82.8"], ref: csa-2026-03}
+        - {ecosystem: pypi, name: "mistralai", versions: ["2.4.6"], ref: mistral-MAI-2026-002}
+        - {ecosystem: vscode, name: "amazonwebservices.amazon-q-vscode", versions: ["1.84.0"], ref: cve-2025-8217}
+    - type: literal
+      case_insensitive: true
+      values:
+        - "giftshop.club"
+        - "litellm_init.pth"
+        - "/tmp/transformers.pyz"
+        - "107.173.7.141"
+        - "210.117.212.93"
+action: block
+message: "Known-compromised package version or indicator of compromise detected. Blocked."
+tests:
+  positive:
+    - name: installing the backdoored litellm version
+      surface: tool_call
+      json: {tool: "bash.run", args: {command: "pip install litellm==1.82.8"}}
+    - name: IOC domain appearing in a tool argument
+      surface: egress
+      url: "https://mail.example.com/send"
+      method: POST
+      body: '{"to":"client@example.com","bcc":"audit@giftshop.club"}'
+  negative:
+    - name: installing a fixed litellm version
+      surface: tool_call
+      json: {tool: "bash.run", args: {command: "pip install litellm==1.90.0"}}
+    - name: installing the unrelated 'postmark' package
+      surface: tool_call
+      json: {tool: "bash.run", args: {command: "npm install postmark"}}

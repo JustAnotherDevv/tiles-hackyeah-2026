@@ -1,0 +1,95 @@
+/*
+ * Aegis design tokens — port of staging/design/DESIGN_TOKENS.md (prototype tokens.css), adapted to
+ * docs/CONTRACTS.md §3.4 as specified in docs/plan/15-dashboard-shell.md §2.4:
+ *   - decision colours: allow emerald · log slate · redact amber · require_approval violet · block rose
+ *   - role colours: owner fuchsia · admin sky · member slate · agent teal
+ *   - brand primary iris -> indigo so violet stays unambiguous for require_approval
+ * Dark only: :root and .dark intentionally share the same values.
+ * Owner: dashboard-shell (scaffold seeded this file; safe to refine).
+ */
+:root,
+.dark {
+  color-scheme: dark;
+  --radius: 0.75rem;
+
+  /* ---- neutrals (DESIGN_TOKENS §2.1) */
+  --bg: #07080a;
+  --bg-sidebar: #0a0b0e;
+  --surface-1: #0e1013;
+  --surface-2: #13161a;
+  --surface-3: #191c21;
+  --surface-4: #20242a;
+  --border-subtle: #15181c;
+  --border-default: #1e2228;
+  --border-strong: #2a2f37;
+  --text-1: #eceef1;
+  --text-2: #a2a8b3;
+  --text-3: #7a808c;
+  --text-4: #4b5160;
+
+  /* ---- brand (indigo, see header) */
+  --brand: #6366f1;
+  --brand-hover: #818cf8;
+  --brand-press: #4f46e5;
+  --accent-fg: #a5b4fc;
+  --accent-subtle: rgba(99, 102, 241, 0.12);
+  --accent-border: rgba(99, 102, 241, 0.32);
+
+  /* ---- shadcn semantic variables (DESIGN_TOKENS §8) */
+  --background: var(--bg);
+  --foreground: var(--text-1);
+  --card: var(--surface-1);
+  --card-foreground: var(--text-1);
+  --popover: var(--surface-3);
+  --popover-foreground: var(--text-1);
+  --primary: var(--brand);
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--text-1);
+  --muted: var(--surface-2);
+  --muted-foreground: var(--text-3);
+  --accent: var(--surface-4);
+  --accent-foreground: var(--text-1);
+  --destructive: #c43350;
+  --destructive-foreground: #ffffff;
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: #818cf8;
+  --chart-1: #2563eb;
+  --chart-2: #db2777;
+  --chart-3: #0891b2;
+  --chart-4: #ea580c;
+  --chart-5: #d55181;
+  --sidebar: var(--bg-sidebar);
+  --sidebar-foreground: var(--text-2);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--text-1);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: #818cf8;
+
+  /* ---- decision semantics (CONTRACTS §3.4): UI fg · chart mark */
+  --allow: #34d399;
+  --log: #94a3b8;
+  --redact: #fbbf24;
+  --approval: #a78bfa;
+  --block: #fb7185;
+  --downgrade: #f08a4b;
+  --chart-allow: #059669;
+  --chart-log: #64748b;
+  --chart-redact: #d97706;
+  --chart-approval: #8b5cf6;
+  --chart-block: #e11d48;
+
+  /* ---- roles (CONTRACTS §3.4) */
+  --role-owner: #e879f9;
+  --role-admin: #38bdf8;
+  --role-member: #94a3b8;
+  --role-agent: #2dd4bf;
+
+  /* ---- layout (DESIGN_TOKENS §4) */
+  --sidebar-w: 236px;
+  --topbar-h: 52px;
+  --content-max: 1680px;
+}

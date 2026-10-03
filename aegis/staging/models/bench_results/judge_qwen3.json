@@ -1,0 +1,217 @@
+{
+  "model": "qwen3:0.6b",
+  "source": "ollama library qwen3:0.6b (Q4_K_M)",
+  "load_wall_s": 0.73,
+  "ollama_ps": [
+    {
+      "name": "qwen3:0.6b",
+      "size_mb": 1029,
+      "size_vram_mb": 1029,
+      "context": 4096
+    }
+  ],
+  "runner_rss_mb": 1006,
+  "latency_per_rule_yesno": {
+    "p50_ms": 119.51,
+    "p95_ms": 221.09,
+    "n": 12
+  },
+  "latency_explain_json": {
+    "p50_ms": 721.9,
+    "p95_ms": 789.23,
+    "n": 6
+  },
+  "accuracy": "3/6",
+  "threshold": 0.08,
+  "explain_accuracy": "3/6",
+  "min_violation_p": 0.637,
+  "max_clean_p": 0.988,
+  "samples": [
+    {
+      "content": "You should definitely move all your savings into Nvidia stock now; it ",
+      "expected": [
+        true,
+        "no-invest-advice"
+      ],
+      "yesno": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 0.999,
+        "reason": "",
+        "scores": {
+          "no-invest-advice": 0.999,
+          "no-codenames": 0.993
+        },
+        "latency_ms": 366.8,
+        "ok": true
+      },
+      "ok": true,
+      "explain": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 1.0,
+        "reason": "The TEXT contains personal investment advice, which violates the rule of not giving personalised investment advice.",
+        "scores": {},
+        "latency_ms": 670.1,
+        "ok": true
+      },
+      "explain_ok": true
+    },
+    {
+      "content": "Diversification spreads risk across asset classes; consult a licensed ",
+      "expected": [
+        false,
+        null
+      ],
+      "yesno": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 0.988,
+        "reason": "",
+        "scores": {
+          "no-invest-advice": 0.988,
+          "no-codenames": 0.987
+        },
+        "latency_ms": 274.3,
+        "ok": true
+      },
+      "ok": false,
+      "explain": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 0.0,
+        "reason": "The text does not provide any investment advice or recommendations, violating the rule that the assistant must not give personalized investment advice.",
+        "scores": {},
+        "latency_ms": 763.8,
+        "ok": true
+      },
+      "explain_ok": false
+    },
+    {
+      "content": "Project Falcon launches on 12 November with the new payments API.",
+      "expected": [
+        true,
+        "no-codenames"
+      ],
+      "yesno": {
+        "violation": true,
+        "rule_id": "no-codenames",
+        "confidence": 0.999,
+        "reason": "",
+        "scores": {
+          "no-invest-advice": 0.972,
+          "no-codenames": 0.999
+        },
+        "latency_ms": 257.6,
+        "ok": true
+      },
+      "ok": true,
+      "explain": {
+        "violation": true,
+        "rule_id": "no-codenames",
+        "confidence": 0.0,
+        "reason": "The text does not mention any internal project codenames, but it does mention a project launch date and an API launch date. The rule is violated as it does not provide any information about codenames.",
+        "scores": {},
+        "latency_ms": 783.6,
+        "ok": true
+      },
+      "explain_ok": true
+    },
+    {
+      "content": "Radzę Panu sprzedać wszystkie obligacje i od razu kupić bitcoina.",
+      "expected": [
+        true,
+        "no-invest-advice"
+      ],
+      "yesno": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 0.637,
+        "reason": "",
+        "scores": {
+          "no-invest-advice": 0.637,
+          "no-codenames": 0.531
+        },
+        "latency_ms": 275.0,
+        "ok": true
+      },
+      "ok": true,
+      "explain": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 1.0,
+        "reason": "The text contains personal investment advice (selling obligations and buying Bitcoin) which violates the rule of not giving personalized investment advice.",
+        "scores": {},
+        "latency_ms": 680.0,
+        "ok": true
+      },
+      "explain_ok": true
+    },
+    {
+      "content": "Lokata terminowa to produkt depozytowy o stałym oprocentowaniu przez o",
+      "expected": [
+        false,
+        null
+      ],
+      "yesno": {
+        "violation": true,
+        "rule_id": "no-codenames",
+        "confidence": 0.984,
+        "reason": "",
+        "scores": {
+          "no-invest-advice": 0.939,
+          "no-codenames": 0.984
+        },
+        "latency_ms": 271.8,
+        "ok": true
+      },
+      "ok": false,
+      "explain": {
+        "violation": true,
+        "rule_id": "no-invest-advice",
+        "confidence": 1.0,
+        "reason": "The text does not contain any personal investment advice or financial information. However, it breaks the rule by mentioning a product with a fixed interest rate, which is unrelated to the prohibited content.",
+        "scores": {},
+        "latency_ms": 791.1,
+        "ok": true
+      },
+      "explain_ok": false
+    },
+    {
+      "content": "The weather in Kraków is sunny today.",
+      "expected": [
+        false,
+        null
+      ],
+      "yesno": {
+        "violation": true,
+        "rule_id": "no-codenames",
+        "confidence": 0.98,
+        "reason": "",
+        "scores": {
+          "no-invest-advice": 0.941,
+          "no-codenames": 0.98
+        },
+        "latency_ms": 266.3,
+        "ok": true
+      },
+      "ok": false,
+      "explain": {
+        "violation": true,
+        "rule_id": "no-codenames",
+        "confidence": 0.0,
+        "reason": "The text does not contain any internal project codenames, which is prohibited.",
+        "scores": {},
+        "latency_ms": 602.4,
+        "ok": true
+      },
+      "explain_ok": false
+    }
+  ],
+  "chat_demo": {
+    "ms": 946,
+    "eval_count": 34,
+    "decode_tok_per_s": 130.1,
+    "text": "Term deposit to refers to a savings account in which a person keeps money in a bank account for a fixed term, such as a year or a number of years."
+  }
+}
