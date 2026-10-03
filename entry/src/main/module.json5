@@ -10,6 +10,17 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "requestPermissions": [
+      {
+        // Live mode talks to the Aegis gateway over HTTP (system_grant, no user prompt).
+        "name": "ohos.permission.INTERNET",
+        "reason": "$string:reason_internet",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      }
+    ],
     "abilities": [
       {
         "name": "EntryAbility",
@@ -34,6 +45,19 @@
     ],
     "extensionAbilities": [
       {
+        "name": "PostureFormAbility",
+        "srcEntry": "./ets/formability/PostureFormAbility.ets",
+        "description": "$string:form_ability_desc",
+        "type": "form",
+        "exported": true,
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ]
+      },
+      {
         "name": "EntryBackupAbility",
         "srcEntry": "./ets/entrybackupability/EntryBackupAbility.ets",
         "type": "backup",
@@ -43,7 +67,7 @@
             "name": "ohos.extension.backup",
             "resource": "$profile:backup_config"
           }
-        ],
+        ]
       }
     ]
   }

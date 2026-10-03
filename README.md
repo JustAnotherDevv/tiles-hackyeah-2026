@@ -1,28 +1,83 @@
-# HackYeah App (working title)
+# Aegis Pocket: Approve AI Agents
 
-> **Status:** project skeleton. The app idea is not decided yet. The current app is the DevEco Studio
-> "Empty Ability" template showing a bold **Hello HarmonyOS** screen, plus the files the organizers'
-> **Hackathon Template** adds on top (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `HACKATHON_BRIEF.md`,
-> `AI_WORKFLOW.md`, `hackathon-resources/`).
-> Replace every `TODO` below once the idea and toolchain are settled.
+A native **HarmonyOS** app (ArkTS + ArkUI, API 20+) that puts a human back in the loop for AI agents.
+When an agent governed by the [Aegis](#how-to-point-it-at-the-aegis-gateway) gateway wants to do something
+risky (buy a $50 SaaS subscription, read a customers table with personal data, raise a team budget),
+the request shows up as a **notification** on the phone. You **approve or deny** it according to your
+role (member / admin / owner). A **home-screen service widget** shows live AI security posture (blocked
+threats, redacted personal data, budget left, pending approvals), and an **on-device preview** shows
+exactly which personal data would leave the device before a prompt is sent to an AI model.
 
-Organizers' setup repository (challenge statement, FAQ, skills, templates):
-<https://github.com/onirodeveloper/hackyeah2026-challenge>
-
-Submission for **HackYeah 2026, Huawei partner task "Imagine What's Next"**: an app for an
-OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
+Submission for **HackYeah 2026, Huawei partner task "Imagine What's Next"**. Lead theme: **Human-Centric
+Technology** (human oversight of autonomous AI agents, privacy-first). Organizers' repository:
+<https://github.com/onirodeveloper/hackyeah2026-challenge>.
 
 | | |
 |---|---|
-| Language / UI | ArkTS + ArkUI (declarative) |
-| App model | Stage model (`UIAbility`) |
-| SDK levels (`build-profile.json5`) | compatible **API 20** `6.0.0(20)` (minimum), compile **API 23** `6.1.0(23)`, target **API 24** `6.1.1(24)`. These are the organizers' defaults |
-| Runtime | `runtimeOS: "HarmonyOS"` |
+| Language / UI | ArkTS + ArkUI (declarative, state management V1) |
+| App model | Stage model (`UIAbility` + `FormExtensionAbility`) |
+| SDK levels (`build-profile.json5`) | compatible (minimum) **API 20** `6.0.0(20)`, compile **API 24** `6.1.1(24)`, target **API 24** `6.1.1(24)` |
+| Runtime | `runtimeOS: "HarmonyOS"`, device type `phone` |
 | Deliverable | `.hap` (module `entry`) |
-| Bundle name | `com.hackyeah.huawei.app` (placeholder) |
-| Build system | hvigor + ohpm |
+| Bundle name | `com.hackyeah.aegispocket` |
+| Build system | hvigor + ohpm (driven by `devecocli`) |
 
----
+> Compile SDK note: DevEco Studio 6.1.1 bundles only the `6.1.1(24)` SDK, so `compileSdkVersion` is `6.1.1(24)`
+> (with `6.1.0(23)` hvigor fails with "SDK component missing"). The minimum stays API 20.
+
+## What it does (demo flow)
+
+1. **Home** shows how many requests are waiting and the posture KPIs (threats blocked, personal data redacted,
+   budget left, agent requests) plus the two most urgent requests.
+2. A new agent request arrives (mock mode: every 20-30 s; live mode: polled from the gateway every 4 s). The app posts a
+   **notification** ("Approval needed: requires admin ..."), shows an in-app banner and updates the **widget**.
+3. Tapping the notification opens the request **detail**: amount, requester agent and its sponsor, required role,
+   expiry countdown, facts, policy checks, the agent's note (labelled *agent-supplied, untrusted*) and votes.
+4. **Approve / Deny** are enabled only when the selected persona may vote. Otherwise they are locked with the
+   reason (for example "Requires owner (you are admin)" or "Separation of duties: you requested or sponsor this").
+   Votes are **optimistic** (the card updates at once) and are rolled back with a toast if the gateway refuses.
+5. Switch persona in the **Inbox** (Piotr = member, Emily / Marek = admin, Katarzyna = owner) to see the role
+   rules: the $50 subscription needs an admin, the $480 one needs owner + admin (two-person rule), the budget raise
+   60 to 150 needs the owner, reading the PII customers table needs an admin.
+6. **Preview** ("What data leaves"): paste text, see emails, phone numbers, PESEL, IBAN and card numbers replaced by
+   `[EMAIL_1]`, `[PESEL_1]` ... placeholders. Runs fully on the device.
+
+## Platform capabilities used
+
+| Capability | Kit / API | Where |
+|---|---|---|
+| Home-screen **service widgets** (2x2 and 2x4), updated from the app and every 30 min | Form Kit: `FormExtensionAbility`, `formProvider.updateForm`, `formProvider.getPublishedRunningFormInfos` (API 20), `formBindingData`, ArkTS card with `postCardAction` router | `formability/PostureFormAbility.ets`, `widget/pages/*.ets`, `platform/WidgetBridge.ets`, `resources/base/profile/form_config.json` |
+| **Local notifications** for new approval requests, permission dialog, tap-to-open | Notification Kit: `notificationManager.requestEnableNotification(context)`, `publish`, `cancel`; Ability Kit `wantAgent` (START_ABILITY with the approval id) | `platform/NotificationService.ets`, `entryability/EntryAbility.ets` (`onNewWant`) |
+| HTTP client to the Aegis gateway (`X-Aegis-View-As` persona header, error envelopes) | Network Kit: `http.createHttp().request` | `data/LiveRepository.ets` |
+| Persistent settings shared with the widget process | ArkData Preferences | `platform/SettingsStore.ets`, `platform/WidgetBridge.ets` |
+| UI: `Navigation` + `NavDestination`, `Tabs`, `Refresh`, `List`, transitions, implicit and explicit animations, dark theme | ArkUI | `pages/Index.ets`, `views/*`, `components/Common.ets` |
+
+Permissions: only `ohos.permission.INTERNET` (system_grant, used in live mode). Notifications are enabled through
+the system dialog. No location, contacts, camera or other sensitive permission.
+
+## Mock mode vs live mode
+
+| | Mock mode (default) | Live mode |
+|---|---|---|
+| Data | **Simulated on the device** (`data/MockRepository.ets`): seeded requests from the demo script, a new fictional agent request every 20-30 s, drifting posture KPIs. Clearly labelled **MOCK MODE** in the app header and **MOCK** on the widget | Aegis gateway REST API: `GET /api/approvals?status=all`, `GET /api/stats?window=24h`, `GET /api/whoami`, `POST /api/approvals/{id}/approve` / `deny` |
+| Role rules | Mirrored on the device (`data/Eligibility.ets`, same rules as the gateway's Addendum A-20) | Enforced by the gateway (`can_vote` / `why_not`, 403 / 409 answers) |
+| Network | None | HTTP polling every 4 s (SSE `GET /api/events` is not used yet) |
+| Widget | Snapshot pushed by the app | Snapshot pushed by the app; the widget extension also polls the gateway on its 30-min update |
+
+All mock data (agents, vendors, amounts, people) is fictional. The sample text in the Preview tab uses synthetic
+identifiers that only pass the checksums.
+
+### How to point it at the Aegis gateway
+
+1. Start the Aegis gateway on your computer (separate project; it listens on port **8787**).
+2. In the app open **Settings**, enter the gateway URL and tap **Test connection**:
+   - DevEco **emulator**: `http://10.0.2.2:8787` (the default; the emulator's alias for the host). If that does not
+     connect, use your computer's LAN IP, for example `http://192.168.1.20:8787`, and make sure the gateway listens on
+     that interface, not only on `127.0.0.1`.
+   - **Phone** on the same Wi-Fi: `http://<computer-LAN-IP>:8787`.
+3. Tap **Live gateway**. The header badge turns green (**LIVE**), or red (**LIVE · OFFLINE**) with the error message
+   when the gateway cannot be reached. Cleartext HTTP is allowed by default on HarmonyOS (no `network_config.json`).
+4. Pick the persona you want to act as; it is sent as `X-Aegis-View-As`.
 
 ## 1. Repository layout
 
@@ -31,26 +86,27 @@ OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
 ├── AppScope/                       # App-wide config: app.json5 (bundleName, version, icon, label) + resources
 ├── entry/                          # The single HAP module (type: entry)
 │   ├── src/main/
-│   │   ├── module.json5            # Module config: abilities, pages, device types, permissions
-│   │   ├── ets/entryability/       # EntryAbility (UIAbility lifecycle, loads pages/Index)
-│   │   ├── ets/entrybackupability/ # Backup/restore extension (template default)
-│   │   ├── ets/pages/Index.ets     # Main page
-│   │   └── resources/              # Strings, colors, floats, media, profile/main_pages.json
-│   ├── src/test/                   # Local unit tests (hypium, run on host)
-│   ├── src/ohosTest/               # Instrumented tests (hypium, run on emulator/device)
-│   ├── build-profile.json5         # Module build options and targets
-│   └── oh-package.json5
-├── hvigor/hvigor-config.json5      # hvigor version model and execution options
-├── build-profile.json5             # App build profile: SDK versions, products, signing, modules
-├── oh-package.json5                # ohpm root manifest (dev deps: hypium, hamock)
-├── code-linter.json5               # ArkTS linter rules (DevEco Code Linter)
-├── AGENTS.md                       # Agent guidance from the organizers' Hackathon Template (canonical)
-├── CLAUDE.md, GEMINI.md            # Shims that import AGENTS.md
-├── HACKATHON_BRIEF.md              # Our submission brief (pitch, target, user flow, acceptance checks)
-├── AI_WORKFLOW.md                  # Required by the Huawei brief: AI tools, prompts, work log, validation
-├── hackathon-resources/            # Organizers' bundled reference: devecocli matrix, emulator capabilities
+│   │   ├── module.json5            # Abilities, form extension, INTERNET permission
+│   │   ├── ets/entryability/       # EntryAbility: init store, notification permission, deep links (onNewWant)
+│   │   ├── ets/pages/Index.ets     # Navigation + Tabs (Home / Inbox / Preview / Settings), in-app banner
+│   │   ├── ets/views/              # HomeView, InboxView, DetailView (NavDestination), PreviewView, SettingsView
+│   │   ├── ets/components/         # Shared UI: ApprovalCard, PersonaSwitcher, KpiTile, ModeBadge, Pill
+│   │   ├── ets/data/               # ApprovalsRepository, MockRepository, LiveRepository, Eligibility, PocketStore
+│   │   ├── ets/model/              # UI models (Models.ets) and gateway wire types (Wire.ets)
+│   │   ├── ets/platform/           # NotificationService, WidgetBridge, SettingsStore
+│   │   ├── ets/redaction/          # On-device PII redactor (EMAIL, PHONE, PESEL, IBAN, PAN)
+│   │   ├── ets/formability/        # PostureFormAbility (FormExtensionAbility)
+│   │   ├── ets/widget/pages/       # ArkTS widget cards: PostureCard (2x2), PostureWideCard (2x4)
+│   │   └── resources/              # Strings, colors, profile/form_config.json, profile/main_pages.json
+│   ├── src/test/                   # Local unit tests (hypium, run on the host): Redactor, Eligibility
+│   └── src/ohosTest/               # Instrumented tests (template)
+├── build-profile.json5             # SDK versions, products, (empty) signing configs, modules
+├── code-linter.json5               # ArkTS linter rules
+├── AGENTS.md, CLAUDE.md, GEMINI.md # Agent guidance (organizers' Hackathon Template)
+├── HACKATHON_BRIEF.md              # Submission brief
+├── AI_WORKFLOW.md                  # AI tools, prompts, work log, validation
+├── hackathon-resources/            # Organizers' bundled reference
 ├── scripts/                        # macOS helpers: DevEco region switch, DevEco template install
-├── .claude/skills/                 # Agent skills, installed per machine (git-ignored, see Setup)
 └── README.md
 ```
 
@@ -60,10 +116,10 @@ OpenHarmony-based device (HarmonyOS / OpenHarmony / Oniro).
 |---|---|---|
 | macOS (Apple Silicon) | 27 | Development machine. The DevEco Studio emulator needs Apple Silicon |
 | DevEco Studio | 6.1.x (data directory `DevEcoStudio6.1`) | Bundles the HarmonyOS SDK, hvigor, ohpm, hdc and the emulator. Install into `/Applications` |
-| HarmonyOS SDK | 6.0.0(20), 6.1.0(23), 6.1.1(24) | Installed through the DevEco SDK Manager |
+| HarmonyOS SDK | 6.1.1(24) | Bundled with DevEco Studio 6.1.1 (`Contents/sdk/default`); used as compile/target SDK, minimum API 20 |
 | Node.js | 22 or later (tested with 24.10) | Required by `devecocli`. Keep your own Node first on `PATH`, not DevEco's bundled `tools/node` |
 | Python 3 | any 3.x | Some agent skills call the `python` command |
-| Java | 17 | TODO: confirm whether the CLI toolchain needs it |
+| Java | any recent JDK on `PATH` | hvigor starts a small Java helper daemon during builds |
 | Git | any recent | |
 
 > Local machine-specific toolchain files go in `.toolchain/`, which is git-ignored.
@@ -115,7 +171,7 @@ git clone --depth 1 https://github.com/onirodeveloper/hackyeah2026-challenge /tm
    ```bash
    ohpm install            # restores oh_modules/ (hypium, hamock)
    ```
-   TODO: verify the CLI paths after the install. DevEco puts its tools under
+   (`devecocli build` also runs `ohpm install` for you.) Verified paths with DevEco Studio 6.1.1: DevEco puts its tools under
    `<DevEco Studio>.app/Contents/tools/{ohpm,hvigor}/bin` and `hdc` under
    `<DevEco Studio>.app/Contents/sdk/default/openharmony/toolchains`. You can add these directories to `PATH`, but
    do not add `Contents/tools/node`.
@@ -184,56 +240,133 @@ TODO: describe how judges should sign (their own auto-sign), and attach a signed
 
 ## 5. Build
 
-**DevEco Studio:** Build > Build Hap(s)/APP(s) > Build Hap(s).
-
-**CLI** (TODO: verify against the installed toolchain):
+Verified on macOS 27 (Apple Silicon) with DevEco Studio 6.1.1 and `devecocli` 1.3.4:
 
 ```bash
-hvigorw clean
-hvigorw assembleHap --mode module -p module=entry@default -p product=default -p buildMode=debug --no-daemon
+export DEVECO_CLI_DISABLE_TELEMETRY=1
+devecocli build --modules entry --build-mode debug     # runs ohpm install + hvigor; exit code 0 = success
 ```
 
-Expected output: `entry/build/default/outputs/default/entry-default-signed.hap`.
-Without signing, the file is `entry-default-unsigned.hap`. TODO: confirm the path.
+Output: `entry/build/default/outputs/default/entry-default-unsigned.hap` (no signing configured), or
+`entry-default-signed.hap` after you set up signing (section 4).
+
+Without `devecocli`, call DevEco's bundled hvigor directly:
+
+```bash
+DEVECO=/Applications/DevEco-Studio.app/Contents
+"$DEVECO/tools/node/bin/node" "$DEVECO/tools/hvigor/bin/hvigorw.js" \
+  --mode module -p module=entry@default -p product=default -p buildMode=debug assembleHap
+"$DEVECO/tools/node/bin/node" "$DEVECO/tools/hvigor/bin/hvigorw.js" --stop-daemon   # free RAM afterwards
+```
+
+Lint: `devecocli check lint --format json "$(pwd)"` (0 errors; the remaining warnings are the
+`avoid-overusing-custom-component-check` performance hint for small reusable components that need reactive `@Prop`s).
 
 ## 6. Install
 
 ```bash
-hdc list targets                      # emulator/device must be listed
-hdc install -r entry/build/default/outputs/default/entry-default-signed.hap
+HDC=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
+$HDC list targets                                  # the emulator/device must be listed
+$HDC install -r entry/build/default/outputs/default/entry-default-signed.hap
 ```
 
-The emulator must be created and running first (see [3.1 step 4](#31-deveco-studio-and-the-emulator)).
+Or `devecocli run --skip-build --module entry --device <name>`. An unsigned `.hap` builds but does not install;
+see section 4 for the debug signature. The emulator must be created and running first (section 3.1 step 4).
 
 ## 7. Launch
 
 ```bash
-hdc shell aa start -a EntryAbility -b com.hackyeah.huawei.app
-hdc hilog | grep testTag              # follow app logs (TODO: switch to the app's own log tag)
+$HDC shell aa start -a EntryAbility -b com.hackyeah.aegispocket
+$HDC hilog | grep AegisPocket                      # app logs (tag AegisPocket)
 ```
 
-Or tap **HackYeah App** on the launcher. In DevEco, select the device and press Run.
+Or tap **Aegis Pocket** on the launcher. On first start the app asks to allow notifications. To add the widget:
+long-press the home screen, open **Service widgets**, choose **Aegis Pocket**, then **AI posture** (2x2) or
+**AI posture (wide)** (2x4). Tapping the widget opens the Inbox.
 
 ## 8. Tests
 
-TODO: verify the commands.
-
 ```bash
-hvigorw test --no-daemon              # local unit tests: entry/src/test
-hvigorw onDeviceTest --no-daemon      # instrumented tests: entry/src/ohosTest (needs emulator/device)
+DEVECO=/Applications/DevEco-Studio.app/Contents
+"$DEVECO/tools/node/bin/node" "$DEVECO/tools/hvigor/bin/hvigorw.js" --mode module -p module=entry@default -p product=default test
+grep "Tests run" entry/.test/default/intermediates/test/coverage_data/test_result.txt
+# Tests run: 10, Failure: 0, Error: 0, Pass: 10, Ignore: 0
 ```
 
-In DevEco: right-click `entry/src/test` or `entry/src/ohosTest` > Run.
+Local unit tests (`entry/src/test`) cover the redactor (PESEL / Luhn / IBAN checksums, stable placeholders,
+invalid numbers left alone, PCI masking) and the approval eligibility rules (admin level, separation of duties,
+owner level, two-person rule). Instrumented tests (`entry/src/ohosTest`) are still the template.
 
 ## 9. Architecture
 
-TODO: one diagram plus a short description: modules, pages, data flow, platform APIs/Kits used,
-on-device AI and agent components, persistence, permissions and error handling.
+```mermaid
+flowchart LR
+  subgraph Phone["HarmonyOS phone (Aegis Pocket)"]
+    UI["ArkUI views<br/>Home · Inbox · Detail · Preview · Settings"]
+    Store["PocketStore<br/>(state, polling, optimistic votes)"]
+    AS[("AppStorage")]
+    Repo{{"ApprovalsRepository"}}
+    Mock["MockRepository<br/>(on-device simulation)"]
+    Live["LiveRepository<br/>(Network Kit HTTP)"]
+    Notif["NotificationService<br/>(Notification Kit + WantAgent)"]
+    WB["WidgetBridge<br/>(Form Kit updateForm)"]
+    Prefs[("Preferences<br/>settings + widget snapshot")]
+    FEA["PostureFormAbility<br/>(FormExtensionAbility)"]
+    Cards["Widget cards 2x2 / 2x4"]
+    Red["Redactor<br/>(on-device PII)"]
+  end
+  GW["Aegis gateway :8787<br/>/api/approvals · /api/stats · /api/whoami"]
+
+  UI <-- "@StorageProp" --> AS
+  Store --> AS
+  UI -- "vote / persona / mode" --> Store
+  Store --> Repo
+  Repo --> Mock
+  Repo --> Live
+  Live -- "HTTP + X-Aegis-View-As" --> GW
+  Store -- "new pending request" --> Notif
+  Notif -- "tap: want(approvalId)" --> UI
+  Store --> WB
+  WB --> Prefs
+  WB -- "updateForm" --> Cards
+  FEA -- "onAddForm / onUpdateForm" --> Cards
+  FEA --> Prefs
+  FEA -. "live mode poll" .-> GW
+  Cards -- "postCardAction router" --> UI
+  UI -- "Preview tab" --> Red
+```
+
+- **Data flow.** `PocketStore` (singleton, MVVM service layer) polls the active repository every 4 s, maps results to UI
+  models (`model/Models.ets`) and publishes them to `AppStorage`; views bind with `@StorageProp`. Wire types from the
+  gateway contract live in `model/Wire.ets` and are mapped in `LiveRepository.map`, so views never see the wire format.
+- **New requests.** The store remembers seen ids; each new pending request triggers a Notification Kit notification
+  (WantAgent → `EntryAbility.onNewWant` → `AppStorage.openApprovalId` → `Index` pushes the detail page) and an in-app banner.
+- **Votes.** Optimistic update, then `POST .../approve|deny`; on 403 (`forbidden`, with the gateway's reason), 409
+  (already decided) or a network error the card is rolled back and a toast shows the message.
+- **Widgets.** After each refresh `WidgetBridge` writes a snapshot to Preferences and calls `formProvider.updateForm` for
+  every placed widget (`getPublishedRunningFormInfos`). The `FormExtensionAbility` serves the snapshot on add and on its
+  30-minute update (and polls the gateway itself in live mode).
+- **Errors.** Network failures switch the header badge to **LIVE · OFFLINE** and keep showing the last data; the widget keeps
+  its last snapshot. Settings validate the URL before saving.
+- **Privacy.** The Preview tab's redactor runs in ArkTS on the device (no network, nothing stored). Logs (`AegisPocket` tag)
+  never contain request payloads.
 
 ## 10. AI features
 
-TODO: if the app ships AI features, document the model/service, inference flow, data handling,
-limitations, validation and privacy here (or in `docs/AI_FEATURES.md`). See also [AI_WORKFLOW.md](AI_WORKFLOW.md).
+Not applicable inside the app: Aegis Pocket contains no AI model and sends no data to an AI service. It is the human
+approval front end for AI agents that are governed by the separate Aegis gateway. The "What data leaves" preview is
+rule-based (regular expressions plus checksums: PESEL weights, Luhn, IBAN mod-97), runs on the device, and mirrors the
+gateway's local-first redaction (entity names and `[ENTITY_N]` placeholders from the gateway contract). Development
+used AI tools; see [AI_WORKFLOW.md](AI_WORKFLOW.md).
+
+## Known limitations
+
+- Install, launch, notifications and widgets have **not yet been verified on an emulator or device** (no target was
+  available when this version was built). Build, lint and unit tests pass.
+- Polling only runs while the app is alive; HarmonyOS freezes background apps, so notifications for new requests are
+  reliable only while the app is in the foreground or recently backgrounded. Push (Push Kit) or SSE would remove this.
+- Mock mode re-seeds on every app start; a notification for a simulated request from a previous run opens "Request not found".
+- Phone only (`deviceTypes: ["phone"]`); no wearable target yet.
 
 ## 11. Switching runtime: HarmonyOS vs OpenHarmony
 
@@ -261,14 +394,14 @@ Judging weights: Originality 20, Usefulness 20, Technical execution 20, Platform
 They prefer a **narrow, working** solution over a broad concept.
 
 - [ ] **Public repository**, with commit history that shows progress (small, frequent commits)
-- [ ] **Reproducible instructions** for setup, build, install and launch (sections 3 to 7, all `TODO`s resolved and tested on a clean machine)
+- [ ] **Reproducible instructions** for setup, build, install and launch (sections 3 to 7; build verified, install/launch still to verify on the emulator)
 - [ ] **Working `.hap`**, API 20+, running on an OpenHarmony/HarmonyOS emulator or device (attach it to a GitHub Release)
 - [ ] **Short recorded demo** of the app running on an emulator/device (link here: TODO)
-- [ ] **Architecture description** (section 9)
+- [x] **Architecture description** (section 9)
 - [ ] **`AI_WORKFLOW.md`**: models, agents, MCP servers, main prompts, workflow, validation, lessons learned
-- [ ] **AI feature docs**, if the app has AI features (section 10)
-- [ ] Real use of **platform APIs/Kits**. An app that would run unchanged on any OS scores lower.
+- [x] **AI feature docs**, if the app has AI features (section 10: not applicable)
+- [x] Real use of **platform APIs/Kits** (Form Kit widgets, Notification Kit, Network Kit, ArkData, ArkUI)
 - [ ] Theme fit: Intelligent / Spatial / Human-Centric experiences (combining themes is a plus)
-- [ ] Error handling and **tests** (`entry/src/test`, `entry/src/ohosTest`)
+- [x] Error handling and **tests** (`entry/src/test`: 10 local unit tests)
 - [ ] **No secrets in the repo**: no signing material, API keys or `signingConfigs` with local paths
 - [ ] Pre-existing work separated from hackathon work. Significant AI use disclosed.

@@ -1,6 +1,6 @@
 {
   "app": {
-    "bundleName": "com.hackyeah.huawei.app",
+    "bundleName": "com.hackyeah.aegispocket",
     "vendor": "hackyeah",
     "versionCode": 1000000,
     "versionName": "1.0.0",

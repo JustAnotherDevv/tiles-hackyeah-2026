@@ -1,16 +1,13 @@
 {
   "string": [
-    {
-      "name": "module_desc",
-      "value": "HackYeah App entry module"
-    },
-    {
-      "name": "EntryAbility_desc",
-      "value": "HackYeah App main ability"
-    },
-    {
-      "name": "EntryAbility_label",
-      "value": "HackYeah App"
-    }
+    { "name": "module_desc", "value": "Aegis Pocket: approve AI agent actions from your phone" },
+    { "name": "EntryAbility_desc", "value": "Aegis Pocket main ability" },
+    { "name": "EntryAbility_label", "value": "Aegis Pocket" },
+    { "name": "form_ability_desc", "value": "Aegis Pocket home-screen widgets" },
+    { "name": "widget_posture_name", "value": "AI posture" },
+    { "name": "widget_posture_desc", "value": "Pending approvals and AI security posture" },
+    { "name": "widget_posture_wide_name", "value": "AI posture (wide)" },
+    { "name": "widget_posture_wide_desc", "value": "Pending approvals, blocked threats, redactions and budget" },
+    { "name": "reason_internet", "value": "Connect to your Aegis gateway to load approval requests" }
   ]
 }
