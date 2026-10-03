@@ -122,7 +122,8 @@ def build_settings(
                                      "settings.hardened.json", "mcp.json")]
     deny = ["Read(~/.ssh/**)", "Read(~/.aws/**)", f"Read({_abs_rule(key_file)})"]
     for p in [*guarded, key_file, script]:
-        deny += [f"Edit({_abs_rule(p)})", f"Write({_abs_rule(p)})"]
+        # Edit(...) rules cover every file-editing tool (Write too); Claude Code 2.1 warns on Write(...) rules
+        deny += [f"Edit({_abs_rule(p)})"]
     permissions: dict[str, Any] = {"defaultMode": "default", "deny": deny}
     if variant == "hardened":
         permissions["deny"] = [

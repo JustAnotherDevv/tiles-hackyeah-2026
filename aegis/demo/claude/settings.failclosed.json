@@ -18,17 +18,11 @@
       "Read(~/.aws/**)",
       "Read(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key)",
       "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.json)",
-      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.json)",
       "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.failclosed.json)",
-      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.failclosed.json)",
       "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.hardened.json)",
-      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.hardened.json)",
       "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/mcp.json)",
-      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/mcp.json)",
       "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key)",
-      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key)",
-      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook)",
-      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook)"
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook)"
     ]
   },
   "hooks": {

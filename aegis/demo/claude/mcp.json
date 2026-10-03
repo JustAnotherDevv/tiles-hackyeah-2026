@@ -71,6 +71,14 @@
         "X-Aegis-Agent": "claude-code@platform",
         "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
       }
+    },
+    "poisoned-stdio": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/poisoned-stdio",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
     }
   }
 }

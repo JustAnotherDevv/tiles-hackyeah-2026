@@ -28,7 +28,7 @@ async def gov_client(aegis_env: dict[str, Any]) -> AsyncIterator[Any]:
         application = create_app(Settings.from_env())
         manager = LifespanManager(application, startup_timeout=60, shutdown_timeout=30)
         await manager.__aenter__()
-    except Exception as exc:  # noqa: BLE001 - another workstream may be mid-edit
+    except Exception as exc:
         pytest.skip(f"app not startable yet: {type(exc).__name__}: {exc}")
     try:
         async with httpx.AsyncClient(transport=httpx.ASGITransport(app=application), base_url="http://aegis.test", timeout=30) as c:

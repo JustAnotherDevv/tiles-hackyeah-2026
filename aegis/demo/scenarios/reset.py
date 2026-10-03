@@ -9,7 +9,7 @@ Everything goes through the governed APIs as named humans (never copies files ov
   2. approvals: cancel every pending approval (as owner u_katarzyna)
   3. budgets: POST /api/budgets/reset (admin)
   4. kill switches: every active scope released (owner)
-  5. feed: POST :8790/api/reset {hard: true} (back to serial 1), then POST /api/feed/refresh
+  5. feed: POST :8790/api/reset {hard: false} (repo signatures, TI-022 off, as a NEW serial), then POST /api/feed/refresh
   6. MCP pins: POST /api/mcp/reset (admin)
   7. optional: --stop-ambient (data/run/ambient.pid), --policy-golden (rollback to the first version)
 
@@ -154,12 +154,19 @@ def reset_demo(
 
     if feed:
         def _feed() -> str:
-            r = http.post(feed_url() + "/api/reset", json={"hard": True}, timeout=60.0)
+            # Soft reset = restore the repo signatures (AEGIS-TI-022 disabled again) and publish them as a
+            # NEW serial. A hard reset (back to serial 1) would be refused by the gateway's anti-rollback
+            # high-water mark, and the next TI-022 publish (serial 2 again) too (LIVE rehearsal finding).
+            r = http.post(feed_url() + "/api/reset", json={"hard": False}, timeout=60.0)
             r.raise_for_status()
-            with contextlib.suppress(AegisError):
-                owner.feed_refresh()
             body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
-            return f"feed back to serial {body.get('serial', 1)}"
+            st: dict = {}
+            with contextlib.suppress(AegisError):
+                st = owner.feed_refresh() or {}
+            serial = st.get("serial", body.get("serial", "?"))
+            if st.get("status") not in (None, "ok", "seed"):
+                raise RuntimeError(f"gateway feed {st.get('status')}: {st.get('last_error')}")
+            return f"repo signatures re-published · serial {serial} (AEGIS-TI-022 off)"
         steps.append(_try("threat feed", _feed))
 
     steps.append(_try("MCP pins", lambda: (owner.mcp_reset(), "pins reset")[1]))

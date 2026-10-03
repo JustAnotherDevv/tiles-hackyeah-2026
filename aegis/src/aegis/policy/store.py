@@ -817,6 +817,8 @@ class PolicyStoreImpl:
     async def publish_rejected(self, source: str, errors: list[ValidationIssue], sha: str | None,
                                *, proposal_id: str | None = None) -> None:
         cur = self.snapshot()
+        if source == "file":  # the file on disk is now ahead of what we serve: surface why in /api/policy/status
+            self._last_error = first_error_message(errors) or "policy file rejected"
         data = {"source": source, "errors": [e.model_dump(mode="json") for e in errors], "kept_version": cur.version}
         self._publish("policy.rejected", data)
         self._inc("rejected")

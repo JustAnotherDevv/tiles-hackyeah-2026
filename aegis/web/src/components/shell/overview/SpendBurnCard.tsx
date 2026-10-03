@@ -9,13 +9,15 @@ import { orgDayLimit, type OverviewData } from './useOverviewData';
 export function SpendBurnCard({ d, className }: { d: OverviewData; className?: string }) {
   const lim = orgDayLimit(d.budgets.data);
   const limit = lim?.limit ?? d.history.data?.points.at(-1)?.limit ?? 150;
+  // One number for the headline, the line end and the KPI row ("Spend today"): the max of the ledger
+  // (incl. seeded demo history), the live KPI and the last history bucket (INT-B request 4 / LIVE).
+  const liveUsed = Math.max(d.history.data?.points.at(-1)?.used ?? 0, d.view?.kpis.spend_today_usd ?? 0, lim?.used ?? 0);
   const data = useMemo(() => {
     const pts = d.history.data?.points ?? [];
     if (!pts.length) return [];
     const start = new Date();
     start.setHours(0, 0, 0, 0);
     const last = pts[pts.length - 1];
-    const liveUsed = Math.max(last.used, d.view?.kpis.spend_today_usd ?? 0, lim?.used ?? 0);
     const rows: { ts: string; used: number | null; forecast: number | null }[] = pts.map((p) => ({ ts: p.ts, used: p.used, forecast: null }));
     rows[rows.length - 1] = { ...rows[rows.length - 1], used: liveUsed, forecast: liveUsed };
     const elapsed = Date.now() - start.getTime();
@@ -25,7 +27,7 @@ export function SpendBurnCard({ d, className }: { d: OverviewData; className?: s
       rows.push({ ts: new Date(t).toISOString(), used: null, forecast: +(rate * (t - start.getTime())).toFixed(2) });
     }
     return rows;
-  }, [d.history.data, d.view?.kpis.spend_today_usd, lim?.used]);
+  }, [d.history.data, liveUsed]);
   const forecast = data.at(-1)?.forecast ?? 0;
   return (
     <Panel
@@ -33,7 +35,7 @@ export function SpendBurnCard({ d, className }: { d: OverviewData; className?: s
       title="Spend vs budget today"
       description={
         <>
-          {fmtUsd(lim?.used ?? [...data].reverse().find((r) => r.used !== null)?.used ?? 0, { dp: 2 })} of {fmtUsd(limit, { dp: 0 })} · forecast{' '}
+          {fmtUsd(liveUsed, { dp: 2 })} of {fmtUsd(limit, { dp: 0 })} · forecast{' '}
           <span className={forecast >= limit ? 'text-block' : forecast >= limit * 0.8 ? 'text-redact' : 'text-text-2'}>{fmtUsd(forecast, { dp: 0 })}</span> by midnight
         </>
       }

@@ -69,7 +69,8 @@ make models         # verifies models/ and the Ollama tags aegis-guard (Qwen3Gua
    Each result shows the action, the control that decided and what the remote side would receive.
 3. **Edit the policy live:** open `config/policy.yaml` in any editor (or the Policy page,
    `/ui/governance/policy`), change `controls[id=INJ-02].threshold` from `0.80` to `0.50`, save, resend the
-   **Borderline (0.62)** preset: allow → **block**. Break the YAML on purpose: rejected with line/col, traffic
+   **Borderline (0.70)** preset: allow → **block** (deterministic mode, `AEGIS_SEMANTIC=off`; with the injection
+   classifier loaded the preset already blocks at 0.80, so try `0.80 → 0.95` instead). Break the YAML on purpose: rejected with line/col, traffic
    keeps flowing on the last good version.
 4. **Approvals by role:** run `uv run --frozen python demo/agents/trading_copilot.py subscribe`. The agent's
    $50 MarketPulse subscription waits in `/ui/governance/approvals`; as `u_piotr` Approve is locked
@@ -148,7 +149,7 @@ stamped with the policy version. Try (each is a one-line edit):
 
 | Edit | Expected effect |
 |---|---|
-| `controls[id=INJ-02].threshold: 0.80 → 0.50` | Playground "Borderline (0.62)" flips allow → block |
+| `controls[id=INJ-02].threshold: 0.80 → 0.50` | Playground "Borderline (0.70)" flips allow → block (`AEGIS_SEMANTIC=off`; classifier loaded: `0.80 → 0.95` flips block → allow) |
 | add `enabled: false` to `controls[id=DLP-02]` | AWS-style key now passes; coverage view greys out DLP-02; audited |
 | `destinations.matrix.CONFIDENTIAL.remote: redact → block` | PII prompt to a remote model is blocked instead of tokenized |
 | `profile: balanced → strict` | everything tightens (fail closed, lower thresholds, purchases > $1,000 blocked) |

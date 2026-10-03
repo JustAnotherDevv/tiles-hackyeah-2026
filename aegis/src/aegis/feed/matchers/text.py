@@ -156,24 +156,46 @@ def lexical_similarity(exemplar: str, text: str) -> float:
 SEMANTIC_MAX_CHARS = 8192
 
 
+def _windows(words: list[str], size: int):
+    """Trigram sets of overlapping word windows (the whole text when it fits in one window)."""
+    if len(words) <= size:
+        yield _trigrams(" ".join(words))
+        return
+    step = max(1, size // 4)
+    for i in range(0, len(words) - size + step, step):
+        yield _trigrams(" ".join(words[i : i + size]))
+
+
 def m_semantic(node: dict, where: str, depth: int = 0, lists: dict | None = None) -> Matcher:
     exemplars = [str(e) for e in node["exemplars"]]
     if not exemplars:
         raise FeedError(f"{where}: semantic needs at least one exemplar")
     thr = float(node.get("lexical_threshold", 0.8))
     fld = _field(node, where)
-    ex_grams = [(e, _trigrams(normalize_for_similarity(e))) for e in exemplars]
+    ex_grams = [(e, _trigrams(normalize_for_similarity(e)), len(normalize_for_similarity(e).split()))
+                for e in exemplars]
 
     def m(ev: Event) -> list[dict] | None:
         text = ev.view(fld)
         if not text:
             return None
-        g_in = _trigrams(normalize_for_similarity(text[:SEMANTIC_MAX_CHARS]))
+        words = normalize_for_similarity(text[:SEMANTIC_MAX_CHARS]).split()
         best, best_ex = 0.0, ""
-        for ex, g_ex in ex_grams:
-            s = len(g_ex & g_in) / len(g_ex) if g_ex else 0.0
-            if s > best:
-                best, best_ex = s, ex
+        cache: dict[int, list[set[str]]] = {}
+        for ex, g_ex, n_ex in ex_grams:
+            if not g_ex:
+                continue
+            size = (n_ex + 4 + 3) // 4 * 4  # bucket window sizes so exemplars share window sets
+            # Windowed containment: compare the exemplar with text windows of about its own length.
+            # A bag of trigrams over the WHOLE text (up to 8 KB) contains almost every common trigram,
+            # so any long benign prompt (e.g. Claude Code's system prompt) scored > 0.9 and was blocked
+            # (LIVE rehearsal finding). Short texts (<= one window) score exactly as before.
+            if size not in cache:
+                cache[size] = list(_windows(words, size))
+            for g_in in cache[size]:
+                s = len(g_ex & g_in) / len(g_ex)
+                if s > best:
+                    best, best_ex = s, ex
         if best >= thr:
             return [
                 {

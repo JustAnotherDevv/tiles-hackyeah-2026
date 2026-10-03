@@ -215,7 +215,7 @@ def scene_pii_draft(client: AegisClient, opts: Any) -> bool:
     rehydrated = PII["pesel"] in (r.text or "")
     say("[green]✓ real values restored only for you[/green]" if rehydrated
         else "[yellow]≈ reply not rehydrated (check DLP-08)[/yellow]")
-    say(f"[bright_black]dashboard: {client.base_url}/ui/live — the newest row is a cyan 'redact'[/bright_black]")
+    say(f"[bright_black]dashboard: {client.base_url}/ui/security/live — the newest row is a cyan 'redact'[/bright_black]")
     return ok
 
 

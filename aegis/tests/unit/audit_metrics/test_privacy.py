@@ -176,3 +176,11 @@ async def test_no_raw_values_on_disk_and_span_fingerprints(am_rt):
     assert otel["gen_ai.operation.name"] == "chat"
     assert otel["gen_ai.request.model"] == "claude-sonnet-4-5"
     assert "gen_ai.input.messages" not in otel
+
+
+def test_scrubber_all_letter_aws_key_is_not_plain_text():
+    # LIVE: ~0.4% of the random keys above have no digit and slipped through the plain-prose fast path
+    key = "AKIA" + "QWERTYUIOPASDFGH"[::-1]
+    d = {"event_type": "decision", "reason": f"found key {key} in prompt", "data": {}}
+    assert scrub_event(d, None, audit_content=False) == 1
+    assert key not in d["reason"] and "[REDACTED:AWS_KEY]" in d["reason"]

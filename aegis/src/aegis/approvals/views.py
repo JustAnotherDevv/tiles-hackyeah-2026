@@ -45,6 +45,22 @@ class Masker:
                 pass
         return fallback_mask(value, max_len)
 
+    def text_keep(self, value: str, keep: Any, max_len: int = 160) -> str:
+        """Like `text`, but org-directory names in `keep` (requester / sponsor display names, which
+        the dashboard shows anyway) survive masking, so titles read "Piotr Zieliński wants to …"
+        instead of "[PERSON] wants to …". Customer names are still masked."""
+        names = sorted({n for n in (keep or ()) if isinstance(n, str) and len(n) >= 3 and n in value},
+                       key=len, reverse=True)
+        if not names:
+            return self.text(value, max_len)
+        shielded = value
+        for i, n in enumerate(names):
+            shielded = shielded.replace(n, f"\ue000{i}\ue001")
+        out = self.text(shielded, max_len)
+        for i, n in enumerate(names):
+            out = out.replace(f"\ue000{i}\ue001", n)
+        return out
+
     def tree(self, value: Any, depth: int = 0) -> Any:
         if depth > 8:
             return "…"

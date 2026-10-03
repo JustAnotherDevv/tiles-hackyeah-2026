@@ -43,6 +43,7 @@ async def test_watcher_hot_reload(store, fake_rt, policy_dir: Path) -> None:
         assert await _wait(lambda: bool(fake_rt.bus.events("policy.rejected")))
         assert fake_rt.bus.events("policy.rejected")[-1]["errors"][0]["line"]
         assert store.snapshot().version == 2
+        assert store.status()["last_error"] and store.status()["file_in_sync"] is False  # LIVE
 
         pol.write_text(new, encoding="utf-8")  # same text as the live version -> no new version
         await asyncio.sleep(0.6)

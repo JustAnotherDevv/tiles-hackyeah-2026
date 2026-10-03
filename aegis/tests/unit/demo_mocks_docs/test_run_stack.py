@@ -83,3 +83,10 @@ def test_dry_run_prints_children(rs, capsys):
     for port in ("8887", "8890", "8891", "8892", "8893", "8894"):
         assert port in out
     assert "AEGIS_HOST_MAP=exfil.test=127.0.0.1:8893" in out
+
+
+def test_alive_supervisor_marks_running_stack_ours(rs):
+    # LIVE: `make stack-check` after `make up` must not call the running stack "stale"
+    import os
+    assert rs._alive(os.getppid()) is True
+    assert rs._alive(None) is False and rs._alive(0) is False and rs._alive(os.getpid()) is False

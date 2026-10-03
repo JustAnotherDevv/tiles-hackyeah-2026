@@ -229,8 +229,10 @@ def classify_port(port: int, expected: str | None = None, *, run_dir: Path = RUN
     service = body.get("service") if code == 200 and isinstance(body, dict) else None
     if service is None:
         code, body = _http_get(base + "/healthz", timeout=2.5)
-        if code == 200 and isinstance(body, dict) and ("components" in body or "version" in body
-                                                       or body.get("status") in ("ok", "degraded")):
+        if code == 200 and isinstance(body, dict) and body.get("service") == "aegis-threat-intel":
+            service = "feed"
+        elif code == 200 and isinstance(body, dict) and ("components" in body or "version" in body
+                                                         or body.get("status") in ("ok", "degraded")):
             service = "gateway"
     if service is None:
         code, _ = _http_get(base + "/feed/latest.json")
@@ -239,6 +241,9 @@ def classify_port(port: int, expected: str | None = None, *, run_dir: Path = RUN
     if service:
         pf = read_pidfile(_pid_name(service), run_dir)
         if pf and pid and pf.get("pid") == pid:
+            if _alive(pf.get("supervisor")):
+                return PortOwner(port, "ours", f"our {service} is running under run_stack "
+                                 f"(supervisor pid {pf['supervisor']})", pid, service)
             return PortOwner(port, "stale", f"our {service} from an earlier run (pid {pid})", pid, service)
         return PortOwner(port, "ours", f"an Aegis {service} is already running (pid {pid or '?'})", pid, service)
     code, _ = _http_get(base + "/admin/reset")
@@ -250,6 +255,18 @@ def classify_port(port: int, expected: str | None = None, *, run_dir: Path = RUN
             return PortOwner(port, "spike", f"staging streaming spike (pid {pid or '?'})", pid)
     who = f"{lst[0]['command']} (pid {pid}, user {lst[0]['user']})" if lst else "unknown process"
     return PortOwner(port, "foreign", who, pid)
+
+
+def _alive(pid: Any) -> bool:
+    if not isinstance(pid, int) or pid <= 0 or pid == os.getpid():
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def _pid_name(service: str) -> str:
@@ -329,7 +346,8 @@ class Child:
         )
         if not self.spec.oneshot:
             (RUN_DIR / f"{self.spec.name}.pid").write_text(json.dumps(
-                {"pid": self.proc.pid, "cmd": self.spec.cmd, "port": self.spec.port, "started": time.time()}))
+                {"pid": self.proc.pid, "cmd": self.spec.cmd, "port": self.spec.port, "started": time.time(),
+                 "supervisor": os.getpid()}))
         self.thread = threading.Thread(target=self._pump, daemon=True)
         self.thread.start()
 
@@ -568,9 +586,14 @@ def main(argv: list[str] | None = None) -> int:
         console.print("[bold]stopped[/bold]")
 
     def _sigterm(*_: Any) -> None:
+        # first SIGINT/SIGTERM starts the shutdown; repeats (Ctrl-C is delivered twice under `uv run`)
+        # are ignored so they cannot abort it half-way and orphan the children
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, signal.SIG_IGN)
         raise KeyboardInterrupt
 
     signal.signal(signal.SIGTERM, _sigterm)
+    signal.signal(signal.SIGINT, _sigterm)
     try:
         for s in specs:
             ch = Child(s, env, console)
@@ -628,6 +651,11 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     finally:
+        # Ctrl-C reaches us twice (terminal process group + `uv run` forwarding it): ignore further
+        # SIGINT/SIGTERM while stopping, otherwise the 2nd one aborts shutdown and orphans the children.
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            with contextlib.suppress(ValueError, OSError):
+                signal.signal(sig, signal.SIG_IGN)
         if children and not all(c.stopping for c in children):
             shutdown()
     return 0

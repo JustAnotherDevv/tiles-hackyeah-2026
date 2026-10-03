@@ -163,7 +163,9 @@ def _engine_spans(redactor: Any, text: str) -> list[tuple[int, int, str]]:
 
 def scrub_text(text: str, redactor: Any = None) -> tuple[str, int]:
     """Replace sensitive spans with `[REDACTED:<ENTITY>]`; returns (text, replacements)."""
-    if len(text) < MIN_LEN or len(text) > MAX_LEN or _PLAIN.match(text):
+    # fast path for plain prose - but an all-letter AWS key id ("AKIA" + 16 of [A-Z2-7] has no digit
+    # in ~3.6% of real keys) is "plain" too: it must still be scrubbed (LIVE: flaky privacy test)
+    if len(text) < MIN_LEN or len(text) > MAX_LEN or (_PLAIN.match(text) and not _AWS.search(text)):
         return text, 0
     spans = _engine_spans(redactor, text) + builtin_spans(text)
     if not spans:

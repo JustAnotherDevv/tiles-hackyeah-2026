@@ -57,9 +57,14 @@ def _fmt_num(v: Any) -> str:
 
 def change_summary(change: PolicyChange) -> str:
     """Human summary, e.g. 'raise team:trading day usd 60 → 75 (+25%)'."""
-    if change.summary:
-        return change.summary
     kind = change.kind
+    if change.control_id and kind in ("control.disable", "control.enable", "control.remove", "control.add"):
+        return f"{kind.split('.', 1)[1]} {change.control_id}"  # "… wants to disable DLP-02"
+    if change.summary:
+        verb = kind.split(".", 1)[1] if kind.startswith("budget.") and "." in kind else ""
+        if verb and not change.summary.startswith(verb):
+            return f"{verb} {change.summary}"  # "raise team:trading day usd 60 → 150 (+150%)"
+        return change.summary
     if kind.startswith("budget.") and change.scope:
         window = ""
         path = change.path or ""

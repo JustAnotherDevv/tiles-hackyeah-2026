@@ -140,6 +140,6 @@ def run(opts: argparse.Namespace) -> bool | None:
         console.print(f"\n  [{style}]attacker received: {delta}[/{style}] "
                       f"[bright_black](exfil sink {EXFIL}/_mock/ui)[/bright_black]")
         ok &= delta == 0
-    say(f"[bright_black]{escape(opts.url)}/ui/live shows the hook rows (source claude_code)"
+    say(f"[bright_black]{escape(opts.url)}/ui/security/live shows the hook rows (source claude_code)"
         "[/bright_black]")
     return ok

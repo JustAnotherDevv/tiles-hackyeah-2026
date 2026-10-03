@@ -34,6 +34,8 @@ Playground or the curl fallback in each scene.
 - [ ] Quit Slack, Discord, extra Chrome profiles, IDEs. `memory_pressure` green. **8 GB is the hard limit.**
 - [ ] `make up` (or `make demo` = stack + warm-up traffic + preflight). Wait for the status table.
 - [ ] `make demo-preflight ARGS=--reset` → **READY** (or "READY (degraded: …)": write down what is degraded).
+      Row **scene 4 lever** must be ✓ ("Borderline (0.70) → allow · INJ-02 score 0.7 vs 0.8"). It is only ✓
+      with `AEGIS_SEMANTIC=off` (deterministic heuristic); with models loaded see the scene 4 variants.
       It checks `/healthz`, policy version, feed serial (TI-022 must **not** be active yet), 0 pending
       approvals, chaos budget at 0, exfil sink 0 hits, Ollama `aegis-guard` / `aegis-judge` warmed.
 - [ ] `make claude`, send "say hi" once. Live feed shows one `allow` row (warms the auth path).
@@ -57,7 +59,7 @@ Playground or the curl fallback in each scene.
 
 - [ ] Space 2: **backup video** in QuickTime paused at 0:00, plus a terminal ready on the scripted agents.
 - [ ] Open `demo/scenarios/PROMPTS.md` (copy source for every prompt).
-- [ ] Playground presets visible: **PII client reply**, **Borderline (0.62)**, **AWS example key**,
+- [ ] Playground presets visible: **PII client reply**, **Borderline (0.70)**, **AWS example key**,
       **EchoLeak image proxy**.
 - [ ] `config/policy.yaml` open in an editor at `controls[id=INJ-02]`, current `threshold: 0.80`.
 - [ ] Dashboard view-as = **u_piotr** (member). Feed badge shows the seed serial.
@@ -97,17 +99,19 @@ second, and customer data is redacted **on this laptop** before anything leaves.
 - Click the row → **Wire** tab: left = original; right = what the remote model received:
   `[PERSON_1] ([EMAIL_1]), PESEL [PESEL_1], IBAN [IBAN_1], card [PAN_1] exp [CARD_EXPIRY_1]`.
   The CVV is **gone** (`[REDACTED:CVV]`), not tokenized.
-- **Left:** Claude's draft shows the real name, email and IBAN (rehydrated locally); the card appears masked
-  as first 6 / last 4.
+- **Left:** Claude's draft shows the real name, PESEL and email (rehydrated locally, only for you); the CVV
+  stays `[REDACTED:CVV]` because it was dropped, not tokenized.
 
 **SAY:** "Claude is a remote model. Look at what it actually received: placeholders. Validators did this,
 not bare regex: Luhn for the card, the PESEL checksum, mod-97 for the IBAN, so an order number wouldn't trip
 it. The real values come back only here, for me. The CVV never left and is never stored. That's PCI."
 
-**DO (right, Playground):** preset **PII client reply**, destination **local** → **allow**.
+**DO (right, Playground):** preset **PII client reply**, destination **local** → **redact**, but only the
+card is tokenized (`[PAN_1]`) and the CVV dropped; name, PESEL, IBAN and email stay raw.
 
-**SAY:** "Same text to a local model: allowed. The policy is destination-aware, so we only pay the
-redaction cost when data crosses the boundary."
+**SAY:** "Same text to a local model: the personal data stays as it is, only the card data is still
+protected (PCI). The policy is destination-aware, so we only pay the redaction cost when data crosses the
+boundary."
 
 **IF IT FAILS**
 
@@ -188,9 +192,17 @@ switch stops an agent instantly. It's all in the audit log."
 **SAY:** "The brief says you'll edit our config. Please do. Here's the file." (Offer the keyboard.)
 
 **DO**
-1. Playground: preset **Borderline (0.62)** → **allow** (score below the threshold).
-2. `config/policy.yaml`: `controls[id=INJ-02].threshold: 0.80 → 0.50` (for the tool-output variant of the
-   preset, also set `params.untrusted_threshold: 0.50`). **Save.**
+1. Playground: preset **Borderline (0.70)** (surface user prompt, destination remote) → **allow**
+   ("closest call INJ-02: score 0.70 < threshold 0.80").
+2. `config/policy.yaml` (line ~1220): `controls[id=INJ-02].threshold: 0.80 → 0.50`. **Save.**
+   (Rehearsed live: file save → policy v+1 in < 1 s, history summary "INJ-02 threshold 0.80 → 0.50".)
+
+   *Model variants (the preflight row "scene 4 lever" tells you which one you are in):*
+   - `AEGIS_SEMANTIC=off` (recommended for the demo): heuristic 0.70 → allow at 0.80, block at 0.50.
+   - injection classifier loaded (`horizon-small`): the preset scores ≈ 0.91 → already **block** at 0.80.
+     Demo the reverse edit instead: `0.80 → 0.95` → **allow** (review band, guard unavailable → fallback).
+   - only `aegis-guard` loaded: 0.70 falls in the review band and the guard confirms → block at 0.80;
+     neither edit flips it. Restart with `AEGIS_SEMANTIC=off` for this scene.
 3. **EXPECT:** toast **"Policy vN+1 applied in {{TBD: policy.reload_ms}} ms · diff: INJ-02 threshold 0.80 → 0.50"**.
    Resend → **block** (user prompt) / quarantine (tool output), deciding control INJ-02.
 4. Optional: add `enabled: false` to DLP-02, save, send **AWS example key** → passes; Coverage greys out
@@ -254,9 +266,11 @@ signed feed, tests that travel with the rules. The playground is open. Try to br
 | F5 | Policy save not picked up | no toast in 2 s | re-save, or Policy page **Apply** |
 | F6 | Everything | — | Space 2, play the backup video, narrate live |
 
-**Reset after the demo:** `make demo-preflight ARGS=--reset` (approvals, budgets, kill switch, feed back to
-the seed serial, mocks, MCP pins), restore `config/policy.yaml` (undo the edit, or `make reset` with the
-gateway stopped), view-as back to u_piotr.
+**Reset after the demo:** `make demo-preflight ARGS=--reset` (approvals, budgets, kill switch, mocks, MCP
+pins; the feed re-publishes the repo signatures as a **new** serial with AEGIS-TI-022 off, because the gateway
+refuses any rollback to an older serial), restore `config/policy.yaml` (`cp config/policy.golden.yaml
+config/policy.yaml` while the gateway runs, or `make reset` with the gateway stopped; scenes F5/F6 write
+budget raises and the kill switch into it), view-as back to u_piotr.
 
 ---
 

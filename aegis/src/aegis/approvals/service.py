@@ -283,6 +283,16 @@ class ApprovalsService:
                 data.display_name = m.name if m else None
         return data
 
+    def _org_names(self, identity: Identity, requester: Identity) -> list[str]:
+        """Display names of the requesting member / agent and its sponsor (org directory, not PII)."""
+        names = [identity.display_name, requester.display_name]
+        with contextlib.suppress(Exception):
+            for mid in (identity.member_id, requester.member_id, self.org.sponsor_of(identity)):
+                m = self.org.member(mid) if mid else None
+                if m is not None:
+                    names.append(m.name)
+        return [n for n in names if n]
+
     def _synth_draft(self, ctx: RequestContext, i: Interaction, decision: Decision) -> ApprovalDraft:
         action_type = i.action_type or (f"tool:{i.tool_name}" if i.tool_name else f"{i.kind}.{i.surface}")
         who = ctx.identity.agent_id or ctx.identity.member_id or "anonymous"
@@ -445,8 +455,9 @@ class ApprovalsService:
                 team_id=requester.team_id,
                 kind=draft.kind,
                 action_type=draft.action_type,
-                title=masker.text(draft.title, 300),
-                summary=masker.text(draft.summary, 600) if draft.summary else None,
+                title=masker.text_keep(draft.title, self._org_names(identity, requester), 300),
+                summary=(masker.text_keep(draft.summary, self._org_names(identity, requester), 600)
+                         if draft.summary else None),
                 requester=requester,
                 amount_usd=amount,
                 resource=resource,
