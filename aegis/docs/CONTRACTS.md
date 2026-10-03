@@ -3484,3 +3484,1013 @@ Sections: Goal & demo value · Files (exact paths, all inside your ownership) ·
 | F8 | **External threat feed** | feed service UI adds/enables a signature → Publish → gateway serial bumps → replayed exploit blocked (`SIG-01`, CVE alias); Tamper → `feed.rejected` red banner, enforcement stays on last good | threat-feed, dashboard-security |
 | F9 | **MCP integrity** | poisoned `add` dropped from `tools/list` (MCP-02); rugpull flip → MCP-03 blocks + `mcp_pin` approval → admin re-pins | mcp-proxy, approvals-engine, dashboard-security |
 | F10 | **Proof** | `make test` matrix all green (allow + block per control); audit export + verify "chain OK"; perf page p50/p95 overhead; `/metrics` | test-suite, redteam-eval-perf, audit-metrics, dashboard-shell |
+
+
+---
+
+## Addendum A (Sat night) — resolved contract gaps
+
+> **Status:** v1.1-A · 2026-10-03 (Sat) 23:07 · author: synth-A (contract integrator) on behalf of `scaffold`.
+> **Inputs:** every "Contract gaps" / "Requests to other owners" section of the 20 plans `docs/plan/01…20-*.md`.
+> **Precedence:** where this addendum conflicts with §1–§8 above, **the addendum wins**. The original text is kept unchanged.
+> **Nothing frozen changes.** All additions use the documented escape hatches: `Decision.meta`, `Interaction.meta/labels`, `Finding.meta`, `ControlConfig.params`, `_Section` extra keys, `PolicyTest` extras, `AuditEvent.data`, additive JSON fields, and page-local TS types. The **§1.2 ownership map is unchanged**. New endpoints live in route files their owners already own; the §1.3 path lists are extended below. The only new files outside §1.2 are `docs/seed-fixes/*`, an orchestrator artifact.
+> **Format:** each item has an ID, the decision, the owner(s), and exact shapes. `[should]` / `[could]` mark lower priority; everything else is **must**. `Pnn-Gx` = plan `nn`, gap `x`. The gap → decision index is in A.17.
+> **Seed fixes:** corrected, config-ready drafts are in `docs/seed-fixes/` (`org.seed.yaml`, `policy.yaml`, `approvals.yaml`). `policy.yaml` validates against the frozen `PolicyDoc`; its `approvals:` block is byte-identical to `approvals.yaml`; all 54 routing tests pass in a first-match simulator. Section A.16 lists each fix and who applies it.
+
+### A.0 The decisions to read first
+
+| # | Decision | Item |
+|---|---|---|
+| 1 | **Kill switch never answers 403.** On every data-plane surface it answers **429** `killed` with `Retry-After: 3600` and `x-should-retry: false`. A budget stop is **402** `budget_exceeded` with `x-should-retry: false`. A policy block on a model proxy is a **synthetic 200** assistant message. | A-07 |
+| 2 | `rt.pipeline.evaluate` sets **`ctx.policy = snap`**. Controls read policy only from `ctx.policy`. | A-01 |
+| 3 | Controls add HTTP response headers through **`Decision.meta["response_headers"]`**. `primary.http_status` wins over core's defaults. | A-06 |
+| 4 | Usage and cost have **one home**: the request-hop decision, filled by an `outcome` audit record emitted from `pipeline.complete()`. | A-08 |
+| 5 | **One NER instance.** semantic-models loads `models/eu-pii-ner` and serves it through `rt.semantic.ner()`. redaction-engine borrows it and never loads its own copy. | A-38 |
+| 6 | **Two-person rule = owner + a distinct admin**, plus a proposer co-sign. There is no second owner. | A-20 |
+| 7 | There is no `auto_approved` status. Auto-approval is stored as `status="approved"` with `required_role="auto"`. | A-21 |
+| 8 | Approval waiting works as follows: the surface holds the call for `hold_s`, the client long-polls `GET /api/approvals/{id}/wait`, then retries with `X-Aegis-Approval: apr_…`. Only **action** approvals are redeemable. | A-23 |
+| 9 | The **policy self-test** ignores live counters, kill switches, loops, taint and pins. It rejects only **looser regressions** of must-protect cases. Disabled controls are skipped. | A-29, A-09 |
+| 10 | Claude Code identity on the model path uses **`X-Aegis-Agent-Key`** (sent via `ANTHROPIC_CUSTOM_HEADERS`). Claude Code's `Authorization` header stays its OAuth token. | A-17 |
+| 11 | Model responses: **`tool_use` inputs are never rehydrated**. Placeholders are restored only for **local** tools: hook `updatedInput`, and `mcp.call` to `local` servers. | A-40 |
+| 12 | New control **GOV-06** "Agent harness integrity". Owner: claude-code-integration, in `src/aegis/integrations/claude_code/`. Core discovery also scans `aegis.integrations`. | A-48, A-15 |
+| 13 | Matrix `CONFIDENTIAL.third_party` = **redact**, and recipient args are exempt from DLP-01. External email therefore reaches ACT-03 approval instead of being blocked. | SF-04 |
+| 14 | Metric names are always `aegis_*`. Unknown names are auto-registered, never rejected. | A-50 |
+
+---
+
+### A.1 Core pipeline semantics (owner: core-gateway unless noted)
+
+**A-01 · `ctx.policy` is the evaluated snapshot.** In §3.5 step 1, `snap = policy or ctx.policy or rt.policy.snapshot()`, then **`ctx.policy = snap`** before `enrich`.
+- Every control and helper reads `destinations.*`, `actions:`, `models.*`, `budgets.*` and `mcp.*` from `ctx.policy` (`snap.doc`). They never call `rt.policy.snapshot()` inside `enrich`/`evaluate`/`on_complete`.
+- `new_context()` still pins the live snapshot at ingress.
+- The self-test creates a fresh ctx per case and passes `policy=candidate`, so a candidate that edits `destinations` or `actions` is judged under its own values.
+- Guarded fallback `ctx.policy or rt.policy.snapshot()` stays legal.
+- Owners: core-gateway (set), all control owners (read). Refs: P04-G2, P10-G1, P10-G8e.
+
+**A-02 · One context per request; decision id known before approvals.**
+- The response hop of a model call (`model.response`) and the result hop of an MCP call (`mcp.result`) or egress call (`egress.response`) are evaluated with **the same `RequestContext`** as their request hop, with `interaction.parent_id` = the request interaction id. `ctx.state` is shared, for example `ctx.state["inj.sys_shingles"]`.
+- Hook `PostToolUse` is a separate HTTP request with a new ctx. Correlate it via `session_id` + `tool_use_id` (`meta.claude_code.tool_use_id`).
+- The verdict id is allocated at step 1. Before `rt.approvals.request()`, the pipeline sets **`decision.meta["decision_id"] = verdict.id`** on the primary decision, and approvals-engine stores it in `ApprovalRequest.decision_id`.
+- Refs: P05-#2, P09-#6.
+
+**A-03 · Complete control trace and per-control timings.**
+- For every evaluated control that returned `None`/allow, the pipeline appends `Decision(action="allow", control_id=<id>, latency_ms=<measured>, meta={"no_finding": true})` to `verdict.decisions`. These rows appear in `DecisionDetail.decisions` and the playground waterfall. `DecisionSummary.controls` stays **non-allow only** (unchanged).
+- Controls that compute a score (INJ-02, INJ-03, DLP-07, CUS-01, MCP-02, DLP-02 entropy) return a `Decision` carrying `score` + `threshold` **even when allowing**, so the trace can say "0.62 < 0.80".
+- Core writes `ctx.timings["ctl.<ID>"]` (ms) for every evaluated control, plus `ctx.timings["pipeline"]`. It calls `rt.metrics.observe_overhead("request"|"response", seconds)` per hop, alongside the phase timings (`enrich`, `deterministic`, `semantic`, `approvals`, `transform`, `record`).
+- `Server-Timing` lists `aegis;dur=…, ctl;dur=…, upstream;dur=…` plus the slowest 8 controls as `ctl-<ID>;dur=…`.
+- `/v1/guard` with `dry_run: true` still returns `verdict.decisions[*].latency_ms` and `Server-Timing`.
+- Refs: P16-G1, P19-G-C1, P19-G-C2, P14-G6.
+
+**A-04 · Monitor mode set by the control itself.** A decision returned with `mode="monitor"` (e.g. a SIG-01 `experimental` signature) is treated exactly like a `cfg.mode == "monitor"` decision: it is recorded as "would have …" and never affects the final action. SIG-01 also returns `action="log"` in that case. Ref: P13-#5.
+
+**A-05 · Deterministic timeouts.**
+- A control task that **completed** is always used, even if it finished after `cfg.timeout_ms`. Only tasks still running are cancelled and go to `fail_mode`.
+- policy-engine never ports the staged 2–20 ms timeouts for deterministic controls; the schema default of 250 ms applies [SF-11].
+- Ref: P01-#8.
+
+**A-06 · Control-requested response headers and HTTP status precedence.**
+- **`Decision.meta["response_headers"]: dict[str, str]`**. Header names are lower-case. Allowed names are `x-aegis-*`, `retry-after` and `x-should-retry`; any other name is dropped with one WARNING per name.
+- Core merges these headers from **all enforce-mode decisions** of the request verdict and, for model calls, the response verdict. On conflict, the primary decision wins, then the lower control `priority`, then `control_id`.
+- They are applied to **every data-plane HTTP response**, allowed or blocked: the model proxies, `/egress`, `/v1/guard`, `/mcp/{server}` and `/v1/hooks/claude-code`.
+- Core adds `Retry-After: <primary.retry_after_s>` when it is set and the header is not already present.
+- **`primary.http_status` overrides** core's default status for the `error_type` (table in A-07).
+- BUD-01 publishes `x-aegis-budget-remaining: usd=0.42;scope=team:research`, the tightest remaining budget across the scope chain. **`ctx.state["bud.remaining"]` is not used.**
+- Additive outbound header **`X-Aegis-Response-Decision-Id`**: the response-hop verdict id, next to `X-Aegis-Decision-Id` (request hop).
+- Hook responses also carry `X-Aegis-Decision-Id`. Hook deny reasons always start with `[Aegis] <CONTROL-ID>: `.
+- Refs: P07-G1, P01-#1, P01-#7, P18-E.
+
+**A-07 · Stop codes (all wires; safe for Claude Code; never 403 for the kill switch).** Evidence: `staging/spikes/claude-code/FINDINGS.md`:
+- A plain 429 retries 11× over about 175 s.
+- 429 + `retry-after: 3600` and/or `x-should-retry: false` gives one attempt and a clean exit.
+- 402 gives one attempt and the message "API Error: 402 <msg>".
+- 403 shows the misleading "Failed to authenticate".
+- A synthetic 200 is shown as the assistant reply.
+
+The same codes apply to every client; core needs no client detection. EXE-04 `params.claude_code_stop` is obsolete (ignored).
+
+| Situation | `error_type` | Model proxies (`/v1/messages`, `/v1/chat/completions`, `/ollama`) | `/egress` | `/mcp/{server}` `tools/call` | Hook | Headers (via A-06) |
+|---|---|---|---|---|---|---|
+| policy block | `policy_blocked` | **200** synthetic `[Aegis] Blocked by <ID>: <reason> (dec_…, policy vN)` (`block_response: error` → 403 wire error) | 403 | 200, JSON-RPC result `isError` | `deny` | — |
+| approval pending | `approval_required` | 200 synthetic with `apr_…` + link (`error` → 403) | 403 + `approval_id`, `required_role`, `expires_at` | `isError` + `_meta` (A-46) | `deny` after the hold | `x-aegis-approval-id` |
+| budget hard limit, session step cap | `budget_exceeded` | **402** wire error | 402 | `isError` | `deny` | `x-should-retry: false` |
+| rate limit / burn-rate throttle | `rate_limited` | **429** | 429 | `isError` | `deny` | `retry-after: n` (n ≤ 60) |
+| loop ladder step 2 (tool calls blocked) | `rate_limited` | 429 | 429 | `isError` | `deny` | `retry-after: <cooldown_s>`, `x-should-retry: false` |
+| **kill switch / loop kill** | `killed` | **429** (never 403) | **429** | `isError` | `deny` | `retry-after: 3600`, `x-should-retry: false` |
+| GOV-01 bad credential | `unauthenticated` | **401** wire error | 401 | `isError` | `deny` | — |
+| GOV-01 disabled principal | `forbidden` | 403 wire error | 403 | `isError` | `deny` | — |
+
+- Loop ladder step 1 (`tool_error`) is a plain policy block: a synthetic 200 on the model path, `isError` on MCP, and a deny reason on hooks.
+- Blocked hops complete with `Outcome(status_code=<status actually returned>, usage=Usage(requests=0))`.
+- The §5.3 rows "kill switch → 403 killed" are **superseded**.
+- Refs: P01-#10, P07-G2, P12-G4a–c, HANDOFF known issue.
+
+**A-08 · Usage and cost attachment (one home, no double counting).**
+- **Pricing.** Surface handlers price usage before calling `complete()`: `outcome.usage.cost_usd = rt.ledger.price(outcome.model_used or interaction.model, usage)`, which core does on the model path. BUD-01 `on_complete` prices when `cost_usd == 0`. `complete()` prices once more if it is still 0 and the usage is non-empty. All three use the same `rt.ledger.price`, so the result is identical. The pricing version goes into BUD-01's `Decision.meta["pricing_version"]`.
+- **Normalisation** (budgets-ledger + adapters):
+  - `Usage.input_tokens` = total input **including** cache reads and cache writes. Anthropic: `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`. OpenAI: `prompt_tokens`. Pricing subtracts the cache counts.
+  - Ollama `compute_s` = `(load_duration + prompt_eval_duration + eval_duration)/1e9`. If that is missing, use wall time.
+- **Record.** After the `on_complete` hooks, `pipeline.complete()` writes:
+  - `rt.audit.record(AuditEvent(event_type="decision", decision_id=<request verdict id>, request_id, session_id, actor=ctx.identity, model=outcome.model_used, usage=outcome.usage, data={"phase": "outcome", "status_code", "upstream_ms", "provider", "model_used", "error", "response_decision_id"}))`.
+  - audit-metrics treats `data.phase == "outcome"` as an **update of the existing `decisions` row**, setting `cost_usd`, `tokens` and `upstream_ms`. It never creates a new decision row and never counts the record as a decision.
+- **Prometheus.** `aegis_cost_usd_total{team,agent,provider}` is incremented from that outcome record, which carries the identity. `rt.metrics.observe_upstream(provider, model, seconds, usage)` feeds only `aegis_upstream_duration_seconds` and `aegis_tokens_total`.
+- **Response-hop rows** carry `upstream_ms` only (`cost_usd`/`tokens` = null). `ctx.state["core.outcome"]` may still be set before the response evaluation for display, but stats sum cost **only** from request-hop rows.
+- **No SSE re-publish** of the decision. The drawer and `/api/decisions` show the cost.
+- **Tool hops** follow the same path (A-13 "completion").
+- Refs: P01-#2, P07-G4, P07-G5, P14-G5.
+
+**A-09 · Dry-run and self-test isolation.**
+- **`ctx.dry_run`** means no audit, no bus `decision`, no approvals, no budget reservations, no EXE-04 rate/loop/step recording, no EXE-03 taint flags, no MCP pin writes, and no `signature_hits` rows. Metrics: only `observe_overhead`.
+- **`ctx.source == "selftest"`** (always `dry_run`) adds the following. Stateful controls evaluate against **empty state**:
+  - BUD-01/BUD-02 see a zero ledger and zero concurrency. Static limit logic still applies, so a candidate `usd: 0` still blocks.
+  - EXE-04 **ignores the kill switch** and all loop/rate history. Kill-switch behaviour is covered by `tests/cases`.
+  - EXE-03 sees no taint. MCP-03 sees no pins and returns `None`.
+  - The pipeline does **not skip the semantic phase** after a deterministic block, so attributed tests of semantic/hybrid controls are meaningful.
+- Refs: P07-G9, P17-G5, P18-D, P02-#5.
+
+**A-10 · Large mutation values are elided outside memory.** When persisting `data.detail`, serving `GET /api/decisions/{id}`, or publishing on the bus, any `Mutation.value` string longer than 512 chars becomes `{"$elided": true, "sha256": "<hex16>", "len": <n>}`. The in-memory `WireView` keeps the full value. Owners: core-gateway (record payload) and audit-metrics (persist/API). Ref: P04-G3.
+
+**A-11 · Playground evaluations are recorded.**
+- `POST /api/playground` always evaluates **non-dry** with `source="playground"`, including `send: false`, so judges' ad-hoc prompts show in the live feed and `/api/decisions/{decision_id}` resolves.
+- With `send: false`, the handler calls `complete(ctx, i, v, Outcome(status_code=200, usage=Usage(requests=0)))`, which releases reservations.
+- Ref: P16-G6.
+
+**A-12 · `/v1/guard` extras.**
+- **`interaction.destination`** accepts a `Destination` object **or a string**:
+  - a `DestClass` value → `Destination(name=f"guard:{v}", dest_class=v)`;
+  - a provider name → that provider's destination.
+- `interaction.meta.artifact_b64` + `meta.filename`: decoded into `Interaction.raw` (bytes) for `surface="artifact.file"`, never into segments.
+- `interaction.meta.raw_result` → `Interaction.raw` (one tool definition) for `surface="mcp.list"`.
+- `dry_run` follows A-03/A-09.
+- `approval_id` (body) is equivalent to `X-Aegis-Approval`.
+- Refs: P17-G4, P19-G-C2, P19-G-C3, P18-F, P13-#3.
+
+**A-13 · Interaction conventions per surface.** These are binding for every producer and consumer.
+- **Model adapters:**
+  - `meta.wire ∈ {anthropic, openai, ollama}`, `meta.stream`, `meta.body_bytes`, `meta.n_messages`, `destination.provider`.
+  - `meta.client = "claude-code"` when the user-agent starts with `claude-cli`, or `x-app: cli`, or `x-claude-code-session-id` is present.
+  - `Interaction.headers` = the **complete outbound header set**: lower-case, minus hop-by-hop and `x-aegis-*`, with credential values masked as `"<redacted>"`.
+  - `Interaction.raw` = the parsed JSON body. `target="body"` mutations are applied **after** `apply_segments`. `target="header"` mutations are applied to the forwarded set **before** credential passthrough/injection.
+  - Anthropic `system` → role `system`, `redactable=False` for Claude Code clients unless `providers.<p>.redact_system: true`.
+  - `thinking` / `redacted_thinking` → `redactable=False`.
+  - `tool_result` → role `tool_result`, `trusted=False`.
+  - Tool definitions, `cache_control` and `metadata` are never segments and are never modified, except for DLP-03 body mutations such as `metadata.user_id`.
+  - Segments come in body order with `messages[i]…` paths.
+- **Claude Code** (hook and model path): `meta.claude_code = {session_id, prompt_id, request_class, agent_id, tool_use_id, raw_tool_name, hook_event, permission_mode}`. These are copied from the `x-claude-code-*` headers and the hook JSON when present. Hook `cwd` → `meta.cwd`.
+- **`model.admin`** (`/ollama/api/{pull,create,push,delete,copy}`):
+  - `kind="model_call"`, `destination=local` (`:cloud` → remote), `model = body.model or body.name`.
+  - `tool_name = f"ollama.{op}"`, `tool_args` = the parsed body. String leaves become `tool_args` segments, except `tool_args.modelfile` → role `document`, `trusted=False`.
+  - `url = "/api/{op}"`, `http_method`, **`meta.op`** (canonical key).
+  - Blocked → `403 {"error": "[Aegis] Blocked by <ID>: <reason>", "aegis": {inner}}` (the Ollama CLI prints `error`). Killed → 429.
+- **`artifact.file`:**
+  - Bytes go in `raw` (in-process) or `meta.artifact_b64` (`/v1/guard`), **never** in segments.
+  - `direction="in"`; `meta.filename`, `meta.source`, `meta.source_url`, `meta.sha256`, `meta.truncated`.
+  - `kind` = the producing handler's kind: `model_call` for `POST /ollama/api/blobs/{digest}` [should] (buffer ≤ 64 MB, else scan the first 16 MB), `egress` for binary `/egress` downloads [should].
+- **`egress.request`** (metadata-egress):
+  - `tool_name = body.tool_name or f"http.{method.lower()}"`, `http_method`, `url` = the **logical** URL (before `AEGIS_HOST_MAP`).
+  - **`tool_args = {"method": "POST", "url": "<logical url>", "json": <parsed JSON body>, "body": "<text body>"}`** (absent keys omitted).
+  - `raw` = the outbound body (dict for JSON, else str).
+  - `ActionRule.args_match/args_not_match` use **RE2 search** (unanchored) semantics; anchor with `^`/`$`.
+- **`mcp.init`:** `tool_args = {"command": [argv…]}` **and** `meta["mcp.command"] = argv`.
+- **MCP meta keys:** `mcp.transport`, `mcp.era`, `mcp.session`, `mcp.jsonrpc_id`, `mcp.list_index`, `mcp.pin`, `mcp.registered`, `mcp.command`, `mcp.url`, `mcp.header_mismatch`.
+- **`mcp.list`:** one interaction per tool. `raw` = the tool definition; the description is a segment with role `tool_description`, `trusted=False`. The tool is **dropped** when the final action is `block`/`require_approval`, or when a `Mutation(op="remove", path="tool")` (or `path="result.tools[<i>]"`) is present.
+- **Untrusted surfaces:** `tool.output`, `mcp.result`, `mcp.list` and `egress.response` segments are `trusted=False` everywhere, including the playground and `/v1/guard`.
+- **Holdback** [could]: post-hoc `model.response` verdicts carry `meta.post_hoc=True`. Controls must tolerate it.
+- **Completion of tool hops:**
+  - The hook calls `rt.pipeline.complete()` for a `PreToolUse` interaction when the matching `PostToolUse` arrives (same `session_id` + `tool_use_id`), or after 600 s with `Outcome(status_code=200)`. It sets `Outcome.error="tool_error"` when the tool result is an error.
+  - The MCP proxy completes after `mcp.result`.
+  - `/egress` completes after `egress.response`.
+- Refs: P01-#5, P04-G1, P04-G5, P05-#3, P07-G3, P07-G6, P10-G2–G4, P11-#1, P11-#2, P12-G4d, P13-#1–#4, P20-#6.
+
+**A-14 · `when` conditions on controls [should].** In pipeline step 2 (Select), a control must also pass `aegis.policy.conditions.control_when_ok(snap, control_id, ctx, interaction)`. Use a guarded import: if the module is missing → `True`. This module joins the §3.3 public import surfaces (owner policy-engine): `compile_condition(expr) -> Condition`, `build_env(ctx, interaction) -> dict`, `control_when_ok(snap, control_id, ctx, interaction) -> bool`. Ref: P02-#8.
+
+**A-15 · Control discovery also covers `aegis.integrations`.** `aegis.core.discovery.create_registry` walks `aegis.controls` **and** `aegis.integrations` (recursive, same rules: `CONTROLS` lists, `_` prefix skipped, duplicate id → first wins). GOV-06 uses this (A-48). No ownership change.
+
+**A-16 · Miscellaneous core decisions.**
+- **Routing:** cross-wire routing is unsupported. A `models.routes` entry whose provider wire differs from the inbound wire is skipped. An unroutable model → 400 `invalid_request` in wire format.
+- **`count_tokens`:** `/v1/messages/count_tokens` forwards the **dry-run-redacted** body, never the raw one.
+- **`Agent.profile`** is informational in this build (shown in the UI, not applied by the pipeline). [could] `snap.compiled["policy-engine:by_profile"]`.
+- **Crypto module:** `aegis.core.crypto` is created by core-gateway in `src/aegis/core/crypto.py`.
+- **Several apps in one process:** `create_app(settings)` re-binds `get_runtime()` on each start, explicit `Settings` win over env, and `aegis.settings.get_settings.cache_clear()` is public.
+- **SSE:** `/api/events` must not be gzipped or buffered (`Cache-Control: no-cache`, `X-Accel-Buffering: no`).
+- **UI:** `ui.py` serves the SPA fallback for deep links (`/ui/security/decisions/dec_…`).
+- **Health:** `/healthz` `components` adds `policy` (from `rt.policy.status()["state"]` when present), `semantic`, `ollama` (A-44), `org` (`rt.org.health()` when present) and `audit` (`rt.audit.last_verify`).
+- Refs: P01-#3, P01-#4, P01-#9, P01-#11, P02-#9, P02-#14, P18-H, P15-G12, P08-notes.
+
+---
+
+### A.2 Identity, sessions and headers
+
+**A-17 · Agent key carriers and Claude Code identity** (owners: org-rbac, core-gateway, claude-code-integration).
+- **Credential sources**, first value starting with `aegis_` wins: `Authorization: Bearer` > `x-api-key` > **`X-Aegis-Agent-Key`** (new) > `X-Aegis-Key` (staging alias). All of them, plus every `x-aegis-*` header, are consumed and **stripped** before any upstream. Non-`aegis_` credentials pass through untouched.
+- **Claude Code** (`demo/claude/settings.json` `env`):
+  - `ANTHROPIC_CUSTOM_HEADERS` = `"X-Aegis-Agent: claude-code@platform\nX-Aegis-Agent-Key: <seed key>"`. Model traffic is then authenticated while `Authorization` keeps the OAuth token.
+  - Hooks and MCP send `Authorization: Bearer <key>` and `X-Aegis-Agent: claude-code@platform`.
+  - The hook client reads the key from `AEGIS_AGENT_KEY` or `AEGIS_AGENT_KEY_FILE` (`demo/claude/.agent_key`).
+- **`rt.org.resolve_identity()`:**
+  - It may return a private subclass `ResolvedIdentity(Identity)` with extra fields `auth_method`, `key_id`, `key_scopes`, `credential_error`, `asserted_agent_id`, `principal_mismatch`, `known` and `principal_active`.
+  - Core passes that instance **unchanged** into `new_context(identity=…)` and resolves it **once per inbound request**.
+  - The extra fields never reach JSON: they are serialized as `Identity`.
+  - Hint `{"client": "claude-code"}` (UA `claude-cli`) maps to `claude-code@platform`.
+- **Same identity for hook and MCP proxy.** The hook and the MCP proxy must resolve the same identity for the same call, so approval fingerprints match and duplicate cards are avoided. `demo/claude/mcp.json` therefore sends the same headers.
+- Refs: P12-G3, P08-G1, P09-#10, P11-req.
+
+**A-18 · GOV-01 semantics and new error types.**
+- An anonymous caller → allow (attribution only).
+- An unregistered `X-Aegis-Agent` id → `log`.
+- An invalid, revoked or expired key, or principal spoofing (`principal_mismatch`) → block 401 **`unauthenticated`**. A `require_auth: true` violation → 401 `unauthenticated` as well.
+- A disabled principal → block 403 `forbidden`.
+- When the identity is a plain `Identity` (self-test, playground), GOV-01 checks `(await rt.org.get_agent(agent_id)).active`.
+- New `error_type` / API error types: **`unauthenticated` (401)** and **`not_found` (404)**.
+- Ref: P08-G6.
+
+**A-19 · Sessions, waits and hook headers.**
+- The session precedence in §5.2 stands.
+- For Claude Code, `ctx.session_id` = `x-claude-code-session-id` = hook `session_id`. The vault, budgets and loops are keyed on it.
+- **`X-Aegis-Wait` / `wait_s`:** an explicit value (including `0`) wins over `approvals.defaults.hold_s[source]`, clamped to **[0, 110] s**.
+- Inbound-only headers (never forwarded): **`X-Aegis-Hook-Event`** (hook event name) and **`X-Aegis-Hook-Deadline`** (seconds the client will wait).
+- The hook's hold must stay below the hook client timeout, which must stay below the settings `timeout`: 60 < 110 < 120.
+- Refs: P18-C, P12-G1.
+
+---
+
+### A.3 Approvals (owner: approvals-engine unless noted)
+
+**A-20 · Two-person rule = owner + admin** [SF-01].
+- `two_person: true` means **two distinct eligible approvers**. At least one satisfies `required_role`; the other has role **≥ admin**, or ≥ the level when the level is below admin.
+- **Separation of duties:** for `admin`/`owner` levels, the requester's own member (for an agent: its sponsor, `owner_member_id`) never counts.
+- **Proposer co-sign:** if the requester is a human whose role already satisfies the level and the route is two-person, their approve vote is recorded at creation (`comment: "proposer co-sign"`). Exactly one more distinct admin+ approver is then needed.
+- Any eligible `deny` → `denied`.
+- Agents never vote. `self` = the requester's member (an agent's sponsor) **or** any admin/owner.
+- Acme keeps **one owner**, so `owner` + two-person = u_katarzyna + one of u_marek / u_emily.
+- **GOV-05:** a human proposer who satisfies a **non-two-person** level → `allow`. For a two-person level → `require_approval`, with the co-sign already recorded.
+- Refs: P09-#4, P18-G, HANDOFF known issue.
+
+**A-21 · No `auto_approved` status.**
+- An `auto` route is stored as `status="approved"`, `required_role="auto"`, `decided_at=created_at`, `votes=[]`, `decided_by=[]`, and `uses=max_uses` for executor kinds. A `deny` route is stored as `status="denied"`, `required_role="deny"`.
+- Both still emit `approval.created` + `approval.decided` (`data.sub` = `auto` | `deny_rule`), SSE `approval.created`, and metric outcome `auto` | `deny_rule`.
+- The UI derives "auto-approved" from `required_role == "auto"`.
+- **Executors also run for auto-approved requests** (A-25).
+- Ref: P09-#1.
+
+**A-22 · Routing semantics** (binding for `route()`, `/api/approvals/simulate` and the routing tests).
+- **First match wins** (§3.5). Rule lists are **authored most-restrictive-first** with a fail-closed catch-all per family; `docs/seed-fixes/approvals.yaml` is the canonical list.
+- With no match: `default_approver` (admin) for `action|budget_raise|mcp_pin`, and **`default_config_approver` (owner)** for `config_change`.
+- A config proposal with N changes routes each change and takes the highest level, OR-ing `two_person`, keeping the min `ttl_s` and the `rule_id` of the max.
+- **Missing numbers fail closed:** `amount_usd`/`increase_pct` = `None` makes `*_gt` **true** and `*_lte` **false**, so an unknown spend lands on `spend-owner-2p`. ACT-01 `missing_amount: route_as_max` agrees.
+- **`labels`:** exact per-key string equality against `interaction.labels ∪ draft.labels ∪ derived facts`.
+- **Derived facts.** For actions:
+  - `vendor_approved`, `recurring` from `vendor:<id>`;
+  - `sensitivity`, `env` from `db:<table>` via `rt.org.resources()`;
+  - `dest`, `requester_kind`, `requester_role`.
+
+  For config changes, per change:
+  - `control_id`, `control_severity` (max of live and proposed);
+  - `loosening` (`"true"`/`"false"`), `scope`, `scope_type` (prefix of `scope`; `global` for the global kill switch), `increase_pct`;
+  - `model_dest`, `provider_new` (for `model.allow`), `signature_severity` (for `feed.override`), `requester_is_sponsor` (for `killswitch.*` on `agent:<id>`).
+- **`ApprovalWhen` extras** (whitelisted): `profiles` (active `doc.profile`), `labels_in: {key: [values]}`, `signals_any: [..]` (comma-split `labels["signals"]`). **`ApprovalRule` extras:** `aliases`, `grant_ttl_s`, `note`. An unknown condition key → the rule does **not** match (one WARNING per policy version).
+- Refs: P09-#2, P09-#3, P10-G6.
+
+**A-23 · Hold, wait, retry and redemption.**
+- **Hold:** `ctx.wait_for_approval_s` = the explicit wait (A-19), else `hold_s[source]` (`hook 60, mcp 30, egress 15`, others 0).
+- **Still pending after the hold:**
+
+| Surface | Answer |
+|---|---|
+| hook `PreToolUse` | `permissionDecision: "deny"`, reason `[Aegis] <CTRL>: Approval apr_… pending (needs <role>: <names>) — approve at http://127.0.0.1:8787/ui/governance/approvals?id=apr_…, then retry`. **Never `ask`.** |
+| `/mcp/{server}` | JSON-RPC result `{isError: true, content: [{type: text, text: same}], _meta: {"io.aegis/decision": {decision_id, action: "require_approval", control_id, approval_id, required_role, expires_at}}}` |
+| `/egress` | 403 `approval_required` envelope + `X-Aegis-Approval-Id` |
+| `/v1/guard` | 200 `{verdict, decision_id, segments, approval}` |
+| model proxies | 200 synthetic reply (or 403 per `block_response`) + `X-Aegis-Approval-Id` |
+| `rt.policy.propose()` | `ApplyResult(status="pending_approval", approval=…)` |
+
+- **Long-poll (new):** `GET /api/approvals/{id}/wait?timeout_s=25` (member+, max 60) → `ApprovalRequest`. It returns 200 when the request is decided or the timeout passes, so check `status`. Unknown id → 404 `not_found`.
+- **Retry:**
+  - The same call plus **`X-Aegis-Approval: apr_…`**. On `/mcp` this is the HTTP header or `params._meta["io.aegis/approval_id"]`; on `/v1/guard` it is the body field `approval_id`.
+  - `find_preapproved` matches **token AND fingerprint**, or fingerprint alone.
+  - A token whose fingerprint differs is **rejected**: a new request is created with `payload.replay_of = "apr_X (params mismatch)"`, plus audit `system` `data.sub="approval.token_mismatch"`.
+  - **Only `kind="action"` approvals are redeemable.** Config, budget and pin approvals act through executors.
+- **Grants:**
+  - On approval, `expires_at = decided_at + grant_ttl_s` (rule extra, else `defaults.grant_ttl_s` = 900 s).
+  - Grants are single-use (`max_uses: 1`), except that redemptions within **`redeem_window_s` = 30 s** count as one use (hook + MCP proxy).
+  - `deny_cooldown_s` = 60: an identical call that was just denied returns the denied request without a new card.
+- **Flood caps:** `max_pending` 50 (global) and `max_pending_per_principal` 10. Over the cap, the request is created `denied` with `rule_id="defaults.max_pending"`.
+- **Fingerprint** (`hmac_hex(..., purpose="approval")`): its volatile `tool_args` keys are dropped: `description`, `timeout`, `run_in_background` (Bash), `_meta`, `cache_control`, `request_id`, `idempotency_key`. `fp_draft` (non-action kinds) covers `{kind, action_type, principal, payload.patch | payload.changes}`.
+- **SDK** (`aegis.sdk`, demo-mocks-docs): on `approval_required`, loop `GET …/wait` until the request is no longer pending (≤ `expires_at`), then retry with `X-Aegis-Approval`. The HTTP timeout must exceed the hold.
+- Refs: P09-#8, P12-G5, P18-C, P20-#5.
+
+**A-24 · Approval payload shapes** (`ApprovalRequest.payload`; redacted, never raw secrets/PII).
+
+Every request also gets `payload.routing = {rule_id, aliases, description, facts, eligible: [member_id…], grant_ttl_s}`. Action requests also get `payload.bound = {tool_name, args_masked}` (via `rt.redactor.mask_for_log`, ≤ 2 KB). SSE and list views replace `payload.proposal.yaml` with `{"yaml_sha256", "yaml_bytes"}`; the full payload is only returned by `GET /api/approvals/{id}`.
+
+| Shape | `kind` / `action_type` | `resource` / `labels` | `payload` (beyond routing/bound) | Producer → executor |
+|---|---|---|---|---|
+| **budget_increase** (dashboard `POST /api/budgets/raise`) | `config_change` / `budget.raise` | `policy:<sha16>` / `{scope, scope_type, dimension, window}` | `{"proposal": {"proposal_id": "pol_…", "sha256", "patch": [PatchOp…], "base_version", "reason", "source": "dashboard"}, "changes": [PolicyChange…], "budget": {"scope": "team:trading", "window": "day", "dimension": "usd", "before": 60, "after": 75, "increase_pct": 25.0}}` | budgets-ledger → `rt.policy.propose(patch=…)` → GOV-05 → policy-engine `config_change` executor |
+| **budget_raise** (BUD-01 `on_hard: require_approval`) | `budget_raise` / `budget.override` | `budget:<scope>` / `{scope, scope_type, dimension, window}` | `{"patch": [PatchOp…], "scope", "window", "dimension", "before", "after", "increase_pct", "tripped_by": {"agent_id", "session_id", "request_id", "requested", "used", "limit"}}`; `after = max(before × params.raise_factor (2.0), used + requested)` | BUD-01 → policy-engine `budget_raise` executor (`apply_patch(payload.patch)`) |
+| **control_disable** | `config_change` / `control.disable` (also `control.mode`, `control.remove`, `control.action.loosen`) | `policy:<sha16>` / `{control_id, control_severity, loosening: "true"}` | `{"proposal": {…}, "changes": [{"kind": "control.disable", "path": "controls[id=DLP-02].enabled", "control_id": "DLP-02", "before": true, "after": false, "loosening": true, "summary": "disable DLP-02 (Secrets & credentials)"}], "control": {"id", "name", "severity", "owasp"}}` | policy-engine `propose` → `config_change` executor |
+| **policy_edit** (Monaco `POST /api/policy/apply`, rollback) | `config_change` / kind of the change with the highest required level (ties: first) | `policy:<sha16>` / `{change_kinds: "a,b", loosening}` | `{"proposal": {"proposal_id", "sha256", "yaml": "<full candidate>", "base_version", "reason", "source"}, "changes": [...], "unified": "<unified diff ≤ 20 KB, each line mask_for_log(line, 400)>"}` | policy-engine → `config_change` executor (YAML only if `base_version` is current, else `{"status": "conflict"}`) |
+| **org.role_change** (and other org changes) | `action` / `org.role.promote_admin` \| `promote_owner` \| `demote_admin` \| `demote_owner` (others `org.member.*`, `org.agent.*`) | `member:<id>` / `agent:<id>` / `{category: org, op, to_role?}` | `{"org_change_id": "och_…", "op": "member.update", "target": {"type": "member", "id": "u_piotr", "name": "Piotr Zieliński"}, "patch": {"role": "admin"}, "before": {"role": "member"}}` (emails masked) | org-rbac `create_manual` → org-rbac `action` executor (A-25) |
+| **mcp.repin** | `mcp_pin` / `mcp.repin` | `mcp:<server>.<tool>` / `{dest, server, reason: changed\|new}` | `{"server", "tool", "pinned_hash": "<hex>\|null", "new_hash", "diff": {"changed_fields": [...], "description_diff": [...], "params_added": [...], "params_removed": [...]}, "old_description_preview", "new_description_preview"}` (previews masked, ≤ 300 chars) | MCP-03 / mcp-proxy `create_manual` → mcp-proxy `mcp_pin` executor |
+| **action** (ACT-01…04, GOV-04, EXE-03, SIG-03, DLP-01 `dlp.release`) | `action` / governed type (A-26) | per A-26 / labels per A-27 | `{"facts": {k: v}, "checks": [{"name", "ok": bool, "detail"}], "agent_note": "<agent-supplied, untrusted>", "explain": {...}}` | control → pipeline → redemption via `find_preapproved` |
+
+The dashboard renders `facts` as a table, `checks` as a pass/fail list, `agent_note` labelled "agent-supplied, untrusted", `diff` for re-pins, and `changes` / `unified` for config. Refs: P17-G3, P07-G8, P02-#3, P08-G2, P08-G3, P11-#5, P16-G2, P10-G9.
+
+**A-25 · Executor registration** (last registration per kind wins; one owner per kind).
+
+| kind | Registered by (in `on_startup`) | Behaviour |
+|---|---|---|
+| `config_change` | **policy-engine** | Proposal lookup: `payload.proposal.proposal_id` → `policy_proposals` row by `decision_id` → by sha in `resource` → `payload.patch\|yaml`. A patch is rebased onto the current text → `apply_patch`. YAML is applied only if `base_version` is current. `source="approval"`, actor = the last approver, reason `"<reason> · approved by u_emily (apr_…)"` → `{"status": "applied", "policy_version": v}` \| `{"status": "rejected"\|"conflict", "errors"}` |
+| `budget_raise` | **policy-engine** | `apply_patch(payload.patch, source="approval")` |
+| `mcp_pin` | **mcp-proxy** | Re-pins only if the candidate hash == `payload.new_hash`, else `{"error": "candidate changed"}` |
+| `action` | **org-rbac** | Handles `action_type` starting with `org.` only and returns `None` for everything else (data-plane actions have no executor). |
+
+- approvals-engine registers **no** executors. Its fallbacks (`config_change`/`budget_raise` → `rt.policy.apply_patch|apply_yaml`) run only when nobody registered that kind.
+- Executors run for **auto-approved** requests too. Results go to `ApprovalRequest.execution`. A failure → audit `approval.executed` `data.ok=false` + bus `system` warning, and the approval stays `approved`.
+- budgets-ledger registers nothing.
+- A **denied** `mcp_pin` → mcp-proxy marks the tool `quarantined` (bus subscriber) [should].
+- The admin endpoint `POST /api/mcp/servers/{s}/tools/{t}/approve` votes on the pending `mcp_pin` approval as the viewer (via `rt.approvals.vote`) when one exists; otherwise it re-pins directly and audits `mcp.tool_changed`.
+- Refs: P08-G2, P07-G8, P02 §2.7, P11 §2.7.
+
+**A-26 · Vocabulary additions (§3.4).**
+- **Action types:**
+  - org changes: `org.member.create`, `org.member.create_admin`, `org.member.create_owner`, `org.member.update`, `org.member.deactivate`, `org.member.deactivate_privileged`, `org.role.promote_admin`, `org.role.promote_owner`, `org.role.demote_admin`, `org.role.demote_owner`, `org.agent.update`, `org.agent.widen_destination`, `org.agent.key`, `org.agent.create`;
+  - `tool:<tool_name>` (GOV-04 generic approvals);
+  - `agent.goal_drift` (INJ-05, stretch);
+  - `dlp.release` (DLP-01 when a matrix cell is `require_approval`);
+  - `budget.override` (BUD-01 `budget_raise`) and `mcp.repin` (MCP-03), formalised.
+- **Resource prefixes:** `vendor:<id>`, `db:<table>`, `host:<hostname>`, `file:<path>`, `pkg:<eco>/<name>`, `mcp:<server>.<tool>`, `member:<id>`, `agent:<id>`, `policy:<sha16>`, `budget:<scope>`.
+- **ID prefixes:** `pol_` (policy proposals, policy-engine) and `och_` (org changes, org-rbac).
+- Refs: P08-G3, P10-G11, P05-#7, P11-#5, P02-#4.
+
+**A-27 · Label producers** (`Interaction.labels` / `ApprovalDraft.labels`; string values).
+
+| Label | Values | Producer |
+|---|---|---|
+| `vendor_approved`, `recurring`, `amount_unknown` | `"true"/"false"`; `none\|monthly\|yearly`; `"true"` | ACT-01 (catalog, price check) |
+| `sensitivity`, `env` | `PUBLIC…RESTRICTED`; `prod\|staging` | ACT-02 (from `rt.org.resources()`) |
+| `bulk` | `"true"` | ACT-02 (unbounded prod `DELETE`/`UPDATE`), ACT-03 (recipients > `max_recipients`) |
+| `data_class` | highest class in the payload; a placeholder counts as its entity's class | ACT-03 |
+| `env`, `pattern`, `sandboxed` | `prod\|staging\|mainline\|dev`; `terraform_apply\|kubectl_apply\|git_push_main\|remote_shell\|container_run\|python_exec\|pkg_install`; `"true"/"false"` | ACT-04 / EXE-01 |
+| `signals` | comma list: `lethal_trifecta` (EXE-03), `unknown_package` (SIG-03), `peer_initiated` (A2A), `intent_drift` (INJ-05) | as listed. **EXE-03 uses `signals`, not `taint`.** |
+| `capability` | `spend\|data_read\|data_write\|external_send\|code_exec\|config\|other` | action-guards, on every classified hop |
+| `dest`, `server`, `reason` | destination class; server; `changed\|new` | MCP-03 `mcp_pin` drafts (`dest` replaces `destination`) |
+| `scope`, `scope_type`, `dimension`, `window` | budget scope facts | BUD-01 / budgets-ledger |
+| `category`, `op`, `to_role` | org change facts | org-rbac |
+
+- **Package installs:** SIG-03 owns the approval for unknown packages (signal `unknown_package` → rule `pkg-unknown`). ACT-04 uses `params.category_actions.package.install: log` in balanced, to avoid double prompts.
+- `ApprovalWhen` matching is per A-22.
+- `ApprovalSimulateRequest` accepts extra `labels` (A-28).
+- Refs: P09-#9, P10-G6, P10-G10, P10-G11.
+
+**A-28 · Approvals API extras, audit sub-types and metrics.**
+- **`GET /api/approvals`:**
+  - `?mine=true` = requested by the viewer **or** by an agent the viewer sponsors.
+  - New `?actionable=true` = pending items the viewer can vote on.
+  - `can_vote` / `why_not` are present on list items **and** on `GET /api/approvals/{id}` when a viewer is known.
+- **`GET /api/approvals/{id}/wait`:** A-23.
+- **`POST /api/approvals/simulate`** accepts the extras `labels`, `profile`, `changes: PolicyChange[]`, `scope_type`, `increase_pct`, `control_id`, `loosening`. It returns `ApprovalRoute` + extra `description`. The requester is built from the org cache, and db/vendor labels are derived exactly as live.
+- **`GET /api/approvals/rules`** items include `aliases`.
+- **`POST /api/approvals/{id}/approve|deny`:** not eligible → 403 `forbidden` (message = `why_not`); already decided → **409 `conflict`**; unknown → 404 `not_found`.
+- **Audit (no new `AuditEventType`):**
+  - `approval.decided` `data.sub ∈ {vote, approved, denied, cancelled, auto, deny_rule}`;
+  - `approval.executed` `data.sub ∈ {execution, redeemed}`;
+  - `system` `data.sub ∈ {approval.token_mismatch, approval.escalated}`.
+- **Metrics:** `aegis_approvals_total{kind,outcome}` and `aegis_approvals_pending` are **derived by audit-metrics** from `approval.*` audit events. Owners' `inc()` calls for these names are ignored, so nothing is double counted.
+- **Scaffold note:** dashboard pages use page-local `…Ext` types for the extra fields; frozen `types.ts` is unchanged.
+- Refs: P17-G2b, P17-G7, P17-req, P09-#7, P09-#12, P10-G6.
+
+---
+
+### A.4 Policy engine (owner: policy-engine unless noted)
+
+**A-29 · Self-test gate: reject only regressions, never live state.**
+- **Test set:** `doc.tests` + every `controls[].tests`. A control test without `control:` is attributed to its control.
+- **Skipped** (reported as counts/warnings, not failures): tests whose attributed control is unconfigured, `enabled: false`, `mode: off` or not implemented; tests excluded by the `profiles:` extra; multi-step extras (`steps`, `repeat`); tests over the time budget.
+- **Comparison is control-scoped.** For an attributed test, `got` = the action of **that control's own decision** in `verdict.decisions` (any mode; `allow` if absent). This is how `control:` / `assert: control` are interpreted, so another control being stricter never fails the test. For an unattributed test, `got = verdict.action`.
+- `passed = got == expect or (expect == "allow" and got == "log")`.
+- The extras `upstream_must_contain` / `upstream_must_not_contain` check the joined `verdict.segments`. `expect_route` checks `rt.approvals.route(...)`.
+- **Sets:**
+  - The **gate set** (attributed control of kind deterministic/stateful, or unattributed) runs **before** the swap, with a 2.5 s budget and concurrency 8.
+  - The **async set** (semantic/hybrid) runs **after** the swap and never rejects; its failures become a `system` warning and are stored in `last_selftest`.
+  - `POST /api/policy/validate` runs both sets (8 s budget).
+- **Rejection rule.** A candidate is rejected only if a gate case meets **all** of:
+  1. it is must-protect: `expect ∈ {redact, require_approval, block}`;
+  2. it failed **looser**: `ACTION_PRECEDENCE[got] < ACTION_PRECEDENCE[expect]`, or an upstream check failed;
+  3. it is **new or changed** in this candidate (by `def_hash`), **or** it **passed on the live version** (regression baseline).
+
+  Stricter-than-expected results, failing must-allow cases and pre-existing failures are warnings only. The startup run only sets the baseline.
+- **Live state is ignored:** see A-09 (empty ledger/loops/taint/pins, kill switch ignored, semantic phase never skipped).
+- **Knob:** extra key **`defaults.selftest_gate: enforce | warn | off`** (default `enforce`).
+- **Rejection issue:** `ValidationIssue(path="controls[id=DLP-02].tests[name=…]", line, col, message="self-test DLP-02/<name>: expected block, got log — update the test, or use mode: monitor / enabled: false to loosen this control")`.
+- Refs: P02-#5, P07-G9, P10-G8a/b, P11-req, P17-req.
+
+**A-30 · `PolicyTest` extras** (whitelisted; honoured by the runner and by test-suite / redteam adapters).
+
+| Extra | Maps to |
+|---|---|
+| `model` | `Interaction.model` |
+| `url`, `http_method`, `resource`, `action_type`, `labels`, `meta`, `raw`, `mcp_server`, `segments` | the same `Interaction` fields |
+| `headers` | `Interaction.headers` **and** `ctx.headers` |
+| `role`, `trusted` | role/trust of the `text` segment |
+| `direction` | `Interaction.direction` |
+| `member` | `Identity(member_id, role from rt.org)` (overrides `agent`) |
+| `changes` | `Interaction.meta["changes"]` (kind `config_change`) |
+| `profile` | the candidate profile for this test |
+| `profiles` | run only under the listed profiles |
+| `expect_route` | `{required_role, two_person?, rule?}` |
+| `upstream_must_contain`, `upstream_must_not_contain` | checks on outbound segments |
+| `assert` | `control` (= the default attributed semantics) |
+| `steps`, `repeat` | [could]; skipped |
+
+- **Identity:** `agent` (default `selftest`) resolves via `rt.org.get_agent` → `Identity(org_id, team_id, agent_id, member_id=owner_member_id, role="agent", authenticated=True, display_name)`.
+- **Default `text` segments:**
+  - `prompt.user` → `prompt` (user, trusted);
+  - `model.request` → `messages[0].content` (user, trusted);
+  - `model.response` → `content[0].text` (assistant, trusted);
+  - `tool.output` → `tool_response` (tool_result, **untrusted**);
+  - `mcp.result` → `result.content[0].text` (tool_result, **untrusted**);
+  - `mcp.list` → `result.tools[0].description` (tool_description, **untrusted**; `mcp_server` = the `tool_name` prefix);
+  - `egress.request` / `egress.response` → `body` (other; trusted / **untrusted**).
+- **Macros:** `{{gen:…}}`, `{{b64:…}}`, `{{tags:…}}`, `{{zw:…}}` (plan 02 §2.6), so no secret-shaped strings are committed.
+- Refs: P02-#7, P04-G9, P08-G9, P09-#5, P10-G8, P11-req, P13-#6c.
+
+**A-31 · Policy endpoints and status codes** (route `policy.py`).
+- **Additive endpoints:**
+  - `POST /api/policy/reload` (**admin**) → `ApplyResult`. Calls `reload_from_file()`; this is the fallback when the watcher hiccups.
+  - `GET /api/policy/selftest` (member) → `SelfTestRun`, or 404 `not_found` before the first run.
+  - `POST /api/policy/selftest` (**admin**) `{which?: "all"|"gate"|"async", profile?}` → `SelfTestRun`.
+  - `SelfTestRun` = `{version, profile, ran_at, which, results: SelfTestResult[], skipped: [{name, control, reason}], deferred, passed, failed, gate_failures, latency_ms}`, a page-local TS type.
+- `POST /api/policy/validate` accepts the body extra **`selftest: bool = true`**. With `false` it runs parse + schema + semantic checks only and returns `selftest: []`; the policy editor uses this for keystroke validation.
+- `POST /api/policy/diff` returns the extra **`rule_id`**, from `rt.approvals.route(...)`.
+- [could] `GET /api/policy/effective?profile=` → effective control configs.
+- **Status codes:**
+  - `apply` / `rollback` → **200** + `ApplyResult` for `applied|pending_approval|rejected|noop`.
+  - Stale `base_version` → **409** `{"error": {"type": "conflict", "message", "current_version", "result": ApplyResult}}`.
+  - Unparsable YAML on `diff` / `validate` → **422** `invalid_request` + `errors`.
+- The UI honours `/governance/policy?tab=history&version=N`.
+- **Tests:** in `AEGIS_TEST_MODE=1` the watcher is off, so test-suite's `policy_patch(fn)` fixture edits the temp policy and then awaits `rt.policy.reload_from_file()`, falling back to `apply_yaml(text, actor=None, source="file")`. Multi-step staged examples (EXE-03, EXE-04, BUD-01 402, INJ-05, MCP-03 rug pull, GOV-01 auth, SIG-02 fixtures) live in `tests/cases`, not inline.
+- Refs: P02-#1, P02-#2, P02-#12, P17-G1, P17-G2a, P16-G7.
+
+**A-32 · Store extras, proposals and the `config.change` interaction.**
+- **`rt.policy` extras** (via `getattr`): `reload_from_file(reason=None) -> ApplyResult`, `run_selftest(snap=None, *, which="all", profile=None) -> SelfTestRun`, `last_selftest() -> SelfTestRun | None`, `status() -> {"state": "ok"|"degraded", "version", "file_in_sync", "last_error"}`.
+- **Private table:**
+  ```sql
+  policy_proposals (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, updated_at TEXT, actor_json TEXT NOT NULL,
+                    source TEXT NOT NULL, base_version INTEGER, sha256 TEXT NOT NULL, yaml TEXT, patch_json TEXT,
+                    reason TEXT, changes_json TEXT NOT NULL DEFAULT '[]', decision_id TEXT, approval_id TEXT,
+                    status TEXT NOT NULL, applied_version INTEGER)
+  ```
+  with indexes on `sha256` and `decision_id`. IDs use the prefix `pol_`.
+- **The `propose()` interaction:** `Interaction(kind="config_change", surface="config.change", direction="out", destination=Destination(name="aegis", dest_class="local"), segments=[], action_type=<kind of the highest-level change>, resource=f"policy:{sha[:16]}", meta={"changes": [PolicyChange.model_dump(mode="json")…], "proposal": {"proposal_id", "sha256", "yaml"|"patch", "base_version", "reason", "source"}})`.
+  - It is evaluated **non-dry against the live policy**.
+  - **GOV-05** copies `meta.proposal` / `meta.changes` into `ApprovalDraft.payload["proposal"|"changes"]`, sets `draft.resource = interaction.resource`, and routes with `changes=`.
+  - `apply_*` called from an approval executor uses `source="approval"`. Auto-kill persistence from budgets-ledger uses `source="budgets-ledger"`. `PolicyVersionInfo.source` is a free string.
+- Refs: P02-#3, P02-#4, P02-#9, P07-G11.
+
+**A-33 · Patch grammar, diff semantics, profiles.**
+- **PatchOp paths** (shared by budgets-ledger, approvals executors and the dashboard):
+  - `budgets.limits[scope=<scope>,window=<window>].<dimension>` (`set`). Use `append` to `budgets.limits` when no entry matches.
+  - `budgets.kill_switch.global` (`set`).
+  - `budgets.kill_switch.<teams|members|agents|sessions>` (`append`/`remove`).
+  - `controls[id=<ID>].<field>`, `destinations.matrix.<CLASS>.<dest>`.
+- **`diff_docs`:**
+  - fills `summary` and `loosening` on every change;
+  - classifies `feed.overrides` edits as `feed.override`, where `enabled: false` / `mode: off` / a weaker action ⇒ `loosening=True`;
+  - carries `BudgetLimit.match_agents` in budget changes;
+  - classifies `defaults.mode: off` as loosening (owner via `policy-loosen*`).
+- **DLP matrix overrides:** DLP-01 (and DLP-02/03 when they read the matrix) apply **`params.matrix_overrides: {CLASS: {dest: action}}`** cell by cell on top of `destinations.matrix`. Profiles use this to tighten (strict/paranoid: `CONFIDENTIAL.third_party: block`).
+- **Profile files** (`config/profiles/<p>.yaml`) add the keys `description`, **`floor: bool`** (strict/paranoid: profile values are a floor for knobs pinned in `policy.yaml`; `enabled`/`mode` are never floored) and **`kind_defaults: {deterministic|stateful|semantic|hybrid: {ControlConfig fields}}`**. [could] `overlay`.
+- **Precedence** (low → high): frozen defaults → `kind_defaults` → explicit `defaults.fail_mode` / `semantic_timeout_ms` → `profiles[P].controls[X]` → explicit `controls[id=X]` (deep merge for `params`/`scope`) → floor → global `defaults.mode`.
+- **action-guards' `x-profiles` deltas** are ported into these files by policy-engine.
+- Refs: P02-#6, P02-#10, P02-#11, P07-G7, P10-G8d, P13-#6d.
+
+**A-34 · Whitelisted extension keys** (accepted without "unknown key" warnings, preserved in ruamel round-trips).
+- **Top-level sections:** `defaults.selftest_gate`; `budgets.timezone` (IANA, default `Europe/Warsaw`); `BudgetLimit.match_agents: [agent globs]` (for `session:*` / `model:` / `tool:` limits); `providers.<p>.redact_system: bool`.
+- **Controls:** `description`, `family`, `when`, `notes`.
+- **Approvals:** `approvals.defaults.{grant_ttl_s, max_pending_per_principal, redeem_window_s, deny_cooldown_s, sweep_interval_s, clock_multiplier, escalation}`; `ApprovalRule.{aliases, grant_ttl_s, note, description}`; `ApprovalWhen.{profiles, labels_in, signals_any}`; `approvals.tests`.
+- **`PolicyTest` extras:** A-30.
+- **Snippet merge:**
+  - `approvals.tests` survive the merge.
+  - `actions:` are merged **in order**.
+  - Control `tests` are appended and deduplicated by `name`.
+  - `params` are deep-merged, with the snippet winning except keys tagged `[SF-..]` in `docs/seed-fixes/policy.yaml`.
+- Refs: P07-G7, P09-#3, P10-G8c, P02-#7.
+
+**A-35 · Env expansion of mock ports** [should].
+- At load time, policy-engine expands `${NAME:-default}` in exactly three fields: `providers.*.base_url`, `mcp.servers.*.url` and `feeds.sources[].url`.
+- Only names matching `^AEGIS_[A-Z0-9_]+$` are expanded. Expansion happens on the parsed dict **before** `PolicyDoc` validation, so `snap.doc` holds expanded URLs while `current_yaml()` keeps the literal text.
+- Ports: `AEGIS_MOCK_LLM_PORT` (8791), `AEGIS_MOCK_MCP_PORT` (8792), `AEGIS_EXFIL_SINK_PORT` (8793), `AEGIS_MOCK_SAAS_PORT` (8794).
+- Fallback without expansion: `run_stack.py --auto-ports` applies a patch as owner via `POST /api/policy/apply` with reason `"run_stack mock port override"`.
+- The shipped `config/policy.yaml` keeps **literal** default ports.
+- Ref: P20-#2.
+
+---
+
+### A.5 Budgets (owner: budgets-ledger)
+
+**A-36 · Budgets decisions.**
+- **Spend accounting:**
+  - BUD-01 reserves and settles **`Usage(spend_usd=interaction.amount_usd)`** when `action_type` starts with `spend.` (surfaces `tool.input`, `mcp.call`, `egress.request`). ACT-01 never writes to the ledger.
+  - **MCP calls seen twice** (hook `tool.input` + proxy `mcp.call`): the **MCP proxy hop is the accounting owner** for servers listed in `mcp.servers`. On a hook `tool.input` with `mcp_server` in `mcp.servers`, BUD-01 skips `spend_usd`/`tool_calls` accounting, and EXE-04 counts the call once (`dedupe_s`). Both rows still appear in the live feed ("defence in depth").
+- **Hard stops:** per A-07. Messages are written for the model to read: `Aegis: agent:chaos-agent@platform day usd budget exhausted (0.50/0.50). Stop and summarise progress.`
+- **Loop ladder** (`budgets.loops.ladder`):
+  - step 1 `tool_error` = policy block;
+  - step 2 = 429 for the session's tool calls during `cooldown_s` (model calls keep flowing);
+  - step 3 `kill` = in-memory immediately, persisted via `rt.policy.apply_patch([append budgets.kill_switch.sessions], actor=None, source="budgets-ledger", reason=…)`. Release is a governed `killswitch.off` (admin).
+  - Blocked hops are **not** added to the loop history.
+- **Dry-run / self-test:** A-09.
+- **Demo state:** budgets-ledger reads `demo_state.budget_usage` and `demo_state.kill_switch` from `config/org.seed.yaml` (read-only YAML, not org-rbac's loader). `POST /api/budgets/reset` with no scope also clears loop/runtime-kill state and re-seeds the demo state when `demo_mode` (body extra `reseed: bool`).
+- **`rt.ledger.status(scope="agent:<id>")`** returns the `usd`/`day` used even without a configured limit, so org-rbac's `/api/agents` `spend_today_usd` works.
+- **Additive endpoints** (route `budgets.py`; page-local TS types):
+  - `POST /api/budgets/raise/preview` (member), same body as `/raise` → `{change: PolicyChange, route: ApprovalRoute, viewer_can_apply: bool}`;
+  - `GET /api/budgets/enforcement?window=24h` (member) → `{window, loop_detections, by_detector, downgrades, hard_blocks, throttles, step_caps, approvals_requested, kills, cost_avoided_usd, recent: [{ts, kind, scope, detector?, control_id, reason}]}`;
+  - `GET /api/budgets/pricing` (member) → `{version, currency, unit, models: [{match, in, out, cache_read, cache_write, compute_s}], tools: [{match, usd}]}`;
+  - `POST /api/budgets/usage` (**admin**) `{scope, window?, dimension, amount, reason}` → `{ok, statuses}`. This is a manual usage import and the demo fast-forward lever; it is audited.
+  - `GET /api/budgets/history` gains the extra `forecast: {at, used, limit} | null`.
+  - `BudgetStatus` gains the extra **`soft_pct: number | null`**.
+- **SSE:** `budget.updated` (≤ 2/s), `budget.threshold` (crossing 50/80/100 %), and `killswitch` (published after the policy swap that changes the kill switch, and on runtime auto-kill).
+- **Demo agent contract** (demo-mocks-docs):
+  - `runaway.py` uses a fixed `X-Aegis-Session` and varies prompts by step index.
+  - It calls `mock-echo` with `max_tokens: 4096` and `[[LONG:20000]]`, so the $0.50 wall arrives in about 7 calls.
+  - A 200 "approval pending apr_…" reply means: poll `…/wait`, then retry.
+- [stretch] Core cancels in-flight upstream streams of a killed principal when it sees the bus `killswitch` event.
+- Refs: P07-G6–G12, P07-req, P10-G7, P12-G10, P17-G6.
+
+---
+
+### A.6 Org (owner: org-rbac)
+
+**A-37 · Org extras.**
+- **Seed format additions:**
+  - `max_destination: local|remote|third_party` (preferred over `max_destination_tier`);
+  - tool globs in `<server>.<tool>` form (`mcp__s__t` is still accepted and converted);
+  - wire model globs;
+  - `control_plane.view_as_aliases`, `control_plane.default_viewer`;
+  - agent `status: disabled`;
+  - the disabled agent `legacy-bot@platform` and the key `key_expired_demo` (see `docs/seed-fixes/org.seed.yaml`).
+- **`rt.org.resources()`:**
+  - `{databases: [{id, environment, mcp_server, tables: [{name, sensitivity, categories, contains}]}], vendors: [{id, name, approved, host, plans: [{id, usd, recurring}]}], external_hosts: [{host, tier, dest_class, purpose, denylisted?}], internal_domains: [...]}`;
+  - `Agent.meta.data_grants` = `[{database, tables, operations}]` and `Agent.meta.action_types` are kept verbatim;
+  - `Member.meta.owner_delegate` marks escalation delegates.
+- **Governed member changes** (A-24 org shapes):
+  - A change that needs approval answers **403 `approval_required`** (§5.3 envelope with `approval_id`, `required_role`, `expires_at`) instead of `Member`.
+  - A denied escalation attempt is audited as `org.changed` `data.outcome="forbidden"`.
+  - Self role change → 403; demoting the last owner → 409 `conflict`.
+  - The dashboard toasts "Sent for owner approval" with a link and renders `meta.pending_changes` chips.
+- **Additive endpoints** (org-rbac prefixes):
+  - `GET /api/members/{id}`;
+  - `GET /api/org/permissions`;
+  - `GET /api/org/changes?status=`;
+  - `GET|POST /api/agents/{id}/keys` (admin; `POST` shows the plaintext `key` exactly once);
+  - `POST /api/agents/{id}/keys/{key_id}/revoke` (admin);
+  - [could] `POST /api/agents`;
+  - [could] `POST /api/whoami` (sets the `aegis_view_as` cookie).
+- **Additive fields:** `Member.agents`, `Member.meta.pending_changes: [{org_change_id, approval_id, op, to, required_role, expires_at}]`, `Agent.status`, `Agent.spend_today_usd`, `Agent.keys` (no hashes), `OrgResponse.meta`, `WhoAmI.capabilities: Record<string, 'yes'|'approval'|'partial'|'no'>`, `WhoAmI.view_as_options`.
+- **Private tables:** `org_meta`, `org_changes` (plan 08 §2.2 DDL). IDs use the prefix `och_`.
+- **View-as resolution:** the `X-Aegis-View-As` header > `?view_as=` > the `aegis_view_as` cookie. Values may be a member id, a role alias (`owner|admin|member` → u_katarzyna / u_emily / u_piotr) or a case-insensitive short name (`emily`). Agent short aliases are allowed for `X-Aegis-Agent` (`claude-code`).
+- **Members are seeded in seed order.** "First owner" = the lowest rowid.
+- Refs: P08-G2–G10, P08-notes, P10-G5.
+
+---
+
+### A.7 Redaction & NER (owner: redaction-engine unless noted)
+
+**A-38 · Single NER instance (semantic-models hosts it, redaction-engine borrows it).**
+- semantic-models is the **only** in-process loader of `models/eu-pii-ner`. It shares the XLM-R vocabulary with MiniLM.
+- It exposes the extension method **`async rt.semantic.ner(text, *, labels=None, min_scores=None, timeout_s=None) -> dict | None`**, returning `{"model": "eu-pii-ner", "spans": [{"label", "start", "end", "score"}], "latency_ms": float, "truncated": bool}`. Labels are the raw bardsai labels; offsets index the given text; spans carry **no text**. `None` = unavailable.
+- redaction-engine (`aegis.redaction.ner`, DLP-07) calls it via `getattr(rt.semantic, "ner", None)`. It owns the label → entity mapping (`PERSON_NAME→PERSON`, `POSTAL_ADDRESS`/`LOCATION`-with-digits → `ADDRESS`, `HEALTH_DATA→HEALTH`, `DATE_OF_BIRTH→DOB`, other Art. 9 labels → `SPECIAL_CATEGORY`), thresholds and the heuristic fallback (`ner_fallback`, `degraded=True`).
+- **redaction-engine never creates an ONNX session for eu-pii-ner** (that copy would cost +673 MB).
+- `aegis.semantic.shared.xlmr_tokenizer()` is internal to semantic-models. The option of a shared tokenizer through a second session is **rejected**.
+- Refs: P06-CG-1, P03-§4.4, HANDOFF known issue.
+
+**A-39 · Placeholder module public API and engine extras.**
+- New §3.3 public import surface **`aegis.redaction.placeholders`**:
+  - `PLACEHOLDER_RE`, `PARTIAL_PLACEHOLDER_RE`, `MAX_PLACEHOLDER_LEN`;
+  - `canonical_key(type, id) -> "[TYPE_ID]"`;
+  - `rehydrate_text(text, resolve: Callable[[str], str | None], *, json_string=False) -> tuple[str, int]`;
+  - `rehydrate_json_value(obj, resolve) -> tuple[Any, int]`;
+  - `StreamRehydrator(resolve, *, json_escape=False)` with `.feed(chunk) -> str`, `.flush() -> str`, `.count`.
+- Placeholders are `[ENTITY_N]` (stable per value per session, deterministic for Claude Code's prompt cache). Irreversible drops are `[REDACTED:ENTITY]`.
+- **Engine extras** (via `getattr(rt.redactor, …)`, with fallback): `vault_view(ctx)` (`.resolve(key)`, `.values()`, `__len__`), `stream_rehydrator(ctx, *, json_escape=False)`, `rehydrate_obj(ctx, obj) -> obj`, `forget_session(session_id) -> bool`, `session_stats(session_id) -> dict`.
+- Claude Code `SessionEnd` calls `forget_session`.
+- Ref: P03-§4.2, P03-§10.
+
+**A-40 · Rehydration rules** (binding for core-gateway, claude-code-integration, mcp-proxy and DLP-08).
+- **Model responses (`model.response`):** rehydrate only segments whose role is in the DLP-08 decision's `meta.roles` (default `["assistant"]`, i.e. text blocks), and only when DLP-08 returns `meta.rehydrate=true` and `defaults.rehydrate_responses`. **Never rehydrate `tool_use` inputs or `tool_calls` arguments in a model response**: the agent may route them to a remote or third-party tool. The `meta.rehydrate_tool_args` switch is removed.
+- **Restore for local tools only:**
+  - Claude Code `PreToolUse` → DLP-08 on `tool.input` with `destination.dest_class == "local"` (`destinations.local_tools`) → hook `allow` + `updatedInput` via `rehydrate_obj` (fallback: per-string `rehydrate`). This also covers DLP-03 path placeholders such as `/Users/[USERNAME_1]/…`.
+  - MCP proxy → **DLP-08 also applies to `mcp.call`** when the server's destination is `local`, and the proxy writes the rehydrated args back.
+  - Respect the matrix: only entity classes whose `matrix[class].local ∈ {allow, log}` are rehydrated. `[PAN_n]` is not rehydrated into `Write`.
+- **Never toward `third_party`/`remote`.** An explicit `tool_args.aegis_rehydrate: true` toward `third_party` → block.
+- **PostToolUse redact** → `updatedToolOutput`. `UserPromptSubmit` cannot rewrite, so a `redact` on `prompt.user` from the hook becomes `allow` there; the `model.request` hop redacts.
+- **Catalog change:** DLP-08 surfaces = `model.response`, `tool.input`, **`mcp.call`**.
+- Refs: P03-§4.2, P04-G1(5) (declined), P04-G6, P11-req, P05-req, P12-G4e.
+
+**A-41 · New entity types** (§3.4 table additions; `Span.entity` is a string, so nothing frozen changes).
+
+| Entity | Data class | Category | Notes |
+|---|---|---|---|
+| `CRYPTO_ADDRESS` | CONFIDENTIAL | pii | BTC base58check/bech32(m), ETH EIP-55; detectors `pii.crypto.btc` / `pii.crypto.eth` |
+| `MAC_ADDRESS` | INTERNAL | metadata | device identifier; acted on by DLP-03 |
+| `SPECIAL_CATEGORY` | CONFIDENTIAL | pii | GDPR Art. 9 from NER (religion, politics, orientation, ethnicity, union); **off** unless listed in DLP-07 `params.entities` |
+| `PROMPT_INJECTION` | — (`data_class=None`) | injection | non-PII redaction entity for INJ quarantine spans; always irreversible |
+
+- **Mappings (no new names):** 26-digit NRB → `IBAN` (`pii.nrb`); URL secret params and cookie session ids → `GENERIC_SECRET`; path usernames → `USERNAME` (`meta.path_username`, DLP-03).
+- Refs: P03-§4.3, P05-#1.
+
+**A-42 · `redactor.apply` contract and DLP boundaries.**
+- **`Finding.replacement` set** → it is used **verbatim** and is irreversible: never vaulted, `Redaction.reversible=False`, `Redaction.entity = Finding.entity`, `data_class` as given (`None` for `PROMPT_INJECTION`). Quarantine text: `[AEGIS-QUARANTINE: suspected prompt injection removed (<family>)]`.
+- **`replacement=None`** → vault-tokenized. That includes INTERNAL entities (`USERNAME`, `HOSTNAME`, `IP_ADDRESS`, `GIT_EMAIL`, `FILE_PATH`, `INTERNAL_URL`, `MAC_ADDRESS`).
+- Overlapping spans: the longest wins, and both controls get the same vault placeholder.
+- **DLP-01 default entities exclude** category `metadata` / class INTERNAL. **DLP-03 owns them** (priority 90 wins ties).
+- **DLP-01 `params.routing_args`** [SF-04]: `{<tool glob>: [arg names]}`. Spans inside those `tool_args` paths (recipient addresses) produce `log` findings only. Default: `{"mailer.*": [to, cc, bcc], "*.send_email": [to, cc, bcc], "*.send_*": [to, cc, bcc, recipient, recipients]}`.
+- `rt.redactor.detect()` works on arbitrary short strings (DLP-04 decode-and-rescan). metadata-egress uses `rt.redactor.detect(text, entities={"IP_ADDRESS", "USERNAME", "MAC_ADDRESS"})`.
+- **Known-value rescan:** DLP-01 adds exact-match spans for values already in the session vault on every non-local request hop (this replaces staging's InverseCache).
+- [could] metadata-egress public surfaces `aegis.egress.metadata.sanitize_bytes(data: bytes, *, images="strip", pdf="strip", office="strip") -> SanitizeResult` and `aegis.egress.headers.plan_headers(headers, *, kind, params=None) -> HeaderPlan`.
+- [could] DLP-06 also covers `egress.response` (catalog surfaces += `egress.response`).
+- **Audit fingerprints:** DLP-01/02/07 findings carry `Finding.meta.fp = "hmac:" + hmac_hex(canonical_value, purpose="audit")[:16]` (never for CVV/TRACK_DATA). `excerpt` = a type-aware masked preview.
+- Refs: P04-G4, P04-G10, P04-G11, P05-#1, P14-G7, P10-G12.
+
+**A-43 · Redaction endpoints** (route `redaction.py`).
+- `GET /api/redaction/metrics` (member, `?refresh=1`) → `RedactionMetrics` (page-local TS): `{generated_at, cases, gold, ner_loaded, overall: {precision, recall, f1, leak_rate, leak_rate_validated, hard_negative_fp_rate, finance_benign_fp_rate, case_accuracy}, latency_ms: {p50, p95, per_kb_p95}, by_entity: [{entity, data_class, validated, gold, tp, fp, fn, precision, recall, f1, covering_recall, leak_rate, adversarial_recall}], by_lang, adversarial}`.
+- `GET /api/redaction/sessions/{session_id}` (member) → `{session_id, entries, entities: {ENTITY: n}, created_at, last_used, ttl_s}`: counts only.
+- `DELETE /api/redaction/sessions/{session_id}` (**admin**) → `{ok, wiped}`.
+- The dashboard finds placeholder chips with `\[[A-Z_]+_\d+\]` / `\[REDACTED:[A-Z_]+\]`.
+- Ref: P03-§4.3.
+
+---
+
+### A.8 Semantic models & injection
+
+**A-44 · Semantic engine extensions** (owner: semantic-models).
+- **Keyword-only extensions** to the protocol methods (structurally compatible):
+  - `injection_score(text, *, trusted=True, timeout_s=None, escalate=True)`;
+  - `moderate(text, *, mode="prompt", prompt=None, timeout_s=None)`;
+  - `judge(rule, text, *, timeout_s=None)`;
+  - new `ner(...)` (A-38), `similarity_detail(...)`, `warmup(...)`.
+- **Result conventions:**
+  - `injection_score` = Horizon PI-small. pg2-22m is off by default; when enabled, `score = max(...)` and `model = "horizon-small+pg2-22m"`.
+  - `moderate` = Qwen3Guard prompt mode, `label ∈ {Safe, Controversial, Unsafe}`, score 0.0 / 0.5 / 1.0, with `categories`.
+  - `embed()` **returns `[]` or raises** when MiniLM is unavailable. It never returns fake vectors.
+  - `judge()` returns a calibrated score (0.70 ≙ raw P(yes) 0.08).
+- **Degraded convention:**
+  - When degraded, `ScoreResult.reason = "fallback:<code>"` with code ∈ `off|warming|missing|skipped_budget|ram_budget|timeout|error|breaker_open|overload|queue`, and `model="heuristic"`. The engine never raises.
+  - New public surface **`aegis.semantic.shared`**: `FALLBACK_REASONS`, `degraded_disposition(result, fail_mode) -> Literal["use","block","allow"]`. INJ-02, INJ-03, MCP-02 and CUS-01 use it.
+- **`status()`** is a superset of `PerfResponse.semantic`: `{mode, degraded, health: ok|degraded|off|down, ready, warmup_ms, ram{…}, ollama{url, reachable, version, loaded}, models: [{name, role, backend, loaded, state, p50_ms, p95_ms, calls, errors, fallbacks, escalations, breaker, est_mb, load_ms, last_error}], cache{…}}`.
+- **Health wiring:** `/healthz` `components.semantic = status()["health"]`, `components.ollama = "ok"|"down"`, `status: degraded` when semantic is `degraded|down`. audit-metrics: `PerfResponse.semantic = status()` and `StatsKpis.degraded |= status()["degraded"]`.
+- **Env / Settings:** `AEGIS_SEMANTIC_MODELS` (CSV of slots, default `horizon-small,minilm-l12-multi,eu-pii-ner,aegis-guard,aegis-judge`) and `AEGIS_SEMANTIC_RAM_MB` (default `2048`).
+- **Metrics:** `aegis_semantic_calls_total{model,outcome}` (outcome ∈ ok|cache|fallback|timeout|error|breaker_open), `aegis_semantic_model_up{model}`. Per-model latency goes to `aegis_gateway_overhead_seconds{phase="semantic.<model>"}`.
+- **Routes** (`semantic.py`) [could]:
+  - `POST /api/semantic/score` (member) `{text, tasks?: ["injection","moderation","adherence"], references?}` → `{results: {task: ScoreResult}}`. It is a dry diagnostic: never audited, capped at 8 kB.
+  - `POST /api/semantic/warmup` (admin) `{models?}` → `status()`.
+- **CUS-01 `params.rules[]`** is a superset: `{id, text, keywords, deny_terms, action, destinations, surfaces, threshold, description}`.
+- Refs: P06-CG-2–CG-9, P05-#4, P19-G-C4.
+
+**A-45 · Injection conventions** (owner: injection-defense).
+- **New public surfaces:** `aegis.injection.signatures.scan_text(text, *, trust="untrusted") -> ScanResult` and `aegis.injection.canary.find_canaries(text, canaries) -> list[CanaryHit]`. They are optional reuse points for MCP-02, the semantic heuristic and DLP-05.
+- **INJ-01/INJ-02 on untrusted surfaces** (`tool.output`, `mcp.result`, `mcp.list`, `egress.response`, untrusted segments) answer **`redact` (quarantine)**, never `block` (`params.untrusted_action: redact`). On `mcp.list`, quarantining a description is allowed; **MCP-02 owns dropping the tool** [SF-05].
+- **Untrusted rule:** a segment is untrusted if `trusted=False`, **or** its role ∈ {`tool_result`, `document`, `tool_description`}, **or** the interaction's surface is untrusted.
+- On `model.request`, roles `system`, `assistant`, `tool_args`, `header`, `url` and `tool_description` are skipped. `<system-reminder>` harness blocks are stripped before the scan.
+- **INJ-02 default:** `threshold: 0.80`, `timeout_ms: 700`, `fail_mode: deterministic_only`, with a 0.50–0.80 review band escalated to Qwen3Guard [SF-22].
+- **Canaries** are planted by configuration: demo agents' system prompts contain `AEGIS-CANARY-7f3a91`. The gateway does not rewrite system prompts. [could] opt-in `params.plant_canary` adds a separate Anthropic `system` text block.
+- **INJ-05** (stretch, `mode: monitor`) uses `action_type` `agent.goal_drift` → rule `goal-drift` (self).
+- `Decision.meta.inj` (plain JSON) is rendered in the decision drawer and the playground waterfall.
+- Refs: P05-#1–#9, P11-req.
+
+---
+
+### A.9 MCP (owner: mcp-proxy)
+
+**A-46 · MCP proxy conventions, endpoints and tables.**
+- **Interactions and meta keys:** A-13.
+- **Unknown server:** HTTP **404** with JSON-RPC error `{code: -32001, message: "[Aegis] unknown MCP server <name>"}`.
+- **Blocked / pending `tools/call`:** HTTP 200, JSON-RPC **result** `{isError: true, content: [{type: "text", text: "[Aegis] Blocked by <ID>: <reason>"}], _meta: {"io.aegis/decision": {decision_id, action, control_id, approval_id, required_role, expires_at}}}`.
+- **New §3.3 public surface `aegis.mcp.client`:** `McpHttpClient(base_url, server, headers=None)` with `.list_tools()` and `.call_tool(name, args, wait_s=None, approval_id=None) -> dict`. It speaks modern-era Streamable HTTP. `aegis.sdk.AegisClient.mcp_call()` uses it.
+- **Private tables:**
+  ```sql
+  mcp_tool_candidates (server, tool, hash, definition_json, reason, findings_json, diff_json, approval_id, detected_at,
+                       PRIMARY KEY(server, tool))
+  mcp_server_state (server PRIMARY KEY, baseline_at, last_list_at, last_error, last_error_at, stale INTEGER)
+  ```
+  Pins are keyed by the catalog server name.
+- **Additive endpoints** (route `mcp_admin.py`; page-local TS):
+  - `GET /api/mcp/servers/{server}/tools/{tool}` → `{tool: McpToolView, pinned: object|null, candidate: object|null, diff: object|null, findings: object[], approval_id: string|null}`;
+  - `POST /api/mcp/servers/{server}/scan` (**admin**) → `McpServerView`;
+  - `GET /api/mcp/claude-config?agent_id=&servers=` → `{mcpServers: {...}}`;
+  - `POST /api/mcp/reset` (**admin**, demo pin reset) → `{ok: true}`.
+- **`McpToolView` extras in `GET /api/mcp/servers`:** `pinned_hash: string|null`, `diff: {changed_fields, description_diff?, params_added?, params_removed?} | null`, `approval_id: string|null`.
+- **Events:**
+  - SSE `mcp.tool {server, tool, status, reason}` on quarantine/change/approve;
+  - audit `mcp.tool_changed` `data={server, tool, from, to, pinned_hash, hash, approval_id, actor}`;
+  - `system` warnings with `component: "mcp:<server>"`.
+- **Metrics:** `observe_upstream(provider="mcp:<server>")`, `observe_overhead(phase="mcp")`.
+- **Threat feed:** `AEGIS-TI-012` `strip_tool` on `mcp.list` → `Decision(action="redact", mutations=[Mutation(op="remove", path="tool")])`, never `block`.
+- [could] MCP-01 also applies to `tool.input` with `mcp_server` set: a Claude Code call to a server not in `mcp.servers` (bypassing the proxy) is blocked.
+- **mock_mcp** (owned by mcp-proxy): `GET /_mock/health` → `{service: "mock_mcp"}`. `POST /_mock/reset` also un-flips the rug pull. `acme-crm.lookup_customer` keeps the staged injected note on customer C-6666. Public `mocks.mock_mcp.app:create_app()`.
+- Refs: P11-#1–#9, P11-req, P16-G2, P20-#1, P20-#5, P13-req.
+
+---
+
+### A.10 Claude Code integration (owner: claude-code-integration)
+
+**A-47 · Hook client and integration details.**
+- **`scripts/aegis-hook`:**
+  - takes the event name as `argv[1]`;
+  - sends `X-Aegis-Hook-Event` and `X-Aegis-Hook-Deadline`;
+  - reads the key from `AEGIS_AGENT_KEY` / `AEGIS_AGENT_KEY_FILE`;
+  - uses `AEGIS_HOOK_TIMEOUT` (110) for blocking events and `AEGIS_HOOK_TIMEOUT_FAST` (10) for the others;
+  - the settings `timeout` is 120 for `PreToolUse` / `UserPromptSubmit` / `PermissionRequest` / `ConfigChange` and 15 for the others;
+  - the command form is `… || exit 2`.
+- **Fail-closed behaviour** is as in §5.1.
+- **`make claude`** runs `demo/claude/run.sh`: `claude --settings demo/claude/settings.json --setting-sources project --mcp-config demo/claude/mcp.json --strict-mcp-config` (scaffold edits the Makefile; A-58).
+- **`demo/claude/mcp.json`** [SF-20]:
+  - It routes **every** demo server through `/mcp/{server}`: `acme-db, acme-crm, marketpulse, payments, mailer, web, weather, poisoned, rugpull`. **`payments` is required** for the $480 scene.
+  - It sends `Authorization: Bearer <key>` + `X-Aegis-Agent: claude-code@platform`.
+  - Generate it with `GET /api/mcp/claude-config` or `python -m aegis.mcp.claude_config`.
+- **Tool names:** hooks convert `mcp__s__t` → `s.t` (with `mcp_server`) and keep `meta.claude_code.raw_tool_name`. Approvals volatile keys: A-23.
+- **Optional route** `GET /v1/hooks/claude-code/status` (in `hooks_claude_code.py`) → `{sessions: [{session_id, events, last_event, last_seen, model_traffic_seen}], hook_rtt_p50_ms}`. It is used by `check.sh` and the preflight.
+- Integration events outside the pipeline emit only bus `system` toasts with `component: "claude-code"`. Decisions come from GOV-06 (A-48).
+- **EXE-02 `fs_deny` additions** [SF-19]: `**/demo/claude/settings*.json`, `**/demo/claude/mcp.json`, `**/demo/claude/.agent_key`, `**/.claude/settings*.json`, `**/scripts/aegis-hook`.
+- **Before the demo,** `claude update` is needed for `x-claude-code-prompt-id` (2.1.283+).
+- Refs: P12-G1, P12-G5–G10, P11-req.
+
+**A-48 · New control GOV-06 "Agent harness integrity (Claude Code)"** [SF-26]. Catalog row (§4.4 addition):
+
+| ID | Name | Owner | Kind | Surfaces | Default action · key params | Prio |
+|---|---|---|---|---|---|---|
+| GOV-06 | Agent harness integrity (Claude Code) | claude-code-integration | D | prompt.user, tool.input, config.change | `block` · `agents: ["claude-code@*"]`, `protected_paths` (as A-47 fs_deny), `config_change_keys: [hooks, env.ANTHROPIC_BASE_URL, env.ANTHROPIC_CUSTOM_HEADERS, permissions.defaultMode, disableAllHooks]`, `block_bypass_permissions: false` (strict: true), `budget_exhausted_prompt: block` | MVP |
+
+- **Implementation:** `src/aegis/integrations/claude_code/gov06.py` exports `CONTROLS = [HarnessIntegrity()]`, discovered via A-15. Priority 20; OWASP `[ASI03, ASI10, LLM06:2026]`.
+- **Scope:** it returns `None` unless the identity matches `params.agents` **or** `interaction.meta.client == "claude-code"`. GOV-05 handles policy proposals and returns `None` without `meta.changes`, so the two never overlap.
+- **Blocks:**
+  - writes/edits to `protected_paths`;
+  - Claude Code `ConfigChange` events touching `config_change_keys`;
+  - `UserPromptSubmit` while the agent's budget is exhausted;
+  - (strict) `permission_mode == "bypassPermissions"`.
+- **Entry:** policy-engine adds the GOV-06 entry (present in `docs/seed-fixes/policy.yaml`). The catalog owner column / `ControlView.owner` = `claude-code-integration`.
+- Ref: P12-G2.
+
+---
+
+### A.11 Threat feed (owner: threat-feed)
+
+**A-49 · Feed endpoints and conventions.**
+- **Additive endpoints** (route `feed.py`):
+  - `GET /api/feed/signatures/{id}` (member) → full signature JSON + `quarantine_reason`, `hits_24h` and the latest self-test results;
+  - `POST /api/feed/rollback` (**admin**) `{serial, reason}` → `FeedStatus`.
+- **Rollback semantics:**
+  - It re-verifies the **cached** verified bundle for that serial (last 5 kept), activates it and sets an **operator pin**: newer pulls are reported but not applied while pinned.
+  - It is audited as `feed.updated` with `data.rollback=true`, `actor`, `reason`.
+  - `POST /api/feed/refresh` (admin) clears the pin.
+  - Anti-rollback is unchanged for network pulls: accept only `serial > active.serial`, and `serial > high_water` or a cached bundle with the same serial + sha.
+- **Extras:**
+  - `FeedStatus.history[]` items: `sha256, quarantined, vectors, verify_ms, compile_ms, source`;
+  - `FeedSignatureView` items: `message, references, quarantine_reason, mode, cves`.
+- **Machine tokens:** `FeedStatus.last_error` and SSE `feed.rejected.reason` **start with a machine token**: `bad_signature`, `sha256_mismatch`, `rollback`, `schema`, `expired`, `unreachable`, `wrong_key`.
+- **SIG findings:** `Finding.detector = <signature id>`, `Finding.meta = {signature_id, title, aliases}`, category `signature`.
+- **Signature `tests` items** use contract `Surface` values and the keys `text` / `tool_name` / `tool_args` / `url` / `meta`, so the suite can replay them through `/v1/guard`.
+- **EchoLeak demo host** [SF-06]: the demo payload and the TI-014 / TI-022 vectors use `assets.acme-capital.example`. `host_in` / `host_not_in` keep the staged `*.aegis-corp.example` entries and add `*.acme-capital.example`. `destinations.allowed_link_domains` contains both. Feed service file: `feed_service/demo/echoleak-proxy-payload.md`. mock_llm trigger `[[EMIT_ECHOLEAK_PROXY]]`.
+- **Run order:** `scripts/run_stack.py` runs `python -m feed_service keygen --if-missing` and starts the feed **before** the gateway. Reset between judges = `make reset` + `python -m feed_service reset --hard`.
+- Refs: P13-#1–#10, P16-G4, P18-I, P20-#10.
+
+---
+
+### A.12 Audit, metrics, stats, self-test reports (owner: audit-metrics unless noted)
+
+**A-50 · Metrics names and registration.**
+- The prefix is **`aegis_`** (never `aicl_*`).
+- **`MetricsSink.inc()` / `set_gauge()`:**
+  - accept names with or without the `aegis_` prefix (normalised to `aegis_<name>`);
+  - **auto-register** unknown counters/gauges, with label names fixed on first use;
+  - drop label-set mismatches with one WARNING; never raise.
+- **Label guard:** values matching `^(req|dec|int|apr|evt|res|ses)_` or longer than 80 chars → `other`; at most 500 label sets per metric.
+- **Derived counters** (`aegis_approvals_total`, `aegis_policy_reloads_total`, `aegis_feed_reloads_total`) are fed from audit events. Owners' direct `inc()` calls for them are ignored.
+- **Pre-registered additions** to §6.4:
+  - `aegis_metadata_stripped_total{kind}`, `aegis_egress_requests_total{result,dest_class}`, `aegis_exfil_hits_total{channel}` (metadata-egress);
+  - `aegis_semantic_calls_total{model,outcome}`, `aegis_semantic_model_up{model}` (semantic-models);
+  - `aegis_audit_records_total{event_type}`, `aegis_audit_errors_total`, `aegis_audit_chain_ok` (audit-metrics).
+- **`aegis_redactions_total{entity,dest_class}`** is incremented by audit-metrics from `verdict.redactions`; redaction-engine does not count.
+- Refs: P14-G1, P04-G8, P06-CG-5, P09-#12, P02-#13, P03-§10.
+
+**A-51 · `GET /api/stats/posture`** (route `stats.py`, member).
+- Response `PostureResponse` (page-local TS): `{generated_at, score: number /*0..100*/, grade: "A"|"A-"|"B+"|"B"|"C"|"D", policy_version, feed_serial, components: [{id, label, weight, score /*0..1*/, value, status: "ok"|"warn"|"error"|"off"}], findings: [{severity, message, control_id, link}]}`.
+- Components and weights:
+  - `controls` 35 (enforce 1 / monitor 0.5 / off, disabled or not implemented 0);
+  - `selftests` 20 (passed/total from `rt.policy.last_selftest()` when present, else audit-metrics' primer; excluded if unknown);
+  - `feed` 15 (ok 1, seed 0.7, rejected 0.6, unreachable 0.5, stale 0.4, disabled 0);
+  - `audit` 15 (last verify ok);
+  - `models` 10 (semantic degraded 0.5);
+  - `governance` 5 (`approvals.rules` and `budgets.limits` non-empty).
+- `score = round(100·Σw·s/Σw)`. Grades: ≥95 A, ≥90 A−, ≥85 B+, ≥80 B, ≥70 C, else D.
+- **The server endpoint is authoritative.** dashboard-shell's `lib/posture.ts` implements the same formula **only** as the mock fallback.
+- Refs: P14-G2, P15-G1.
+
+**A-52 · Warm-up history and synthetic rows** [should].
+- **`GET /api/stats/warmup`** (member) → `{synthetic_rows, oldest_ts, newest_ts, primer: {state: "idle"|"running"|"done"|"skipped", samples, tests_passed, tests_total}}`.
+- **`POST /api/stats/warmup`** (**admin**) `{days?, per_day?, clear?}` → the same shape.
+- **`DELETE /api/stats/warmup`** (**admin**) removes the synthetic rows.
+- **Env `AEGIS_WARMUP=auto|off|force`** → `Settings.warmup`. Default `auto` backfills once when `demo_mode` and not `test_mode` and there are no synthetic rows yet. `force` clears and refills on every start. `off` never backfills.
+- Synthetic rows live **only** in the `decisions` index table with `synthetic=1`. They are **never** written to the hash-chained audit log; one `system` audit event `{kind: "demo.backfill", rows, window_days}` records the backfill.
+- `?synthetic=0|1` on `/api/stats` and `/api/decisions` (default 1 in demo mode). The UI shows an "includes demo history" badge when synthetic rows are in view.
+- This is distinct from demo-mocks-docs' `warmup.py`, which drives **real** traffic.
+- Ref: P14-G3, P14-G10.
+
+**A-53 · Test-suite results in the dashboard: `/api/selftest`** (served by **audit-metrics** in its owned `stats.py`; the test-suite owns the report format).
+- **`GET /api/selftest`** (member) → `reports/results.json` as is (schema `aegis.selftest/1`, the `SelfTestReport` page-local type in plan 18 §4.2), plus the extra `running: bool`. 404 `not_found` if absent.
+- **`GET /api/selftest/report`** (member) → `reports/selftest.html` (`text/html`).
+- **`POST /api/selftest/run`** (**admin**) → `202 {status: "started"|"running"}`:
+  - It is single-flight (a lock).
+  - It spawns `[sys.executable, "-m", "pytest", "tests/e2e", "tests/test_coverage.py", "-m", "not semantic and not slow and not live", "-q"]` with `cwd` = the repo root and env `AEGIS_REPORTS_DIR=<reports dir>`.
+  - When it finishes, it publishes bus `system` `{level: "info"|"warning", message: "self-test finished: 405/412 pass", component: "selftest"}`.
+- **Reports dir:** env **`AEGIS_REPORTS_DIR`** (default `reports`) is honoured by audit-metrics (`/api/perf` bench), test-suite and redteam-eval-perf.
+- **`PerfResponse.bench`** may embed `selftest`, `eval`, `heatmap` and `dlp` summaries.
+- No new route file and no ownership change (plan 18 proposed `selftest.py` owned by test-suite; that is **declined**).
+- Refs: P18-A, P19-G-C5.
+
+**A-54 · Audit, decisions and report extras.**
+- **`GET /api/audit`** gains `?decision_id=` and `?seq_from=`. The drawer shows `prev_hash`/`hash`.
+- **Owner-internal columns:** `decisions` + `cost_avoided_usd REAL NOT NULL DEFAULT 0, avoided_reason TEXT, categories_json TEXT NOT NULL DEFAULT '[]', synthetic INTEGER NOT NULL DEFAULT 0` (+ `ix_decisions_synth`); `audit_index` + `offset INTEGER, length INTEGER`.
+- **Step-11 record:** `data` = `{"summary": DecisionSummary, "detail": DecisionDetail-without-wire}` (models or dicts accepted). Outcome records follow A-08.
+- **Public import surface:** `aegis.metrics.stats.control_rollup(rt, window_s=86400) -> dict[str, {"hits", "blocks", "p95_ms"}]`, used by policy-engine for `ControlView.hits_24h/blocks_24h/p95_ms`.
+- **`reports/bench.json`** = schema `aegis.bench/1` (plan 19 §2.10, a superset of plan 16 G3). It is surfaced as `PerfResponse.bench`, with `headline` keys `det_overhead_p50_ms, det_overhead_p95_ms, sem_overhead_p50_ms, sem_overhead_p95_ms, rps_det, overhead_share_pct, reload_p95_ms, detection_rate_balanced, fpr_balanced, obfuscation_coverage`.
+- **`reports/eval.json`** = `aegis.eval/1`. Missing numbers print `not measured`, never a guess.
+- **`.gitignore`:** keep `reports/` ignored except the committed evidence `!reports/eval.json`, `!reports/bench.json`, `!reports/heatmap.json`, `!reports/deck_numbers.md`, `!reports/*.html` (scaffold).
+- **Commands:** `python -m aegis verify-audit` dispatches to `aegis.audit.verify:main(argv)`. Makefile alias `audit-verify` (A-58).
+- Refs: P14-G4, P14-G8, P14-G9, P14-G11, P16-G3, P16-G5, P19-G-C5.
+
+---
+
+### A.13 Dashboard conventions (owners: dashboard-shell, -security, -governance)
+
+**A-55 · Dashboard decisions.**
+- **Toast ownership:**
+  - **dashboard-shell** renders global toasts and banners for `feed.updated`, `feed.rejected` (red banner, "enforcing #N"; the `feed` badge turns rose), `budget.threshold`, `mcp.tool` and `system`.
+  - **dashboard-governance** exports `<GovernanceToaster/>` from `web/src/components/governance/GovernanceToaster.tsx`. It owns toasts for `approval.created`, `approval.updated` (decided), `policy.applied`, `policy.rejected`, `killswitch` and `org.updated`. **dashboard-shell mounts it once** in the shell layout and does not toast those events itself.
+  - Pages toast only the results of their own HTTP actions.
+- **Mock fallback (extends §5.4):** also fall back on 2xx-non-JSON and on 5xx without a JSON error envelope. **Never** fall back on any 4xx or on any JSON error envelope.
+- **Runtime list:** `@/api/sse` exports `SSE_EVENTS: SseEventName[]`.
+- **API client:** `api.download(path: string, filename?: string): Promise<void>`. The client injects `X-Aegis-View-As` on every `/api/*` call. `useLiveDecisions` backfills from `GET /api/decisions?limit=50`, and pages dedupe by `id`.
+- **Colors:** the contract palette wins (§3.4). The brand is **indigo**, so violet stays `require_approval`. Fonts are bundled. Team colors come from `teamColor()` (validated palette), not the seed hex values.
+- **Admin token** [could]: `localStorage['aegis.adminToken']` → `Authorization: Bearer` on mutating `/api/*` when `AEGIS_ADMIN_TOKEN` is set.
+- **Page routes:** `/governance/policy?tab=history&version=N`, `/governance/approvals?id=apr_…`, `/security/audit?seq=N`, `/security/decisions/:id`.
+- **Shell page shortcuts:** `g o` overview, `g l` live, `g y` playground, `g t` threats, `g c` coverage, `g u` audit, `g a` approvals, `g b` budgets, `g r` rules, `g g` org, `g p` policy, `g m` perf, `g h` health.
+- **Rendering requests:**
+  - `Decision.meta.headers_removed`, `.body_fields` and `.media[]` (DLP-03) render as a "Metadata stripped" list;
+  - `Decision.meta.inj`, `meta.explain` and `payload.facts/checks/agent_note/diff` render as described above;
+  - [optional] an "Attacker received" KPI reads `GET http://127.0.0.1:8793/_mock/hits` (CORS-enabled);
+  - an `EvalPanel` and an `ObfuscationHeatmap` render from `bench.eval` / `bench.heatmap`;
+  - a "Last self-test" card renders from `/api/selftest` (A-53);
+  - a "Redaction quality" panel renders from `/api/redaction/metrics`.
+- **Extra fields only through page-local types:** all additive response fields above (`…Ext` types). Frozen `types.ts` / `page.ts` are unchanged.
+- Refs: P15-G1–G12, P16-G1–G8, P17-G1–G7, P04-dash, P19-G-C6/G-C7, P20-#8.
+
+---
+
+### A.14 Mocks, ports, settings and environment
+
+**A-56 · Mocks.**
+- **Default ports:** mock_llm 8791, mock_mcp 8792, exfil_sink 8793, mock_saas 8794.
+- **Env overrides:** `AEGIS_MOCK_LLM_PORT`, `AEGIS_MOCK_MCP_PORT`, `AEGIS_EXFIL_SINK_PORT`, `AEGIS_MOCK_SAAS_PORT`. A `--port` flag wins over the env var, which wins over the default. Policy URLs follow A-35, and `AEGIS_HOST_MAP` must match.
+- **In-process start:** each mock package exposes **`create_app() -> FastAPI`** in `mocks/<name>/app.py`. This is for in-process tests; mock_mcp's is owned by mcp-proxy.
+- **Additive mock endpoints** (all `GET /_mock/health` → `{service: "<name>"}`, all `POST /_mock/reset`):
+  - **mock_llm:** `POST /_mock/scan`; triggers `[[EMIT_ECHOLEAK_PROXY]]` and `[[ERROR:<status>]]`; planner mode.
+  - **exfil_sink:** `GET /_mock/ui`; CORS on `/_mock/hits`.
+  - **mock_saas:** `GET /payments/plans`, `GET /crm/customers/{id}`, `POST /crm/webhook`, `GET /p/{id}`, `GET /_mock/charges` (`{total_usd, items}`), `DELETE /_mock/requests`. `POST /payments/subscriptions` answers 400 "price mismatch" when the amount disagrees with the catalog.
+- **Request logs:** `/_mock/requests` records header **names and values except auth/cookie values**, so judges can see `x-stainless-*` / `x-forwarded-for` removed.
+- **Seed alignment:** mock_saas `GET /payments/plans` serves the org seed vendors, including `a100-cluster-week` ($1,500). Demo mail uses `.example` addresses.
+- Refs: P18-B, P20-#1, P20-#2, P20-#4, P04-G12.
+
+**A-57 · Settings fields and environment variables** (additions to §6.5; read only via `aegis.settings.Settings`; `.env.example` lists them).
+
+| Var | Default | `Settings` field | Used by |
+|---|---|---|---|
+| `AEGIS_HOST_MAP` | §5.6 default | `host_map: str` | metadata-egress |
+| `AEGIS_WARMUP` | `auto` | `warmup` | audit-metrics |
+| `AEGIS_REPORTS_DIR` | `reports` | `reports_dir` | audit-metrics, test-suite, redteam-eval-perf |
+| `AEGIS_SEMANTIC_MODELS` | `horizon-small,minilm-l12-multi,eu-pii-ner,aegis-guard,aegis-judge` | `semantic_models` | semantic-models |
+| `AEGIS_SEMANTIC_RAM_MB` | `2048` | `semantic_ram_mb` | semantic-models |
+| `AEGIS_MOCK_LLM_PORT`, `AEGIS_MOCK_MCP_PORT`, `AEGIS_EXFIL_SINK_PORT`, `AEGIS_MOCK_SAAS_PORT` | 8791, 8792, 8793, 8794 | `mock_llm_port`, `mock_mcp_port`, `exfil_sink_port`, `mock_saas_port` | mocks, run_stack, policy expansion |
+| hook client: `AEGIS_AGENT_KEY_FILE`, `AEGIS_HOOK_TIMEOUT_FAST` | `demo/claude/.agent_key`, `10` | — (bash only) | `scripts/aegis-hook` |
+
+- **Existing fields confirmed:** `org_seed`, `demo_mode`, `default_viewer`, `admin_token`, `test_mode`, `data_dir`, `semantic`, `models_dir`, `policy`, `pricing`, `feed_url`, `feed_pubkey`, `ollama_url`, `ui_dist`, `vault_secret`, `log_level`, `log_json`, `access_log`, `live_url`.
+- Refs: P04-G7, P06-CG-4, P14-G3, P19-G-C5, P20-#2, P12-G1, P08-notes.
+
+---
+
+### A.15 Requests to scaffold (non-contract, for the scaffold phase)
+
+**A-58 · Manifests, Makefile, gitignore, web config, docs carve-outs.**
+- **Dependencies:**
+  - **Add** `phonenumbers>=9` (runtime; redaction-engine) and `hypothesis` (dev; core-gateway property tests).
+  - **Declined:** `pypdf` (metadata-egress reports unsupported PDFs instead), `monaco-yaml` and `yaml` (npm; the policy editor uses its minimal provider).
+  - If Recharts 2.x is pinned with React 19, add `react-is@19`.
+  - Make sure the explicit `@radix-ui/*` list from plan 15 §7 is present.
+  - All guarded imports must degrade.
+- **Makefile:**
+  - `claude` → `demo/claude/run.sh`;
+  - `feed-keys` → `uv run --frozen python -m feed_service keygen --if-missing`;
+  - `audit-verify` → `uv run --frozen python -m aegis verify-audit`;
+  - `demo` → `uv run --frozen python scripts/run_stack.py --demo`;
+  - `demo-scene` → `uv run --frozen python demo/scenarios/run.py $(S)`;
+  - `demo-preflight` → `uv run --frozen python demo/preflight.py $(ARGS)`;
+  - test targets per plan 18 §2.10; `eval` / `bench` / `redteam` per plan 19 §4.2.
+  - No `scripts/dev.sh` (use `make up` / `make dev`).
+- **`.gitignore`:** add `data/artifacts/` and the `reports/` exceptions from A-54.
+- **Web config:**
+  - `eslint.config.js` → `react-refresh/only-export-components` with `allowExportNames: ['meta']`;
+  - `web/index.html` → `<html lang="en" class="dark">`, `<meta name="color-scheme" content="dark">`, `<meta name="theme-color" content="#07080A">`, `<link rel="icon" href="/favicon.svg">`, `<body class="bg-[#07080A]">`;
+  - `components.json` → `style: new-york`, `tailwind.css: src/styles/globals.css`, `baseColor: zinc`, `cssVariables: true`, aliases `@/components`, `@/components/ui`, `@/lib`, `@/lib/utils`, `iconLibrary: lucide`;
+  - `vite-env.d.ts` references `vite/client`.
+- **Docs carve-outs** from demo-mocks-docs' `docs/**`:
+  - `docs/MASTER_PLAN.md` and `docs/TASKS.md` belong to the orchestrator (synthesizer B);
+  - `docs/plan/BUNDLES.json` belongs to synthesizer B;
+  - `docs/status/<bundle>.md` belongs to each bundle;
+  - `docs/seed-fixes/*` belongs to the orchestrator (synthesizer A) and is read-only for implementers.
+- Refs: P03-deps, P01-deps, P04-deps, P15-G9–G11, P17-deps, P12-G8, P13-#10, P14-G11, P18-J, P19-G-C5, P20-#3, P20-#9.
+
+---
+
+### A.16 Seed fixes (`docs/seed-fixes/`; `staging/` stays untouched)
+
+**The files:**
+- `docs/seed-fixes/org.seed.yaml` is **config-ready**: org-rbac copies it to `config/org.seed.yaml`.
+- `docs/seed-fixes/policy.yaml` is a complete contract-format `config/policy.yaml` (validates against the frozen `PolicyDoc`; 39 controls; 45 inline tests). policy-engine starts `config/policy.yaml` and `config/policy.golden.yaml` from it, then merges the snippets per A-34.
+- `docs/seed-fixes/approvals.yaml` is the canonical `approvals:` section (46 rules, 33 config rules, 54 routing tests, all passing in a first-match simulator). `config/snippets/approvals-engine.yaml` must equal it. Its rule ids are binding.
+
+Every fix is tagged `[SF-nn]` in the files. Values tagged this way must survive snippet merges.
+
+| ID | Bug found by planners | Fix | Files | Applied by |
+|---|---|---|---|---|
+| **SF-01** | The two-person rule can never complete: the seed has **one** owner, so "two owners" is impossible (P09-#4, P18-G) | Two-person = owner + a distinct admin, plus proposer co-sign (A-20). Still one owner on purpose | approvals.yaml (header, rules `spend-owner-2p`, `disable-control-strict`, `raise-org-2x`, `deploy-prod-strict`, `db-prod-bulk-delete-strict`); org.seed.yaml comment | approvals-engine (eligibility), org-rbac |
+| **SF-02** | Seed tool allowlists contain no purchase tool for `research-agent@research` and `claude-code@platform`, so **GOV-03 blocks the $12 and $480 F4 flows before ACT-01 can route them** (P10-G5) | research-agent allow `payments.create_charge`, `marketpulse.*`. claude-code allow every built-in it uses plus `"*.*"` (all MCP tools), deny `acme-crm.export_*`, `WebFetch`. All globs in `<server>.<tool>` form. Regression tests `GOV-03/research-agent-may-buy-dataset`, `GOV-03/claude-code-may-call-payments` and top-level `f4-spend-12-reaches-approval`, `f4-gpu-480-reaches-approval` | org.seed.yaml, policy.yaml | org-rbac, policy-engine |
+| **SF-03** | Model allowlists use provider-prefixed ids (`ollama/qwen3.5:0.8b`), so GOV-02 blocks local (`aegis-judge`) and mock (`mock-echo`) demo traffic (P20-#7, P08 reuse map) | Wire globs: research-agent `["aegis-judge*", "qwen*", "hf.co/*"]`; trading-copilot `["claude-haiku-*", "claude-sonnet-*", "meta-llama/*", "aegis-judge*", "qwen*", "mock-*"]` (no gpt-4.1-mini / opus, so the GOV-02 demo blocks still work); chaos-agent `["aegis-judge*", "qwen*", "claude-haiku-*", "mock-*"]`; claude-code `["claude-*", "aegis-judge*", "qwen*", "mock-*"]`. Defaults `mock-echo` / `aegis-judge` | org.seed.yaml | org-rbac |
+| **SF-04** | **DLP-01 blocks every external email before ACT-03 can route it.** The §4.3 matrix has `CONFIDENTIAL.third_party: block`, and the recipient address is an EMAIL (P10-G12) | Balanced matrix `CONFIDENTIAL.third_party: redact` (the frozen schema default; strict/paranoid tighten via `DLP-01.params.matrix_overrides`). New `DLP-01.params.routing_args` exempts recipient args (`to/cc/bcc/recipient(s)` of `mailer.*`, `*.send_email`, `*.send_*`): findings are logged, never redacted. ACT-03 governs recipients, and placeholders count as their class for `data_class`. Tests `DLP-01/email-recipient-not-blocked`, `DLP-01/pesel-to-third-party-tokenized`, top-level `f4-external-email-reaches-approval` | policy.yaml | policy-engine (matrix, tests), redaction-engine (`routing_args`, `matrix_overrides`), action-guards (ACT-03 labels) |
+| **SF-05** | **Poisoned-tool self-test vs INJ-01:** INJ-01 also fires on the `<IMPORTANT>` description on `mcp.list` and returns `block` (staging action), so the final ≠ MCP-02's `redact` and the candidate policy is rejected (P11 risk, P11-req) | INJ-01/02 answer `redact` (quarantine) on untrusted surfaces including `mcp.list`, never `block`. MCP-02 owns dropping the tool (remove mutation). SIG-01 `strip_tool` → redact + remove (A-46). The test `MCP-02/poisoned-add` is control-attributed (control-scoped comparison, A-29). The self-test never skips the semantic phase (A-09). New test `INJ-01/poisoned-description-quarantined` | policy.yaml | injection-defense, mcp-proxy, threat-feed, policy-engine, core-gateway |
+| **SF-06** | **TI-022 demo link domain:** DLP-06 strips the EchoLeak image before the feed demo matters, because the asset host is not in `allowed_link_domains`. The staged payload uses `assets.aegis-corp.example`; threat-feed renames it to `assets.acme-capital.example` (P13-#6b, P20-#10) | `destinations.allowed_link_domains: ["docs.acme-capital.example", "assets.acme-capital.example", "assets.aegis-corp.example"]` (both variants work). Test `DLP-06/allowlisted-asset-image-kept`. The org seed lists the host | policy.yaml, org.seed.yaml | policy-engine, threat-feed (payload host), demo-mocks-docs (mock_llm trigger) |
+| **SF-07** | `internal_domains: ["*.acme-capital.example"]` does not match the apex, so `ops@acme-capital.example` counts as external | `internal_domains: ["acme-capital.example", "*.acme-capital.example", "*.corp.local", "*.internal", "*.acme.test"]`. `email.external` `args_not_match` accepts subdomains. Test `ACT-03/internal-email-allowed` | policy.yaml | policy-engine, action-guards |
+| **SF-08** | Staged `APR-DATA-PROD-BULK-DELETE` (owner + admin) would turn the F4 flow "`DELETE FROM trades` (env prod) → owner" into two-person, because ACT-02 labels an unbounded DELETE `bulk` | `db-prod-bulk-delete-strict` only under `profiles: [strict, paranoid]`. Balanced → `db-prod-write` (owner) | approvals.yaml | approvals-engine |
+| **SF-09** | Contract example `raise-team-small` ≤ +50 % vs BRIEF "raise budget > 2× → owner" vs staging ≤ 2× | Team raise ≤ +100 % (≤ 2×) → admin; > 2× → owner (`raise-large`). F5 (+25 % admin, +150 % owner) is unchanged | approvals.yaml | approvals-engine, dashboard-governance (presets) |
+| **SF-10** | Staging routed unmatched config changes to admin; the contract says owner | `default_config_approver: owner` (fail closed). Test `unmatched-type-fails-closed` | approvals.yaml | approvals-engine |
+| **SF-11** | Staged deterministic timeouts of 2–20 ms → spurious fail-closed blocks under `to_thread` | Not ported; schema default 250 ms; completed tasks always used (A-05) | policy.yaml | policy-engine, core-gateway |
+| **SF-12** | API keys expire 2026-10-31 / 2026-10-04 (chaos), so tests rot after the event. No expired-key or disabled-agent fixtures exist for GOV-01 | Expiry 2027-10-31; new `key_expired_demo` (`aegis_demo_expired_key_0000000000000098_NOT_A_SECRET`); new disabled agent `legacy-bot@platform` (sponsor u_marek). Test `GOV-01/disabled-agent-blocked` | org.seed.yaml, policy.yaml | org-rbac, test-suite |
+| **SF-13** | research-agent starts the demo at 92 % of its compute budget (4950/5400 s, soft state) | `demo_state` research team/agent `local_compute_s_today` 4950 → 2400 (org total 6120 → 3570; agent USD 0.99 → 0.48) | org.seed.yaml | org-rbac (file), budgets-ledger (reader) |
+| **SF-14** | Seed resources use staging entity names (`PL_PESEL`, `CREDIT_CARD`, `POSTAL_ADDRESS`) and lack the mock hosts. There is no $1,500 plan for the two-person flow | `contains` uses contract entities; databases get `mcp_server: acme-db`; `external_hosts` get `dest_class` + `pay.saas.test`, `crm.saas.test`, `paste.test`/`exfil.test` (denylisted), `docs./assets.acme-capital.example`; vendor plan `gpucloud/a100-cluster-week` $1,500 | org.seed.yaml | org-rbac, action-guards (catalog), demo-mocks-docs (mock_saas plans) |
+| **SF-15** | The seed says Claude Code sends its key in `ANTHROPIC_AUTH_TOKEN`, which would replace its OAuth token | Key carrier = `X-Aegis-Agent-Key` via `ANTHROPIC_CUSTOM_HEADERS` (A-17); comments fixed; `integration.key_header` | org.seed.yaml | claude-code-integration (`demo/claude/settings.json`), org-rbac, core-gateway |
+| **SF-16** | Kill switch: the contract says engage = admin ("tighten"); staging says anyone, instantly | Engage on an agent you sponsor → `killswitch-own-agent` (auto); any other engage incl. global → `tighten` (admin); release → `loosen-threshold` (admin); global release → owner. Owners/admins apply directly (GOV-05) | approvals.yaml | approvals-engine |
+| **SF-17** | `demo_state.approval_history` uses staging types and rule ids (`agent_action.spend`, `APR-SPEND-SELF`) | Contract `kind`, `action_type`, `rule_id`, `required_role`, `decided_by` | org.seed.yaml | approvals-engine (APR-12 seeds it), org-rbac |
+| **SF-18** | F5 "u_marek disables DLP-02 → owner" needs DLP-02 to be `critical`; §4.4 sets no severity | `severity: critical` for DLP-02, EXE-01, SIG-01, SIG-02 | policy.yaml | policy-engine |
+| **SF-19** | The model could edit away its own guard (hook settings, MCP config, key file) | EXE-02 `fs_deny` += harness paths; `allow_hosts: ["127.0.0.1:8791-8799"]`. Test `EXE-02/write-hook-settings-blocked` | policy.yaml | policy-engine, action-guards |
+| **SF-20** | The $480 Claude Code scene calls `mcp__payments__create_charge`, but the planned `demo/claude/mcp.json` server list omits `payments` | `mcp.json` routes all nine demo servers incl. `payments`, with Bearer key + `X-Aegis-Agent` (A-47) | (demo/claude, not a seed file) | claude-code-integration, mcp-proxy (claude_config default list) |
+| **SF-21** | Agent `models.default` used provider-prefixed ids | Wire names (`claude-sonnet-4-5`, `aegis-judge`, `mock-echo`) | org.seed.yaml | org-rbac |
+| **SF-22** | INJ-02 threshold 0.90 (contract) vs measured optimum 0.80 (RESULTS.md) | `threshold: 0.80`, `timeout_ms: 700`, escalation band 0.50–0.80 → Qwen3Guard | policy.yaml | policy-engine, injection-defense |
+| **SF-23** | No approval rules for governed org changes | `org-owner-grants` (owner), `org-privileged` (owner), `org-routine` (admin) for `org.*` action types | approvals.yaml | approvals-engine, org-rbac |
+| **SF-24** | No rules for GOV-04 generic approvals, DLP matrix `require_approval` cells and INJ-05 drift | `tool-approve` (`tool:*` → admin), `dlp-release` (admin), `goal-drift` (self), `code-exec` catch-all (admin) | approvals.yaml | approvals-engine |
+| **SF-25** | The "view as" switcher has no role aliases or default viewer in the seed | `control_plane.view_as_aliases: {owner: u_katarzyna, admin: u_emily, member: u_piotr}`, `default_viewer: u_katarzyna` | org.seed.yaml | org-rbac |
+| **SF-26** | GOV-06 has no policy entry | GOV-06 control entry + test `edit-hook-settings-blocked` | policy.yaml | policy-engine, claude-code-integration |
+| **SF-27** | The egress spend rules in the plans used pseudo-paths (`@method`, `@path`) that the agreed egress `tool_args` shape does not have | `actions:` egress rules use `{method, url}` + `amount_arg: json.amount_usd`, `resource_arg: json.vendor` (A-13). CRM lookups are **not** classified as `db.read` (no per-call admin approval); `acme-crm.export_*` is governed by GOV-04 `approve_tools` | policy.yaml | action-guards, metadata-egress, policy-engine |
+
+**Verification done by synth-A:**
+- `PolicyDoc.model_validate(docs/seed-fixes/policy.yaml)` passes.
+- The approvals block equals `approvals.yaml`.
+- 54/54 routing tests pass (role, rule, two-person and approver eligibility).
+- All regexes compile.
+- Every test agent and member exists in the seed.
+- GOV-03 allow/deny was spot-checked for the F4 tools.
+
+---
+
+### A.17 Gap traceability (every plan's "Contract gaps" item → decision)
+
+**204 gap items** from all 20 plans are resolved by A-01…A-58 and SF-01…SF-27. Declined proposals are marked ✗, with the replacement decision. Requests-to-owner lists are covered by the same items.
+
+| Plan | Items → decision |
+|---|---|
+| 01 core-gateway (11) | #1→A-06 · #2→A-08 · #3→A-16 · #4→A-16 · #5→A-13 · #6→A-13 · #7→A-06 · #8→A-05 · #9→A-16 · #10→A-07 · #11→A-16 |
+| 02 policy-engine (14) | #1→A-31 · #2→A-31 · #3→A-32, A-24 · #4→A-32, A-26 · #5→A-29 · #6→A-33 · #7→A-30 · #8→A-14 · #9→A-32, A-16 · #10→A-33 · #11→A-33 · #12→A-31 · #13→A-50 · #14→A-16 |
+| 03 redaction-engine (8) | §4.2 placeholders surface→A-39 · §4.2 engine extras→A-39 · §4.2 response path→A-40 · §4.3 entities→A-41 · §4.3 mappings→A-41 · §4.3 endpoints→A-43 · §4.4 shared tokenizer ✗→A-38 · `phonenumbers`→A-58 |
+| 04 metadata-egress (13) | G1(1–4)→A-13 · G1(5) ✗→A-40 · G2→A-01 · G3→A-10 · G4→A-42 · G5→A-13 · G6→A-40 · G7→A-57 · G8→A-50 · G9→A-30 · G10→A-42 · G11→A-42 · G12→A-56 · dashboard→A-55 |
+| 05 injection-defense (9) | #1→A-42, A-41 · #2→A-02 · #3→A-13, A-45 · #4→A-44 · #5→A-45 · #6→A-45, SF-22 · #7→A-26, A-45 · #8→A-45 · #9→A-45, A-55 |
+| 06 semantic-models (9) | CG-1→A-38 · CG-2→A-44 · CG-3→A-44, A-16 · CG-4→A-44, A-57 · CG-5→A-44, A-50 · CG-6→A-44 · CG-7→A-44 · CG-8→A-44 · CG-9→A-44 |
+| 07 budgets-ledger (12) | G1→A-06 · G2→A-07 (generalised: 429 for every client) · G3→A-13 · G4→A-08 · G5→A-08 · G6→A-13 · G7→A-34, A-33 · G8→A-24, A-25 · G9→A-09, A-29 · G10→A-22, SF-16 · G11→A-32, A-36 · G12→A-36 · requests→A-36 |
+| 08 org-rbac (10) | G1→A-17 · G2→A-25 · G3→A-26 · G4→A-37 · G5→A-37 · G6→A-18 · G7→A-37 · G8→A-37 · G9→A-30 · G10→A-37, SF-12/14/25 · notes→A-37, A-36, A-16 |
+| 09 approvals-engine (12) | #1→A-21 · #2→A-22 · #3→A-22, A-34 · #4→A-20, SF-01 · #5→A-30 · #6→A-02 · #7→A-28 · #8→A-23 · #9→A-27 · #10→A-17 · #11→A-37 · #12→A-50, A-28 |
+| 10 action-guards (12) | G1→A-01 · G2→A-13 · G3→A-13 · G4→A-13 · G5→A-37, SF-02 · G6→A-22, A-28 · G7→A-36 · G8→A-29, A-30, A-33, A-34 · G9→A-24, A-55 · G10→A-27 · G11→A-26, A-27 · G12→A-42, SF-04 |
+| 11 mcp-proxy (9) | #1→A-13 · #2→A-13 · #3→A-46 · #4→A-46 · #5→A-24, A-26 (`labels.dest`) · #6→A-46 · #7→A-46 · #8→A-46 · #9→A-46 · requests→A-46, A-47, A-40, A-56, SF-05 |
+| 12 claude-code-integration (10) | G1→A-47, A-19 · G2→A-48 · G3→A-17 · G4→A-07, A-13, A-40 · G5→A-23, A-47 · G6→A-47 · G7→A-47 · G8→A-47, A-58 · G9→A-47, SF-19 · G10→A-36 |
+| 13 threat-feed (10) | #1→A-13 · #2→A-13 · #3→A-13, A-12 · #4→A-13 · #5→A-04 · #6→SF-06, A-30, A-33 · #7→A-49 · #8→A-55, A-49 · #9→A-49, A-56 · #10→A-58 |
+| 14 audit-metrics (11) | G1→A-50 · G2→A-51 · G3→A-52 · G4→A-54 · G5→A-08 · G6→A-03 · G7→A-42 · G8→A-54 · G9→A-54 · G10→A-52 · G11→A-58 |
+| 15 dashboard-shell (12) | G1→A-51 (server authoritative) · G2→A-55 · G3→A-55 · G4→A-55 · G5→A-55 · G6→A-55 · G7→A-55 · G8→A-55 · G9→A-58 · G10→A-58 · G11→A-58 · G12→A-16 |
+| 16 dashboard-security (8) | G1→A-03 · G2→A-46 · G3→A-54 · G4→A-49 · G5→A-54 · G6→A-11 · G7→A-31, A-55 · G8→A-55 |
+| 17 dashboard-governance (7) | G1→A-31 · G2→A-31, A-28 · G3→A-24 · G4→A-12 · G5→A-09 · G6→A-36 · G7→A-28 · requests→A-55, A-28, A-31 |
+| 18 test-suite (10) | A→A-53 (served by audit-metrics; a new test-suite route file ✗) · B→A-56 · C→A-19 · D→A-09 · E→A-06 · F→A-12 · G→A-20 · H→A-16 · I→A-49 · J→A-58 |
+| 19 redteam-eval-perf (7) | G-C1→A-03 · G-C2→A-03, A-12 · G-C3→A-12 · G-C4→A-44 · G-C5→A-53, A-54, A-58 · G-C6→A-55 · G-C7→A-55 |
+| 20 demo-mocks-docs (10) | #1→A-46 · #2→A-35, A-56 · #3→A-58 · #4→A-56 · #5→A-23, A-46 · #6→A-13 · #7→SF-03 · #8→A-55 · #9→A-58 · #10→SF-06, A-49 |
+
+**HANDOFF "Known issues" → resolution:**
+- two-person with one owner → A-20 / SF-01;
+- allowlists vs $12 / $480 → SF-02;
+- DLP-01 vs ACT-03 → SF-04;
+- single NER → A-38;
+- Claude Code stop codes → A-07;
+- self-test vs live counters/kill switch → A-09 / A-29.
+
+*End of Addendum A.*

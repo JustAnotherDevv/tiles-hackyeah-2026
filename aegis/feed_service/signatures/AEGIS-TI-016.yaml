@@ -1,0 +1,44 @@
+# AEGIS-TI-016 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-016
+title: Slopsquatting / hallucinated package install
+description: >-
+  LLMs hallucinate package names (a USENIX Security 2025 study found ~19.7% of
+  samples referenced non-existent packages); attackers pre-register the popular ones
+  (slopsquatting). The classic PoC was registering "huggingface-cli" (the real
+  package is huggingface-hub), which drew ~30k downloads. Parses install commands
+  (pip/uv/poetry/npm/npx/...) and matches names on the hallucinated list (any version).
+status: stable
+severity: medium
+confidence: medium
+aliases: []
+references:
+  - https://simonwillison.net/2024/Apr/1/diving-deeper-into-ai-package-hallucinations/
+tags: [LLM04:2026, ASI04, AML.T0060, supply-chain]
+published: "2024-04-01"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [tool.input, mcp.call, model.response]
+match:
+  type: package
+  packages:
+    - {ecosystem: pypi, name: "huggingface-cli", ref: lanyado-2024}
+    - {ecosystem: pypi, name: "langchain-community-tools", ref: example-hallucination}
+    - {ecosystem: npm, name: "openai-helper", ref: example-hallucination}
+action: require_approval
+action_overrides: {model.response: log}
+message: "Install command references a known-hallucinated / slopsquatted package name. Approval required; verify the correct package."
+tests:
+  positive:
+    - name: pip installing the slopsquatted huggingface-cli
+      surface: tool.input
+      tool_args: {tool: "bash.run", args: {command: "pip install huggingface-cli"}}
+    - name: suggested install line in model output
+      surface: model.response
+      text: "First install the client:\n\n    pip install huggingface-cli requests"
+  negative:
+    - name: installing the correct huggingface-hub package
+      surface: tool.input
+      tool_args: {tool: "bash.run", args: {command: "pip install huggingface-hub requests"}}
+    - name: installing ordinary packages with uv
+      surface: model.response
+      text: "Install dependencies with `uv add pandas numpy`."

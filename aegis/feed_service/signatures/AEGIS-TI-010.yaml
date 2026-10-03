@@ -1,0 +1,57 @@
+# AEGIS-TI-010 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-010
+title: mcp-remote OAuth endpoint command injection (CVE-2025-6514)
+description: >-
+  CVE-2025-6514 (mcp-remote 0.0.5-0.1.15): a malicious MCP server returned an
+  authorization_endpoint that was passed to the OS shell, giving command injection.
+  Any OAuth endpoint (authorization/token/registration) that is not https, or that
+  contains shell metacharacters ($( , backtick, %24%28, or whitespace), is the signal.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2025-6514, JFSA-2025-001290844]
+references:
+  - https://research.jfrog.com/vulnerabilities/mcp-remote-command-injection-rce-jfsa-2025-001290844/
+  - https://cveawg.mitre.org/api/cve/CVE-2025-6514
+tags: [MCP05:2025, MCP07:2025, ASI04, CWE-78]
+published: "2025-07-09"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [mcp.init, mcp.result, egress.response]
+match:
+  any_of:
+    - type: json_path
+      path: "$.authorization_endpoint"
+      match:
+        any_of:
+          - {type: url, scheme_not_in: [https]}
+          - {type: regex, field: text, pattern: '\$\(|`|%24%28|\s'}
+    - type: json_path
+      path: "$.token_endpoint"
+      match:
+        any_of:
+          - {type: url, scheme_not_in: [https]}
+          - {type: regex, field: text, pattern: '\$\(|`|%24%28|\s'}
+    - type: json_path
+      path: "$.registration_endpoint"
+      match:
+        any_of:
+          - {type: url, scheme_not_in: [https]}
+          - {type: regex, field: text, pattern: '\$\(|`|%24%28|\s'}
+action: block
+message: "MCP server supplied a non-HTTPS or shell-metacharacter OAuth endpoint. Blocked."
+tests:
+  positive:
+    - name: non-https authorization endpoint
+      surface: mcp.result
+      tool_args: {authorization_endpoint: "http://auth.internal.example/authorize", token_endpoint: "https://auth.internal.example/token"}
+    - name: endpoint carrying a url-encoded shell-substitution marker
+      surface: mcp.result
+      tool_args: {authorization_endpoint: "https://auth.example.com/cb?probe=%24%28%29"}
+  negative:
+    - name: well-formed https OAuth metadata
+      surface: mcp.result
+      tool_args: {authorization_endpoint: "https://auth.example.com/authorize", token_endpoint: "https://auth.example.com/token"}
+    - name: metadata without any endpoint fields
+      surface: mcp.result
+      tool_args: {resource: "https://mcp.example.com", scopes_supported: ["read"]}

@@ -1,0 +1,13 @@
+# audit-metrics (B15) has no controls. It reads only:
+defaults:
+  audit_content: false   # true = keep data.segments/content in audit records (never recommended);
+                         # raw values are still scrubbed at write time either way.
+# Contract notes for other owners (not policy keys):
+# - Write audit events via rt.audit.record(AuditEvent(...)) for approval.* / policy.* / feed.* /
+#   killswitch.toggled / org.changed. The counters aegis_approvals_total{kind,outcome},
+#   aegis_policy_reloads_total{result}, aegis_feed_reloads_total{result} are DERIVED from those
+#   events (direct rt.metrics.inc() on these names is ignored to avoid double counting).
+#   approval.* events: put the approval kind in data.approval_kind (or data.approval.kind) and,
+#   for approval.decided, the final status in data.status (approved|denied).
+# - Env AEGIS_WARMUP=auto|off|force (default auto): synthetic demo history (flagged synthetic=1,
+#   never in the hash chain) + dry-run primer of the inline policy tests at startup.

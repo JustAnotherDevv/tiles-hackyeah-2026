@@ -1,0 +1,53 @@
+# AEGIS-TI-011 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-011
+title: Spawning stdio MCP servers over HTTP (MCP Inspector / LiteLLM)
+description: >-
+  MCP Inspector CVE-2025-49596 (< 0.14.1) exposed a browser-reachable proxy on port
+  6277 that launches stdio servers (transportType=stdio&command=...). LiteLLM
+  CVE-2026-42271 (CISA KEV) spawns command/args/env via POST /mcp-rest/test/connection
+  and /mcp-rest/test/tools/list. The gateway must never spawn a process from request
+  data. Matches the Inspector proxy URL, the LiteLLM test paths, or a {command,args}
+  launch config in a request.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2025-49596, CVE-2026-42271]
+references:
+  - https://www.oligo.security/blog/critical-rce-vulnerability-in-anthropic-mcp-inspector-cve-2025-49596
+  - https://cveawg.mitre.org/api/cve/CVE-2026-42271
+tags: [MCP05:2025, MCP09:2025, ASI05, CWE-78]
+published: "2025-06-13"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [egress.request, mcp.call, tool.input]
+match:
+  any_of:
+    - type: url
+      port_in: [6277]
+      query_regex: '(?i)transportType=stdio'
+    - type: url
+      path_regex: '(?i)/mcp-rest/test/(connection|tools/list)'
+    - all_of:
+        - {type: json_path, path: "$.command", exists: true}
+        - {type: json_path, path: "$.args", exists: true}
+action: block
+message: "Attempt to spawn a stdio MCP server from request data (Inspector proxy / LiteLLM test endpoint / launch config). Blocked."
+tests:
+  positive:
+    - name: MCP Inspector proxy with stdio transport
+      surface: egress.request
+      url: "http://127.0.0.1:6277/sse?transportType=stdio&command=mcp-server-demo"
+      http_method: GET
+    - name: LiteLLM test-connection with a launch config
+      surface: egress.request
+      url: "http://litellm.internal:4000/mcp-rest/test/connection"
+      http_method: POST
+      raw: '{"command":"mcp-server-demo","args":["--port","1"],"env":{}}'
+  negative:
+    - name: Inspector proxy using sse transport (not stdio)
+      surface: egress.request
+      url: "http://127.0.0.1:6277/sse?transportType=sse"
+      http_method: GET
+    - name: a normal MCP tools/list message
+      surface: mcp.call
+      tool_args: {method: "tools/list", params: {}}

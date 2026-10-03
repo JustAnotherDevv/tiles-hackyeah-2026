@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:8787",
+    "ANTHROPIC_CUSTOM_HEADERS": "X-Aegis-Agent: claude-code@platform\nX-Aegis-Team: platform\nX-Aegis-Agent-Key: aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET",
+    "CLAUDE_CODE_GATEWAY_HINT_HEADERS": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "AEGIS_URL": "http://127.0.0.1:8787",
+    "AEGIS_AGENT": "claude-code@platform",
+    "AEGIS_AGENT_KEY_FILE": "/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key",
+    "AEGIS_HOOK_TIMEOUT": "110",
+    "AEGIS_HOOK_TIMEOUT_FAST": "10"
+  },
+  "permissions": {
+    "defaultMode": "default",
+    "deny": [
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key)",
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.json)",
+      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.json)",
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.failclosed.json)",
+      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.failclosed.json)",
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.hardened.json)",
+      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/settings.hardened.json)",
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/mcp.json)",
+      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/mcp.json)",
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key)",
+      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/demo/claude/.agent_key)",
+      "Edit(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook)",
+      "Write(//Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook SessionStart",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook UserPromptSubmit || exit 2",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook PreToolUse || exit 2",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook PostToolUse",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook PostToolUseFailure",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "ConfigChange": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook ConfigChange || exit 2",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook Stop",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "AEGIS_URL=http://127.0.0.1:8787 /bin/bash /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/scripts/aegis-hook SessionEnd",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

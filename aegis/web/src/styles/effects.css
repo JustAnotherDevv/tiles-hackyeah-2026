@@ -1,0 +1,202 @@
+/*
+ * Aegis effects: keyframes and small utilities ported from the prototype (assets/app.css) that are
+ * awkward as Tailwind classes. Owner: dashboard-shell (B16). Plain CSS (imported by globals.css).
+ */
+
+/* keyframes used by plain classes below (also declared in @theme for animate-* utilities) */
+@keyframes ping-dot { 0% { transform: scale(0.6); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
+@keyframes row-in { 0% { background-color: rgba(99, 102, 241, 0.14); } 100% { background-color: transparent; } }
+@keyframes row-in-block { 0% { background-color: rgba(242, 85, 111, 0.16); } 100% { background-color: transparent; } }
+
+/* ---------------------------------------------------------------- scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #262a31 transparent;
+}
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: #22262c;
+  border-radius: 10px;
+  border: 3px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: #2e333b; background-clip: padding-box; border: 3px solid transparent; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------------------------------------------------------------- canvas: faint grid + glow */
+.aegis-canvas {
+  position: relative;
+  isolation: isolate;
+}
+.aegis-canvas::before {
+  /* 24 px grid at ~3 % opacity, masked radially from the top so it fades out */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: 24px 24px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
+}
+.aegis-canvas::after {
+  /* very low-opacity indigo glow behind the page header */
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  top: -220px;
+  left: 50%;
+  width: min(1100px, 90%);
+  height: 420px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(99, 102, 241, 0.085), transparent);
+}
+
+.glass {
+  background: color-mix(in oklab, var(--surface-1) 82%, transparent);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+  backdrop-filter: saturate(140%) blur(10px);
+  box-shadow: var(--shadow-card);
+}
+
+/* ---------------------------------------------------------------- live dot (only looping anim besides ticker) */
+.live-dot {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--allow);
+  --ld: var(--allow);
+}
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ld);
+  opacity: 0;
+  animation: ping-dot 1.8s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) infinite;
+}
+.live-dot[data-tone="bad"] { background: var(--block); --ld: var(--block); }
+.live-dot[data-tone="warn"] { background: var(--redact); --ld: var(--redact); }
+.live-dot[data-tone="info"] { background: var(--accent-fg); --ld: var(--accent-fg); }
+.live-dot[data-paused="true"] { background: var(--text-3); }
+.live-dot[data-paused="true"]::after { animation: none; }
+
+/* ---------------------------------------------------------------- flashes */
+.pill-flash { animation: pill-flash 1.4s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes pill-flash {
+  0% { border-color: var(--accent-border); background: var(--accent-subtle); color: var(--text-1); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12); }
+  100% {}
+}
+.value-bump { animation: value-bump 640ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes value-bump {
+  0% { color: var(--bump-color, var(--accent-fg)); text-shadow: 0 0 18px color-mix(in oklab, var(--bump-color, var(--accent-fg)) 45%, transparent); }
+  100% {}
+}
+.row-flash { animation: row-in 1.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.row-flash-block { animation: row-in-block 1.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+/* ---------------------------------------------------------------- skeleton shimmer */
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 6px;
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  animation: skel-shimmer 1.4s infinite;
+}
+@keyframes skel-shimmer { to { transform: translateX(100%); } }
+
+/* ---------------------------------------------------------------- ticker */
+.ticker-mask {
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 60px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 40px, #000 calc(100% - 60px), transparent 100%);
+}
+
+/* ---------------------------------------------------------------- charts (Recharts chrome) */
+.aegis-chart .recharts-cartesian-grid line { shape-rendering: crispEdges; }
+.aegis-chart .recharts-text { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+.aegis-chart .recharts-surface { overflow: visible; }
+.aegis-chart .recharts-tooltip-cursor { fill: rgba(255, 255, 255, 0.025); }
+.aegis-chart:focus, .aegis-chart *:focus { outline: none; }
+.grow-x { transform-origin: left; animation: grow-x 640ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes grow-x { from { transform: scaleX(0); } to { transform: none; } }
+
+/* ---------------------------------------------------------------- sonner toasts (DESIGN_TOKENS §6 Toast) */
+[data-sonner-toaster] {
+  --width: 380px;
+}
+[data-sonner-toast].aegis-toast {
+  background: var(--surface-3) !important;
+  border: 0 !important;
+  box-shadow: var(--shadow-pop) !important;
+  border-radius: 12px !important;
+  padding: 12px 14px !important;
+  gap: 12px !important;
+  align-items: flex-start !important;
+  color: var(--text-1) !important;
+  font-family: var(--font-sans);
+}
+[data-sonner-toast].aegis-toast [data-icon] {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-subtle);
+  color: var(--accent-fg);
+}
+[data-sonner-toast].aegis-toast[data-type="success"] [data-icon] { color: var(--allow); background: var(--allow-subtle); border-color: var(--allow-border); }
+[data-sonner-toast].aegis-toast[data-type="error"] [data-icon] { color: var(--block); background: var(--block-subtle); border-color: var(--block-border); }
+[data-sonner-toast].aegis-toast[data-type="warning"] [data-icon] { color: var(--redact); background: var(--redact-subtle); border-color: var(--redact-border); }
+[data-sonner-toast].aegis-toast.aegis-toast-approval [data-icon] { color: var(--approval); background: var(--approval-subtle); border-color: var(--approval-border); }
+[data-sonner-toast].aegis-toast [data-title] { font-weight: 600; font-size: 13px; line-height: 18px; color: var(--text-1); }
+[data-sonner-toast].aegis-toast [data-description] { color: var(--text-2) !important; font-size: 12.5px; line-height: 17px; margin-top: 2px; }
+[data-sonner-toast].aegis-toast [data-button] {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--surface-4) !important;
+  color: var(--text-1) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px var(--border-strong);
+  align-self: center;
+}
+[data-sonner-toast].aegis-toast [data-close-button] {
+  background: var(--surface-3) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-3) !important;
+}
+
+/* ---------------------------------------------------------------- print (management report export) */
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; }
+}
+
+/* ---------------------------------------------------------------- reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+  .live-dot::after { animation: none; }
+}

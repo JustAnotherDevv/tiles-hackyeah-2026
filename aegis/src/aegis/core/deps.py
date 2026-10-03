@@ -1,0 +1,74 @@
+"""FastAPI dependencies (public surface, CONTRACTS section 3.3).
+
+```python
+from fastapi import Depends
+from aegis.core.deps import get_rt, viewer, require_role
+
+@router.post("/api/things")
+async def create(rt=Depends(get_rt), who=Depends(require_role("admin"))): ...
+```
+"""
+
+from __future__ import annotations
+
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+from fastapi import Request
+
+from aegis.core.errors import AegisHTTPError
+from aegis.core.protocols import RuntimeProto
+from aegis.core.types import ROLE_RANK, Identity, Role
+
+
+async def get_rt(request: Request) -> RuntimeProto:
+    """The running `Runtime` (app.state.rt, else the module-global one)."""
+    rt = getattr(request.app.state, "rt", None)
+    if rt is not None:
+        return rt
+    from aegis.core.runtime import get_runtime
+
+    try:
+        return get_runtime()
+    except RuntimeError as exc:
+        raise AegisHTTPError(503, "unavailable", "gateway runtime not started") from exc
+
+
+async def viewer(request: Request) -> Identity:
+    """Dashboard viewer: `rt.org.resolve_viewer(headers, query)` (X-Aegis-View-As / ?view_as=)."""
+    cached = getattr(request.state, "aegis_viewer", None)
+    if isinstance(cached, Identity):
+        return cached
+    rt = await get_rt(request)
+    ident = await rt.org.resolve_viewer(request.headers, dict(request.query_params))
+    request.state.aegis_viewer = ident
+    return ident
+
+
+def require_role(min_role: Role) -> Callable[[Request], Awaitable[Identity]]:
+    """Dependency factory: returns the viewer or raises 403 `forbidden`."""
+    need = ROLE_RANK.get(min_role, 99)
+
+    async def _dep(request: Request) -> Identity:
+        ident = await viewer(request)
+        have = ROLE_RANK.get(ident.role, -1)
+        if have < need:
+            who = ident.member_id or ident.agent_id or "anonymous"
+            raise AegisHTTPError(
+                403,
+                "forbidden",
+                f"{who} ({ident.role}) may not do this - requires {min_role}",
+                required_role=min_role if min_role in ("admin", "owner") else None,
+            )
+        return ident
+
+    _dep.__name__ = f"require_{min_role}"
+    return _dep
+
+
+def client_ip(request: Request) -> str | None:
+    client: Any = request.client
+    return getattr(client, "host", None)
+
+
+__all__ = ["client_ip", "get_rt", "require_role", "viewer"]

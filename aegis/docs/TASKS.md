@@ -82,10 +82,10 @@ Plus **INT-01…16** integration/submission tasks and **KI-01…05** known issue
 - [ ] **INT-15** Submit on HackTribe by Sun 10:00 (hard 11:00); verify every link in a private window — `must` · **[DEMO]** · → `INT`
 - [ ] **INT-16** Post-submission: judge reset script ready, demo laptop plugged in, backup video on Space 2 — `should` · **[DEMO]** · → `INT`
 
-### Known issues to close (resolution binding via the CONTRACTS Addendum by synth-A)
+### Known issues to close (resolution binding via CONTRACTS Addendum A + corrected seeds in `docs/seed-fixes/` by synth-A)
 
-- [ ] **KI-01** Two-person rule cannot complete with one owner → define as owner + admin (or 2nd owner in seed) · owners B10, B09
-- [ ] **KI-02** Seed tool allowlists block the $12/$480 spend flows before ctl ACT-01 routing; DLP-01 blocks all external emails before ctl ACT-03 → fix seed/ordering · owners B09, B11, B04
+- [ ] **KI-01** Two-person rule cannot complete with one owner → owner + distinct admin, proposer co-sign (Addendum SF-01; docs/seed-fixes/approvals.yaml) · owners B10, B09
+- [ ] **KI-02** Seed tool allowlists block the $12/$480 spend flows before ctl ACT-01 routing (fixed: SF-02 in docs/seed-fixes/org.seed.yaml); DLP-01 blocks all external emails before ctl ACT-03 → ordering per Addendum · owners B09, B11, B04
 - [ ] **KI-03** Single NER instance: semantic-models hosts eu-pii-ner, redaction borrows (never load twice, +673 MB) · owners B07, B04
 - [ ] **KI-04** Budget / kill-switch stop codes toward Claude Code: 429 + retry-after + x-should-retry:false (never 403); policy blocks as synthetic 200 · owners B02, B08, B13
 - [ ] **KI-05** Policy self-test must ignore live budget counters and the kill switch (else every edit is rejected) · owners B03, B08

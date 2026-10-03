@@ -1,0 +1,34 @@
+# =============================================================================
+#  Strictness profile: PERMISSIVE (developer sandbox / pilot)
+# =============================================================================
+#  Log-heavy, few blocks: semantic detectors run in monitor (shadow) mode and
+#  fail open, secrets are redacted instead of blocked, metadata is not
+#  generalized, small purchases (<= $5) pass without approval.
+#  Still blocked: dangerous commands, unknown MCP servers, signature hits,
+#  card data to third parties, budget overruns.
+#  GOV-01 (caller identity) is never changed by profiles.
+# =============================================================================
+profile: permissive
+description: "Developer sandbox / pilot. Log-heavy, semantic detectors in shadow mode, secrets redacted instead of blocked."
+floor: false
+
+kind_defaults:
+  deterministic: {fail_mode: closed}
+  stateful:      {fail_mode: closed}
+  semantic:      {fail_mode: open, mode: monitor}
+  hybrid:        {fail_mode: open}
+
+controls:
+  GOV-02: {params: {reroute_on_class: {}}}
+  GOV-06: {params: {block_bypass_permissions: false}}
+  ACT-01: {params: {auto_allow_max_usd: 5, hard_block_above_usd: 10000}}
+  DLP-01: {params: {redaction_ratio_block: 0.9, matrix_overrides: {}}}
+  DLP-02: {action: redact, params: {allow_doc_examples: true}}
+  DLP-03: {params: {generalize: {paths: false, hostnames: false, ips: false, usernames: false, git_emails: false}}}
+  DLP-07: {threshold: 0.7}
+  INJ-01: {params: {untrusted_action: log}}
+  INJ-02: {threshold: 0.98, params: {untrusted_threshold: 0.90}}
+  INJ-03: {threshold: 0.90, adherence_pct: null, params: {off_topic_action: log}}
+  INJ-05: {mode: "off"}
+  EXE-03: {action: log}
+  MCP-04: {mode: monitor}

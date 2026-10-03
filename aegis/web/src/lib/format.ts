@@ -76,3 +76,33 @@ export function fmtDuration(seconds: Num): string {
   if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
   return `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`;
 }
+
+/** Short relative time for dense live lists: "now", "8s", "4m", "2h", "3d". */
+export function fmtAgoShort(ts: string | number | null | undefined, now: number = Date.now()): string {
+  const d = toDate(ts);
+  if (!d) return DASH;
+  const s = Math.max(0, Math.round((now - d.getTime()) / 1000));
+  if (s < 3) return 'now';
+  if (s < 60) return `${s}s`;
+  if (s < 3600) return `${Math.floor(s / 60)}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+
+/** Integer with thousands separators ("48,213"). */
+export function fmtInt(v: Num): string {
+  return fmtNum(v === null || v === undefined ? v : Math.round(v));
+}
+
+/** Initials for avatars ("Emily Carter" -> "EC"). */
+export function initials(name: string | null | undefined): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
+}
+
+/** Truncate long text with an ellipsis (previews in tickers/lists). */
+export function truncate(text: string | null | undefined, max = 60): string {
+  if (!text) return '';
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}

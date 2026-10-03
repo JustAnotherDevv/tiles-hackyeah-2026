@@ -1,11 +1,12 @@
 /*
- * Aegis design tokens — port of staging/design/DESIGN_TOKENS.md (prototype tokens.css), adapted to
+ * Aegis design tokens — port of staging/design/DESIGN_TOKENS.md (prototype assets/tokens.css), adapted to
  * docs/CONTRACTS.md §3.4 as specified in docs/plan/15-dashboard-shell.md §2.4:
- *   - decision colours: allow emerald · log slate · redact amber · require_approval violet · block rose
+ *   - decision colours (hue family from CONTRACTS, tone from the validated prototype set):
+ *       allow emerald · log slate · redact amber · require_approval violet · block rose
  *   - role colours: owner fuchsia · admin sky · member slate · agent teal
- *   - brand primary iris -> indigo so violet stays unambiguous for require_approval
+ *   - brand iris -> indigo so violet stays unambiguous for require_approval
  * Dark only: :root and .dark intentionally share the same values.
- * Owner: dashboard-shell (scaffold seeded this file; safe to refine).
+ * Owner: dashboard-shell (B16).
  */
 :root,
 .dark {
@@ -29,11 +30,11 @@
 
   /* ---- brand (indigo, see header) */
   --brand: #6366f1;
-  --brand-hover: #818cf8;
+  --brand-hover: #7c7ff5;
   --brand-press: #4f46e5;
   --accent-fg: #a5b4fc;
   --accent-subtle: rgba(99, 102, 241, 0.12);
-  --accent-border: rgba(99, 102, 241, 0.32);
+  --accent-border: rgba(129, 140, 248, 0.34);
 
   /* ---- shadcn semantic variables (DESIGN_TOKENS §8) */
   --background: var(--bg);
@@ -55,7 +56,7 @@
   --border: var(--border-default);
   --input: var(--border-default);
   --ring: #818cf8;
-  --chart-1: #2563eb;
+  --chart-1: #3987e5;
   --chart-2: #db2777;
   --chart-3: #0891b2;
   --chart-4: #ea580c;
@@ -69,27 +70,67 @@
   --sidebar-border: var(--border-subtle);
   --sidebar-ring: #818cf8;
 
-  /* ---- decision semantics (CONTRACTS §3.4): UI fg · chart mark */
-  --allow: #34d399;
-  --log: #94a3b8;
-  --redact: #fbbf24;
+  /* ---- decision semantics (CONTRACTS §3.4): UI fg (text/badges) · subtle bg · border · chart mark */
+  --allow: #3ccb7f;
+  --allow-subtle: rgba(60, 203, 127, 0.1);
+  --allow-border: rgba(60, 203, 127, 0.26);
+  --log: #8c93a0;
+  --log-subtle: rgba(140, 147, 160, 0.1);
+  --log-border: rgba(140, 147, 160, 0.26);
+  --redact: #e8a93a;
+  --redact-subtle: rgba(232, 169, 58, 0.1);
+  --redact-border: rgba(232, 169, 58, 0.28);
   --approval: #a78bfa;
-  --block: #fb7185;
+  --approval-subtle: rgba(167, 139, 250, 0.1);
+  --approval-border: rgba(167, 139, 250, 0.3);
+  --block: #f2556f;
+  --block-subtle: rgba(242, 85, 111, 0.1);
+  --block-border: rgba(242, 85, 111, 0.3);
   --downgrade: #f08a4b;
-  --chart-allow: #059669;
-  --chart-log: #64748b;
-  --chart-redact: #d97706;
+  --downgrade-subtle: rgba(240, 138, 75, 0.1);
+  --downgrade-border: rgba(240, 138, 75, 0.28);
+  --chart-allow: #1e9f68;
+  --chart-log: #5b6475;
+  --chart-redact: #c98500;
   --chart-approval: #8b5cf6;
-  --chart-block: #e11d48;
+  --chart-block: #e5446d;
 
   /* ---- roles (CONTRACTS §3.4) */
   --role-owner: #e879f9;
   --role-admin: #38bdf8;
-  --role-member: #94a3b8;
+  --role-member: #a2a8b3;
   --role-agent: #2dd4bf;
+
+  /* ---- chart chrome (DESIGN_TOKENS §2.5) */
+  --chart-grid: #1a1e24;
+  --chart-axis: #2a2f37;
+  --chart-label: #7a808c;
+
+  /* ---- budget meter (DESIGN_TOKENS §2.5) */
+  --meter-ok: #4a7fe0;
+  --meter-soft: #c98500;
+  --meter-hard: #e5446d;
+
+  /* ---- motion (DESIGN_TOKENS §5) */
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+  --dur-slower: 640ms;
 
   /* ---- layout (DESIGN_TOKENS §4) */
   --sidebar-w: 236px;
+  --sidebar-w-collapsed: 64px;
   --topbar-h: 52px;
   --content-max: 1680px;
+  --ring-focus: 0 0 0 2px var(--bg), 0 0 0 4px rgba(129, 140, 248, 0.65);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms;
+    --dur-base: 1ms;
+    --dur-slow: 1ms;
+    --dur-slower: 1ms;
+  }
 }

@@ -1,0 +1,113 @@
+# =============================================================================
+#  budgets-ledger snippet (BUD-01, BUD-02, EXE-04) - merged into config/policy.yaml
+#  by policy-engine (CONTRACTS section 2.3, Addendum A-34 merge rules).
+# =============================================================================
+#  * Amounts live ONLY here (policy). config/org.seed.yaml `budgets:` is reference
+#    only; its `demo_state.budget_usage` pre-fills the counters (demo mode).
+#  * Scope chain, AND semantics: org -> team -> member (humans) | agent -> session,
+#    plus per-call `model:<glob>` / `tool:<glob>` scopes. A request must fit EVERY
+#    level; the denial names the scope that tripped. Per (scope, window, dimension)
+#    the MOST SPECIFIC entry wins (exact > longest literal prefix > `*`; an entry
+#    with `match_agents` beats one without), so raising `member:u_piotr` above
+#    `member:*` works.
+#  * Dimensions: usd (AI cost, config/pricing.yaml), tokens (in+out), compute_s
+#    (local model seconds, shadow-priced), requests (model calls = steps),
+#    tool_calls, spend_usd (real money moved by `spend.*` actions, A-36).
+#  * Stop codes (Addendum A-07): budget -> 402 budget_exceeded + x-should-retry:false;
+#    rate / loop cooldown -> 429 + retry-after; kill switch -> 429 `killed` +
+#    retry-after 3600 + x-should-retry:false (never 403). Self-tests ignore live
+#    counters, loops and the kill switch (A-09).
+#  * Extra keys (whitelisted, A-34): budgets.timezone, BudgetLimit.match_agents.
+# =============================================================================
+models:
+  downgrade:                                  # consumed by BUD-01; first match wins
+    - {from: "claude-opus-*",   to: "claude-sonnet-4-5"}
+    - {from: "claude-sonnet-*", to: "claude-haiku-4-5"}
+    - {from: "*",               to: "aegis-judge"}     # incl. mock-*, gpt-*; guarded by local_downgrade_max_input_tokens
+budgets:
+  timezone: Europe/Warsaw                     # extra key: calendar windows (daily reset 00:00 local)
+  defaults: {soft_pct: 80, on_soft: downgrade, on_hard: block, local_concurrency: 1, max_output_tokens: 4096}
+  limits:
+    - {scope: "org:acme-capital", window: day,   usd: 150,  tokens: 12000000,  compute_s: 14400}
+    - {scope: "org:acme-capital", window: month, usd: 3000, tokens: 240000000, compute_s: 300000, spend_usd: 10000}
+    - {scope: "team:trading",  window: day,   usd: 60,   tokens: 4000000, compute_s: 1800}
+    - {scope: "team:trading",  window: month, usd: 1200, tokens: 80000000, spend_usd: 2000}
+    - {scope: "team:research", window: day,   usd: 15,   tokens: 1500000, compute_s: 7200}
+    - {scope: "team:research", window: month, usd: 300}
+    - {scope: "team:platform", window: day,   usd: 50,   tokens: 6000000, compute_s: 3600}
+    - {scope: "team:platform", window: month, usd: 1000}
+    - {scope: "member:*",      window: day,   usd: 5, tokens: 500000}          # each human (playground, CLI)
+    - {scope: "agent:claude-code@platform",    window: day, usd: 30, tokens: 5000000}
+    - {scope: "agent:trading-copilot@trading", window: day, usd: 20, tokens: 1500000}
+    - {scope: "agent:research-agent@research", window: day, usd: 2,  compute_s: 5400}
+    # F6: the chaos agent hits a tiny wall -> budget_raise approval (admin) -> limit patched to 1.00
+    - {scope: "agent:chaos-agent@platform",    window: day, usd: 0.50, tokens: 100000, compute_s: 120,
+       on_hard: require_approval, label: "red-team agent: tiny on purpose"}
+    - {scope: "session:*", window: session, usd: 5.0, tokens: 3000000, requests: 300, tool_calls: 400}
+    - {scope: "session:*", match_agents: ["trading-copilot@trading"], window: session, usd: 1.0, tokens: 200000, requests: 30, tool_calls: 20}
+    - {scope: "session:*", match_agents: ["research-agent@research"], window: session, compute_s: 600, requests: 40, tool_calls: 30}
+    - {scope: "model:claude-opus-*", window: day, usd: 20, label: "Opus org-wide daily cap"}
+    - {scope: "agent:selftest-zero", window: day, usd: 0, label: "self-test fixture: proves hard limits block (BUD-01)"}
+  loops: {repeat: 3, window: 20, cycle_k: 3, error_streak: 5, max_steps_per_session: 200, ladder: [tool_error, block, kill]}
+  rate: {requests_per_min: 120, tool_calls_per_min: 60}
+  kill_switch: {global: false, teams: [], members: [], agents: [], sessions: []}
+controls:
+  - id: BUD-01
+    name: Token & cost budgets (remote + local, spend)
+    action: block                # 402 budget_exceeded; per-limit on_hard may route to a budget_raise approval
+    severity: medium
+    fail_mode: closed            # ledger unavailable -> deny (cost safety)
+    timeout_ms: 50
+    owasp: [LLM06:2026, ASI08, ASI10]
+    params:
+      warn_pct: [50]                          # extra threshold levels (50/80/100 always)
+      reserve_max_output_tokens: 8192         # cap on the output reservation
+      default_output_tokens: 1024             # when the request names no max_tokens
+      clamp_skip_when_thinking: true          # Anthropic needs max_tokens > thinking.budget_tokens
+      raise_factor: 2.0                       # budget_raise proposes max(limit x 2, used + requested)
+      local_downgrade_max_input_tokens: 6000  # never push a huge prompt to the 0.8B local model
+      local_tokens_per_s: 25                  # compute_s estimate for local models
+      local_prompt_tokens_per_s: 400
+      reservation_ttl_s: 600                  # leaked reservations settle at estimate
+      message: "Aegis: {scope} {window} {dimension} budget exhausted ({used}/{limit}). Stop and summarise progress."
+    tests:
+      - {name: zero-budget-agent-blocked, agent: selftest-zero, text: "Summarise today's bond market.", expect: block, control: BUD-01}
+      - {name: small-request-allowed, text: "One-line summary of PKO today.", expect: allow}
+  - id: BUD-02
+    name: Local compute & concurrency
+    action: block
+    severity: medium
+    fail_mode: closed
+    timeout_ms: 15000            # covers queue_wait_s (the wait is capped below the timeout)
+    owasp: [LLM06:2026, ASI08]
+    params: {max_concurrency: 1, queue_wait_s: 10, slot_lease_s: 180, max_model_gb: 3, gb_per_billion_params: 0.65,
+             unknown_size_action: log, num_predict_max: 1024, num_ctx_max: 8192}
+    tests:
+      - {name: short-local-inference, destination: local, text: "Summarise in one sentence: banks rallied.", expect: allow}
+  - id: EXE-04
+    name: Loop / rate / circuit breaker / kill switch
+    action: block                # 429 rate/cooldown, 429 killed (A-07), 402 step cap
+    severity: high
+    fail_mode: closed
+    timeout_ms: 50
+    owasp: [ASI08, ASI10, LLM06:2026]
+    params:
+      cooldown_s: 30                          # ladder step 2: session tool calls paused
+      model_repeat: 5                         # LOOP-005: same prompt to the same model
+      repeat_exempt_tools: [Read, Glob, Grep, LS, TodoWrite]
+      agent_overrides: {"claude-code@*": {repeat: 6}}   # npm test re-runs are normal work
+      volatile_keys: [timestamp, ts, nonce, request_id, cursor, page_token]
+      dedupe_s: 5                             # hook + MCP proxy sightings of one call count once
+      burn_rate: {factor: 5.0, floor_usd_per_min: 0.05, throttle_s: 60}
+      claude_code_agents: ["claude-code@*"]
+      tool_error_message: "Aegis loop detected ({detector}): {tool} repeated {count}x in the last {window} calls. Change approach or finish."
+    tests:
+      - {name: distinct-call-allowed, kind: tool_call, surface: tool.input, destination: third_party,
+         tool_name: web.fetch_url, tool_args: {url: "https://example.com/a"}, expect: allow}
+# Approvals (approvals-engine owns; docs/seed-fixes/approvals.yaml is canonical):
+#   rules:        {id: budget-override, when: {kind: [budget_raise]}, approver: admin}   (F6)
+#   config_rules: killswitch-own-agent (auto, SF-16), tighten (admin), raise-team-small /
+#                 raise-large (F5), killswitch-release-global (owner)
+# Executors: policy-engine applies `budget_raise` payload.patch (A-25); budgets-ledger
+# registers none.
+# config/profiles/strict.yaml (policy-engine): EXE-04 params {model_repeat: 3}

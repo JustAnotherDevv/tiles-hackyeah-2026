@@ -1,0 +1,76 @@
+{
+  "mcpServers": {
+    "acme-db": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/acme-db",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "acme-crm": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/acme-crm",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "marketpulse": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/marketpulse",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "payments": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/payments",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "mailer": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/mailer",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "web": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/web",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "weather": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/weather",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "poisoned": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/poisoned",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    },
+    "rugpull": {
+      "type": "http",
+      "url": "http://127.0.0.1:8787/mcp/rugpull",
+      "headers": {
+        "X-Aegis-Agent": "claude-code@platform",
+        "Authorization": "Bearer aegis_demo_cc_platform_0000000000000001_NOT_A_SECRET"
+      }
+    }
+  }
+}

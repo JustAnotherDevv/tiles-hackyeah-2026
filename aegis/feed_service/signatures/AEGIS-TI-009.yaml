@@ -1,0 +1,44 @@
+# AEGIS-TI-009 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-009
+title: Execution of LLM-generated code (dangerous call shapes)
+description: >-
+  Chains that execute model-written code have repeatedly been RCE: LangChain
+  PALChain (CVE-2023-36258), LLMMathChain (CVE-2023-29374), PandasAI (CVE-2024-12366).
+  Matches dangerous call shapes (os.system/os.popen, subprocess.*, pty.spawn, eval(,
+  exec(, /dev/tcp/, download-and-pipe-to-shell) in a code tool argument or in model
+  output. Blocks on tool_call, alerts on output. Test vectors are inert fragments,
+  not runnable exploits.
+status: stable
+severity: high
+confidence: medium
+aliases: [CVE-2023-36258, CVE-2023-29374, CVE-2024-12366]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2023-36258
+  - https://cveawg.mitre.org/api/cve/CVE-2024-12366
+tags: [LLM05:2026, LLM10:2026, ASI05, CWE-94, CWE-78]
+published: "2023-07-01"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [tool.input, mcp.call, model.response]
+match:
+  type: regex
+  field: all
+  pattern: '(?i)(os\.system\s*\(|os\.popen\s*\(|subprocess\.(?:run|call|popen|check_output)\s*\(|pty\.spawn\s*\(|/dev/tcp/|bash\s+-i|(?:curl|wget)\b[^\n]{0,200}\|\s*(?:ba)?sh\b|base64\s+-d\b[^\n]{0,80}\|\s*(?:ba)?sh\b|\beval\s*\(|\bexec\s*\()'
+action: block
+action_overrides: {model.response: log}
+message: "Generated code or tool argument contains a dangerous code-execution construct. Blocked on tool calls; alerted on output."
+tests:
+  positive:
+    - name: os.system fragment in a code-exec tool argument
+      surface: tool.input
+      tool_args: {tool: "python.run", args: {code: "os.system(cmd)"}}
+    - name: pty.spawn fragment in model output
+      surface: model.response
+      text: "You can get a shell with:\n    pty.spawn(shell)"
+  negative:
+    - name: ordinary python in a code tool
+      surface: tool.input
+      tool_args: {tool: "python.run", args: {code: "import pandas as pd\ndf = pd.read_csv('data.csv')\nprint(df.head())"}}
+    - name: harmless explanatory output
+      surface: model.response
+      text: "To sum a list use the built-in: print(sum(values))"

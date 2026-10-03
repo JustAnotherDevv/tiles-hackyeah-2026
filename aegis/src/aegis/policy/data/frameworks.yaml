@@ -1,0 +1,42 @@
+# OWASP frameworks covered by /api/coverage (ids are year-suffixed, CONTRACTS section 3.4).
+# Source: research/goldman/01-threat-model-controls.md sections 1.1, 1.2, 1.4.
+frameworks:
+  - id: OWASP-LLM-2026
+    name: "OWASP Top 10 for LLM Applications 2026"
+    items:
+      - {id: "LLM01:2026", name: "Prompt Injection"}
+      - {id: "LLM02:2026", name: "Sensitive Information Disclosure"}
+      - {id: "LLM03:2026", name: "Excessive Agency"}
+      - {id: "LLM04:2026", name: "Supply Chain"}
+      - {id: "LLM05:2026", name: "Data and Model Poisoning"}
+      - {id: "LLM06:2026", name: "Unbounded Consumption"}
+      - {id: "LLM07:2026", name: "Misinformation"}
+      - {id: "LLM08:2026", name: "Hidden Context Exposure"}
+      - {id: "LLM09:2026", name: "Vector and Embedding Weaknesses"}
+      - {id: "LLM10:2026", name: "Improper Output Handling"}
+  - id: OWASP-ASI-2026
+    name: "OWASP Top 10 for Agentic Applications 2026"
+    items:
+      - {id: ASI01, name: "Agent Goal Hijack"}
+      - {id: ASI02, name: "Tool Misuse and Exploitation"}
+      - {id: ASI03, name: "Identity and Privilege Abuse"}
+      - {id: ASI04, name: "Agentic Supply Chain Vulnerabilities"}
+      - {id: ASI05, name: "Unexpected Code Execution (RCE)"}
+      - {id: ASI06, name: "Memory & Context Poisoning"}
+      - {id: ASI07, name: "Insecure Inter-Agent Communication"}
+      - {id: ASI08, name: "Cascading Failures"}
+      - {id: ASI09, name: "Human-Agent Trust Exploitation"}
+      - {id: ASI10, name: "Rogue Agents"}
+  - id: OWASP-MCP-2025
+    name: "OWASP MCP Top 10 (2025)"
+    items:
+      - {id: "MCP01:2025", name: "Token Mismanagement & Secret Exposure"}
+      - {id: "MCP02:2025", name: "Privilege Escalation via Scope Creep"}
+      - {id: "MCP03:2025", name: "Tool Poisoning"}
+      - {id: "MCP04:2025", name: "Software Supply Chain Attacks & Dependency Tampering"}
+      - {id: "MCP05:2025", name: "Command Injection & Execution"}
+      - {id: "MCP06:2025", name: "Intent Flow Subversion"}
+      - {id: "MCP07:2025", name: "Insufficient Authentication & Authorization"}
+      - {id: "MCP08:2025", name: "Lack of Audit and Telemetry"}
+      - {id: "MCP09:2025", name: "Shadow MCP Servers"}
+      - {id: "MCP10:2025", name: "Context Injection & Over-Sharing"}

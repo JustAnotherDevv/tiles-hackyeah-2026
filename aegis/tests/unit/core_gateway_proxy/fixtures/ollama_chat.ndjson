@@ -1,0 +1,6 @@
+{"model":"qwen3:0.6b","created_at":"2026-10-03T15:12:01.120934Z","message":{"role":"assistant","content":"","thinking":"User asks about [PERSON_1]."},"done":false}
+{"model":"qwen3:0.6b","created_at":"2026-10-03T15:12:01.141502Z","message":{"role":"assistant","content":"Hello [PER"},"done":false}
+{"model":"qwen3:0.6b","created_at":"2026-10-03T15:12:01.162038Z","message":{"role":"assistant","content":"SON_1], your IBAN [IB"},"done":false}
+{"model":"qwen3:0.6b","created_at":"2026-10-03T15:12:01.182611Z","message":{"role":"assistant","content":"AN_1] is on file."},"done":false}
+{"model":"qwen3:0.6b","created_at":"2026-10-03T15:12:01.203117Z","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"lookup_customer","arguments":{"name":"[PERSON_1]","iban":"[IBAN_1]","limit":3}}}]},"done":false}
+{"model":"qwen3:0.6b","created_at":"2026-10-03T15:12:01.223841Z","message":{"role":"assistant","content":""},"done":true,"done_reason":"stop","total_duration":2147483648,"load_duration":20971520,"prompt_eval_count":61,"prompt_eval_duration":180355072,"eval_count":42,"eval_duration":1879048192}

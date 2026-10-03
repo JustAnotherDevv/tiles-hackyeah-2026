@@ -1,0 +1,32 @@
+# =============================================================================
+#  Aegis - model & tool prices (owned by budgets-ledger, CONTRACTS section 4.6)
+# =============================================================================
+#  * Read by aegis.budgets.pricing at startup and hot-reloaded on change
+#    (last good file kept on errors). `version` is stamped on every BUD-01
+#    decision (Decision.meta.pricing_version) and on GET /api/budgets.
+#  * in / out / cache_read / cache_write are USD per 1M tokens; compute_s is
+#    USD per second of LOCAL model time (shadow price, so local spend shows in
+#    USD too). cache_read defaults to 0.1 x in, cache_write to 1.25 x in.
+#  * Model names are matched as globs, FIRST MATCH WINS; provider prefixes
+#    (anthropic/, ollama/, openai/) are stripped before matching.
+#  * Cost = (uncached_in*in + cache_read*cache_read + cache_write*cache_write
+#            + out*out) / 1e6 + compute_s*compute_s,
+#    uncached_in = max(0, input - cache_read - cache_write).
+# =============================================================================
+version: "2026-10-03.1"
+currency: USD
+unit: per_1m_tokens                      # in/out/cache_* per 1M tokens; compute_s per second (local shadow price)
+models:                                  # glob -> price; first match wins
+  "claude-opus-*":   {in: 15.0, out: 75.0, cache_read: 1.5, cache_write: 18.75}
+  "claude-sonnet-*": {in: 3.0,  out: 15.0, cache_read: 0.3, cache_write: 3.75}
+  "claude-haiku-*":  {in: 1.0,  out: 5.0,  cache_read: 0.1, cache_write: 1.25}
+  "gpt-4.1-mini":    {in: 0.40, out: 1.60}
+  "meta-llama/*":    {in: 0.15, out: 0.40}
+  "mock-*":          {in: 3.0,  out: 15.0}          # priced like Sonnet so demo budgets move
+  "aegis-*":         {compute_s: 0.0002}            # local shadow price (~USD 0.72 per GPU-hour)
+  "qwen*":           {compute_s: 0.0002}
+  "hf.co/*":         {compute_s: 0.0002}
+  "*":               {in: 5.0,  out: 15.0}          # pessimistic default for unknown models
+tools:                                   # optional per-call USD (tool:/egress hops)
+  "web.fetch": 0.002
+  "web.fetch_url": 0.002

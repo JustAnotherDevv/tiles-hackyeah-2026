@@ -1,5 +1,2 @@
-"""Budget ledger, pricing, token estimates, loop detection, kill switch
-(factory: aegis.budgets.ledger:create). Public: aegis.budgets.tokens.
-
-Owner: budgets-ledger (docs/CONTRACTS.md section 1.2). Scaffold stub - safe to replace.
-"""
+"""Budgets ledger (budgets-ledger workstream): pricing, hierarchical reserve/settle ledger,
+loop / rate / kill-switch state for BUD-01, BUD-02 and EXE-04. No import-time side effects."""

@@ -6,8 +6,16 @@
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
 @import "./tokens.css";
+@import "./effects.css";
 
-/* Aegis global styles. Owner: dashboard-shell (scaffold seeded this file; safe to refine). */
+/*
+ * Aegis global styles (Tailwind v4 CSS-first). Owner: dashboard-shell (B16).
+ * Fonts: Geist / Geist Mono as in DESIGN_TOKENS §3, with Inter / JetBrains Mono as bundled fallbacks
+ * (all four via @fontsource-variable — offline, no CDN).
+ * Utilities this exposes for every dashboard page: bg-surface-1..4, text-text-1..4, border-border-strong,
+ * text-allow | log | redact | approval | block (+ /10 /30 opacity), bg-chart-*, text-role-owner|admin|member|agent,
+ * text-accent-fg, shadow-card | raised | pop | drawer, rounded-xs..xl, text-2xs..3xl, font-mono, tabular.
+ */
 
 @custom-variant dark (&:is(.dark *));
 
@@ -50,6 +58,8 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   /* Aegis extensions -> bg-surface-2, text-text-3, border-border-strong, text-allow, bg-block/10 … */
+  --color-bg: var(--bg);
+  --color-bg-sidebar: var(--bg-sidebar);
   --color-surface-1: var(--surface-1);
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
@@ -74,6 +84,10 @@
   --color-chart-redact: var(--chart-redact);
   --color-chart-approval: var(--chart-approval);
   --color-chart-block: var(--chart-block);
+  --color-chart-grid: var(--chart-grid);
+  --color-meter-ok: var(--meter-ok);
+  --color-meter-soft: var(--meter-soft);
+  --color-meter-hard: var(--meter-hard);
   --color-role-owner: var(--role-owner);
   --color-role-admin: var(--role-admin);
   --color-role-member: var(--role-member);
@@ -123,6 +137,9 @@
   --animate-ping-dot: ping-dot 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
   --animate-page-in: page-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
   --animate-row-in: row-in 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-row-in-block: row-in-block 1.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-banner-in: banner-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-bump: bump 520ms cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes ping-dot {
     0% { transform: scale(0.6); opacity: 0.9; }
@@ -136,6 +153,18 @@
     0% { background-color: rgba(99, 102, 241, 0.14); }
     100% { background-color: transparent; }
   }
+  @keyframes row-in-block {
+    0% { background-color: rgba(242, 85, 111, 0.16); }
+    100% { background-color: transparent; }
+  }
+  @keyframes banner-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes bump {
+    0% { color: var(--accent-fg); transform: translateY(-1px); }
+    100% { transform: none; }
+  }
 }
 
 @layer base {
@@ -144,6 +173,7 @@
   }
   html {
     color-scheme: dark;
+    background: var(--bg);
     @apply font-sans;
   }
   body {
@@ -151,13 +181,20 @@
     font-size: 13.5px;
     line-height: 20px;
     font-feature-settings: "ss01", "cv11";
+    -moz-osx-font-smoothing: grayscale;
+  }
+  ::selection {
+    background: rgba(99, 102, 241, 0.35);
   }
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgba(129, 140, 248, 0.65);
+    box-shadow: var(--ring-focus);
   }
   code, kbd, samp, pre {
     @apply font-mono;
+  }
+  button:not(:disabled), [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
@@ -165,9 +202,9 @@
   font-variant-numeric: tabular-nums;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 1ms !important;
-    transition-duration: 1ms !important;
-  }
+/* Machine values (ids, hashes, models, surfaces): mono at ~0.93em with tight tracking (DESIGN_TOKENS §1.4). */
+@utility mono {
+  font-family: var(--font-mono);
+  font-size: 0.93em;
+  letter-spacing: -0.01em;
 }

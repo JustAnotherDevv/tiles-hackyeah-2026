@@ -19,9 +19,24 @@ const badgeVariants = cva(
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
       },
+      tone: {
+        none: "",
+        allow: "border-allow/25 bg-allow/10 text-allow",
+        log: "border-log/25 bg-log/10 text-log",
+        redact: "border-redact/30 bg-redact/10 text-redact",
+        require_approval: "border-approval/30 bg-approval/10 text-approval",
+        block: "border-block/30 bg-block/10 text-block",
+        owner: "border-role-owner/30 bg-role-owner/10 text-role-owner",
+        admin: "border-role-admin/30 bg-role-admin/10 text-role-admin",
+        member: "border-border-strong bg-surface-2 text-text-2",
+        agent: "border-role-agent/25 bg-role-agent/10 text-role-agent",
+        accent: "border-[var(--accent-border)] bg-[var(--accent-subtle)] text-accent-fg",
+        neutral: "border-border bg-surface-2 text-text-2",
+      },
     },
     defaultVariants: {
       variant: "default",
+      tone: "none",
     },
   }
 )
@@ -29,6 +44,7 @@ const badgeVariants = cva(
 function Badge({
   className,
   variant = "default",
+  tone = "none",
   asChild = false,
   ...props
 }: React.ComponentProps<"span"> &
@@ -39,7 +55,7 @@ function Badge({
     <Comp
       data-slot="badge"
       data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
+      className={cn(badgeVariants({ variant: tone && tone !== "none" ? "outline" : variant, tone }), className)}
       {...props}
     />
   )

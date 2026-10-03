@@ -1,0 +1,393 @@
+# =============================================================================
+#  Aegis - approval routing (CORRECTED SEED, config-ready)          Acme Capital
+#  docs/seed-fixes/approvals.yaml  - written by synth-A, Sat 3 Oct 2026 night
+# =============================================================================
+#
+#  WHAT THIS IS
+#    The contract-format `approvals:` section of config/policy.yaml
+#    (CONTRACTS §4.2 ApprovalsSection), corrected per docs/CONTRACTS.md
+#    "Addendum A". It replaces staging/seed/approvals.yaml (staging vocabulary,
+#    most-restrictive-wins) and the contract §4.3 example rule list.
+#    docs/seed-fixes/policy.yaml embeds this exact block (byte-identical).
+#
+#  WHO APPLIES IT
+#    approvals-engine owns the semantics and config/snippets/approvals-engine.yaml;
+#    policy-engine pastes this block into config/policy.yaml and
+#    config/policy.golden.yaml. Rule ids are binding (dashboards, tests, audit).
+#
+#  SEMANTICS (Addendum A-19 .. A-21)
+#    * FIRST MATCH WINS (contract §3.5). Every family is written most-restrictive
+#      first and ends with a catch-all, so the staging "most restrictive wins"
+#      results are reproduced by ORDER. The routing tests at the bottom prove it.
+#    * No rule matches -> defaults.default_approver (admin) for kinds
+#      action|budget_raise|mcp_pin, defaults.default_config_approver (owner) for
+#      config_change. A config proposal with several changes routes each change
+#      and takes the highest level (two_person OR-ed, shortest ttl).
+#    * amount_usd missing -> `amount_usd_gt` is TRUE and `amount_usd_lte` is FALSE
+#      (fail closed: an unknown amount lands on spend-owner-2p).
+#    * `labels` = exact per-key string equality; extras understood by
+#      approvals-engine: `profiles` (active doc.profile), `labels_in`
+#      ({key: [values]}), `signals_any` (comma-split labels["signals"]).
+#      An unknown condition key makes the rule NOT match (+ one WARNING).
+#    * TWO-PERSON RULE [SF-01] = two DISTINCT eligible approvers: at least one
+#      satisfies `approver`, the other has role >= admin. The requester's own
+#      member (an agent's sponsor) never counts for admin/owner levels.
+#      Acme has ONE owner (u_katarzyna), so owner + two_person = owner + an admin.
+#      If the requester is a human who already satisfies the level, their
+#      creation counts as the first vote ("proposer co-sign"), so exactly one
+#      more distinct admin+ approver is needed. Any eligible deny => denied.
+#    * Agents never vote. `self` = requester's member (agent: its sponsor) OR
+#      any admin/owner. `auto` = status approved at creation (required_role
+#      "auto"; there is no auto_approved status). `deny` = denied at creation.
+#
+#  FIXES vs. staging / contract example (details: Addendum A, section "Seed fixes")
+#    [SF-01] two-person = owner + admin (+ proposer co-sign); no second owner needed
+#    [SF-08] prod bulk DELETE two-person only in strict/paranoid, so the F4 flow
+#            "DELETE FROM trades (env prod) -> owner" holds in balanced
+#    [SF-09] team budget raise <= 2x (+100 %) -> admin, > 2x -> owner
+#            (BRIEF "raise budget >2x -> owner"; contract example said +50 %)
+#    [SF-10] unmatched config change -> owner (contract default; staging said admin)
+#    [SF-16] kill switch ON: own sponsored agent -> auto, anything else -> admin;
+#            OFF -> admin, global OFF -> owner
+#    [SF-23] org governance rules (org.* action types, created by org-rbac)
+#    [SF-24] GOV-04 generic tool approvals (`tool:<name>`), DLP matrix release
+#            (`dlp.release`), INJ-05 goal drift (`agent.goal_drift`)
+# =============================================================================
+
+approvals:
+  defaults:
+    ttl_s: 900                       # pending TTL; expired => denied semantics
+    on_timeout: deny
+    max_pending: 50
+    default_approver: admin          # action | budget_raise | mcp_pin matching no rule (fail closed)
+    default_config_approver: owner   # config_change matching no rule (fail closed) [SF-10]
+    hold_s: {hook: 60, mcp: 30, egress: 15, guard: 0, proxy: 0, playground: 0, dashboard: 0}
+    # --- approvals-engine extras (whitelisted, Addendum A-34) ---
+    grant_ttl_s: 900                 # how long an approval can be redeemed after it is given
+    max_pending_per_principal: 10    # anti human-in-the-loop flooding (ASI09 / T10)
+    redeem_window_s: 30              # hook + MCP proxy redeeming the same call count as one use
+    deny_cooldown_s: 60              # identical call just denied -> same denied request, no new card
+    sweep_interval_s: 1
+    clock_multiplier: 1              # demo: 60 => TTL minutes behave like seconds (could)
+
+  # ---------------------------------------------------------------------------
+  # Agent actions, budget overrides, MCP re-pins, org changes. FIRST MATCH WINS.
+  # ---------------------------------------------------------------------------
+  rules:
+    # --- org governance (org-rbac: create_manual, kind=action, action_type=org.*) [SF-23]
+    - {id: org-owner-grants, description: "Granting or revoking the owner role always needs an owner",
+       when: {kind: [action], action: ["org.role.promote_owner", "org.role.demote_owner", "org.member.create_owner"]}, approver: owner, ttl_s: 3600}
+    - {id: org-privileged, description: "Promote/demote admins, add an admin, deactivate an admin/owner, widen an agent's destination",
+       when: {kind: [action], action: ["org.role.*", "org.member.create_admin", "org.member.deactivate_privileged", "org.agent.widen_destination"]}, approver: owner, ttl_s: 3600}
+    - {id: org-routine, description: "Routine member/agent administration (admins apply these directly)",
+       when: {kind: [action], action: ["org.member.*", "org.agent.*"]}, approver: admin}
+
+    # --- spend (ACT-01): <= $20 self | <= $200 admin | > $200 owner | > $1,000 owner + admin
+    #     above ACT-01 hard_block_above_usd ($5,000 balanced) a call is blocked and never gets here
+    - {id: spend-owner-2p, aliases: [APR-SPEND-TWO-PERSON], description: "Over $1,000: owner plus a second admin (two-person rule)",
+       when: {action: ["spend.*"], amount_usd_gt: 1000}, approver: owner, two_person: true, ttl_s: 7200}
+    - {id: spend-owner, aliases: [APR-SPEND-OWNER], description: "Over $200 (e.g. the $480 GPU reservation)",
+       when: {action: ["spend.*"], amount_usd_gt: 200}, approver: owner}
+    - {id: spend-strict-vendor, aliases: [APR-SPEND-STRICT-UNAPPROVED-VENDOR], description: "Strict: vendor not on the approved list",
+       when: {action: ["spend.*"], profiles: [strict, paranoid], labels: {vendor_approved: "false"}}, approver: admin}
+    - {id: spend-strict-recurring, aliases: [APR-SPEND-STRICT-RECURRING], description: "Strict: every new subscription",
+       when: {action: ["spend.*"], profiles: [strict, paranoid], labels_in: {recurring: [monthly, yearly]}}, approver: admin}
+    - {id: spend-admin, aliases: [APR-SPEND-ADMIN], description: "$20.01-$200 (e.g. the $50/month MarketPulse Pro subscription)",
+       when: {action: ["spend.*"], amount_usd_gt: 20}, approver: admin}
+    - {id: spend-self, aliases: [APR-SPEND-SELF], description: "Up to $20: the member (or the agent's sponsor) confirms",
+       when: {action: ["spend.*"]}, approver: self, grant_ttl_s: 600}
+
+    # --- data access (ACT-02): table sensitivity + environment labels
+    - {id: db-restricted, aliases: [APR-DATA-RESTRICTED], description: "PCI: no agent may read raw card data, whoever approves",
+       when: {action: ["db.*"], labels_in: {sensitivity: [RESTRICTED, SECRET]}}, approver: deny}
+    - {id: db-prod-ddl, aliases: [APR-DATA-PROD-DDL], description: "Schema changes on prod go through migrations, never an agent",
+       when: {action: ["db.schema"], labels: {env: prod}}, approver: deny}
+    - {id: db-prod-bulk-delete-strict, aliases: [APR-DATA-PROD-BULK-DELETE], description: "Strict: unbounded prod DELETE/UPDATE needs owner + admin [SF-08]",
+       when: {action: ["db.write"], profiles: [strict, paranoid], labels: {env: prod, bulk: "true"}}, approver: owner, two_person: true}
+    - {id: db-prod-write, aliases: [APR-DATA-PROD-WRITE], description: "Any agent write to a production database",
+       when: {action: ["db.write"], labels: {env: prod}}, approver: owner, grant_ttl_s: 600}
+    - {id: db-staging-write, aliases: [APR-DATA-STAGING-WRITE],
+       when: {action: ["db.write"], labels: {env: staging}}, approver: self}
+    - {id: db-write, description: "Writes/DDL outside prod/staging labels (fail closed)",
+       when: {action: ["db.write", "db.schema"]}, approver: admin}
+    - {id: db-pii-read, aliases: [APR-DATA-CONFIDENTIAL-READ], description: "E.g. SELECT * FROM customers (PII); rows still pass DLP before a remote model sees them",
+       when: {action: ["db.read"], labels: {sensitivity: CONFIDENTIAL}}, approver: admin, grant_ttl_s: 3600}
+    - {id: db-internal-read, aliases: [APR-DATA-INTERNAL-READ],
+       when: {action: ["db.read"], profiles: [strict, balanced], labels: {sensitivity: INTERNAL}}, approver: self, grant_ttl_s: 3600}
+    - {id: db-read, aliases: [APR-DATA-PUBLIC-READ, APR-DATA-INTERNAL-READ-PERMISSIVE], description: "Public data (unknown sensitivity falls through to admin)",
+       when: {action: ["db.read"], labels_in: {sensitivity: [PUBLIC, INTERNAL]}}, approver: auto}
+
+    # --- external send (ACT-03, EXE-03): data class in the payload + signals
+    - {id: send-restricted, aliases: [APR-SEND-EXTERNAL-RESTRICTED], description: "Card data or secrets to a third party: never",
+       when: {action: ["email.external", "egress.post"], labels_in: {data_class: [RESTRICTED, SECRET]}}, approver: deny}
+    - {id: send-tainted, aliases: [APR-SEND-TAINTED], description: "Session read private data AND saw untrusted content (lethal trifecta)",
+       when: {action: ["email.*", "egress.post"], signals_any: [lethal_trifecta]}, approver: admin}
+    - {id: send-peer, aliases: [APR-SEND-PEER-INITIATED], description: "A peer agent asked us to send (inert until A2A)",
+       when: {action: ["email.*", "egress.post"], signals_any: [peer_initiated]}, approver: admin}
+    - {id: send-confidential, aliases: [APR-SEND-EXTERNAL-CONFIDENTIAL], description: "Client data (even tokenized) leaving the firm",
+       when: {action: ["email.external", "egress.post"], labels: {data_class: CONFIDENTIAL}}, approver: admin}
+    - {id: send-bulk, aliases: [APR-SEND-BULK],
+       when: {action: ["email.external"], labels: {bulk: "true"}}, approver: admin}
+    - {id: send-internal, aliases: [APR-SEND-INTERNAL],
+       when: {action: ["email.internal"]}, approver: auto}
+    - {id: external-send-permissive, aliases: [APR-SEND-EXTERNAL-PUBLIC-PERMISSIVE],
+       when: {action: ["email.external", "egress.post"], profiles: [permissive]}, approver: auto}
+    - {id: external-send, aliases: [APR-SEND-EXTERNAL-PUBLIC],
+       when: {action: ["email.external", "egress.post"]}, approver: self}
+
+    # --- code execution & packages (ACT-04, SIG-03, EXE-01)
+    - {id: pkg-unknown, aliases: [APR-EXEC-PKG-UNKNOWN], description: "Possible slopsquatting (SIG-03 signal unknown_package)",
+       when: {action: ["package.install"], signals_any: [unknown_package]}, approver: admin}
+    - {id: code-exec-strict, aliases: [APR-EXEC-STRICT],
+       when: {action: ["package.install", "code.exec"], profiles: [strict, paranoid]}, approver: admin}
+    - {id: code-exec-remote-shell, aliases: [APR-EXEC-REMOTE-SHELL],
+       when: {action: ["code.exec"], labels: {pattern: remote_shell}}, approver: admin}
+    - {id: code-exec-unsandboxed, aliases: [APR-EXEC-UNSANDBOXED],
+       when: {action: ["code.exec"], labels: {sandboxed: "false"}}, approver: admin}
+    - {id: code-exec-sandboxed, aliases: [APR-EXEC-SANDBOXED],
+       when: {action: ["code.exec"], labels: {sandboxed: "true"}}, approver: self}
+    - {id: pkg-install-permissive, aliases: [APR-EXEC-PKG-KNOWN-PERMISSIVE],
+       when: {action: ["package.install"], profiles: [permissive]}, approver: auto}
+    - {id: pkg-install, aliases: [APR-EXEC-PKG-KNOWN],
+       when: {action: ["package.install"]}, approver: self}
+    - {id: code-exec, description: "code.exec without a sandbox label (fail closed)",
+       when: {action: ["code.exec"]}, approver: admin}
+
+    # --- deploy (ACT-04): env label prod | mainline | staging | dev
+    - {id: deploy-prod-strict, aliases: [APR-DEPLOY-PROD-STRICT],
+       when: {action: ["code.deploy"], profiles: [strict, paranoid], labels: {env: prod}}, approver: owner, two_person: true}
+    - {id: deploy-prod, aliases: [APR-DEPLOY-PROD],
+       when: {action: ["code.deploy"], labels: {env: prod}}, approver: owner, grant_ttl_s: 600}
+    - {id: deploy-mainline, aliases: [APR-DEPLOY-MAINLINE], description: "Push to main/release (stands in for code review)",
+       when: {action: ["code.deploy"], labels: {env: mainline}}, approver: admin}
+    - {id: deploy-staging, aliases: [APR-DEPLOY-STAGING],
+       when: {action: ["code.deploy"], labels: {env: staging}}, approver: self}
+    - {id: deploy-dev, aliases: [APR-DEPLOY-DEV],
+       when: {action: ["code.deploy"], labels: {env: dev}}, approver: auto}
+    - {id: deploy, when: {action: ["code.deploy"]}, approver: admin}
+
+    # --- other governed actions [SF-24]
+    - {id: dlp-release, description: "A judge set a destinations.matrix cell to require_approval (DLP-01)",
+       when: {action: ["dlp.release"]}, approver: admin}
+    - {id: goal-drift, description: "INJ-05 (stretch): tool call drifts from the user's task",
+       when: {action: ["agent.goal_drift"]}, approver: self}
+    - {id: tool-approve, description: "GOV-04 generic approve_tools (action_type tool:<server>.<tool>)",
+       when: {action: ["tool:*"]}, approver: admin}
+
+    # --- budget overrides from BUD-01 (on_hard: require_approval) and MCP re-pins from MCP-03
+    - {id: budget-override, description: "Agent hit a hard budget with on_hard: require_approval (F6)",
+       when: {kind: [budget_raise]}, approver: admin}
+    - {id: mcp-repin-internal, aliases: [APR-MCP-REAPPROVE-INTERNAL],
+       when: {kind: [mcp_pin], labels: {dest: local}}, approver: self}
+    - {id: mcp-repin, aliases: [APR-MCP-REAPPROVE-EXTERNAL], description: "Changed/new third-party MCP tool (possible rug pull)",
+       when: {kind: [mcp_pin]}, approver: admin}
+
+  # ---------------------------------------------------------------------------
+  # Config changes (GOV-05). `action` globs match PolicyChange.kind. Per-change
+  # facts usable in `labels`: control_id, control_severity, loosening ("true"/
+  # "false"), scope, scope_type, model_dest, provider_new, signature_severity,
+  # requester_is_sponsor. FIRST MATCH WINS; multi-change = highest level.
+  # ---------------------------------------------------------------------------
+  config_rules:
+    - {id: approval-rules, description: "Who-may-approve-what is owner territory",
+       when: {action: ["approval.rule"]}, approver: owner}
+    - {id: protect-more, aliases: [APR-CTRL-ENABLE, APR-POLICY-TIGHTEN], description: "Turning protection ON is always free",
+       when: {action: ["control.enable", "control.add", "control.action.tighten", "control.threshold.tighten", "model.disallow"]}, approver: auto}
+    - {id: mode-tighten, when: {action: ["control.mode"], labels: {loosening: "false"}}, approver: auto}
+    - {id: disable-control-strict, aliases: [APR-CTRL-STRICT], description: "Strict: owner + a second admin",
+       when: {action: ["control.disable", "control.remove", "control.mode", "control.action.loosen"], profiles: [strict, paranoid]}, approver: owner, two_person: true, ttl_s: 3600}
+    - {id: disable-control-critical, aliases: [APR-CTRL-BALANCED-CRITICAL], description: "Critical controls (DLP-02, EXE-01, SIG-01, SIG-02)",
+       when: {action: ["control.disable", "control.remove", "control.mode", "control.action.loosen"], labels: {control_severity: critical}}, approver: owner}
+    - {id: disable-control-permissive, aliases: [APR-CTRL-PERMISSIVE],
+       when: {action: ["control.disable", "control.remove", "control.mode", "control.action.loosen"], profiles: [permissive]}, approver: self}
+    - {id: disable-control, aliases: [APR-CTRL-BALANCED],
+       when: {action: ["control.disable", "control.remove", "control.mode", "control.action.loosen"]}, approver: admin}
+    - {id: raise-org-2x, aliases: [APR-BUDGET-ORG-OVER-2X],
+       when: {action: ["budget.raise"], scope_type: [org], increase_pct_gt: 100}, approver: owner, two_person: true}
+    - {id: raise-org, aliases: [APR-BUDGET-ORG],
+       when: {action: ["budget.raise"], scope_type: [org]}, approver: owner}
+    - {id: raise-large, aliases: [APR-BUDGET-TEAM-OVER-2X], description: "Team budget more than doubled (e.g. 60 -> 150)",
+       when: {action: ["budget.raise"], scope_type: [team], increase_pct_gt: 100}, approver: owner}
+    - {id: raise-team-small, aliases: [APR-BUDGET-TEAM-2X], description: "Team budget raised up to 2x (e.g. 60 -> 75) [SF-09]",
+       when: {action: ["budget.raise"], scope_type: [team]}, approver: admin}
+    - {id: raise-agent-large, aliases: [APR-BUDGET-AGENT-LARGE],
+       when: {action: ["budget.raise"], scope_type: [member, agent, session], increase_pct_gt: 50}, approver: admin}
+    - {id: raise-small, aliases: [APR-BUDGET-AGENT-SMALL], description: "Sponsor gives their own agent up to +50 %",
+       when: {action: ["budget.raise"], scope_type: [member, agent, session]}, approver: self}
+    - {id: raise-other, when: {action: ["budget.raise", "budget.remove"]}, approver: owner}
+    - {id: budget-tighten, when: {action: ["budget.lower", "budget.add"]}, approver: admin}
+    - {id: profile-down, aliases: [APR-POLICY-PROFILE-DOWN],
+       when: {action: ["profile.change"], labels: {loosening: "true"}}, approver: owner}
+    - {id: profile-up, when: {action: ["profile.change"]}, approver: auto}
+    - {id: killswitch-release-global, aliases: [APR-KILL-RELEASE-GLOBAL],
+       when: {action: ["killswitch.off"], labels: {scope: global}}, approver: owner}
+    - {id: loosen-threshold, aliases: [APR-KILL-RELEASE], description: "Loosen a threshold or release a (non-global) kill switch; the sponsor cannot release alone",
+       when: {action: ["control.threshold.loosen", "killswitch.off"]}, approver: admin}
+    - {id: killswitch-own-agent, aliases: [APR-KILL-ENGAGE], description: "Anyone may pull the brake on an agent they sponsor [SF-16]",
+       when: {action: ["killswitch.on"], labels: {requester_is_sponsor: "true"}}, approver: auto}
+    - {id: tighten, description: "Kill switch on anything else (incl. global) [SF-16]",
+       when: {action: ["killswitch.on"]}, approver: admin}
+    - {id: provider-change, when: {action: ["provider.change", "route.change"]}, approver: owner}
+    - {id: model-new-provider, aliases: [APR-MODEL-NEW-PROVIDER], description: "A new data processor (DPA / vendor review)",
+       when: {action: ["model.allow"], labels: {provider_new: "true"}}, approver: owner}
+    - {id: model-allow-local, aliases: [APR-MODEL-LOCAL],
+       when: {action: ["model.allow"], labels: {model_dest: local}}, approver: self}
+    - {id: model-allow, aliases: [APR-MODEL-REMOTE],
+       when: {action: ["model.allow"]}, approver: admin}
+    - {id: feed-override-critical, aliases: [APR-FEED-OVERRIDE-CRITICAL],
+       when: {action: ["feed.override"], labels: {signature_severity: critical}}, approver: owner}
+    - {id: feed-override, aliases: [APR-FEED-OVERRIDE],
+       when: {action: ["feed.override"]}, approver: admin}
+    - {id: mcp-server-strict, aliases: [APR-MCP-REGISTER-STRICT],
+       when: {action: ["mcp.server"], profiles: [strict, paranoid]}, approver: owner}
+    - {id: mcp-server, aliases: [APR-MCP-REGISTER],
+       when: {action: ["mcp.server"]}, approver: admin}
+    - {id: control-params-loosen, when: {action: ["control.params"], labels: {loosening: "true"}}, approver: admin}
+    - {id: policy-loosen-strict, aliases: [APR-POLICY-LOOSEN-STRICT],
+       when: {profiles: [strict, paranoid], labels: {loosening: "true"}}, approver: owner}
+    - {id: policy-loosen, aliases: [APR-POLICY-LOOSEN],
+       when: {labels: {loosening: "true"}}, approver: admin}
+    - {id: policy-neutral, aliases: [APR-POLICY-NEUTRAL], description: "Descriptions, comments, new examples",
+       when: {action: ["control.params", "other"]}, approver: self}
+
+  # ---------------------------------------------------------------------------
+  # Routing self-tests (approvals-engine extra `tests`; run by its unit tests and
+  # after every policy apply; a failure is a warning, never a rejection).
+  # request.requester = member id or agent id from config/org.seed.yaml.
+  # approvers_ok: an id = that person alone completes the approval; a [pair] =
+  # those two together complete a two-person approval. approvers_not_ok: ids
+  # that may NOT vote. `facts` on a change = precomputed per-change facts.
+  # Verified by synth-A with a first-match simulator (all cases pass).
+  # ---------------------------------------------------------------------------
+  tests:
+    # --- the 34 ported staging routing tests (`staging: true`)
+    - {name: saas-subscription-50-needs-admin, staging: true, request: {kind: action, action_type: spend.subscription, requester: trading-copilot@trading, amount_usd: 50, resource: "vendor:marketpulse", labels: {vendor_approved: "true", recurring: monthly}},
+       expect: {required_role: admin, rule: spend-admin, approvers_ok: [u_emily, u_marek, u_katarzyna], approvers_not_ok: [u_piotr, u_olivia, trading-copilot@trading]}}
+    - {name: spend-20-is-self, staging: true, request: {kind: action, action_type: spend.charge, requester: research-agent@research, amount_usd: 20, resource: "vendor:opendata-shop", labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: self, rule: spend-self, approvers_ok: [u_agnieszka], approvers_not_ok: [u_james, research-agent@research]}}
+    - {name: spend-20.01-is-admin, staging: true, request: {kind: action, action_type: spend.charge, requester: research-agent@research, amount_usd: 20.01, labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: admin, rule: spend-admin}}
+    - {name: spend-200-is-admin, staging: true, request: {kind: action, action_type: spend.charge, requester: claude-code@platform, amount_usd: 200, labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: admin, rule: spend-admin}}
+    - {name: spend-480-needs-owner, staging: true, request: {kind: action, action_type: spend.charge, requester: claude-code@platform, amount_usd: 480, resource: "vendor:gpucloud", labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: owner, rule: spend-owner, approvers_ok: [u_katarzyna], approvers_not_ok: [u_marek, u_emily, u_tomasz]}}
+    - {name: spend-4800-two-person, staging: true, request: {kind: action, action_type: spend.subscription, requester: trading-copilot@trading, amount_usd: 4800, resource: "vendor:marketpulse", labels: {vendor_approved: "true", recurring: yearly}},
+       expect: {required_role: owner, two_person: true, rule: spend-owner-2p, approvers_ok: [[u_katarzyna, u_emily], [u_katarzyna, u_marek]], approvers_not_ok: [u_piotr]}}
+    - {name: strict-unapproved-vendor-small, staging: true, profile: strict, request: {kind: action, action_type: spend.subscription, requester: trading-copilot@trading, amount_usd: 15, resource: "vendor:shady-signals", labels: {vendor_approved: "false", recurring: monthly}},
+       expect: {required_role: admin, rule: spend-strict-vendor}}
+    - {name: read-customers-pii-needs-admin, staging: true, request: {kind: action, action_type: db.read, requester: research-agent@research, resource: "db:customers", labels: {sensitivity: CONFIDENTIAL, env: prod}},
+       expect: {required_role: admin, rule: db-pii-read, approvers_not_ok: [u_agnieszka]}}
+    - {name: prod-db-write-needs-owner, staging: true, request: {kind: action, action_type: db.write, requester: claude-code@platform, resource: "db:customers", labels: {sensitivity: CONFIDENTIAL, env: prod}},
+       expect: {required_role: owner, rule: db-prod-write}}
+    - {name: read-card-table-denied, staging: true, request: {kind: action, action_type: db.read, requester: trading-copilot@trading, resource: "db:payment_cards", labels: {sensitivity: RESTRICTED, env: prod}},
+       expect: {required_role: deny, rule: db-restricted}}
+    - {name: prod-ddl-denied, staging: true, request: {kind: action, action_type: db.schema, requester: chaos-agent@platform, resource: "db:trades", labels: {sensitivity: CONFIDENTIAL, env: prod}},
+       expect: {required_role: deny, rule: db-prod-ddl}}
+    - {name: staging-write-self, staging: true, request: {kind: action, action_type: db.write, requester: claude-code@platform, resource: "db:customers_synthetic", labels: {sensitivity: INTERNAL, env: staging}},
+       expect: {required_role: self, rule: db-staging-write, approvers_ok: [u_tomasz]}}
+    - {name: external-email-with-client-name-admin, staging: true, request: {kind: action, action_type: email.external, requester: trading-copilot@trading, resource: "host:poczta.example", labels: {data_class: CONFIDENTIAL}},
+       expect: {required_role: admin, rule: send-confidential}}
+    - {name: external-send-card-denied, staging: true, request: {kind: action, action_type: email.external, requester: trading-copilot@trading, resource: "host:client-portal.example", labels: {data_class: RESTRICTED}},
+       expect: {required_role: deny, rule: send-restricted}}
+    - {name: internal-email-auto, staging: true, request: {kind: action, action_type: email.internal, requester: trading-copilot@trading, resource: "host:smtp.acme-capital.example", labels: {data_class: CONFIDENTIAL}},
+       expect: {required_role: auto, rule: send-internal}}
+    - {name: unknown-package-admin, staging: true, request: {kind: action, action_type: package.install, requester: claude-code@platform, labels: {signals: unknown_package, sandboxed: "false"}},
+       expect: {required_role: admin, rule: pkg-unknown}}
+    - {name: prod-terraform-owner, staging: true, request: {kind: action, action_type: code.deploy, requester: claude-code@platform, labels: {env: prod, pattern: terraform_apply}},
+       expect: {required_role: owner, rule: deploy-prod}}
+    - {name: prod-terraform-strict-two-person, staging: true, profile: strict, request: {kind: action, action_type: code.deploy, requester: claude-code@platform, labels: {env: prod, pattern: terraform_apply}},
+       expect: {required_role: owner, two_person: true, rule: deploy-prod-strict}}
+    - {name: team-monthly-raise-under-2x-admin, staging: true, request: {kind: config_change, requester: u_piotr, changes: [{kind: budget.raise, path: "budgets.limits[scope=team:trading,window=month].usd", scope: "team:trading", dimension: usd, before: 1200, after: 2000, increase_pct: 66.67, loosening: true}]},
+       expect: {required_role: admin, rule: raise-team-small, gov05: require_approval, approvers_ok: [u_emily, u_marek, u_katarzyna], approvers_not_ok: [u_piotr]}}
+    - {name: team-monthly-raise-exactly-2x-admin, staging: true, request: {kind: config_change, requester: u_agnieszka, changes: [{kind: budget.raise, path: "budgets.limits[scope=team:research,window=month].usd", scope: "team:research", dimension: usd, before: 300, after: 600, increase_pct: 100, loosening: true}]},
+       expect: {required_role: admin, rule: raise-team-small}}
+    - {name: team-monthly-raise-over-2x-owner, staging: true, request: {kind: config_change, requester: u_agnieszka, changes: [{kind: budget.raise, path: "budgets.limits[scope=team:research,window=month].usd", scope: "team:research", dimension: usd, before: 300, after: 900, increase_pct: 200, loosening: true}]},
+       expect: {required_role: owner, rule: raise-large, approvers_ok: [u_katarzyna], approvers_not_ok: [u_emily]}}
+    - {name: org-budget-raise-owner, staging: true, request: {kind: config_change, requester: u_marek, changes: [{kind: budget.raise, path: "budgets.limits[scope=org:acme-capital,window=day].usd", scope: "org:acme-capital", dimension: usd, before: 150, after: 200, increase_pct: 33.33, loosening: true}]},
+       expect: {required_role: owner, rule: raise-org, approvers_ok: [u_katarzyna], approvers_not_ok: [u_marek]}}
+    - {name: org-budget-raise-by-sole-owner, staging: true, request: {kind: config_change, requester: u_katarzyna, changes: [{kind: budget.raise, path: "budgets.limits[scope=org:acme-capital,window=month].usd", scope: "org:acme-capital", dimension: usd, before: 3000, after: 4000, increase_pct: 33.33, loosening: true}]},
+       expect: {required_role: owner, rule: raise-org, gov05: allow}}
+    - {name: disable-control-strict-two-person, staging: true, profile: strict, request: {kind: config_change, requester: u_marek, changes: [{kind: control.disable, path: "controls[id=INJ-02].enabled", control_id: INJ-02, before: true, after: false, loosening: true}]},
+       expect: {required_role: owner, two_person: true, rule: disable-control-strict, approvers_ok: [[u_katarzyna, u_emily]], approvers_not_ok: [u_marek]}}
+    - {name: disable-control-balanced-admin, staging: true, request: {kind: config_change, requester: u_marek, changes: [{kind: control.disable, path: "controls[id=INJ-03].enabled", control_id: INJ-03, before: true, after: false, loosening: true}]},
+       expect: {required_role: admin, rule: disable-control, gov05: allow, approvers_ok: [u_emily, u_katarzyna], approvers_not_ok: [u_marek]}}
+    - {name: disable-critical-balanced-owner, staging: true, request: {kind: config_change, requester: u_emily, changes: [{kind: control.disable, path: "controls[id=DLP-02].enabled", control_id: DLP-02, before: true, after: false, loosening: true}]},
+       expect: {required_role: owner, rule: disable-control-critical, gov05: require_approval}}
+    - {name: enable-control-auto, staging: true, request: {kind: config_change, requester: u_olivia, changes: [{kind: control.enable, path: "controls[id=INJ-03].enabled", control_id: INJ-03, before: false, after: true, loosening: false}]},
+       expect: {required_role: auto, rule: protect-more, gov05: allow}}
+    - {name: allow-known-provider-remote-model-admin, staging: true, request: {kind: config_change, requester: u_olivia, changes: [{kind: model.allow, path: "models.allowed", after: "claude-opus-*", loosening: true, facts: {model_dest: remote, provider_new: "false"}}]},
+       expect: {required_role: admin, rule: model-allow}}
+    - {name: allow-new-provider-owner, staging: true, request: {kind: config_change, requester: u_olivia, changes: [{kind: model.allow, path: "models.allowed", after: "gpt-4.1-mini", loosening: true, facts: {model_dest: remote, provider_new: "true"}}]},
+       expect: {required_role: owner, rule: model-new-provider}}
+    - {name: profile-down-owner, staging: true, request: {kind: config_change, requester: u_marek, changes: [{kind: profile.change, path: "profile", before: balanced, after: permissive, loosening: true}]},
+       expect: {required_role: owner, rule: profile-down}}
+    - {name: profile-up-auto, staging: true, request: {kind: config_change, requester: u_tomasz, changes: [{kind: profile.change, path: "profile", before: balanced, after: strict, loosening: false}]},
+       expect: {required_role: auto, rule: profile-up}}
+    - {name: kill-release-sponsor-cannot-self-release, staging: true, request: {kind: config_change, requester: u_tomasz, changes: [{kind: killswitch.off, path: "budgets.kill_switch.agents", scope: "agent:chaos-agent@platform", before: ["chaos-agent@platform"], after: [], loosening: true}]},
+       expect: {required_role: admin, rule: loosen-threshold, approvers_ok: [u_marek, u_emily], approvers_not_ok: [u_tomasz]}}
+    - {name: agent-can-never-approve, staging: true, request: {kind: action, action_type: spend.charge, requester: research-agent@research, amount_usd: 5, labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: self, rule: spend-self, approvers_not_ok: [research-agent@research, chaos-agent@platform, claude-code@platform]}}
+    - {name: unmatched-type-fails-closed, staging: true, request: {kind: config_change, action_type: something.new, requester: u_james, changes: []},
+       expect: {required_role: owner, rule: null}}
+    # --- contract headline flows F4 / F5 / F6 / F9 + org + Addendum A decisions
+    - {name: f4-spend-12-sponsor-self-approves, request: {kind: action, action_type: spend.charge, requester: research-agent@research, amount_usd: 12, resource: "vendor:opendata-shop", labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: self, rule: spend-self, approvers_ok: [u_agnieszka, u_emily], approvers_not_ok: [u_james, research-agent@research]}}
+    - {name: f4-spend-1500-owner-plus-admin, request: {kind: action, action_type: spend.charge, requester: trading-copilot@trading, amount_usd: 1500, resource: "vendor:gpucloud", labels: {vendor_approved: "true", recurring: none}},
+       expect: {required_role: owner, two_person: true, rule: spend-owner-2p, approvers_ok: [[u_katarzyna, u_marek]], approvers_not_ok: [u_piotr, u_olivia]}}
+    - {name: f4-spend-unknown-amount-fails-closed, request: {kind: action, action_type: spend.charge, requester: chaos-agent@platform, resource: "vendor:gpucloud"},
+       expect: {required_role: owner, two_person: true, rule: spend-owner-2p}}
+    - {name: f4-select-customers-admin, request: {kind: action, action_type: db.read, requester: trading-copilot@trading, resource: "db:customers", labels: {sensitivity: CONFIDENTIAL, env: prod}},
+       expect: {required_role: admin, rule: db-pii-read, approvers_ok: [u_emily], approvers_not_ok: [u_piotr]}}
+    - {name: f4-delete-trades-prod-owner, request: {kind: action, action_type: db.write, requester: trading-copilot@trading, resource: "db:trades", labels: {sensitivity: CONFIDENTIAL, env: prod, bulk: "true"}},
+       expect: {required_role: owner, rule: db-prod-write, approvers_ok: [u_katarzyna], approvers_not_ok: [u_emily, u_marek]}}
+    - {name: strict-delete-trades-prod-two-person, profile: strict, request: {kind: action, action_type: db.write, requester: trading-copilot@trading, resource: "db:trades", labels: {sensitivity: CONFIDENTIAL, env: prod, bulk: "true"}},
+       expect: {required_role: owner, two_person: true, rule: db-prod-bulk-delete-strict}}
+    - {name: f4-external-email-public-self, request: {kind: action, action_type: email.external, requester: trading-copilot@trading, resource: "host:client-portal.example", labels: {data_class: PUBLIC}},
+       expect: {required_role: self, rule: external-send, approvers_ok: [u_piotr], approvers_not_ok: [u_olivia]}}
+    - {name: f5-team-day-raise-25pct-admin, request: {kind: config_change, requester: u_piotr, changes: [{kind: budget.raise, path: "budgets.limits[scope=team:trading,window=day].usd", scope: "team:trading", dimension: usd, before: 60, after: 75, increase_pct: 25, loosening: true}]},
+       expect: {required_role: admin, rule: raise-team-small, gov05: require_approval, approvers_ok: [u_emily], approvers_not_ok: [u_piotr]}}
+    - {name: f5-team-day-raise-150pct-owner, request: {kind: config_change, requester: u_piotr, changes: [{kind: budget.raise, path: "budgets.limits[scope=team:trading,window=day].usd", scope: "team:trading", dimension: usd, before: 60, after: 150, increase_pct: 150, loosening: true}]},
+       expect: {required_role: owner, rule: raise-large, gov05: require_approval, approvers_ok: [u_katarzyna], approvers_not_ok: [u_emily, u_marek, u_piotr]}}
+    - {name: f5-admin-disables-dlp02-needs-owner, request: {kind: config_change, requester: u_marek, changes: [{kind: control.disable, path: "controls[id=DLP-02].enabled", control_id: DLP-02, before: true, after: false, loosening: true}]},
+       expect: {required_role: owner, rule: disable-control-critical, gov05: require_approval, approvers_ok: [u_katarzyna], approvers_not_ok: [u_marek, u_emily]}}
+    - {name: f5-owner-edits-apply-directly, request: {kind: config_change, requester: u_katarzyna, changes: [{kind: control.disable, path: "controls[id=DLP-02].enabled", control_id: DLP-02, before: true, after: false, loosening: true}]},
+       expect: {required_role: owner, rule: disable-control-critical, gov05: allow}}
+    - {name: f6-budget-override-admin, request: {kind: budget_raise, action_type: budget.override, requester: chaos-agent@platform, labels: {scope: "agent:chaos-agent@platform", scope_type: agent, dimension: usd}},
+       expect: {required_role: admin, rule: budget-override, approvers_ok: [u_marek, u_emily, u_katarzyna], approvers_not_ok: [u_tomasz, chaos-agent@platform]}}
+    - {name: f6-sponsor-kills-own-agent-auto, request: {kind: config_change, requester: u_tomasz, changes: [{kind: killswitch.on, path: "budgets.kill_switch.agents", scope: "agent:chaos-agent@platform", before: [], after: ["chaos-agent@platform"], loosening: false}]},
+       expect: {required_role: auto, rule: killswitch-own-agent, gov05: allow}}
+    - {name: member-global-kill-needs-admin, request: {kind: config_change, requester: u_tomasz, changes: [{kind: killswitch.on, path: "budgets.kill_switch.global", scope: global, before: false, after: true, loosening: false}]},
+       expect: {required_role: admin, rule: tighten, gov05: require_approval}}
+    - {name: global-kill-release-owner, request: {kind: config_change, requester: u_marek, changes: [{kind: killswitch.off, path: "budgets.kill_switch.global", scope: global, before: true, after: false, loosening: true}]},
+       expect: {required_role: owner, rule: killswitch-release-global}}
+    - {name: f9-rugpull-repin-admin, request: {kind: mcp_pin, action_type: mcp.repin, requester: claude-code@platform, resource: "mcp:rugpull.get_exchange_rate", labels: {dest: third_party, server: rugpull, reason: changed}},
+       expect: {required_role: admin, rule: mcp-repin, approvers_ok: [u_marek], approvers_not_ok: [u_tomasz]}}
+    - {name: org-promote-to-admin-needs-owner, request: {kind: action, action_type: org.role.promote_admin, requester: u_marek, resource: "member:u_piotr", labels: {category: org, to_role: admin}},
+       expect: {required_role: owner, rule: org-privileged, approvers_ok: [u_katarzyna], approvers_not_ok: [u_marek, u_emily, u_piotr]}}
+    - {name: org-member-update-admin, request: {kind: action, action_type: org.member.update, requester: u_marek, resource: "member:u_olivia", labels: {category: org}},
+       expect: {required_role: admin, rule: org-routine}}
+    - {name: gov04-generic-tool-admin, request: {kind: action, action_type: "tool:acme-crm.delete_customer", requester: chaos-agent@platform},
+       expect: {required_role: admin, rule: tool-approve, approvers_not_ok: [u_tomasz]}}
+    - {name: unknown-db-sensitivity-fails-closed, request: {kind: action, action_type: db.read, requester: claude-code@platform, resource: "db:mystery_table"},
+       expect: {required_role: admin, rule: null}}
+
+# =============================================================================
+#  GOV-05 control entry (approvals-engine, src/aegis/controls/config/gov05_config.py)
+#  Identical to the entry in docs/seed-fixes/policy.yaml. The `approvals:` block
+#  above is byte-identical to docs/seed-fixes/approvals.yaml (Addendum A, A-16).
+# =============================================================================
+controls:
+  - id: GOV-05
+    name: Config-change governance (who may change what)
+    action: require_approval
+    severity: high
+    fail_mode: closed
+    owasp: [ASI03, ASI09]
+    params: {allow_if_proposer_satisfies: true, agent_proposals: require_approval, title_template: "{actor} wants to {summary}"}
+    tests:                              # need PolicyTest extras `member` + `changes` (Addendum A-29)
+      - {name: member-raises-team-budget, kind: config_change, surface: config.change, destination: local, member: u_piotr, expect: require_approval, control: GOV-05,
+         changes: [{kind: budget.raise, path: "budgets.limits[scope=team:trading,window=day].usd", scope: "team:trading", dimension: usd, before: 60, after: 75, increase_pct: 25, loosening: true}]}
+      - {name: owner-raises-team-budget, kind: config_change, surface: config.change, destination: local, member: u_katarzyna, expect: allow,
+         changes: [{kind: budget.raise, path: "budgets.limits[scope=team:trading,window=day].usd", scope: "team:trading", dimension: usd, before: 60, after: 150, increase_pct: 150, loosening: true}]}
+      - {name: admin-disables-critical-control, kind: config_change, surface: config.change, destination: local, member: u_marek, expect: require_approval, control: GOV-05,
+         changes: [{kind: control.disable, path: "controls[id=DLP-02].enabled", control_id: DLP-02, before: true, after: false, loosening: true}]}

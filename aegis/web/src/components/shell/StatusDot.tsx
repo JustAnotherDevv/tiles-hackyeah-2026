@@ -1,15 +1,16 @@
 import { cn } from '@/lib/utils';
 
 const COLOR = { ok: 'bg-allow', warn: 'bg-redact', error: 'bg-block', off: 'bg-text-4' } as const;
+const RING = { ok: 'border-allow', warn: 'border-redact', error: 'border-block', off: 'border-text-4' } as const;
 
-export function StatusDot({ status, pulse = false, label }: { status: 'ok' | 'warn' | 'error' | 'off'; pulse?: boolean; label?: string }) {
+export function StatusDot({ status, pulse = false, label, className }: { status: 'ok' | 'warn' | 'error' | 'off'; pulse?: boolean; label?: string; className?: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-text-2">
-      <span className="relative inline-flex size-2">
-        {pulse ? <span className={cn('absolute inset-0 rounded-full animate-ping-dot', COLOR[status])} /> : null}
-        <span className={cn('relative inline-flex size-2 rounded-full', COLOR[status])} />
+    <span className={cn('inline-flex items-center gap-1.5 text-xs text-text-2', className)}>
+      <span className="relative inline-flex size-[7px] shrink-0">
+        {pulse ? <span className={cn('absolute -inset-[3px] rounded-full border-[1.5px] opacity-0 animate-ping-dot', RING[status])} /> : null}
+        <span className={cn('relative inline-flex size-[7px] rounded-full', COLOR[status])} />
       </span>
-      {label}
+      {label ? <span className="truncate">{label}</span> : null}
     </span>
   );
 }

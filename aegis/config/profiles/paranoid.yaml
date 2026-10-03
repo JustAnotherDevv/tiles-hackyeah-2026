@@ -1,0 +1,34 @@
+# =============================================================================
+#  Strictness profile: PARANOID (incident response / red-team week)
+# =============================================================================
+#  Everything in strict, tighter: CONFIDENTIAL data never leaves for a remote
+#  model either (blocked, or re-routed to the local model), secrets are blocked
+#  even toward local tools, injection threshold 0.60, NER fails closed,
+#  goal-drift checks enforce, purchases above $500 blocked.
+#  Expect many blocks and approvals - that is the point.
+#  floor: true (see strict.yaml). GOV-01 is never changed by profiles.
+# =============================================================================
+profile: paranoid
+description: "Incident response. Strict plus: client data stays local, secrets blocked everywhere, goal-drift enforced. Expect many blocks."
+floor: true
+
+kind_defaults:
+  deterministic: {fail_mode: closed}
+  stateful:      {fail_mode: closed}
+  semantic:      {fail_mode: closed}
+  hybrid:        {fail_mode: closed}
+
+controls:
+  GOV-02: {params: {reroute_on_class: {RESTRICTED: local, CONFIDENTIAL: local}}}
+  GOV-06: {params: {block_bypass_permissions: true}}
+  ACT-01: {params: {auto_allow_max_usd: 0, hard_block_above_usd: 500}}
+  DLP-01: {params: {redaction_ratio_block: 0.3, matrix_overrides: {RESTRICTED: {local: redact, remote: block}, CONFIDENTIAL: {remote: block, third_party: block}}}}
+  DLP-02: {action: block, params: {allow_doc_examples: false, local_action: block}}
+  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}}}
+  DLP-07: {threshold: 0.5, fail_mode: closed}
+  INJ-01: {params: {untrusted_action: redact}}       # [SF-05] quarantine, never block on mcp.list
+  INJ-02: {threshold: 0.60, params: {untrusted_threshold: 0.50}}
+  INJ-03: {threshold: 0.60, adherence_pct: 75, params: {off_topic_action: block}}
+  INJ-05: {mode: enforce}
+  EXE-03: {action: block}
+  MCP-04: {mode: enforce}

