@@ -135,6 +135,9 @@ struct Index {
     .width('100%')
     .height('100%')
     .justifyContent(FlexAlign.Center)
+    .accessibilityGroup(true)
+    .accessibilityText(t.label + ' tab' + (t.index === TAB_INBOX && this.pending > 0 ?
+      ', ' + this.pending.toString() + ' pending' : '') + (this.currentTab === t.index ? ', selected' : ''))
   }
 
   build() {
@@ -205,6 +208,9 @@ struct Index {
           .border({ width: 1, color: Colors.VIOLET_SOFT })
           .shadow({ radius: 24, color: '#80000000', offsetY: 6 })
           .transition(TransitionEffect.move(TransitionEdge.TOP).combine(TransitionEffect.OPACITY))
+          .accessibilityGroup(true)
+          .accessibilityText('New approval request: ' + this.bannerText)
+          .accessibilityDescription('Double-tap to open the inbox')
           .onClick(() => {
             this.bannerText = '';
             this.switchTab(TAB_INBOX);

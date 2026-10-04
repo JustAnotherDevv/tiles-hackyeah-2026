@@ -103,3 +103,29 @@ export function approvalComplete(item: ApprovalItem): boolean {
   }
   return approveVotes >= 1 && levelSatisfied;
 }
+
+/** Approvals at or above this amount always need device authentication, whatever the role level. */
+export const STEP_UP_USD: number = 100;
+
+/**
+ * Step-up rule (approve only; denying is the fail-safe direction and needs no extra friction):
+ * device authentication (User Authentication Kit) is required when the request needs an admin or
+ * owner, uses the two-person rule, or moves at least STEP_UP_USD.
+ */
+export function needsStepUp(item: ApprovalItem): boolean {
+  if (item.requiredRole === 'admin' || item.requiredRole === 'owner' || item.twoPerson) {
+    return true;
+  }
+  return item.amountUsd >= STEP_UP_USD;
+}
+
+/** One-line reason shown next to the approve button when step-up applies. */
+export function stepUpReason(item: ApprovalItem): string {
+  if (item.amountUsd >= STEP_UP_USD) {
+    return 'Moves $' + item.amountUsd.toFixed(0) + ' (step-up from $' + STEP_UP_USD.toFixed(0) + ')';
+  }
+  if (item.twoPerson) {
+    return 'Two-person rule';
+  }
+  return item.requiredRole + '-level approval';
+}

@@ -1,11 +1,7 @@
-import { formBindingData, FormExtensionAbility, formInfo, formProvider } from '@kit.FormKit';
+import { formBindingData, FormExtensionAbility, formInfo } from '@kit.FormKit';
 import { Want } from '@kit.AbilityKit';
-import { BusinessError } from '@kit.BasicServicesKit';
 import { WidgetBridge, WidgetSnapshot } from '../platform/WidgetBridge';
-import { AppSettings, SettingsStore } from '../platform/SettingsStore';
-import { LiveRepository } from '../data/LiveRepository';
-import { ApprovalsPage } from '../data/ApprovalsRepository';
-import { ApprovalItem, PostureStats } from '../model/Models';
+import { BackgroundRefresh } from '../platform/BackgroundRefresh';
 import { Log } from '../common/Format';
 
 /**
@@ -13,7 +9,8 @@ import { Log } from '../common/Format';
  * - onAddForm: returns the last snapshot the app saved (mock defaults on first install).
  * - onUpdateForm (every 30 min, `updateDuration: 1` in form_config.json): in live mode it polls the
  *   gateway (`/api/stats`, `/api/approvals`); otherwise it re-sends the last snapshot.
- * The app also pushes fresh data on every poll via formProvider.updateForm (WidgetBridge.push).
+ * The app also pushes fresh data on every poll via formProvider.updateForm (WidgetBridge.push), and a
+ * WorkScheduler deferred task (workscheduler/RefreshWorkAbility.ets) refreshes it while the app is closed.
  */
 export default class PostureFormAbility extends FormExtensionAbility {
   onAddForm(want: Want): formBindingData.FormBindingData {
@@ -45,40 +42,9 @@ export default class PostureFormAbility extends FormExtensionAbility {
   }
 
   private async refresh(formId: string): Promise<void> {
-    let snap: WidgetSnapshot = WidgetBridge.loadSnapshot(this.context);
-    const settings: AppSettings = SettingsStore.load(this.context);
-    if (settings.mode === 'live') {
-      try {
-        const repo: LiveRepository = new LiveRepository(settings.baseUrl);
-        const stats: PostureStats = await repo.getStats(settings.persona);
-        const page: ApprovalsPage = await repo.listApprovals(settings.persona);
-        let top: string = '';
-        for (const it of page.items) {
-          if (it.status === 'pending') {
-            top = WidgetBridgeHelpers.titleOf(it);
-            break;
-          }
-        }
-        snap = WidgetBridge.build(stats, page.pending, top);
-        WidgetBridge.saveSnapshot(this.context, snap);
-      } catch (e) {
-        Log.warn('Widget live refresh failed, keeping last snapshot');
-      }
-    }
-    try {
-      await formProvider.updateForm(formId, WidgetBridge.bindingData(snap));
-    } catch (e) {
-      const err: BusinessError = e as BusinessError;
-      Log.warn('updateForm failed: ' + err.code);
-    }
-  }
-}
-
-class WidgetBridgeHelpers {
-  static titleOf(it: ApprovalItem): string {
-    if (it.amountUsd > 0) {
-      return it.title + ' ($' + it.amountUsd.toFixed(0) + ')';
-    }
-    return it.title;
+    // Shared with the WorkScheduler deferred task (platform/BackgroundRefresh.ets): live mode polls the
+    // gateway, mock mode re-sends the last snapshot; every placed widget (including formId) is updated.
+    Log.info('Widget update requested: ' + formId);
+    await BackgroundRefresh.refreshOnce(this.context, false);
   }
 }

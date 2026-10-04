@@ -3,6 +3,8 @@ import { PersonaSwitcher, ScreenHeader } from '../components/Common';
 import { PocketStore } from '../data/PocketStore';
 import { ConnectionInfo } from '../data/ApprovalsRepository';
 import { DEFAULT_BASE_URL } from '../platform/SettingsStore';
+import { StepUpAuth } from '../platform/StepUpAuth';
+import { STEP_UP_USD } from '../data/Eligibility';
 
 /** Data source (mock / live), gateway URL with connection test, persona, notifications, about. */
 @Component
@@ -14,9 +16,11 @@ export struct SettingsView {
   @State testing: boolean = false;
   @State testResult: string = '';
   @State testOk: boolean = false;
+  @State authTypes: string = '';
 
   aboutToAppear(): void {
     this.urlDraft = this.baseUrl.length > 0 ? this.baseUrl : DEFAULT_BASE_URL;
+    this.authTypes = StepUpAuth.describeAvailable();
   }
 
   build() {
@@ -139,13 +143,50 @@ export struct SettingsView {
           .borderRadius(Radius.LG)
           .backgroundColor(Colors.SURFACE)
 
+          this.section('SECURITY & BACKGROUND')
+          Column({ space: Space.SM }) {
+            Row() {
+              Text('Step-up authentication')
+                .fontSize(Fonts.SMALL)
+                .fontColor(Colors.TEXT)
+                .layoutWeight(1)
+              Text(this.authTypes === 'none' ? 'unavailable' : this.authTypes)
+                .fontSize(Fonts.SMALL)
+                .fontColor(this.authTypes === 'none' ? Colors.WARN : Colors.GOOD)
+            }
+            .width('100%')
+            Text('Approving admin- or owner-level requests, two-person requests, or anything from $' +
+              STEP_UP_USD.toFixed(0) + ' asks for your face, fingerprint or PIN (User Authentication Kit). ' +
+              (this.authTypes === 'none' ?
+                'No authenticator on this device (the emulator cannot simulate biometrics): a clearly labelled ' +
+                  'manual confirmation is used instead.' : 'Denying never needs it.'))
+              .fontSize(Fonts.TINY)
+              .fontColor(Colors.TEXT_FAINT)
+            Text('Background refresh')
+              .fontSize(Fonts.SMALL)
+              .fontColor(Colors.TEXT)
+              .margin({ top: Space.SM })
+            Text('A WorkScheduler deferred task (network required, system-scheduled, about every 2 h) refreshes ' +
+              'the home-screen widget and notifies about new live-gateway requests while the app is closed.')
+              .fontSize(Fonts.TINY)
+              .fontColor(Colors.TEXT_FAINT)
+          }
+          .alignItems(HorizontalAlign.Start)
+          .padding(Space.LG)
+          .width('100%')
+          .borderRadius(Radius.LG)
+          .backgroundColor(Colors.SURFACE)
+          .accessibilityGroup(true)
+
           this.section('ABOUT')
           Column({ space: Space.SM }) {
             Text('Aegis Pocket 1.0 · HarmonyOS (API 20+)')
               .fontSize(Fonts.SMALL)
               .fontColor(Colors.TEXT)
-            Text('Uses Notification Kit (local notifications + WantAgent), Form Kit (home-screen service ' +
-              'widgets), Network Kit (HTTP to the gateway), ArkData Preferences (settings) and ArkUI. ' +
+            Text('Uses User Authentication Kit (step-up before risky approvals), Notification Kit (local ' +
+              'notifications + WantAgent), Form Kit (home-screen service widgets), Background Tasks Kit ' +
+              '(WorkScheduler refresh), Sensor Service Kit (haptics), Network Kit (HTTP to the gateway), ' +
+              'ArkData Preferences (settings) and ArkUI. ' +
               'Personal data in the preview never leaves the device.')
               .fontSize(Fonts.TINY)
               .fontColor(Colors.TEXT_DIM)
@@ -188,6 +229,7 @@ export struct SettingsView {
       .borderRadius(Radius.SM)
       .backgroundColor(this.mode === id ? (id === 'live' ? Colors.GOOD_SOFT : Colors.WARN_SOFT) : Color.Transparent)
       .animation({ duration: 200 })
+      .accessibilityText(label + (this.mode === id ? ', selected' : ''))
       .onClick(() => {
         if (id === 'live' && !this.validUrl(this.urlDraft)) {
           this.testOk = false;

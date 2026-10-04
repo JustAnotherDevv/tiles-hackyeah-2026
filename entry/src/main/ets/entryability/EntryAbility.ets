@@ -3,6 +3,7 @@ import { window } from '@kit.ArkUI';
 import { Log } from '../common/Format';
 import { Keys, PocketStore } from '../data/PocketStore';
 import { PARAM_APPROVAL_ID, PARAM_TARGET } from '../platform/NotificationService';
+import { BackgroundRefresh } from '../platform/BackgroundRefresh';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
@@ -15,6 +16,8 @@ export default class EntryAbility extends UIAbility {
     PocketStore.seedStorage();
     this.handleWant(want);
     PocketStore.get().init(this.context);
+    // Background Tasks Kit: repeating deferred task that keeps the widget current while the app is closed.
+    BackgroundRefresh.schedule(this.context);
     Log.info('Ability onCreate');
   }
 

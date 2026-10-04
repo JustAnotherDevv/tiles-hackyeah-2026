@@ -116,6 +116,8 @@ export struct PersonaSwitcher {
         .backgroundColor(this.persona === p.id ? Colors.SURFACE_3 : Color.Transparent)
         .border({ width: this.persona === p.id ? 1 : 0, color: RoleTone.of(p.role).fg })
         .animation({ duration: 200, curve: Curve.EaseOut })
+        .accessibilityGroup(true)
+        .accessibilityText('Act as ' + p.name + ', ' + p.role + (this.persona === p.id ? ', selected' : ''))
         .onClick(() => {
           PocketStore.get().setPersona(p.id);
         })
@@ -256,6 +258,11 @@ export struct ApprovalCard {
     .border({ width: 1, color: this.item.status === 'pending' && this.item.canVote ? Colors.VIOLET_SOFT : Colors.BORDER })
     .opacity(this.item.status === 'pending' ? 1 : 0.72)
     .animation({ duration: 250, curve: Curve.EaseOut })
+    .accessibilityGroup(true)
+    .accessibilityText(this.item.title + (this.item.amountUsd > 0 ? ', ' + Fmt.usd(this.item.amountUsd) : '') +
+      ', ' + this.item.status + ', needs ' + this.item.requiredRole)
+    .accessibilityDescription(this.item.status === 'pending' ?
+      (this.item.canVote ? 'Double-tap to review and decide' : 'Locked: ' + this.item.whyNot) : 'Double-tap for details')
   }
 
   private glyphSize(): number {

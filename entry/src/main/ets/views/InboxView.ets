@@ -47,6 +47,8 @@ export struct InboxView {
               .borderRadius(Radius.PILL)
               .backgroundColor(this.filter === f.id ? Colors.ACCENT_SOFT : Colors.SURFACE)
               .animation({ duration: 200 })
+              .accessibilityText(f.label + ' filter, ' + this.countFor(f.id).toString() + ' requests' +
+                (this.filter === f.id ? ', selected' : ''))
               .onClick(() => {
                 this.filter = f.id;
               })

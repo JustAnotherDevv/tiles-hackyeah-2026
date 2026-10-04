@@ -6,6 +6,8 @@ import { LiveRepository } from './LiveRepository';
 import { AppSettings, SettingsStore } from '../platform/SettingsStore';
 import { NotificationService } from '../platform/NotificationService';
 import { WidgetBridge } from '../platform/WidgetBridge';
+import { BackgroundRefresh } from '../platform/BackgroundRefresh';
+import { Haptics } from '../platform/Haptics';
 import { Log } from '../common/Format';
 
 /** AppStorage keys shared by the store and the views (@StorageProp / @StorageLink). */
@@ -49,6 +51,7 @@ export class PocketStore {
   private clockTimer: number = -1;
   private refreshing: boolean = false;
   private generation: number = 0;
+  private knownPendingIds: string = '';
 
   static get(): PocketStore {
     if (PocketStore.instance === null) {
@@ -335,6 +338,7 @@ export class PocketStore {
     for (const it of fresh) {
       NotificationService.notifyApproval(this.ctx as common.UIAbilityContext, it);
     }
+    Haptics.notice();
     const first: ApprovalItem = fresh[0];
     const who: string = first.requesterAgent.length > 0 ? first.requesterAgent : first.requesterMember;
     AppStorage.set<string>(Keys.NEW_REQUEST, who + ': ' + first.title + '#' + Date.now().toString());
@@ -344,9 +348,11 @@ export class PocketStore {
     AppStorage.set<ApprovalItem[]>(Keys.APPROVALS, this.items.slice());
     let pending: number = 0;
     let top: string = '';
+    const pendingIds: string[] = [];
     for (const it of this.items) {
       if (it.status === 'pending') {
         pending++;
+        pendingIds.push(it.id);
         if (top.length === 0) {
           top = it.amountUsd > 0 ? it.title + ' ($' + it.amountUsd.toFixed(0) + ')' : it.title;
         }
@@ -356,6 +362,12 @@ export class PocketStore {
     const statsCopy: PostureStats = this.copyStats();
     AppStorage.set<PostureStats>(Keys.STATS, statsCopy);
     AppStorage.set<number>(Keys.PENDING, pending);
+    const joined: string = pendingIds.join(',');
+    if (this.ctx !== null && this.settings.mode === 'live' && joined !== this.knownPendingIds) {
+      // Lets the background deferred task notify only about requests the user has not seen in the app.
+      this.knownPendingIds = joined;
+      BackgroundRefresh.saveKnownPending(this.ctx as common.UIAbilityContext, pendingIds);
+    }
     if (this.ctx !== null) {
       WidgetBridge.push(this.ctx as common.UIAbilityContext, WidgetBridge.build(statsCopy, pending, top));
     }

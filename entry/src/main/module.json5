@@ -19,6 +19,25 @@
           "abilities": ["EntryAbility"],
           "when": "inuse"
         }
+      },
+      {
+        // User Authentication Kit step-up (face / fingerprint / PIN) before risky approvals.
+        // system_grant, normal APL: available to ordinary apps, granted at install.
+        "name": "ohos.permission.ACCESS_BIOMETRIC",
+        "reason": "$string:reason_biometric",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
+      },
+      {
+        // Sensor Service Kit vibrator: haptic confirmation of approve / deny / new request (system_grant).
+        "name": "ohos.permission.VIBRATE",
+        "reason": "$string:reason_vibrate",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "inuse"
+        }
       }
     ],
     "abilities": [
@@ -56,6 +75,14 @@
             "resource": "$profile:form_config"
           }
         ]
+      },
+      {
+        // Background Tasks Kit deferred task: refreshes the widget and notifies while the app is closed.
+        "name": "RefreshWorkAbility",
+        "srcEntry": "./ets/workscheduler/RefreshWorkAbility.ets",
+        "description": "$string:work_ability_desc",
+        "type": "workScheduler",
+        "exported": false
       },
       {
         "name": "EntryBackupAbility",

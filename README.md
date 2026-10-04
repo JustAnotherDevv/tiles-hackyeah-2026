@@ -1,21 +1,28 @@
+> **This repository contains two HackYeah 2026 submissions.**
+> **Huawei "Imagine What's Next": Aegis Pocket**, the native HarmonyOS app at the repository root (this README).
+> **Goldman Sachs: Aegis**, the local-first AI guardrails gateway in [`aegis/`](aegis/) (see [`aegis/README.md`](aegis/README.md)).
+
 # Aegis Pocket: Approve AI Agents
 
 A native **HarmonyOS** app (ArkTS + ArkUI, API 20+) that puts a human back in the loop for AI agents.
 When an agent governed by the [Aegis](#how-to-point-it-at-the-aegis-gateway) gateway wants to do something
 risky (buy a $50 SaaS subscription, read a customers table with personal data, raise a team budget),
 the request shows up as a **notification** on the phone. You **approve or deny** it according to your
-role (member / admin / owner). A **home-screen service widget** shows live AI security posture (blocked
+role (member / admin / owner), and risky approvals need your **face, fingerprint or PIN** (User Authentication
+Kit step-up). An on-device **risk explanation** says in plain words why the gateway asked a human. A **home-screen
+service widget** shows live AI security posture (blocked
 threats, redacted personal data, budget left, pending approvals), and an **on-device preview** shows
 exactly which personal data would leave the device before a prompt is sent to an AI model.
 
 Submission for **HackYeah 2026, Huawei partner task "Imagine What's Next"**. Lead theme: **Human-Centric
-Technology** (human oversight of autonomous AI agents, privacy-first). Organizers' repository:
+Technology** (human oversight of autonomous AI agents, privacy-first, accessible), with an **Intelligent
+Experiences** angle (on-device risk explanation for AI agent requests). Organizers' repository:
 <https://github.com/onirodeveloper/hackyeah2026-challenge>.
 
 | | |
 |---|---|
 | Language / UI | ArkTS + ArkUI (declarative, state management V1) |
-| App model | Stage model (`UIAbility` + `FormExtensionAbility`) |
+| App model | Stage model (`UIAbility` + `FormExtensionAbility` + `WorkSchedulerExtensionAbility`) |
 | SDK levels (`build-profile.json5`) | compatible (minimum) **API 20** `6.0.0(20)`, compile **API 24** `6.1.1(24)`, target **API 24** `6.1.1(24)` |
 | Runtime | `runtimeOS: "HarmonyOS"`, device type `phone` |
 | Deliverable | `.hap` (module `entry`) |
@@ -31,10 +38,15 @@ Technology** (human oversight of autonomous AI agents, privacy-first). Organizer
    budget left, agent requests) plus the two most urgent requests.
 2. A new agent request arrives (mock mode: every 20-30 s; live mode: polled from the gateway every 4 s). The app posts a
    **notification** ("Approval needed: requires admin ..."), shows an in-app banner and updates the **widget**.
-3. Tapping the notification opens the request **detail**: amount, requester agent and its sponsor, required role,
-   expiry countdown, facts, policy checks, the agent's note (labelled *agent-supplied, untrusted*) and votes.
+3. Tapping the notification opens the request **detail**: amount, requester agent and its sponsor, a **"Why a human
+   is asked"** risk card (score 0-100 with plain-language reasons, computed on the device), required role, expiry
+   countdown, facts, policy checks, the agent's note (labelled *agent-supplied, untrusted*, never scored) and votes.
 4. **Approve / Deny** are enabled only when the selected persona may vote. Otherwise they are locked with the
    reason (for example "Requires owner (you are admin)" or "Separation of duties: you requested or sponsor this").
+   **Approve** on an admin- or owner-level request, a two-person request, or anything from $100 first opens the
+   system **face / fingerprint / PIN** sheet (User Authentication Kit, ATL3). Where no authenticator exists (the DevEco
+   emulator cannot simulate biometrics) a dialog titled *"Device authentication unavailable"* offers a clearly labelled
+   **manual fallback**. Deny never needs it (fail-safe direction). Approve and deny give distinct **haptic** cues.
    Votes are **optimistic** (the card updates at once) and are rolled back with a toast if the gateway refuses.
 5. Switch persona in the **Inbox** (Piotr = member, Emily / Marek = admin, Katarzyna = owner) to see the role
    rules: the $50 subscription needs an admin, the $480 one needs owner + admin (two-person rule), the budget raise
@@ -44,16 +56,29 @@ Technology** (human oversight of autonomous AI agents, privacy-first). Organizer
 
 ## Platform capabilities used
 
+Paths are relative to `entry/src/main/ets/` unless they start with `entry/` or `resources/`.
+
 | Capability | Kit / API | Where |
 |---|---|---|
+| **Step-up authentication** before risky approvals (face / fingerprint / lock-screen PIN, trust level ATL3, random challenge), availability probe, labelled manual fallback | User Authentication Kit: `userAuth.getAvailableStatus`, `userAuth.getUserAuthInstance` + `on('result')` + `start()`, `UserAuthResultCode`; Crypto Architecture Kit `cryptoFramework.createRandom` (challenge) | `platform/StepUpAuth.ets`, `views/DetailView.ets` (`stepUpThenVote`, `confirmFallback`), policy `data/Eligibility.ets` (`needsStepUp`) |
+| **Background refresh** of the widget and notifications for new live requests while the app is closed (repeating, network-gated deferred task) | Background Tasks Kit: `workScheduler.startWork`, `WorkSchedulerExtensionAbility` (`onWorkStart`) | `platform/BackgroundRefresh.ets`, `workscheduler/RefreshWorkAbility.ets`, `entry/src/main/module.json5` |
+| **Haptic feedback** on approve / deny / new request (system preset effects `haptic.notice.*` with timed fallback) | Sensor Service Kit: `vibrator.isSupportEffectSync`, `vibrator.startVibration` | `platform/Haptics.ets` |
+| **Accessibility**: screen-reader labels and descriptions on the approve / deny buttons, request cards, tabs, filters, persona switcher, risk card; font sizes in `fp` follow the system font scale, action buttons use `minHeight` so large fonts do not clip | ArkUI `accessibilityText`, `accessibilityDescription`, `accessibilityGroup`, `constraintSize` | `views/DetailView.ets`, `components/Common.ets`, `pages/Index.ets`, `views/InboxView.ets`, `views/SettingsView.ets` |
 | Home-screen **service widgets** (2x2 and 2x4), updated from the app and every 30 min | Form Kit: `FormExtensionAbility`, `formProvider.updateForm`, `formProvider.getPublishedRunningFormInfos` (API 20), `formBindingData`, ArkTS card with `postCardAction` router | `formability/PostureFormAbility.ets`, `widget/pages/*.ets`, `platform/WidgetBridge.ets`, `resources/base/profile/form_config.json` |
 | **Local notifications** for new approval requests, permission dialog, tap-to-open | Notification Kit: `notificationManager.requestEnableNotification(context)`, `publish`, `cancel`; Ability Kit `wantAgent` (START_ABILITY with the approval id) | `platform/NotificationService.ets`, `entryability/EntryAbility.ets` (`onNewWant`) |
 | HTTP client to the Aegis gateway (`X-Aegis-View-As` persona header, error envelopes) | Network Kit: `http.createHttp().request` | `data/LiveRepository.ets` |
 | Persistent settings shared with the widget process | ArkData Preferences | `platform/SettingsStore.ets`, `platform/WidgetBridge.ets` |
 | UI: `Navigation` + `NavDestination`, `Tabs`, `Refresh`, `List`, transitions, implicit and explicit animations, dark theme | ArkUI | `pages/Index.ets`, `views/*`, `components/Common.ets` |
 
-Permissions: only `ohos.permission.INTERNET` (system_grant, used in live mode). Notifications are enabled through
-the system dialog. No location, contacts, camera or other sensitive permission.
+Permissions (all `system_grant`, normal APL, available to ordinary apps; checked against the SDK's
+`PermissionDefinitions.json`): `ohos.permission.INTERNET` (live mode), `ohos.permission.ACCESS_BIOMETRIC` (step-up
+authentication), `ohos.permission.VIBRATE` (haptics). The deferred task needs no permission. Notifications are
+enabled through the system dialog. No location, contacts, camera or other sensitive permission.
+
+**Intelligent touch, on the device.** `data/RiskExplainer.ets` turns the gateway's policy data (the control that
+fired, for example `ACT-01` spend guard or `EXE-03` taint-flow breaker; amount; approval level; failed checks;
+production environment; sensitive data words) into a 0-100 score and readable reasons. It is deterministic and
+rule-based (no model, no network), and the agent's own note is never scored because it is untrusted text.
 
 ## Mock mode vs live mode
 
@@ -62,14 +87,20 @@ the system dialog. No location, contacts, camera or other sensitive permission.
 | Data | **Simulated on the device** (`data/MockRepository.ets`): seeded requests from the demo script, a new fictional agent request every 20-30 s, drifting posture KPIs. Clearly labelled **MOCK MODE** in the app header and **MOCK** on the widget | Aegis gateway REST API: `GET /api/approvals?status=all`, `GET /api/stats?window=24h`, `GET /api/whoami`, `POST /api/approvals/{id}/approve` / `deny` |
 | Role rules | Mirrored on the device (`data/Eligibility.ets`, same rules as the gateway's Addendum A-20) | Enforced by the gateway (`can_vote` / `why_not`, 403 / 409 answers) |
 | Network | None | HTTP polling every 4 s (SSE `GET /api/events` is not used yet) |
-| Widget | Snapshot pushed by the app | Snapshot pushed by the app; the widget extension also polls the gateway on its 30-min update |
+| Widget | Snapshot pushed by the app | Snapshot pushed by the app; the widget extension (30-min update) and the WorkScheduler task (about every 2 h, system-scheduled) also poll the gateway while the app is closed |
+| Step-up authentication | Same as live (it is a device feature, not mock data) | User Authentication Kit sheet; manual fallback only when the device has no authenticator |
 
 All mock data (agents, vendors, amounts, people) is fictional. The sample text in the Preview tab uses synthetic
 identifiers that only pass the checksums.
 
 ### How to point it at the Aegis gateway
 
-1. Start the Aegis gateway on your computer (separate project; it listens on port **8787**).
+1. Start the Aegis gateway on your computer. It is the Goldman Sachs submission in [`aegis/`](aegis/) and listens on
+   port **8787** (`127.0.0.1` by default):
+   ```bash
+   cd aegis && make up                       # gateway + mocks; see aegis/README.md for setup
+   AEGIS_HOST=0.0.0.0 make up                # instead, when a phone on Wi-Fi must reach it (trusted networks only)
+   ```
 2. In the app open **Settings**, enter the gateway URL and tap **Test connection**:
    - DevEco **emulator**: `http://10.0.2.2:8787` (the default; the emulator's alias for the host). If that does not
      connect, use your computer's LAN IP, for example `http://192.168.1.20:8787`, and make sure the gateway listens on
@@ -86,19 +117,20 @@ identifiers that only pass the checksums.
 ├── AppScope/                       # App-wide config: app.json5 (bundleName, version, icon, label) + resources
 ├── entry/                          # The single HAP module (type: entry)
 │   ├── src/main/
-│   │   ├── module.json5            # Abilities, form extension, INTERNET permission
+│   │   ├── module.json5            # Abilities, form + workScheduler extensions, permissions
 │   │   ├── ets/entryability/       # EntryAbility: init store, notification permission, deep links (onNewWant)
 │   │   ├── ets/pages/Index.ets     # Navigation + Tabs (Home / Inbox / Preview / Settings), in-app banner
 │   │   ├── ets/views/              # HomeView, InboxView, DetailView (NavDestination), PreviewView, SettingsView
 │   │   ├── ets/components/         # Shared UI: ApprovalCard, PersonaSwitcher, KpiTile, ModeBadge, Pill
-│   │   ├── ets/data/               # ApprovalsRepository, MockRepository, LiveRepository, Eligibility, PocketStore
+│   │   ├── ets/data/               # ApprovalsRepository, Mock/LiveRepository, Eligibility (+ step-up rule), RiskExplainer, PocketStore
 │   │   ├── ets/model/              # UI models (Models.ets) and gateway wire types (Wire.ets)
-│   │   ├── ets/platform/           # NotificationService, WidgetBridge, SettingsStore
+│   │   ├── ets/platform/           # StepUpAuth, Haptics, BackgroundRefresh, NotificationService, WidgetBridge, SettingsStore
+│   │   ├── ets/workscheduler/      # RefreshWorkAbility (WorkSchedulerExtensionAbility)
 │   │   ├── ets/redaction/          # On-device PII redactor (EMAIL, PHONE, PESEL, IBAN, PAN)
 │   │   ├── ets/formability/        # PostureFormAbility (FormExtensionAbility)
 │   │   ├── ets/widget/pages/       # ArkTS widget cards: PostureCard (2x2), PostureWideCard (2x4)
 │   │   └── resources/              # Strings, colors, profile/form_config.json, profile/main_pages.json
-│   ├── src/test/                   # Local unit tests (hypium, run on the host): Redactor, Eligibility
+│   ├── src/test/                   # Local unit tests (hypium, run on the host): Redactor, Eligibility, StepUpRisk
 │   └── src/ohosTest/               # Instrumented tests (template)
 ├── build-profile.json5             # SDK versions, products, (empty) signing configs, modules
 ├── code-linter.json5               # ArkTS linter rules
@@ -107,6 +139,8 @@ identifiers that only pass the checksums.
 ├── AI_WORKFLOW.md                  # AI tools, prompts, work log, validation
 ├── hackathon-resources/            # Organizers' bundled reference
 ├── scripts/                        # macOS helpers: DevEco region switch, DevEco template install
+├── docs/HACKTRIBE_POCKET.md        # Submission text and demo video script
+├── aegis/                          # Separate submission (Goldman Sachs): the Aegis gateway
 └── README.md
 ```
 
@@ -131,8 +165,8 @@ supports Windows only. On macOS their README and FAQ say to do the same steps by
 macOS path. The two scripts in `scripts/` automate the manual parts. Neither script uses sudo.
 
 ```bash
-git clone TODO-public-repo-url
-cd TODO-repo-dir
+git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026.git
+cd tiles-hackyeah-2026
 # The organizers' repository provides the skills, the DevEco CLI patches and the templates:
 git clone --depth 1 https://github.com/onirodeveloper/hackyeah2026-challenge /tmp/hy-challenge
 ```
@@ -236,7 +270,9 @@ Installing a `.hap` on the emulator or a device needs a debug signature. An unsi
 3. **Do not commit that block.** Before committing, check `git diff build-profile.json5` and revert
    `signingConfigs` to `[]` (or use `git add -p`). `*.p12`, `*.cer`, `*.p7b` and similar files are git-ignored.
 
-TODO: describe how judges should sign (their own auto-sign), and attach a signed debug `.hap` to the GitHub Release.
+To reproduce from a clean checkout, sign with **your own** Huawei ID (step 1) and build; the signed debug `.hap` only
+installs on emulators/devices covered by that profile. A signed debug build from the team is attached to the GitHub
+Release for convenience (debug profiles expire after about 14 days, see the organizers' FAQ "Signing").
 
 ## 5. Build
 
@@ -280,6 +316,14 @@ $HDC shell aa start -a EntryAbility -b com.hackyeah.aegispocket
 $HDC hilog | grep AegisPocket                      # app logs (tag AegisPocket)
 ```
 
+To exercise the background refresh without waiting for the system scheduler (organizers' docs, WorkScheduler service
+id 1904):
+
+```bash
+$HDC shell "hidumper -s 1904 -a '-t com.hackyeah.aegispocket RefreshWorkAbility'"
+$HDC hilog | grep -E "RefreshWorkAbility|Background"
+```
+
 Or tap **Aegis Pocket** on the launcher. On first start the app asks to allow notifications. To add the widget:
 long-press the home screen, open **Service widgets**, choose **Aegis Pocket**, then **AI posture** (2x2) or
 **AI posture (wide)** (2x4). Tapping the widget opens the Inbox.
@@ -290,12 +334,13 @@ long-press the home screen, open **Service widgets**, choose **Aegis Pocket**, t
 DEVECO=/Applications/DevEco-Studio.app/Contents
 "$DEVECO/tools/node/bin/node" "$DEVECO/tools/hvigor/bin/hvigorw.js" --mode module -p module=entry@default -p product=default test
 grep "Tests run" entry/.test/default/intermediates/test/coverage_data/test_result.txt
-# Tests run: 10, Failure: 0, Error: 0, Pass: 10, Ignore: 0
+# Tests run: 17, Failure: 0, Error: 0, Pass: 17, Ignore: 0
 ```
 
 Local unit tests (`entry/src/test`) cover the redactor (PESEL / Luhn / IBAN checksums, stable placeholders,
-invalid numbers left alone, PCI masking) and the approval eligibility rules (admin level, separation of duties,
-owner level, two-person rule). Instrumented tests (`entry/src/ohosTest`) are still the template.
+invalid numbers left alone, PCI masking), the approval eligibility rules (admin level, separation of duties,
+owner level, two-person rule), the step-up rule ($100 threshold, admin/owner/two-person) and the risk explainer
+(low / medium / high levels, the agent's note never changes the score). Instrumented tests (`entry/src/ohosTest`) are still the template.
 
 ## 9. Architecture
 
@@ -314,6 +359,10 @@ flowchart LR
     FEA["PostureFormAbility<br/>(FormExtensionAbility)"]
     Cards["Widget cards 2x2 / 2x4"]
     Red["Redactor<br/>(on-device PII)"]
+    Risk["RiskExplainer<br/>(on-device, rule-based)"]
+    Auth["StepUpAuth<br/>(User Authentication Kit)"]
+    Hap["Haptics<br/>(Sensor Service Kit vibrator)"]
+    WS["RefreshWorkAbility<br/>(Background Tasks Kit WorkScheduler)"]
   end
   GW["Aegis gateway :8787<br/>/api/approvals · /api/stats · /api/whoami"]
 
@@ -334,6 +383,14 @@ flowchart LR
   FEA -. "live mode poll" .-> GW
   Cards -- "postCardAction router" --> UI
   UI -- "Preview tab" --> Red
+  UI -- "detail" --> Risk
+  UI -- "approve (risky)" --> Auth
+  Auth -- "verified / fallback" --> Store
+  UI --> Hap
+  WS -- "every ~2 h, network" --> Prefs
+  WS -. "live mode poll" .-> GW
+  WS -- "updateForm" --> Cards
+  WS -- "new pending" --> Notif
 ```
 
 - **Data flow.** `PocketStore` (singleton, MVVM service layer) polls the active repository every 4 s, maps results to UI
@@ -346,6 +403,16 @@ flowchart LR
 - **Widgets.** After each refresh `WidgetBridge` writes a snapshot to Preferences and calls `formProvider.updateForm` for
   every placed widget (`getPublishedRunningFormInfos`). The `FormExtensionAbility` serves the snapshot on add and on its
   30-minute update (and polls the gateway itself in live mode).
+- **Step-up.** `DetailView.vote('approve')` checks `needsStepUp` (admin/owner level, two-person rule, or >= $100). It
+  probes `userAuth.getAvailableStatus` for face, fingerprint and PIN at ATL3, opens the system sheet with a 32-byte random
+  challenge and only then calls `PocketStore.vote`. Result codes are mapped in `StepUpAuth.outcomeOf`: success approves,
+  cancel / lockout / timeout abort with a toast, "not enrolled / not supported" falls back to the labelled manual
+  confirmation dialog. Denials skip step-up on purpose.
+- **Background.** `EntryAbility.onCreate` registers a repeating, network-gated WorkScheduler task (`isPersisted`, 2 h
+  cycle; the system decides the real cadence from the app's activity group). `RefreshWorkAbility.onWorkStart` runs
+  `BackgroundRefresh.refreshOnce`: in live mode it polls the gateway, updates every placed widget and notifies about
+  pending requests not yet seen in the app (the app records the ids it has shown); in mock mode it re-sends the last
+  snapshot. The widget's own `onUpdateForm` uses the same code path.
 - **Errors.** Network failures switch the header badge to **LIVE · OFFLINE** and keep showing the last data; the widget keeps
   its last snapshot. Settings validate the URL before saving.
 - **Privacy.** The Preview tab's redactor runs in ArkTS on the device (no network, nothing stored). Logs (`AegisPocket` tag)
@@ -353,7 +420,8 @@ flowchart LR
 
 ## 10. AI features
 
-Not applicable inside the app: Aegis Pocket contains no AI model and sends no data to an AI service. It is the human
+Not applicable inside the app: Aegis Pocket contains no AI model and sends no data to an AI service. The
+"Why a human is asked" risk card is rule-based (see "Intelligent touch" above), not machine learning. It is the human
 approval front end for AI agents that are governed by the separate Aegis gateway. The "What data leaves" preview is
 rule-based (regular expressions plus checksums: PESEL weights, Luhn, IBAN mod-97), runs on the device, and mirrors the
 gateway's local-first redaction (entity names and `[ENTITY_N]` placeholders from the gateway contract). Development
@@ -361,10 +429,14 @@ used AI tools; see [AI_WORKFLOW.md](AI_WORKFLOW.md).
 
 ## Known limitations
 
-- Install, launch, notifications and widgets have **not yet been verified on an emulator or device** (no target was
-  available when this version was built). Build, lint and unit tests pass.
-- Polling only runs while the app is alive; HarmonyOS freezes background apps, so notifications for new requests are
-  reliable only while the app is in the foreground or recently backgrounded. Push (Push Kit) or SSE would remove this.
+- Install, launch, notifications, widgets, step-up authentication, haptics and the WorkScheduler task have **not yet
+  been verified on an emulator or device** (no target was available when this version was built). Build, lint and
+  unit tests pass.
+- The DevEco emulator cannot simulate biometrics or vibration (organizers' FAQ). On it, step-up uses the lock-screen
+  PIN if one is set, otherwise the labelled manual fallback; haptics are silently skipped.
+- In-app polling only runs while the app is alive. While it is closed, the WorkScheduler task refreshes the widget and
+  notifies about live requests at most about every 2 hours (system-scheduled), so it is a safety net, not real-time.
+  Push Kit or SSE would make background delivery immediate.
 - Mock mode re-seeds on every app start; a notification for a simulated request from a previous run opens "Request not found".
 - Phone only (`deviceTypes: ["phone"]`); no wearable target yet.
 
@@ -386,6 +458,23 @@ The OpenHarmony runtime uses integer API levels. The HarmonyOS runtime uses rele
 API 24 behaviour there.
 Only `@ohos.*` / OpenHarmony APIs are available there. HarmonyOS-only Kits are not.
 
+## Demo (≤60 s)
+
+Recorded on the DevEco phone emulator in mock mode (label visible), widget already placed on the home screen.
+
+| Time | Shot | What to say / show |
+|---|---|---|
+| 0-6 s | Home screen with the **AI posture** widget (MOCK badge), tap it | "AI agents now act for us. Aegis Pocket puts a human in the loop, on HarmonyOS." |
+| 6-14 s | App Home: pending count, blocked threats, redacted data, budget left | Posture at a glance; the same numbers the widget shows (Form Kit). |
+| 14-22 s | A simulated request arrives: system **notification** + in-app banner; tap the notification | Notification Kit + WantAgent deep link straight into the request. |
+| 22-32 s | Detail: **Why a human is asked** card (score, reasons), facts, checks, untrusted agent note | On-device risk explanation; the agent's own note is never trusted. |
+| 32-38 s | Inbox: switch persona Emily (admin) → Piotr (member); Approve becomes **LOCKED** with the reason | Role rules and separation of duties. |
+| 38-50 s | As Emily, tap **Approve** on the $50 subscription → face/fingerprint/PIN sheet (or the labelled fallback dialog on the emulator) → approved toast | User Authentication Kit step-up before risky approvals; denials never need it. |
+| 50-56 s | **Preview** tab: paste text, see `[EMAIL_1]`, `[PESEL_1]` placeholders | Exactly what data would leave the device, computed on the device. |
+| 56-60 s | Back to the widget: pending count dropped | Widget kept current by the app and a WorkScheduler background task. |
+
+The full script with voice-over is in [`docs/HACKTRIBE_POCKET.md`](docs/HACKTRIBE_POCKET.md).
+
 ---
 
 ## Huawei judging checklist
@@ -400,8 +489,8 @@ They prefer a **narrow, working** solution over a broad concept.
 - [x] **Architecture description** (section 9)
 - [ ] **`AI_WORKFLOW.md`**: models, agents, MCP servers, main prompts, workflow, validation, lessons learned
 - [x] **AI feature docs**, if the app has AI features (section 10: not applicable)
-- [x] Real use of **platform APIs/Kits** (Form Kit widgets, Notification Kit, Network Kit, ArkData, ArkUI)
-- [ ] Theme fit: Intelligent / Spatial / Human-Centric experiences (combining themes is a plus)
-- [x] Error handling and **tests** (`entry/src/test`: 10 local unit tests)
+- [x] Real use of **platform APIs/Kits** (User Authentication Kit, Form Kit widgets, Notification Kit, Background Tasks Kit, Sensor Service Kit, Network Kit, ArkData, ArkUI accessibility)
+- [x] Theme fit: Human-Centric (human oversight, privacy, accessibility) + Intelligent (on-device risk explanation)
+- [x] Error handling and **tests** (`entry/src/test`: 17 local unit tests)
 - [ ] **No secrets in the repo**: no signing material, API keys or `signingConfigs` with local paths
 - [ ] Pre-existing work separated from hackathon work. Significant AI use disclosed.

@@ -14,7 +14,11 @@ import {
 } from '../model/Models';
 import { Pill } from '../components/Common';
 import { PocketStore } from '../data/PocketStore';
-import { sponsorOf } from '../data/Eligibility';
+import { needsStepUp, sponsorOf, stepUpReason } from '../data/Eligibility';
+import { RiskFactor, RiskSummary, explainRisk } from '../data/RiskExplainer';
+import { StepUpAuth, StepUpOutcome } from '../platform/StepUpAuth';
+import { Haptics } from '../platform/Haptics';
+import { promptAction } from '@kit.ArkUI';
 
 /** Approval detail with approve / deny, locked with a reason when the persona's role is insufficient. */
 @Component
@@ -23,7 +27,7 @@ export struct DetailView {
   @StorageProp('approvals') approvals: ApprovalItem[] = [];
   @StorageProp('nowMs') nowMs: number = Date.now();
   @StorageProp('persona') persona: string = 'u_emily';
-  @State busy: string = ''; // '' | 'approve' | 'deny'
+  @State busy: string = ''; // '' | 'approve' | 'deny' | 'auth'
   @State comment: string = '';
   onClose: () => void = () => {
   };
@@ -55,6 +59,9 @@ export struct DetailView {
       Scroll() {
         Column({ space: Space.LG }) {
           this.headerCard(it)
+          if (it.status === 'pending') {
+            this.riskCard(explainRisk(it))
+          }
           this.decisionCard(it)
           if (it.budgetBefore >= 0 && it.budgetAfter >= 0) {
             this.budgetCard(it)
@@ -159,6 +166,71 @@ export struct DetailView {
     .borderRadius(Radius.LG)
     .backgroundColor(Colors.SURFACE)
     .border({ width: 1, color: Colors.BORDER })
+  }
+
+  @Builder
+  riskCard(r: RiskSummary) {
+    Column({ space: Space.SM }) {
+      Row({ space: Space.SM }) {
+        Text('WHY A HUMAN IS ASKED')
+          .fontSize(Fonts.TINY)
+          .fontColor(Colors.TEXT_DIM)
+          .letterSpacing(1)
+        Blank()
+        Pill({
+          text: r.level + ' risk · ' + r.score.toString(),
+          fg: this.riskTone(r.level),
+          bg: this.riskToneSoft(r.level),
+          fontPx: Fonts.SMALL
+        })
+      }
+      .width('100%')
+
+      Row() {
+        Column()
+          .width(r.score.toString() + '%')
+          .height('100%')
+          .borderRadius(3)
+          .backgroundColor(this.riskTone(r.level))
+          .animation({ duration: 400, curve: Curve.EaseOut })
+      }
+      .width('100%')
+      .height(6)
+      .borderRadius(3)
+      .backgroundColor(Colors.SURFACE_3)
+
+      Text(r.headline)
+        .fontSize(Fonts.BODY)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(Colors.TEXT)
+        .width('100%')
+      ForEach(r.factors, (f: RiskFactor) => {
+        Row({ space: Space.SM }) {
+          Text('+' + f.points.toString())
+            .fontSize(Fonts.TINY)
+            .fontColor(Colors.TEXT_FAINT)
+            .fontFeature('"tnum" on')
+            .width(28)
+          Text(f.text)
+            .fontSize(Fonts.SMALL)
+            .fontColor(Colors.TEXT_DIM)
+            .layoutWeight(1)
+        }
+        .width('100%')
+        .alignItems(VerticalAlign.Top)
+      }, (f: RiskFactor) => f.text)
+      Text(r.advice + ' On-device, rule-based: nothing is sent anywhere to compute it.')
+        .fontSize(Fonts.TINY)
+        .fontColor(Colors.TEXT_FAINT)
+        .width('100%')
+    }
+    .padding(Space.LG)
+    .width('100%')
+    .borderRadius(Radius.LG)
+    .backgroundColor(Colors.SURFACE)
+    .border({ width: 1, color: Colors.BORDER })
+    .accessibilityGroup(true)
+    .accessibilityText('Risk ' + r.level + ', score ' + r.score.toString() + ' of 100. ' + r.headline)
   }
 
   @Builder
@@ -424,24 +496,50 @@ export struct DetailView {
             .height(40)
             .maxLength(200)
         }
+        if (it.canVote && needsStepUp(it)) {
+          Row({ space: Space.SM }) {
+            Text('STEP-UP')
+              .fontSize(9)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(Colors.ACCENT)
+              .letterSpacing(0.8)
+            Text('Approving asks for your face, fingerprint or PIN · ' + stepUpReason(it))
+              .fontSize(Fonts.TINY)
+              .fontColor(Colors.TEXT_DIM)
+              .layoutWeight(1)
+          }
+          .width('100%')
+          .padding({ left: Space.MD, right: Space.MD, top: 6, bottom: 6 })
+          .borderRadius(Radius.MD)
+          .backgroundColor(Colors.ACCENT_SOFT)
+          .accessibilityGroup(true)
+        }
         Row({ space: Space.MD }) {
           Button(this.busy === 'deny' ? 'Denying…' : 'Deny')
             .fontSize(Fonts.BODY)
             .fontWeight(FontWeight.Medium)
             .fontColor(it.canVote ? Colors.BAD : Colors.TEXT_FAINT)
             .backgroundColor(it.canVote ? Colors.BAD_SOFT : Colors.SURFACE_2)
-            .height(48)
+            .constraintSize({ minHeight: 48 })
             .layoutWeight(1)
             .enabled(it.canVote && this.busy.length === 0)
+            .accessibilityText('Deny request')
+            .accessibilityDescription(it.canVote ? 'Tells the agent no: ' + it.title :
+              (it.whyNot.length > 0 ? it.whyNot : 'You cannot vote on this request'))
             .onClick(() => this.vote(it.id, 'deny'))
-          Button(this.busy === 'approve' ? 'Approving…' : 'Approve')
+          Button(this.busy === 'auth' ? 'Verifying…' : (this.busy === 'approve' ? 'Approving…' : 'Approve'))
             .fontSize(Fonts.BODY)
             .fontWeight(FontWeight.Bold)
             .fontColor(it.canVote ? Color.White : Colors.TEXT_FAINT)
             .backgroundColor(it.canVote ? Colors.GOOD : Colors.SURFACE_2)
-            .height(48)
+            .constraintSize({ minHeight: 48 })
             .layoutWeight(1.4)
             .enabled(it.canVote && this.busy.length === 0)
+            .accessibilityText('Approve request')
+            .accessibilityDescription(it.canVote ? (needsStepUp(it) ?
+              'Asks for face, fingerprint or PIN, then lets the agent proceed: ' + it.title :
+              'Lets the agent proceed: ' + it.title) :
+              (it.whyNot.length > 0 ? it.whyNot : 'You cannot vote on this request'))
             .onClick(() => this.vote(it.id, 'approve'))
         }
         .width('100%')
@@ -502,15 +600,75 @@ export struct DetailView {
     return it.status;
   }
 
+  private riskTone(level: string): string {
+    return level === 'high' ? Colors.BAD : (level === 'medium' ? Colors.WARN : Colors.GOOD);
+  }
+
+  private riskToneSoft(level: string): string {
+    return level === 'high' ? Colors.BAD_SOFT : (level === 'medium' ? Colors.WARN_SOFT : Colors.GOOD_SOFT);
+  }
+
   private vote(id: string, decision: string): void {
     if (this.busy.length > 0) {
       return;
     }
+    const it: ApprovalItem | undefined = this.item();
+    if (decision === 'approve' && it !== undefined && needsStepUp(it)) {
+      this.stepUpThenVote(it);
+      return;
+    }
+    this.submit(id, decision, '');
+  }
+
+  /** User Authentication Kit step-up; labelled manual fallback when the device has no authenticator. */
+  private stepUpThenVote(it: ApprovalItem): void {
+    this.busy = 'auth';
+    const title: string = 'Approve: ' + it.title + (it.amountUsd > 0 ? ' (' + Fmt.usd(it.amountUsd) + ')' : '');
+    StepUpAuth.authenticate(title).then((o: StepUpOutcome) => {
+      if (o.status === 'verified') {
+        Haptics.success();
+        this.busy = '';
+        this.submit(it.id, 'approve', 'Verified with ' + o.detail + '. ');
+      } else if (o.status === 'unavailable') {
+        this.busy = '';
+        this.confirmFallback(it, o.detail);
+      } else {
+        this.busy = '';
+        Haptics.failure();
+        this.getUIContext().getPromptAction().showToast({ message: o.detail + ': not approved', duration: 2500 });
+      }
+    });
+  }
+
+  private confirmFallback(it: ApprovalItem, reason: string): void {
+    this.getUIContext().getPromptAction().showDialog({
+      title: 'Device authentication unavailable',
+      message: reason + '. This happens on the emulator, which cannot simulate biometrics, or when no lock-screen ' +
+        'PIN is set.\n\nFALLBACK (not biometric): confirm manually to approve "' + it.title + '".',
+      buttons: [
+        { text: 'Cancel', color: Colors.TEXT_DIM },
+        { text: 'Approve without biometrics', color: Colors.WARN }
+      ]
+    }).then((r: promptAction.ShowDialogSuccessResponse) => {
+      if (r.index === 1) {
+        this.submit(it.id, 'approve', 'Manual confirmation (no device authentication). ');
+      }
+    }).catch(() => {
+      // dismissed: nothing approved
+    });
+  }
+
+  private submit(id: string, decision: string, toastPrefix: string): void {
     this.busy = decision;
     PocketStore.get().vote(id, decision, this.comment).then((r: VoteOutcome) => {
       this.busy = '';
       this.comment = '';
-      this.getUIContext().getPromptAction().showToast({ message: r.message, duration: 2500 });
+      if (r.ok && decision === 'approve') {
+        Haptics.success();
+      } else {
+        Haptics.failure();
+      }
+      this.getUIContext().getPromptAction().showToast({ message: toastPrefix + r.message, duration: 2500 });
     });
   }
 }
