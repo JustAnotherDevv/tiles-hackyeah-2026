@@ -284,9 +284,13 @@ def conflict_hint(owner: PortOwner) -> str:
 
 
 def pick_auto_offset(names: list[str], candidates: tuple[int, ...] = (100, 200, 300, 1000, 2000)) -> int | None:
+    # child/pidfile names -> BASE_PORTS keys (the MCP mock child is called "mcp"); unknown names are
+    # ignored rather than crashing the very fallback that is meant to rescue a busy machine
+    alias = {"mcp": "mock_mcp", "mocks": "mock_llm"}
+    keys = {alias.get(n, n) for n in names} & set(BASE_PORTS)
     for off in candidates:
         ports = compute_ports(off)
-        if all(port_is_free(ports[n]) for n in names):
+        if all(port_is_free(ports[k]) for k in keys):
             return off
     return None
 
@@ -464,6 +468,17 @@ def status_table(console: Any, children: list[Child], ports: dict[str, int], spe
     g, f, s = ports["gateway"], ports["feed"], ports["exfil_sink"]
     console.print(f"Dashboard [bold]http://{HOST}:{g}/ui[/bold] · Feed editor http://{HOST}:{f}/ · "
                   f"Attacker counter http://{HOST}:{s}/_mock/ui · next: [bold]make demo-preflight[/bold]")
+    if g != BASE_PORTS["gateway"] or f != BASE_PORTS["feed"]:
+        console.print(f"[yellow]non-default ports[/yellow] - in other terminals run: [bold]{export_hint(ports)}[/bold]"
+                      " (`python -m feed_service publish` and `python -m aegis.feed.demo` also find this "
+                      "stack via data/run/*.pid)", soft_wrap=True)
+
+
+def export_hint(ports: dict[str, int], host: str = HOST) -> str:
+    """Shell line that points the demo CLIs of a second terminal at this stack."""
+    env = {"AEGIS_URL": f"http://{host}:{ports['gateway']}", "AEGIS_FEED_URL": f"http://{host}:{ports['feed']}"}
+    env.update({var: str(ports[name]) for name, var in MOCK_PORT_ENV.items() if ports[name] != BASE_PORTS[name]})
+    return "export " + " ".join(f"{k}={v}" for k, v in env.items())
 
 
 def run_script(console: Any, env: dict[str, str], rel: str, *args: str) -> int | None:

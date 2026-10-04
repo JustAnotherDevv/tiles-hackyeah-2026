@@ -88,6 +88,34 @@ def build_report(
     }
 
 
+#: one-line meaning of every matrix status (matrix.md, selftest.html and the console legend)
+STATUS_LEGEND: dict[str, str] = {
+    "PASS": "every case for the control passed",
+    "PARTIAL": "every gating (core) case passed, but the control has documented expected failures "
+    "(xfail): `tier: stretch` cases in tests/cases/*.yaml for known gaps, or a pytest xfail; "
+    "they never fail the run and are listed under 'Expected failures (xfail)'",
+    "FAIL": "a gating (core) case failed",
+    "UNTESTED": "no must-block or no must-allow case for the control",
+    "SKIPPED": "all cases skipped (for example semantic cases with AEGIS_SEMANTIC=off)",
+    "DISABLED": "the control is switched off in the loaded policy",
+    "NOT_IMPLEMENTED": "the control is in the catalog but not implemented",
+}
+
+
+def expected_failures(rep: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    """xfail cases grouped by control (corpus rate-suite rows have no single control)."""
+    out: dict[str, list[dict[str, Any]]] = {}
+    for c in rep["cases"]:
+        if c["outcome"] == "xfail":
+            out.setdefault(c.get("control") or "corpus rate suites", []).append(c)
+    return out
+
+
+def legend_lines(rep: dict[str, Any]) -> list[str]:
+    seen = {r["status"] for r in rep["controls"]} | {s["status"] for s in rep.get("suites", [])}
+    return [f"{k}: {v}" for k, v in STATUS_LEGEND.items() if k in seen]
+
+
 def _cnt(c: dict[str, int]) -> str:
     return f"{c['passed']}/{c['total']}" if c["total"] else "–"
 
@@ -119,6 +147,17 @@ def matrix_markdown(rep: dict[str, Any]) -> str:
         lines += ["", "| Suite | Passed | Status |", "|---|---|---|"]
         lines += [
             f"| {s['title']} | {s['passed']}/{s['total']} | {s['status']} |" for s in rep["suites"]
+        ]
+    lines += ["", "**Status legend**", ""] + [f"- {ln}" for ln in legend_lines(rep)]
+    xf = expected_failures(rep)
+    if xf:
+        lines += [
+            "",
+            "**Expected failures (xfail)** behind PARTIAL (documented gaps, non-gating)",
+            "",
+        ]
+        lines += [
+            f"- {ctl}: " + ", ".join(c["id"] for c in cases) for ctl, cases in sorted(xf.items())
         ]
     t = rep["totals"]
     lines += [
@@ -279,6 +318,18 @@ def selftest_html(rep: dict[str, Any]) -> str:
         for k, v in sorted(tags.items())
     )
     untested = [r["control_id"] for r in rep["controls"] if r["status"] == "UNTESTED"]
+    legend_html = "".join(
+        f"<div><span class='chip {_e(ln.split(':', 1)[0])}'>{_e(ln.split(':', 1)[0])}</span> "
+        f"{_e(ln.split(':', 1)[1].strip())}</div>"
+        for ln in legend_lines(rep)
+    )
+    xf = expected_failures(rep)
+    xf_html = "".join(
+        f"<tr><td class=mono>{_e(ctl)}</td><td class=mono>{_e(c['id'])}</td>"
+        f"<td>{_e(c.get('expect'))} → {_e(c.get('got'))}</td><td class=n>{_e(c.get('reason'))}</td></tr>"
+        for ctl, cases in sorted(xf.items())
+        for c in cases
+    )
     ev = rep.get("evidence") or {}
     ev_html = "".join(
         f"<div class=kpi><div class=l>{_e(k)}.json</div><div class=mono>{_e(json.dumps(v)[:300])}</div></div>"
@@ -317,9 +368,11 @@ def selftest_html(rep: dict[str, Any]) -> str:
 <div class=kpis>{"".join(f"<div class=kpi><div class=v>{_e(v)}</div><div class=l>{_e(lbl)}</div></div>" for lbl, v in kpis)}</div>
 <h2>Per-control matrix</h2><div class=card><table><tr><th>Control</th><th>Name</th><th>Attack</th><th>Benign</th>
 <th>Redact</th><th>Error</th><th>Other</th><th>p95 ms</th><th>Status</th></tr>{"".join(rows)}</table></div>
+<div class='card legend' style='padding:12px;margin-top:10px;display:grid;gap:6px'>{legend_html}</div>
 {f"<h2>Functional suites</h2><div class=card><table><tr><th>Suite</th><th>Passed</th><th>Status</th></tr>{suites}</table></div>" if suites else ""}
 <h2>Coverage</h2><div class='card' style='padding:12px'>{("UNTESTED: " + ", ".join(untested)) if untested else "Every catalog control has at least one must-block and one must-allow case."}</div>
 {f"<h2>Failures</h2><div class=card><table><tr><th>Case</th><th>Expected → got</th><th>Control</th><th>Decision</th><th>Reason</th></tr>{fail_html}</table></div>" if failures else ""}
+{f"<h2 id=xfail>Expected failures (xfail)</h2><div class=sub style='margin-bottom:8px'>Documented gaps behind PARTIAL: <code>tier: stretch</code> cases in tests/cases/*.yaml (or pytest xfail). Non-gating; a case that starts passing is reported as pass.</div><div class=card><table><tr><th>Control</th><th>Case</th><th>Expected → got</th><th>Reason</th></tr>{xf_html}</table></div>" if xf_html else ""}
 <h2>Performance</h2><div class=kpis>{"".join(f"<div class=kpi><div class=v>{_e(v) if v is not None else '–'}</div><div class=l>{_e(k)}</div></div>" for k, v in perf.items())}</div>
 {f"<h2>OWASP / ATLAS tags</h2><div class=card><table><tr><th>Tag</th><th>Passed</th></tr>{tag_html}</table></div>" if tag_html else ""}
 {obf_html}
@@ -394,6 +447,12 @@ def console(rep: dict[str, Any], write: Any = print) -> None:
             f"[red]{t['failed']} fail[/] · {t['skipped']} skip · {t['untested_controls']} UNTESTED · "
             f"{rep['duration_s']} s → reports/selftest.html"
         )
+        if any(r["status"] == "PARTIAL" for r in rep["controls"]):
+            con.print(
+                "[yellow]PARTIAL[/] = all gating cases pass; the control has documented expected "
+                "failures (xfail, `tier: stretch`), listed in reports/selftest.html → "
+                "'Expected failures (xfail)' and reports/matrix.md"
+            )
         failures = [c for c in rep["cases"] if c["outcome"] == "fail"][:25]
         for c in failures:
             con.print(f"  [red]FAIL[/] {c['id']} ({c.get('control')}): {c.get('reason', '')[:160]}")
@@ -402,9 +461,12 @@ def console(rep: dict[str, Any], write: Any = print) -> None:
 
 
 __all__ = [
+    "STATUS_LEGEND",
     "build_report",
     "console",
+    "expected_failures",
     "header_line",
+    "legend_lines",
     "matrix_markdown",
     "selftest_html",
     "write_all",

@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Aegis local models: download (pinned, ungated sources) or verify offline.
 #
-#   bash scripts/fetch_models.sh             # fetch whatever is missing (no network if complete)
+#   bash scripts/fetch_models.sh             # DOWNLOAD whatever is missing (~0.8 GB ONNX + ~1 GB Ollama
+#                                            # GGUF); no network if complete
 #   bash scripts/fetch_models.sh --verify    # offline: MANIFEST sha256 + Ollama aliases, exit 0/1
 #   bash scripts/fetch_models.sh --onnx-only # skip Ollama pulls / aliases
 #   bash scripts/fetch_models.sh --force     # re-download every ONNX file, rewrite MANIFEST
 #   WITH_PG2=0 ...                           # skip Llama Prompt Guard 2 (off by default at runtime)
 #
-# Layout (models/, gitignored except MANIFEST.sha256):
+# Layout (all of models/ is gitignored; MANIFEST.sha256 is written there on the first download):
 #   pi-horizon-small/  Horizon-Labs prompt-injection-guard-small v2, int8 ONNX  (~303 MB, Apache-2.0)
 #   pg2-22m/           Llama Prompt Guard 2 22M, int8 ONNX (gravitee mirror)   (~81 MB, Llama 4 Community)
 #   minilm-l12-multi/  paraphrase-multilingual-MiniLM-L12-v2 qint8 arm64 ONNX  (~128 MB, Apache-2.0)

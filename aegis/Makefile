@@ -52,10 +52,10 @@ dev: ## gateway --reload + Vite dev server (Ctrl-C stops both)
 feed: ## threat-intel feed service on :8790 (threat-feed)
 	@$(PY) -m feed_service
 
-feed-keys: ## generate feed signing keys + config/feeds/feed_pubkey.b64 (threat-feed)
+feed-keys: ## feed signing key if missing (fresh clone: pinned in gitignored config/feeds/local/)
 	@$(PY) -m feed_service keygen --if-missing
 
-feed-reseed: ## re-sign config/feeds/seed_bundle.json after editing feed_service/signatures (same key)
+feed-reseed: ## re-sign the pinned seed bundle after editing feed_service/signatures (same key)
 	@$(PY) -m feed_service reseed
 
 mocks: ## run all mock upstreams (:8791-8794) in the foreground
@@ -142,10 +142,10 @@ verify-audit: ## verify the hash-chained audit log (audit-metrics)
 
 audit-verify: verify-audit ## alias
 
-fetch-models: ## fetch/verify ONNX + Ollama models (semantic-models)
+fetch-models: ## optional: DOWNLOAD ~2 GB ONNX + Ollama models (ARGS=--verify = offline check only)
 	@$(call todo_or,scripts/fetch_models.sh,semantic-models) bash scripts/fetch_models.sh $(ARGS)
 
-models: fetch-models ## alias (CONTRACTS)
+models: fetch-models ## alias of fetch-models (optional; the stack runs without models)
 
 reset: ## wipe data/, copy golden policy, reseed org (core-gateway)
 	@$(PY) -m aegis reset

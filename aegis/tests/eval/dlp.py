@@ -151,8 +151,17 @@ def detector_metrics_summary(reports_dir: Path) -> dict[str, Any] | None:
         return None
     keep = {k: data[k] for k in ("generated_at", "overall", "micro", "macro", "summary", "by_entity", "precision",
                                   "recall", "f1") if k in data}
-    keep["source_file"] = str(p)
-    return keep or {"source_file": str(p)}
+    keep["source_file"] = _rel(p)
+    return keep or {"source_file": _rel(p)}
+
+
+def _rel(p: Path) -> str:
+    """Repo-relative path (public reports must not carry local absolute paths)."""
+    root = Path(__file__).resolve().parents[2]
+    try:
+        return p.resolve().relative_to(root).as_posix()
+    except ValueError:
+        return p.name
 
 
 __all__ = ["detector_metrics_summary", "leaked", "load_dlp_rows", "score", "to_rows"]

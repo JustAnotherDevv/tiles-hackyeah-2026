@@ -54,8 +54,8 @@ def test_children_order_and_commands(rs):
 
 def test_parse_lsof(rs):
     out = ("COMMAND   PID     USER   FD   TYPE DEVICE SIZE/OFF NODE NAME\n"
-           "Python  4242 nevvdevv    5u  IPv4 0x1      0t0  TCP 127.0.0.1:8791 (LISTEN)\n")
-    assert rs.parse_lsof(out) == [{"command": "Python", "pid": 4242, "user": "nevvdevv"}]
+           "Python  4242 devuser    5u  IPv4 0x1      0t0  TCP 127.0.0.1:8791 (LISTEN)\n")
+    assert rs.parse_lsof(out) == [{"command": "Python", "pid": 4242, "user": "devuser"}]
     assert rs.parse_lsof("") == []
 
 
@@ -90,3 +90,12 @@ def test_alive_supervisor_marks_running_stack_ours(rs):
     import os
     assert rs._alive(os.getppid()) is True
     assert rs._alive(None) is False and rs._alive(0) is False and rs._alive(os.getpid()) is False
+
+
+def test_auto_offset_accepts_child_names(rs, monkeypatch):
+    # regression: `make up ARGS=--auto-ports` crashed with KeyError: 'mcp' on a real conflict
+    monkeypatch.setattr(rs, "port_is_free", lambda port, host="127.0.0.1": port >= 8987)
+    assert rs.pick_auto_offset(["mock_llm", "exfil_sink", "mock_saas", "mcp", "feed", "gateway"]) == 200
+    hint = rs.export_hint(rs.compute_ports(200))
+    assert hint.startswith("export AEGIS_URL=http://127.0.0.1:8987 AEGIS_FEED_URL=http://127.0.0.1:8990")
+    assert "AEGIS_MOCK_MCP_PORT=8992" in hint

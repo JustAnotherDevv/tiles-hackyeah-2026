@@ -124,7 +124,14 @@ class FeedManager:
 
     def _pubkey_path(self) -> Path:
         p = Path(getattr(self.settings, "feed_pubkey", "config/feeds/feed_pubkey.b64"))
-        return p if p.is_absolute() else self._root() / p
+        p = p if p.is_absolute() else self._root() / p
+        # A checkout without the private key for the committed pin (fresh clone) runs
+        # `feed_service keygen --if-missing`, which pins its own key + seed in the gitignored
+        # config/feeds/local/ instead of rewriting tracked files: prefer it for the default path.
+        local = p.parent / "local" / p.name
+        if p.name == "feed_pubkey.b64" and p.parent.name == "feeds" and local.exists():
+            return local
+        return p
 
     def _seed_path(self) -> Path | None:
         """The committed seed bundle lives next to the pinned key (config/feeds/)."""

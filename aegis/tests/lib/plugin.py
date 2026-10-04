@@ -18,6 +18,8 @@ import pytest
 from tests.lib.cases import column_of
 from tests.lib.matrix import RESULTS, Entry
 
+_ROOT = Path(__file__).resolve().parents[2]
+
 _T0 = [time.time()]
 EXTRA_MARKERS = {
     "hermetic_only": "mutating test; skipped in live mode unless AEGIS_LIVE_MUTATE=1",
@@ -87,7 +89,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[Any]):
                 if isinstance(lr, tuple) and len(lr) == 3
                 else str(getattr(lr, "reprcrash", lr) or "")
             )
-            reason = str(reason).splitlines()[-1][:300] if reason else ""
+            reason = str(reason).splitlines()[-1] if reason else ""
+            # public reports: strip the local checkout prefix (no absolute paths / usernames)
+            reason = reason.replace(str(_ROOT) + os.sep, "")[:300]
         controls = kw.get("control")
         for ctl in controls if isinstance(controls, (list, tuple)) else [controls]:
             RESULTS.add(

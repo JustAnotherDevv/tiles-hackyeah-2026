@@ -19,6 +19,8 @@ node_modules/
 # ---- runtime state (CONTRACTS section 6.2) - never commit
 /data/
 /feed_service/state/
+# per-checkout feed key pin + seed (fresh clone: `feed_service keygen --if-missing`)
+/config/feeds/local/
 /reports/*
 !/reports/.gitkeep
 !/reports/eval.json
@@ -26,6 +28,8 @@ node_modules/
 !/reports/heatmap.json
 !/reports/deck_numbers.md
 !/reports/*.html
+# written by every `make test` (the gateway serves it at /api/selftest/report): generated, not tracked
+/reports/selftest.html
 
 # ---- model weights (semantic-models; ~0.8 GB)
 /models/

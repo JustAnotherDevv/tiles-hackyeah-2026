@@ -433,6 +433,9 @@ def pointer_bytes(header: dict, bundle_bytes: bytes, *, kid: str | None = None) 
 
 
 # --------------------------------------------------------------------------- service state
+LOCAL_PIN_DIR = "local"
+
+
 class FeedService:
     """All feed-service state + operations. Thread-safe enough for one uvicorn worker."""
 
@@ -455,12 +458,24 @@ class FeedService:
 
     # ---- paths & small state
     @property
+    def local_config_dir(self) -> Path:
+        """Per-checkout pin (gitignored `config/feeds/local/`): a fresh clone has no private key for
+        the committed `config/feeds/feed_pubkey.b64`, so `keygen --if-missing` pins its own key here
+        instead of rewriting the tracked files. The gateway prefers this dir when it exists."""
+        return self.config_dir / LOCAL_PIN_DIR
+
+    @property
+    def active_config_dir(self) -> Path:
+        local = self.local_config_dir
+        return local if (local / "feed_pubkey.b64").exists() else self.config_dir
+
+    @property
     def pubkey_file(self) -> Path:
-        return self.config_dir / "feed_pubkey.b64"
+        return self.active_config_dir / "feed_pubkey.b64"
 
     @property
     def seed_bundle(self) -> Path:
-        return self.config_dir / "seed_bundle.json"
+        return self.active_config_dir / "seed_bundle.json"
 
     def _serial_state(self) -> dict[str, int]:
         p = self.state / "serial.json"
@@ -518,8 +533,12 @@ class FeedService:
             return None
         return key_id(signing.public_key(s)) if s else None
 
-    def keygen(self, *, force: bool = False, if_missing: bool = False) -> dict:
-        """Write keys, config/feeds/feed_pubkey.b64, the seed bundle (serial 1) and dist v1."""
+    def keygen(self, *, force: bool = False, if_missing: bool = False, repo: bool = False) -> dict:
+        """Write keys, the pinned feed_pubkey.b64, the seed bundle (serial 1) and dist v1.
+
+        The pin + seed go to `config/feeds/` only when no pin is committed there (or `repo=True`,
+        maintainer re-key); otherwise to the gitignored `config/feeds/local/`, so a fresh clone's
+        `make up` never rewrites tracked files."""
         have_priv = (signing.keys_dir(self.state) / signing.PRIVATE_NAME).exists()
         have_pub = self.pubkey_file.exists()
         if have_priv and have_pub and not force:
@@ -546,19 +565,26 @@ class FeedService:
             )
         elif have_priv and not force and not if_missing:
             raise FeedServiceError("signing key exists; use --force to overwrite", 409)
-        elif have_pub and not have_priv and not force:
+        committed_pin = (self.config_dir / "feed_pubkey.b64").exists()
+        target = self.config_dir if (repo or not committed_pin) else self.local_config_dir
+        if have_pub and not have_priv and not force:
             log.warning(
-                "fresh clone: %s has no private key here; generating a new keypair and "
-                "rewriting the pinned pubkey + seed bundle",
+                "fresh clone: %s has no private key here; generating this checkout's own keypair, "
+                "pinned in %s (gitignored; the committed files stay untouched)",
                 self.pubkey_file,
+                target,
             )
         seed, pub = signing.generate()
         signing.write_keypair(self.state, seed, pub)
         kid = key_id(pub)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        target.mkdir(parents=True, exist_ok=True)
+        if target == self.config_dir and self.local_config_dir.exists():
+            shutil.rmtree(self.local_config_dir)  # an explicit repo re-key supersedes a local pin
         import base64
 
-        _write_atomic(self.pubkey_file, (base64.b64encode(pub).decode("ascii") + "\n").encode())
+        _write_atomic(
+            target / "feed_pubkey.b64", (base64.b64encode(pub).decode("ascii") + "\n").encode()
+        )
         sigs = load_repo_signatures(self.src_root / "signatures")
         lists = load_repo_lists(self.src_root / "lists")
         data, header = build_bundle_bytes(sigs, lists, serial=1, ttl_h=SEED_TTL_H, kid=kid)
@@ -573,6 +599,7 @@ class FeedService:
         return {
             "status": "generated",
             "key_id": kid,
+            "pinned": str(target),
             "serial": 1,
             "signatures": header["signature_count"],
             "message": "restart the gateway to pin the new key",
@@ -605,8 +632,12 @@ class FeedService:
         self.workspace.restore()
         self._init_dist_from_seed()
         self.event("reseed", key_id=kid, serial=1, signatures=header["signature_count"])
-        return {"status": "resealed", "key_id": kid, "serial": 1,
-                "signatures": header["signature_count"]}
+        return {
+            "status": "resealed",
+            "key_id": kid,
+            "serial": 1,
+            "signatures": header["signature_count"],
+        }
 
     def _init_dist_from_seed(self) -> None:
         """dist serial 1 = the seed bundle bytes (gateway on seed v1 and service agree)."""

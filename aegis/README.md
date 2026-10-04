@@ -35,8 +35,9 @@ git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026
 cd tiles-hackyeah-2026/aegis
 ```
 
-Requirements: macOS or Linux, [uv](https://docs.astral.sh/uv/) (Python 3.13 is installed by uv), Node 20+
-(only to build the dashboard), optional [Ollama](https://ollama.com) for the semantic controls.
+Requirements: macOS or Linux, [uv](https://docs.astral.sh/uv/) (Python 3.13 is installed by uv), Node 20.19+
+or 22.12+ (only to build the dashboard; Vite 7), optional [Ollama](https://ollama.com) for the semantic controls.
+`make setup` downloads about 320 MB (Python wheels + npm) and uses about 630 MB on disk. No models are needed.
 
 ```bash
 make setup          # uv sync (Python 3.13 venv) + npm ci (web/)
@@ -59,16 +60,36 @@ AEGIS_SEMANTIC=off uv run --frozen pytest tests \
   -m "not semantic and not live and not slow and not bench"   # = make test
 ```
 
+**Ports busy?** (something else already listens on 8787 or 8790-8794)
+
+```bash
+make up ARGS=--auto-ports                 # picks a free offset (+100, +200, ...) and prints the URLs
+make up ARGS='--port-offset 1000'         # every service +1000: gateway :9787, feed :9790, mocks :9791-9794
+uv run --frozen python -m aegis serve --port 18787   # gateway only; AEGIS_PORT=18787 make gateway does the same
+```
+
+On non-default ports the status table prints an `export AEGIS_URL=… AEGIS_FEED_URL=…` line; run it in a second
+terminal so the demo scripts (`demo/agents/*.py`, also `--url http://127.0.0.1:<port>`) hit the right gateway.
+`python -m feed_service publish` and `python -m aegis.feed.demo` find a running `make up` stack on any port by
+themselves (and accept `--url` / `--feed`). Every command prints the URL it targets.
+
 Useful extras: `make demo` (stack + warm-up traffic + preflight), `make demo-preflight` (READY check and
 reset between judges), `make selftest` (policy self-test), `make verify-audit`, `make eval`, `make bench`,
 `make reset` (wipe `data/`, restore the golden policy), `make help` (all targets).
 
-Optional local models (semantic controls; without them the same controls run on a deterministic heuristic
-and show a `degraded` badge, never a silent pass):
+Optional local models (semantic controls). **Everything above works without them:** the same controls run
+on a deterministic heuristic and show a `degraded` badge, never a silent pass. To run with them:
 
 ```bash
-make models         # verifies models/ and the Ollama tags aegis-guard (Qwen3Guard-0.6B) and aegis-judge
+make models                  # DOWNLOADS what is missing: ~0.8 GB of ONNX into models/ (gitignored) and, if
+                             # Ollama is running, pulls ~1 GB of GGUF (Qwen3Guard-0.6B -> aegis-guard,
+                             # Qwen3.5-0.8B -> aegis-judge). ~2 GB in total; no network when complete.
+make models ARGS=--verify    # offline check only: sha256 of models/ against the local MANIFEST + Ollama aliases
+make models ARGS=--onnx-only # skip the Ollama pulls
 ```
+
+The bundled MiniLM embedding build is the arm64 quantisation (`model_qint8_arm64.onnx`); it is tested on Apple
+Silicon only.
 
 ## 5-minute judge path
 
@@ -82,13 +103,17 @@ make models         # verifies models/ and the Ollama tags aegis-guard (Qwen3Gua
    **Borderline (review band)** preset: allow → **block** (same edit with the models loaded, INJ-02 0.65, or with
    `AEGIS_SEMANTIC=off`, heuristic 0.50). Break the YAML on purpose: rejected with line/col, traffic
    keeps flowing on the last good version.
-4. **Approvals by role:** run `uv run --frozen python demo/agents/trading_copilot.py subscribe`. The agent's
-   $50 MarketPulse subscription waits in `/ui/governance/approvals`; as `u_piotr` Approve is locked
-   ("needs admin"), as `u_emily` it works and the held call proceeds.
+4. **Approvals by role:** run `uv run --frozen python demo/agents/trading_copilot.py subscribe` (add
+   `--url http://127.0.0.1:<gateway port>` on non-default ports). The agent's $50 MarketPulse subscription
+   waits in `/ui/governance/approvals`; as `u_piotr` Approve is locked (he sponsors the agent: separation of
+   duties), as `u_emily` (admin) it works and the held call proceeds.
 5. **Threat feed:** open the feed editor `http://127.0.0.1:8790`, enable `AEGIS-TI-022` (EchoLeak-style image
    proxy), **Publish**; replay the Playground **EchoLeak image proxy** preset: allow → **block (SIG-01)**.
    **Tamper** → the gateway rejects the bundle and keeps enforcing the last good one.
-6. **Run the suite:** `make test`. Per-control matrix in `reports/matrix.md` and `reports/selftest.html`.
+6. **Run the suite:** `make test`. Per-control matrix in `reports/matrix.md` and `reports/selftest.html`
+   (both generated, gitignored). A yellow **PARTIAL** status means every gating case passed and the control
+   also has documented expected failures (xfail, `tier: stretch` known gaps); they are listed under
+   "Expected failures (xfail)" in both reports.
 
 Full list of one-click attacks and expected outcomes: [docs/JUDGES.md](docs/JUDGES.md).
 

@@ -1,8 +1,14 @@
 """`python -m feed_service [serve|keygen|publish|reset|verify]` - Aegis threat-intel feed service.
 
 serve   [--host 127.0.0.1] [--port 8790] [--state DIR]   (default; --port 0 = ephemeral)
-keygen  [--force | --if-missing]   keys + config/feeds/feed_pubkey.b64 + seed bundle (serial 1)
-publish [--enable ID ...] [--force] [--note TEXT]
+keygen  [--force | --if-missing] [--repo]
+        keys + pinned feed_pubkey.b64 + seed bundle (serial 1). The committed config/feeds/ pin is
+        only rewritten with --repo (maintainer re-key); a checkout without the matching private key
+        (fresh clone) pins its own key in the gitignored config/feeds/local/, which the gateway
+        prefers when present.
+publish [--enable ID ...] [--force] [--note TEXT] [--url URL] [--local]
+        target: --url > $AEGIS_FEED_SERVICE_URL > $AEGIS_FEED_URL > data/run/feed.pid (a running
+        `make up` stack, any port offset) > http://127.0.0.1:8790
 reset   [--hard]                   soft = workspace from repo + republish; hard = back to serial 1
 reseed                             re-sign the seed bundle from repo signatures (existing key)
 verify                             schema, RE2, vectors, ReDoS smoke, EchoLeak demo invariant
@@ -11,6 +17,7 @@ verify                             schema, RE2, vectors, ReDoS smoke, EchoLeak d
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import socket
@@ -48,7 +55,9 @@ def cmd_serve(args: argparse.Namespace) -> int:
 
 def cmd_keygen(args: argparse.Namespace) -> int:
     try:
-        res = _svc(args).keygen(force=args.force, if_missing=args.if_missing)
+        res = _svc(args).keygen(
+            force=args.force, if_missing=args.if_missing, repo=getattr(args, "repo", False)
+        )
     except FeedServiceError as e:
         print(f"keygen: {e}", file=sys.stderr)
         return 1
@@ -56,8 +65,11 @@ def cmd_keygen(args: argparse.Namespace) -> int:
         print(f"feed keypair already present (key_id {res['key_id']}); nothing to do")
     else:
         print(f"generated feed signing key  key_id {res['key_id']}")
+        pinned = Path(res.get("pinned") or "config/feeds")
+        with contextlib.suppress(ValueError):
+            pinned = pinned.relative_to(Path.cwd())
         print(
-            f"  config/feeds/feed_pubkey.b64 + seed_bundle.json(.sig): serial 1, "
+            f"  {pinned}/feed_pubkey.b64 + seed_bundle.json(.sig): serial 1, "
             f"{res['signatures']} signatures"
         )
         print("  restart the gateway to pin the new key")
@@ -66,11 +78,12 @@ def cmd_keygen(args: argparse.Namespace) -> int:
 
 def _remote_publish(args: argparse.Namespace) -> int | None:
     """Prefer a running feed service (so its SSE push reaches gateways in < 2 s)."""
-    import os
-
     import httpx
 
-    base = os.environ.get("AEGIS_FEED_SERVICE_URL", "http://127.0.0.1:8790").rstrip("/")
+    from aegis.feed.urls import resolve
+
+    base, source = resolve("feed", getattr(args, "url", None))
+    print(f"publishing to feed service {base} (from {source})", flush=True)
     try:
         with httpx.Client(timeout=10.0) as c:
             c.get(f"{base}/healthz", timeout=0.5).raise_for_status()
@@ -79,7 +92,12 @@ def _remote_publish(args: argparse.Namespace) -> int | None:
                     f"{base}/api/signatures/{sid}/enabled", json={"enabled": True}
                 ).raise_for_status()
             r = c.post(f"{base}/api/publish", json={"force": args.force, "note": args.note})
-    except httpx.HTTPError:
+    except httpx.HTTPError as e:
+        if source != "default":
+            # an explicit / stack-derived target that is down: never fall back silently
+            print(f"publish: feed service {base} unreachable: {e}", file=sys.stderr)
+            return 1
+        print(f"  (no feed service at {base}; writing the bundle locally)", flush=True)
         return None
     if r.status_code == 422:
         print("publish refused: invalid signatures", file=sys.stderr)
@@ -174,11 +192,22 @@ def main(argv: list[str] | None = None) -> int:
     g = p.add_mutually_exclusive_group()
     g.add_argument("--force", action="store_true")
     g.add_argument("--if-missing", action="store_true")
+    p.add_argument(
+        "--repo",
+        action="store_true",
+        help="write the new pin into the committed config/feeds/ (maintainer re-key)",
+    )
     p = sub.add_parser("publish")
     p.add_argument("--enable", action="append", metavar="ID")
     p.add_argument("--force", action="store_true")
     p.add_argument("--note", default=None)
     p.add_argument("--local", action="store_true", help="write files directly (no running service)")
+    p.add_argument(
+        "--url",
+        default=None,
+        help="feed service URL (default: $AEGIS_FEED_SERVICE_URL, $AEGIS_FEED_URL, the running "
+        "`make up` stack, else http://127.0.0.1:8790)",
+    )
     p = sub.add_parser("reset")
     p.add_argument("--hard", action="store_true")
     sub.add_parser("reseed")

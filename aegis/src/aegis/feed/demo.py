@@ -20,6 +20,8 @@ from typing import Any
 
 import httpx
 
+from aegis.feed.urls import resolve
+
 PAYLOAD_FILE = (
     Path(__file__).resolve().parents[3] / "feed_service" / "demo" / "echoleak-proxy-payload.md"
 )
@@ -210,10 +212,16 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     ap.add_argument(
-        "--gateway", default=os.environ.get("AEGIS_GATEWAY_URL", "http://127.0.0.1:8787")
+        "--gateway",
+        default=None,
+        help="gateway URL (default: $AEGIS_GATEWAY_URL, $AEGIS_URL, the running `make up` stack, "
+        "else :8787)",
     )
     ap.add_argument(
-        "--feed", default=os.environ.get("AEGIS_FEED_SERVICE_URL", "http://127.0.0.1:8790")
+        "--feed",
+        default=None,
+        help="feed service URL (default: $AEGIS_FEED_SERVICE_URL, $AEGIS_FEED_URL, the running "
+        "`make up` stack, else :8790)",
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
     e = sub.add_parser("echoleak")
@@ -222,6 +230,9 @@ def main(argv: list[str] | None = None) -> int:
     e.add_argument("--timeout", type=float, default=15.0)
     sub.add_parser("check")
     args = ap.parse_args(argv)
+    args.gateway, gw_src = resolve("gateway", args.gateway)
+    args.feed, feed_src = resolve("feed", args.feed)
+    print(f"{C['d']}gateway {args.gateway} ({gw_src}) · feed {args.feed} ({feed_src}){C['x']}")
     return {"echoleak": cmd_echoleak, "check": cmd_check}[args.cmd](args)
 
 

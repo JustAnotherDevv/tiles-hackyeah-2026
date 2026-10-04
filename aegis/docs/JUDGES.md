@@ -10,8 +10,19 @@ make setup && make web && make up      # gateway :8787, feed :8790, mocks :8791-
 open http://127.0.0.1:8787/ui
 ```
 
-`make gateway` starts only the gateway (enough for the Playground, policy edits and `make test`).
-The feed demo needs `make up` (or `make feed` in a second terminal).
+`make gateway` starts only the gateway (enough for the Playground and policy edits; `make test` needs
+nothing running, it boots its own gateway on free ports). The feed demo needs `make up` (or `make feed` in a
+second terminal).
+
+**Ports busy?** `make up ARGS=--auto-ports` picks a free offset, `make up ARGS='--port-offset 1000'` moves every
+service by +1000 (gateway :9787, feed :9790), and `uv run --frozen python -m aegis serve --port 18787` (or
+`AEGIS_PORT=18787 make gateway`) moves the gateway alone. On non-default ports the status table prints an
+`export AEGIS_URL=… AEGIS_FEED_URL=…` line for a second terminal; the demo scripts also take
+`--url http://127.0.0.1:<gateway port>`. Replace `8787` / `8790` below with your ports.
+
+**Models are optional.** Nothing in this guide needs them: without models the semantic controls run on a
+deterministic heuristic and decisions show `degraded: true`. `make models` *downloads* about 2 GB (ONNX
+into `models/` plus two small Ollama GGUFs); `make models ARGS=--verify` only checks what is already there.
 
 ---
 
@@ -26,6 +37,14 @@ The feed demo needs `make up` (or `make feed` in a second terminal).
 | `make eval` | red-team corpora: detection rate and false-positive rate with confidence intervals per profile and language | `reports/eval.json` |
 | `make bench` | gateway overhead p50/p95 per control (deterministic vs semantic) | `reports/bench.json` (also on the Perf page) |
 | `make verify-audit` | re-walks the hash-chained audit log | "chain OK (N records)" |
+
+**Matrix statuses.** `PASS`: every case passed. **`PARTIAL`** (yellow): every gating (`core`) case passed,
+and the control also has documented **expected failures** (xfail): `tier: stretch` cases in
+`tests/cases/*.yaml` that record known gaps (for example a GGUF template SSTI or an MCP rug-pull variant),
+plus pytest xfails. They never fail the run; `reports/selftest.html` → "Expected failures (xfail)" and the
+end of `reports/matrix.md` list them per control. `FAIL`: a gating case failed. `UNTESTED`: no must-block or
+no must-allow case. The reports under `reports/` (except the committed `eval.*` / `bench.*` evidence) are
+generated and gitignored, so a run leaves the checkout clean.
 
 Every case asserts **which control decided**, not just "something blocked", and every control needs at
 least one allowed and one blocked case (`tests/test_coverage.py` prints `UNTESTED` otherwise).
@@ -43,8 +62,13 @@ The same check from a terminal (always answers 200 with a verdict):
 ```bash
 curl -s localhost:8787/v1/guard -H 'content-type: application/json' \
   -H 'X-Aegis-Agent: trading-copilot@trading' \
-  -d '{"interaction":{"surface":"prompt.user","destination":"remote","text":"<your text>"}}' | jq .verdict
+  -d '{"interaction":{"surface":"prompt.user","destination":"remote","text":"<your text>"}}' \
+  | jq '{action: .verdict.action, control: .verdict.primary.control_id, text}'
 ```
+
+Drop the `jq` filter (or use `| jq .verdict`) for the full decision: every control's result, scores,
+entities and timings. The Playground's own endpoint `POST /api/playground` is documented in
+[api.md](api.md#playground).
 
 ### Twelve one-click attacks (and what should happen)
 
@@ -110,8 +134,9 @@ disabling DLP-02 needs the **owner**. Full reference: [policy-reference.md](poli
 
 1. `uv run --frozen python demo/agents/trading_copilot.py subscribe` (agent `trading-copilot@trading`, sponsor
    `u_piotr`) asks to buy MarketPulse `mp-pro-monthly` for $50. The MCP proxy holds the call (up to 30 s).
-2. `/ui/governance/approvals`, view as **u_piotr**: the card says "needs admin" and Approve is disabled with
-   the reason. Switch to **u_emily** (admin) → **Approve** → the agent prints "approved · executing".
+   On non-default ports add `--url http://127.0.0.1:<gateway port>`.
+2. `/ui/governance/approvals`, view as **u_piotr**: Approve is disabled with the reason ("Separation of
+   duties: you sponsor trading-copilot@trading"; a $50 purchase also needs an admin). Switch to **u_emily** (admin) → **Approve** → the agent prints "approved · executing".
 3. The approval is bound to the exact parameters; replaying it for the $4,800 plan creates a new owner-level
    request (`demo/agents/trading_copilot.py replay-grant`).
 
@@ -124,10 +149,18 @@ table → admin · card table → never · production write → owner.
 The feed is a separate service on **:8790** that signs bundles with Ed25519; the gateway only holds the
 public key (`config/feeds/feed_pubkey.b64`).
 
+On a fresh clone the private key is not in the repo (by design), so the first `make up` runs
+`feed_service keygen --if-missing`, which creates **your own** signing key in `feed_service/state/` and pins
+its public key and a re-signed seed bundle in `config/feeds/local/` (gitignored; the gateway prefers it over
+the committed pin). The committed `config/feeds/*` files stay untouched.
+
 1. Playground → **EchoLeak image proxy** preset → **allow** (signature not active yet). Note the feed serial
    in the header badge.
 2. Open `http://127.0.0.1:8790`, enable **AEGIS-TI-022**, click **Publish** (CLI alternative:
-   `uv run --frozen python -m feed_service publish --enable AEGIS-TI-022`).
+   `uv run --frozen python -m feed_service publish --enable AEGIS-TI-022`; it prints the feed service it
+   targets and finds a `make up` stack on any port offset by itself; override with `--url
+   http://127.0.0.1:<feed port>` or `AEGIS_FEED_SERVICE_URL`). Scripted flip with timing:
+   `uv run --frozen python -m aegis.feed.demo echoleak`.
 3. The badge shows serial N → N+1, signature verified. Replay the preset → **block, SIG-01 AEGIS-TI-022**.
 4. Click **Tamper**: the gateway logs `feed.rejected` (bad signature), shows a red banner and keeps
    enforcing the last good bundle. Rollbacks (`serial <= current`) are refused the same way.
