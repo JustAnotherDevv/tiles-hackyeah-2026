@@ -1,12 +1,12 @@
 import { TileAction, TileBlock, Profile } from '../../model/Tile';
 import { BlockStyle } from './BlockStyle';
 
-/** Living Light "creature" (Mo, the kid profile's focus buddy): gradient blob #E3D5FF -> #C2ADFF. */
-const CREATURE_FROM: string = '#E3D5FF';
-const CREATURE_TO: string = '#C2ADFF';
+/** Living Light "creature" (Mo, the kid profile's focus buddy): white blob with an ink face. */
 const CREATURE_INK: string = '#2A2420';
-/** rgba(0,0,0,.08) inset belly shade. */
-const LL_BELLY: string = '#14000000';
+/** Mo body / ring / shadow: white 90 %, lilac ring, soft violet drop shadow. */
+const MO_BODY: string = '#E6FFFFFF';
+const MO_RING: string = '#8C9A7FE0';
+const MO_SHADOW: string = '#4D5B3FB8';
 /** Prototype: blink 4.2 s (eyes squash to scaleY .08 at 95%), breathe 2.4 s while focusing. */
 const BLINK_EVERY_MS: number = 4200;
 const BREATHE_HALF_MS: number = 1200;
@@ -261,12 +261,6 @@ export struct TimerBlock {
   @Builder
   creature() {
     Stack({ alignContent: Alignment.TopStart }) {
-      // inset 0 -6px 0 rgba(0,0,0,.08): the darker "belly" band, clipped by the blob shape.
-      Row()
-        .width('100%')
-        .height(6)
-        .backgroundColor(LL_BELLY)
-        .position({ x: 0, y: this.moH() - 6 })
       Row()
         .width(7)
         .height(9)
@@ -295,8 +289,11 @@ export struct TimerBlock {
       topLeft: Math.round(this.moW() / 2), topRight: Math.round(this.moW() / 2),
       bottomLeft: Math.round(this.moW() * 0.44), bottomRight: Math.round(this.moW() * 0.44)
     })
-    .linearGradient({ angle: 135, colors: [[CREATURE_FROM, 0], [CREATURE_TO, 1]] })
-    .clip(true)
+    // Visible on the lavender tile: near-white body (90 %) with a soft lilac ring + shadow, ink face (audit A08).
+    .backgroundColor(this.bs.highContrast ? '#FFFFFF' : MO_BODY)
+    .border({ width: this.bs.highContrast ? 2 : 1.5, color: this.bs.highContrast ? CREATURE_INK : MO_RING })
+    .shadow({ radius: 10, color: MO_SHADOW, offsetX: 0, offsetY: 3 })
+    .margin({ top: 2, bottom: 4 })
     .scale({ x: this.moScale, y: this.moScale })
     .accessibilityText(this.running ? 'Mo, focusing with you. Pause timer' : 'Mo. Start timer')
     .accessibilityRole(AccessibilityRoleType.BUTTON)

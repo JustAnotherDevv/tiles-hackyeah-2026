@@ -1,4 +1,4 @@
-import { curves, window } from '@kit.ArkUI';
+import { curves, LengthMetrics, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { Guardian, GuardianSample, GuardianVerdict, RedFlag } from '../ai/Guardian';
 import { Profile } from '../model/Tile';
@@ -169,6 +169,8 @@ export struct GuardianView {
   private countTimer: number = -1;
   private alive: boolean = true;
   private runId: number = 0;
+  /** Live transcript + flags scroll: follows the newest line so nothing is half-cut at the bottom. */
+  private liveScroller: Scroller = new Scroller();
 
   aboutToAppear(): void {
     try {
@@ -541,6 +543,7 @@ export struct GuardianView {
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      .fadingEdge(true, { fadingEdgeLength: LengthMetrics.vp(36) })
       .layoutWeight(1)
     }
     .width('100%')
@@ -712,8 +715,10 @@ export struct GuardianView {
         })
       }
       .width('100%')
+      .padding({ left: 20, right: 20 })
       .alignItems(VerticalAlign.Center)
 
+      Scroll(this.liveScroller) {
       Column({ space: 10 }) {
         ForEach(this.lines, (ln: ShownLine) => {
           Text(ln.text)
@@ -751,12 +756,25 @@ export struct GuardianView {
         .margin({ top: 6 })
       }
       .width('100%')
-      .layoutWeight(1)
-      .margin({ top: 22 })
+      .padding({ left: 20, right: 20, top: 4, bottom: 18 })
       .alignItems(HorizontalAlign.Start)
-      .clip(true)
+      .onAreaChange(() => {
+        this.liveScroller.scrollEdge(Edge.Bottom);
+      })
+      }
+      .width('100%')
+      .layoutWeight(1)
+      .margin({ top: 18 })
+      .align(Alignment.Top)
+      .scrollBar(BarState.Off)
+      .edgeEffect(EdgeEffect.Spring)
+      .fadingEdge(true, { fadingEdgeLength: LengthMetrics.vp(28) })
 
-      this.RiskMeter()
+      Column() {
+        this.RiskMeter()
+      }
+      .width('100%')
+      .padding({ left: 20, right: 20 })
 
       Row({ space: 10 }) {
         Button({ type: ButtonType.Capsule }) {
@@ -786,11 +804,12 @@ export struct GuardianView {
         .border({ width: 1.5, color: this.pal().line })
       }
       .width('100%')
+      .padding({ left: 20, right: 20 })
       .margin({ top: 22 })
     }
     .width('100%')
     .layoutWeight(1)
-    .padding({ left: 20, right: 20, top: 14, bottom: 28 })
+    .padding({ top: 14, bottom: 28 })
   }
 
   @Builder

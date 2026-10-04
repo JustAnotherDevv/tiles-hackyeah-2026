@@ -188,6 +188,110 @@ function cloneProfile(p: Profile): Profile {
   return normProfile(JSON.parse(JSON.stringify(p)) as Profile);
 }
 
+// ---------- duplicate detection (one tile per type + key slot) ----------
+
+const GENERIC_PILLS: string[] = ['', 'pills', 'pill', 'leki', 'lek', 'medicine', 'meds'];
+
+/** First clock time shown on a tile, normalized to 'H:MM' ('08:00' → '8:00'); '' if none. Title, big value, subtitle. */
+export function tileTime(t: TileSpec): string {
+  const srcs: string[] = [t.title];
+  for (const b of t.blocks) {
+    if (b.kind === 'big') {
+      srcs.push(b.value);
+    }
+  }
+  srcs.push(t.subtitle);
+  for (const x of srcs) {
+    const m: RegExpMatchArray | null = x.match(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/);
+    if (m !== null) {
+      return parseInt(m[1]).toString() + ':' + m[2];
+    }
+  }
+  return '';
+}
+
+/** Lower-case title without its clock time ('Euthyrox 8:00' → 'euthyrox'). */
+function titleKey(title: string): string {
+  return title.replace(/\b([01]?\d|2[0-3])[:.]([0-5]\d)\b/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/** Person on a call tile ('Call Kasia' / 'Zadzwoń: Kasia' → 'kasia'). */
+function callKey(title: string): string {
+  return titleKey(title).replace(/^(call|zadzwo[nń])\s*:?\s*/, '').trim();
+}
+
+/** Everything a tile says, lower-case (to find a medicine named only in a block, e.g. the seed 'Pills 8:00'). */
+function tileText(t: TileSpec): string {
+  const parts: string[] = [t.title, t.subtitle];
+  for (const b of t.blocks) {
+    parts.push(b.text);
+    parts.push(b.value);
+    for (const it of b.items) {
+      parts.push(it);
+    }
+  }
+  return parts.join(' ').toLowerCase();
+}
+
+/**
+ * True when b is "the same tile" as a: same type + same key slot. pills: same time and same medicine (named in the
+ * title or anywhere on the tile); call: same person; reminder: same subject; everything else: same title.
+ */
+export function sameTile(a: TileSpec, b: TileSpec): boolean {
+  if (a.type !== b.type) {
+    return false;
+  }
+  switch (a.type) {
+    case 'pills': {
+      if (tileTime(a) !== tileTime(b)) {
+        return false;
+      }
+      const ma: string = titleKey(a.title);
+      const mb: string = titleKey(b.title);
+      if (ma === mb) {
+        return true;
+      }
+      const ga: boolean = GENERIC_PILLS.indexOf(ma) >= 0;
+      const gb: boolean = GENERIC_PILLS.indexOf(mb) >= 0;
+      if ((!ga && tileText(b).indexOf(ma) >= 0) || (!gb && tileText(a).indexOf(mb) >= 0)) {
+        return true;
+      }
+      return ga && gb;
+    }
+    case 'call':
+      return callKey(a.title) === callKey(b.title);
+    case 'reminder':
+      return titleKey(a.title) === titleKey(b.title);
+    default:
+      return a.title.trim().toLowerCase() === b.title.trim().toLowerCase();
+  }
+}
+
+/** First tile in list that sameTile() matches, or null. */
+export function findSameTile(t: TileSpec, list: TileSpec[]): TileSpec | null {
+  for (const x of list) {
+    if (sameTile(t, x)) {
+      return x;
+    }
+  }
+  return null;
+}
+
+/**
+ * True when 'fresh' adds nothing to 'old' (a same tile): a pill / call / reminder / timer with no new time.
+ * Otherwise the new tile is an update of the old one (e.g. 'Call Kasia' gains a Sunday reminder).
+ */
+export function isRepeatTile(fresh: TileSpec, old: TileSpec): boolean {
+  if (!sameTile(fresh, old)) {
+    return false;
+  }
+  if (fresh.type === 'pills' || fresh.type === 'call' || fresh.type === 'reminder' || fresh.type === 'timer') {
+    const tf: string = tileTime(fresh);
+    return tf.length === 0 || tf === tileTime(old);
+  }
+  return false;
+}
+
 let idCounter: number = 0;
 
 export function newTileId(prefix: string): string {
@@ -321,28 +425,41 @@ export class TileStore {
 
   addTiles(t: TileSpec[]): void {
     const now: number = Date.now();
+    const out: TileSpec[] = this.list.slice();
     const next: TileSpec[] = [];
     for (const x of t) {
       const c: TileSpec = cloneTile(x);
-      if (c.id.length === 0 || this.indexOf(c.id) >= 0) {
-        c.id = newTileId(c.type);
-      }
       if (c.createdAt === 0) {
         c.createdAt = now;
       }
-      next.push(c);
+      // No duplicates: a tile with the same type + key slot (sameTile: medicine+time, person, title) updates the
+      // existing tile in place — same id, position and pin — instead of adding a second "Euthyrox 8:00" / "Call Kasia".
+      let hit: number = -1;
+      for (let i = 0; i < out.length; i++) {
+        if (sameTile(c, out[i])) {
+          hit = i;
+          break;
+        }
+      }
+      if (hit >= 0) {
+        c.id = out[hit].id;
+        c.pinned = out[hit].pinned;
+        out[hit] = c;
+        continue;
+      }
+      if (c.id.length === 0 || this.indexOf(c.id) >= 0 || findSameTile(c, next) !== null) {
+        c.id = newTileId(c.type);
+      }
+      if (findSameTile(c, next) === null) {
+        next.push(c);
+      }
     }
-    // A new tile with the same type + title replaces the old one (no duplicate "Dinner Fri" tiles).
-    const sameKey = (a: TileSpec): string => a.type + '|' + a.title.trim().toLowerCase();
-    const newKeys: string[] = next.map((x: TileSpec) => sameKey(x));
-    const kept: TileSpec[] = this.list.filter((x: TileSpec) => newKeys.indexOf(sameKey(x)) < 0);
     // New tiles appear at the top, after pinned ones.
     let insertAt: number = 0;
-    while (insertAt < kept.length && kept[insertAt].pinned) {
+    while (insertAt < out.length && out[insertAt].pinned) {
       insertAt++;
     }
-    const out: TileSpec[] = kept.slice(0, insertAt).concat(next).concat(kept.slice(insertAt));
-    this.list = out;
+    this.list = out.slice(0, insertAt).concat(next).concat(out.slice(insertAt));
     this.changed(true);
   }
 
@@ -430,8 +547,14 @@ export class TileStore {
   propose(r: ComposeResult): void {
     const now: number = Date.now();
     const next: TileSpec[] = this.pend.slice();
+    let queued: number = 0;
     for (const x of r.tiles) {
       const c: TileSpec = cloneTile(x);
+      // Already on the home with nothing new (e.g. the seed "Pills 8:00 · Euthyrox"): nothing to approve.
+      const home: TileSpec | null = findSameTile(c, this.list);
+      if (home !== null && isRepeatTile(c, home as TileSpec)) {
+        continue;
+      }
       if (c.id.length === 0 || this.indexOf(c.id) >= 0 || this.pendingIndexOf(c.id, next) >= 0) {
         c.id = newTileId(c.type);
       }
@@ -441,7 +564,24 @@ export class TileStore {
       if (c.createdAt === 0) {
         c.createdAt = now;
       }
-      next.push(c);
+      // The same tile already waiting for approval is replaced, not queued twice.
+      let hit: number = -1;
+      for (let i = 0; i < next.length; i++) {
+        if (sameTile(c, next[i])) {
+          hit = i;
+          break;
+        }
+      }
+      if (hit >= 0) {
+        c.id = next[hit].id;
+        next[hit] = c;
+      } else {
+        next.push(c);
+      }
+      queued++;
+    }
+    if (queued === 0) {
+      return;
     }
     this.pend = next;
     this.pendReply = r.reply;

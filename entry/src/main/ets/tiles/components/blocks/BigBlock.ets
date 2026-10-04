@@ -50,7 +50,7 @@ export struct BigBlock {
 
   /** Caption under the number when it did not go inline. */
   private belowText(): string {
-    if (this.bs.small) {
+    if (this.bs.small || this.bs.squeeze < 0.99) {
       return '';
     }
     return this.inlineText() === this.caption() ? '' : this.caption();

@@ -104,8 +104,16 @@ export struct TileView {
   @State private dropped: number[] = [];
   /** Even the last remaining block overflows: draw a soft fade at the bottom edge (last resort). */
   @State private overflowFade: boolean = false;
-  /** Measured bottom edge (vp, inside the content column) per block index. */
+  /** Last resort before the fade: shrink the remaining block (hero number / lines) to fit (1 = natural size). */
+  @State private squeeze: number = 1;
+  /** Subtitle hidden so the hero block fits (the subtitle stays in accessibilityText and the detail view). */
+  @State private subHidden: boolean = false;
+  /** Measured bottom edge (vp, inside the content column) per block index (-1 = subtitle). */
   private bottoms: Map<number, number> = new Map<number, number>();
+  /** Measured height (vp) per block index. */
+  private heights: Map<number, number> = new Map<number, number>();
+  /** Top of the content group (subtitle + blocks) inside the card, vp. */
+  private innerTop: number = 0;
   private fitPending: boolean = false;
   private animateIn: boolean = false;
   private breathing: boolean = false;
@@ -200,6 +208,13 @@ export struct TileView {
 
   private resetFit(): void {
     this.bottoms.clear();
+    this.heights.clear();
+    if (this.squeeze !== 1) {
+      this.squeeze = 1;
+    }
+    if (this.subHidden) {
+      this.subHidden = false;
+    }
     if (this.dropped.length > 0) {
       this.dropped = [];
     }
@@ -317,6 +332,11 @@ export struct TileView {
     s.btnPad = Math.max(10, Math.round(s.bodySize * 0.9));
     s.rowMin = Math.max(28, Math.round(s.bodySize * 2));
     s.bodyLines = !this.isDetail() && this.fillHeight && this.cardH > 0 && this.cardH < 120 ? 1 : 3;
+    if (!this.isDetail() && this.squeeze < 1) {
+      s.squeeze = this.squeeze;
+      s.numSize = Math.max(20, Math.round(s.numSize * this.squeeze));
+      s.bodyLines = Math.max(1, Math.min(s.bodyLines, Math.floor(3 * this.squeeze)));
+    }
     s.gapY = this.gapY();
     s.highContrast = this.profile.highContrast;
     s.minTap = TilesTheme.tapTarget(this.profile);
@@ -471,6 +491,24 @@ export struct TileView {
     }, 32);
   }
 
+  /** Measured bottom of block i in card coordinates (content group offset + bottom inside the group). */
+  private bottomOf(i: number): number | undefined {
+    const b: number | undefined = this.bottoms.get(i);
+    return b === undefined ? undefined : b + this.innerTop;
+  }
+
+  /** Fixed-height grid tile: header at the top, content group anchored to the bottom (prototype margin-top:auto). */
+  private anchored(): boolean {
+    return this.fillHeight && !this.isDetail() && !this.skeleton;
+  }
+
+  /** Re-check after a squeeze even if no block reports a new area (layout has settled by then). */
+  private refitLater(): void {
+    setTimeout(() => {
+      this.scheduleFit();
+    }, 160);
+  }
+
   /** Drop the lowest-priority block while any visible block's measured bottom exceeds the tile. */
   private fit(): void {
     if (this.cardH <= 0) {
@@ -480,8 +518,14 @@ export struct TileView {
     const visible: BlockSlot[] = this.slots();
     let over: boolean = false;
     for (let i = 0; i < visible.length; i++) {
-      const b: number | undefined = this.bottoms.get(visible[i].index);
+      const b: number | undefined = this.bottomOf(visible[i].index);
       if (b !== undefined && b > limit) {
+        over = true;
+      }
+    }
+    if (visible.length === 0 && !this.subHidden) {
+      const sb: number | undefined = this.bottomOf(-1);
+      if (sb !== undefined && sb > limit) {
         over = true;
       }
     }
@@ -504,6 +548,9 @@ export struct TileView {
         }
         return;
       }
+      if (this.squeezeLone(visible.length === 1 ? visible[0].index : -1, limit)) {
+        return;
+      }
       this.overflowFade = true;
       return;
     }
@@ -519,6 +566,39 @@ export struct TileView {
     this.bottoms.delete(victim.index);
     this.dropped = next;
     this.scheduleFit();
+  }
+
+  /**
+   * The last block (or, with no block, the subtitle) still overflows: shrink before fading. Order: squeeze the hero
+   * block to 75 %, then hide the subtitle and retry at full size, then squeeze down to 50 %. Returns false when
+   * nothing is left to try (the caller draws the fade as the very last resort).
+   */
+  private squeezeLone(index: number, limit: number): boolean {
+    const floor: number = this.subHidden || this.tile.subtitle.length === 0 || this.tiny() ? 0.5 : 0.75;
+    if (index >= 0) {
+      const b: number | undefined = this.bottomOf(index);
+      const h: number | undefined = this.heights.get(index);
+      if (b !== undefined && h !== undefined && h > 0 && this.squeeze > floor + 0.01) {
+        const ratio: number = Math.max(0.3, (h - (b - limit)) / h);
+        const next: number = Math.max(floor, Math.floor(this.squeeze * ratio * 0.97 * 100) / 100);
+        if (next < this.squeeze - 0.01) {
+          this.squeeze = next;
+          this.refitLater();
+          return true;
+        }
+      }
+    }
+    if (!this.subHidden && this.tile.subtitle.length > 0 && !this.tiny()) {
+      this.subHidden = true;
+      this.squeeze = 1;
+      this.bottoms.delete(-1);
+      if (this.overflowFade) {
+        this.overflowFade = false;
+      }
+      this.refitLater();
+      return true;
+    }
+    return false;
   }
 
   private minHeight(): number {
@@ -870,14 +950,23 @@ export struct TileView {
         this.shimmerBand()
       }
 
-      Column({ space: this.gapY() }) {
+      Column() {
         this.header()
 
-        if (this.tile.subtitle.length > 0 && !this.tiny()) {
+        Column({ space: this.gapY() }) {
+
+        if (this.tile.subtitle.length > 0 && !this.tiny() && !this.subHidden) {
           Column() {
             this.subtitleText()
           }
           .width('100%')
+          .onAreaChange((oldArea: Area, newArea: Area) => {
+            const bottom: number = Number(newArea.position.y) + Number(newArea.height);
+            if (!isNaN(bottom)) {
+              this.bottoms.set(-1, bottom);
+              this.scheduleFit();
+            }
+          })
           .opacity(this.blockShown(-1) ? 1 : 0)
           .translate({ y: this.blockShown(-1) ? 0 : 12 })
           .animation({ duration: this.reduceMotion ? 0 : 450, curve: TilesTheme.ease() })
@@ -902,14 +991,29 @@ export struct TileView {
             const bottom: number = Number(newArea.position.y) + Number(newArea.height);
             if (!isNaN(bottom)) {
               this.bottoms.set(s.index, bottom);
+              this.heights.set(s.index, Number(newArea.height));
               this.scheduleFit();
             }
           })
         }, (s: BlockSlot) => s.key)
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+        .margin({ top: this.gapY() })
+        .onAreaChange((oldArea: Area, newArea: Area) => {
+          const top: number = Number(newArea.position.y);
+          if (!isNaN(top) && Math.abs(top - this.innerTop) > 0.5) {
+            this.innerTop = top;
+            this.scheduleFit();
+          }
+        })
       }
       .width('100%')
+      .height(this.anchored() ? '100%' : 'auto')
       .alignItems(HorizontalAlign.Start)
-      .justifyContent(FlexAlign.Start)
+      // Prototype tiles push their last row down (margin-top:auto): header on top, content anchored to the bottom,
+      // so short content does not leave an empty band. Overflowing content still starts right under the header.
+      .justifyContent(this.anchored() ? FlexAlign.SpaceBetween : FlexAlign.Start)
       .padding(this.pad())
 
       if (this.overflowFade) {

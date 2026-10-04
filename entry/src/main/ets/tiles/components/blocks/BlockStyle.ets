@@ -62,6 +62,9 @@ export class BlockStyle {
   rowMin: number = 28;
   /** Body text max lines (prototype: 1 when the tile is shorter than 120 vp, else 3). */
   bodyLines: number = 3;
+  /** Fit-to-tile squeeze (1 = natural size): TileView lowers it when the last block still overflows the tile, so
+   * hero numbers shrink, captions under them hide and paragraphs lose lines instead of being cut off. */
+  squeeze: number = 1;
   /** Gap between blocks (prototype gapY: 8, small 3). */
   gapY: number = 8;
   /** Checklist circle: 24 vp, 2.5 vp stroke; progress bar 12 vp / radius 6. */

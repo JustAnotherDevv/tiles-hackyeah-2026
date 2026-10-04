@@ -18,6 +18,7 @@ import {
   timerBlock, weatherBlock
 } from '../data/SeedTiles';
 import { Guardian, GuardianVerdict } from './Guardian';
+import { findSameTile, isRepeatTile, tileTime, TileStore } from '../data/TileStore';
 import {
   dayLabel, detectIntents, extractSlots, norm, personLabel, Slots, subjectLabel
 } from './Intents';
@@ -158,17 +159,23 @@ export class Composer {
     const f = new Factory();
     const d = new Draft();
     const intents: string[] = detectIntents(text);
+    let deduped: boolean = false;
     if (intents.length === 0) {
       Composer.fallback(s, profile, f, d);
+      deduped = Composer.dedupe(s, profile, d, 0, 0) || deduped;
     } else {
       for (const it of intents) {
         if (d.tiles.length >= 3) {
           break;
         }
+        const t0: number = d.tiles.length;
+        const r0: number = d.replies.length;
         Composer.build(it, s, profile, f, d);
+        deduped = Composer.dedupe(s, profile, d, t0, r0) || deduped;
       }
-      if (d.tiles.length === 0) {
+      if (d.tiles.length === 0 && !deduped) {
         Composer.fallback(s, profile, f, d);
+        deduped = Composer.dedupe(s, profile, d, 0, d.replies.length) || deduped;
       }
     }
     r.tiles = d.tiles.slice(0, 3);
@@ -183,6 +190,80 @@ export class Composer {
     r.reply = reply.trim();
     r.followUps = d.followUps;
     return r;
+  }
+
+  /**
+   * No duplicate tiles: each tile the last intent produced (d.tiles from t0) is checked against the home and the
+   * approval queue (TileStore, same type + key slot — see sameTile). A repeat that adds nothing is dropped with a
+   * friendly note; a same tile with new details stays and is announced as an update (TileStore.addTiles then
+   * replaces the old tile in place). If the intent's tiles were all dropped, its reply (from r0) is replaced by the
+   * notes. Returns true if anything was dropped or marked as an update.
+   */
+  private static dedupe(s: Slots, p: Profile, d: Draft, t0: number, r0: number): boolean {
+    if (d.tiles.length <= t0) {
+      return false;
+    }
+    let home: TileSpec[] = [];
+    let pend: TileSpec[] = [];
+    try {
+      home = TileStore.get().tiles();
+      pend = TileStore.get().pending();
+    } catch (e) {
+      return false;
+    }
+    const kept: TileSpec[] = [];
+    const notes: string[] = [];
+    let dropped: number = 0;
+    for (let i = t0; i < d.tiles.length; i++) {
+      const t: TileSpec = d.tiles[i];
+      const onHome: TileSpec | null = findSameTile(t, home);
+      const waiting: TileSpec | null = findSameTile(t, pend);
+      if (onHome !== null && isRepeatTile(t, onHome as TileSpec)) {
+        notes.push(Composer.alreadyNote(s, t, onHome as TileSpec));
+        dropped++;
+      } else if (onHome === null && waiting !== null && isRepeatTile(t, waiting as TileSpec)) {
+        const who: string = personLabel(caregiverOf(p), s.lang);
+        notes.push(L(s, '“' + (waiting as TileSpec).title + '” is already waiting for ' +
+          (who.length > 0 ? who : 'approval') + (who.length > 0 ? ' to approve' : '') + ', so I did not send it twice.',
+          '„' + (waiting as TileSpec).title + '” już czeka na zatwierdzenie' + (who.length > 0 ? ' (' + who + ')' : '') +
+            ', więc nie wysyłam drugi raz.'));
+        dropped++;
+      } else {
+        if (onHome !== null) {
+          notes.push(L(s, 'You already have “' + (onHome as TileSpec).title + '” — I will update that tile instead of adding a second one.',
+            'Masz już „' + (onHome as TileSpec).title + '” — zaktualizuję ten kafelek zamiast dodawać drugi.'));
+        }
+        kept.push(t);
+      }
+    }
+    if (notes.length === 0) {
+      return false;
+    }
+    d.tiles = d.tiles.slice(0, t0).concat(kept);
+    if (kept.length === 0 && dropped > 0) {
+      d.replies = d.replies.slice(0, r0).concat(notes);
+    } else {
+      d.replies = d.replies.concat(notes);
+    }
+    return true;
+  }
+
+  /** "You already have Euthyrox at 8:00 …" for a dropped repeat. */
+  private static alreadyNote(s: Slots, t: TileSpec, old: TileSpec): string {
+    const time: string = tileTime(old).length > 0 ? tileTime(old) : tileTime(t);
+    if (t.type === 'pills') {
+      const med: string = s.medicine.length > 0 ? s.medicine : L(s, 'your pills', 'leki');
+      const hour: number = time.length > 0 ? parseInt(time) : 8;
+      const every: string = hour < 12 ? L(s, 'every morning', 'każdego ranka') :
+        (hour < 18 ? L(s, 'every afternoon', 'każdego popołudnia') : L(s, 'every evening', 'każdego wieczoru'));
+      return L(s, 'You already have ' + med + (time.length > 0 ? ' at ' + time : '') + ' on your home — it reminds you ' +
+        every + ', so I did not add a second one.',
+        'Masz już ' + med + (time.length > 0 ? ' o ' + time : '') + ' na ekranie — przypomina ' + every +
+          ', więc nie dodaję drugiego.');
+    }
+    return L(s, 'You already have “' + old.title + '” on your home' + (time.length > 0 ? ' at ' + time : '') +
+      ', so I did not add a second one.',
+      'Masz już „' + old.title + '” na ekranie' + (time.length > 0 ? ' o ' + time : '') + ', więc nie dodaję drugiego.');
   }
 
   /** Senior and kid profiles: new tiles wait for the caregiver / parent. */

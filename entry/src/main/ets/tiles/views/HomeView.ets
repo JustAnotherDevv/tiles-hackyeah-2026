@@ -20,6 +20,8 @@ const MONTHS: string[] = ['January', 'February', 'March', 'April', 'May', 'June'
 const AGENDA_TYPES: string[] = ['plan', 'reminder', 'pills', 'commute', 'timer', 'homework'];
 /** Profile chooser chips (prototype ICPS labels), in PROFILE_IDS order. */
 const CHIP_LABELS: string[] = ['Senior', 'Kid', 'Low vision', 'Everyday'];
+/** Height (vp) of the soft page-coloured fade above the bottom cluster (cards + Ask dock). */
+const DOCK_FADE: number = 24;
 
 /** @Builder args are passed as ONE object literal so ArkUI passes them by reference (reactive). */
 class IconBtnArgs {
@@ -45,14 +47,14 @@ function vocative(name: string): string {
   return name;
 }
 
-/** "Pills 8:00" -> "pills at 8:00" (empty if the title has no time). */
+/** "Euthyrox 8:00" -> "Euthyrox at 8:00", keeping the title's own capitalisation (empty if it has no time). */
 function atTime(title: string): string {
   const m: RegExpMatchArray | null = title.match(/^(.*?)\s*(\d{1,2}:\d{2})/);
   if (m === null || m.length < 3) {
     return '';
   }
   const what: string = m[1].trim();
-  return (what.length > 0 ? what.substring(0, 1).toLowerCase() + what.substring(1) + ' at ' : 'at ') + m[2];
+  return (what.length > 0 ? what + ' at ' : 'at ') + m[2];
 }
 
 /**
@@ -66,7 +68,7 @@ export struct HomeView {
   @Consume('tilesNav') nav: NavPathStack;
   @StorageLink(K_LIST) tiles: TileSpec[] = [];
   @StorageLink(K_PROFILE) profile: Profile = new Profile();
-  @StorageLink(K_SUGGESTIONS) suggestions: Suggestion[] = [];
+  @StorageLink(K_SUGGESTIONS) @Watch('onSuggestions') suggestions: Suggestion[] = [];
   @StorageLink(K_PENDING) pending: TileSpec[] = [];
   @StorageProp(K_DARK) dark: boolean = false;
   @StorageProp(K_REDUCE_MOTION) reduceMotion: boolean = false;
@@ -83,6 +85,12 @@ export struct HomeView {
   @State sysTop: number = 0;
   @State sysBottom: number = 0;
   @State rootY: number = 0;
+  /** Measured height (vp) of the bottom cluster (speaking / suggestion cards + Ask dock + bottom inset). */
+  @State dockH: number = 0;
+  /** The "Tiles noticed" card is in the scroll flow above the grid; toggled in animateTo so the tiles slide down / up. */
+  @State sugShown: boolean = false;
+  /** Last pending suggestion, kept so the card keeps its text while it animates out. */
+  private lastSug: Suggestion = new Suggestion();
 
   aboutToAppear(): void {
     try {
@@ -99,6 +107,24 @@ export struct HomeView {
     }
     if (this.assistantSeed.length > 0) {
       this.onAssistantSeed();
+    }
+    const p: Suggestion | null = this.pendingSuggestion();
+    if (p !== null) {
+      this.lastSug = p;
+    }
+    this.sugShown = p !== null;
+  }
+
+  onSuggestions(): void {
+    const p: Suggestion | null = this.pendingSuggestion();
+    if (p !== null) {
+      this.lastSug = p;
+    }
+    const has: boolean = p !== null;
+    if (has !== this.sugShown) {
+      this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) }, () => {
+        this.sugShown = has;
+      });
     }
   }
 
@@ -212,7 +238,7 @@ export struct HomeView {
 
   sugg(): Suggestion {
     const s: Suggestion | null = this.pendingSuggestion();
-    return s !== null ? s : new Suggestion();
+    return s !== null ? s : this.lastSug;
   }
 
   badgeCount(): number {
@@ -294,6 +320,12 @@ export struct HomeView {
   pageEnd(): string {
     const c: Array<[ResourceColor, number]> = this.pal().bgGradient.colors;
     return c.length > 0 ? String(c[c.length - 1][0]) : this.pal().bg;
+  }
+
+  /** Top color of the page gradient (status-bar scrim). */
+  pageStart(): string {
+    const c: Array<[ResourceColor, number]> = this.pal().bgGradient.colors;
+    return c.length > 0 ? String(c[0][0]) : this.pal().bg;
   }
 
   toast(msg: string): void {
@@ -652,14 +684,11 @@ export struct HomeView {
     }
     .width('100%')
     .padding({ left: 16, right: 12, top: 12, bottom: 16 })
-    .margin({ left: -4, right: -4 }) // glass cards sit 12 vp in; the dock sits 16 vp in
     .borderRadius(TilesTheme.LL_RADIUS_L)
     .backgroundColor(this.pal().surface)
     .backdropBlur(TilesTheme.LL_BLUR)
     .border({ width: this.profile.highContrast ? 1.5 : 0, color: this.pal().line })
-    .shadow(TilesTheme.LL_SHADOW_SHEET)
-    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 24 }))
-      .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) }))
+    .shadow(TilesTheme.LL_SHADOW_TILE)
   }
 
   @Builder
@@ -843,16 +872,16 @@ export struct HomeView {
 
               Button({ type: ButtonType.Circle, stateEffect: true }) {
                 SymbolGlyph($r('sys.symbol.xmark'))
-                  .fontSize(16)
+                  .fontSize(13)
                   .fontWeight(FontWeight.Bold)
                   .fontColor([this.pal().onInk])
               }
-              .width(32)
-              .height(32)
+              .width(26)
+              .height(26)
               .backgroundColor(this.pal().ink)
               .shadow({ radius: 8, color: '#40000000', offsetY: 2 })
-              .margin({ left: -6, top: -6 })
-              .responseRegion({ x: -8, y: -8, width: 48, height: 48 })
+              .margin({ left: -14, top: -14 }) // outside the corner: never covers the tile's glyph
+              .responseRegion({ x: -11, y: -11, width: 48, height: 48 })
               .accessibilityText('Remove ' + t.title)
               .onClick(() => this.removeTile(t))
               .transition(TransitionEffect.OPACITY.combine(TransitionEffect.scale({ x: 0.4, y: 0.4 }))
@@ -915,10 +944,15 @@ export struct HomeView {
     .height('100%')
   }
 
-  /** Space kept free under the grid so the last tiles can scroll above the dock (+ floating cards). */
+  /** Height of the bottom cluster (cards + dock + bottom inset); estimated until the first measurement. */
+  clusterH(): number {
+    return this.dockH > 0 ? this.dockH : this.lay().askH + this.bottomPad();
+  }
+
+  /** Space kept free under the grid: bottom cluster (dock + safe area + speaking card) + a margin of at least 30 vp
+   * that also clears the soft fade, so the last tile always scrolls fully into view above the dock. */
   bottomSpace(): number {
-    const dock: number = this.lay().askH + 28 + this.bottomPad();
-    return dock + (this.pendingSuggestion() !== null && !this.editing ? 240 : 0) + (this.speaking.length > 0 ? 84 : 0);
+    return this.clusterH() + Math.max(30, DOCK_FADE);
   }
 
   build() {
@@ -941,6 +975,20 @@ export struct HomeView {
             .padding({ left: this.pad(), right: this.pad() })
           }
 
+          // "Tiles noticed": an in-flow card between the greeting and the grid (never floats over tiles); the
+          // grid slides down when it arrives and back up when it is answered (sugShown toggles in animateTo).
+          if (!this.editing && this.sugShown) {
+            Column() {
+              this.suggestionCard()
+            }
+            .width('100%')
+            .padding({ left: this.pad(), right: this.pad(), bottom: Math.max(12, this.gap()) })
+            .transition(TransitionEffect.OPACITY
+              .combine(TransitionEffect.scale({ x: 0.96, y: 0.96 }))
+              .combine(TransitionEffect.translate({ y: -16 }))
+              .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) }))
+          }
+
           if (this.tiles.length === 0) {
             this.emptyState()
           } else {
@@ -957,19 +1005,35 @@ export struct HomeView {
       .height('100%')
       .align(Alignment.Top)
 
-      // Soft fade so tiles slide under the dock.
+      // Top scrim: tiles scrolled up fade out just under the status bar instead of being cut by a hard edge.
       Column()
         .width('100%')
-        .height(this.lay().askH + 64)
-        .linearGradient({ angle: 180, colors: [[withAlpha(this.pageEnd(), 0), 0], [this.pageEnd(), 0.8]] })
+        .height(this.topPad() + 18)
+        .linearGradient({
+          angle: 180,
+          colors: [[this.pageStart(), 0], [withAlpha(this.pageStart(), 0.9), this.topPad() / (this.topPad() + 18)],
+            [withAlpha(this.pageStart(), 0), 1]]
+        })
+        .position({ x: 0, y: 0 })
+        .hitTestBehavior(HitTestMode.Transparent)
+
+      // Page-coloured backing for the bottom cluster: tiles fade out FADE vp above the topmost card / dock and are
+      // fully hidden behind it, so the suggestion sheet never floats over a clipped sliver of a tile.
+      Column()
+        .width('100%')
+        .height(this.clusterH() + DOCK_FADE)
+        .linearGradient({
+          angle: 180,
+          colors: [[withAlpha(this.pageEnd(), 0), 0],
+            [withAlpha(this.pageEnd(), 0.6), DOCK_FADE * 0.5 / (this.clusterH() + DOCK_FADE)],
+            [this.pageEnd(), DOCK_FADE / (this.clusterH() + DOCK_FADE)], [this.pageEnd(), 1]]
+        })
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
         .hitTestBehavior(HitTestMode.Transparent)
 
       Column({ space: 10 }) {
         if (this.speaking.length > 0) {
           this.speakingCard()
-        }
-        if (!this.editing && this.pendingSuggestion() !== null) {
-          this.suggestionCard()
         }
         if (!this.editing) {
           AskDock({ onOpen: (seed: string) => this.openAssistant(seed) })
@@ -979,6 +1043,16 @@ export struct HomeView {
       }
       .width('100%')
       .padding({ left: this.pad(), right: this.pad(), bottom: this.bottomPad() })
+      .onAreaChange((o: Area, n: Area) => {
+        const h: number = Number(n.height);
+        if (!isNaN(h) && Math.abs(h - this.dockH) > 1) {
+          // grow / shrink the fade + scroll space together with the card's own enter / exit transition
+          this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) },
+            () => {
+              this.dockH = h;
+            });
+        }
+      })
     }
     .width('100%')
     .height('100%')

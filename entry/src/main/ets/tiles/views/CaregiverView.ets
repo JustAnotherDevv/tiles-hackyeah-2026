@@ -5,7 +5,7 @@ import { LL_FONT_FAMILY, TileColors, TilesTheme, ThemePalette } from '../theme/T
 import { TileView } from '../components/TileView';
 import { MiniHome } from './OnboardingView';
 import { Haptics } from '../../platform/Haptics';
-import { window } from '@kit.ArkUI';
+import { LengthMetrics, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 
 /** One row of the caregiver's "Today" activity list (tone: ok | danger | neutral). */
@@ -59,6 +59,8 @@ export struct CaregiverView {
   /** Status-bar height (vp) and where our root starts: the window is full-screen (immersive). */
   @State sysTop: number = 0;
   @State rootY: number = 0;
+  /** Measured width of one before/after column, so the mini homes use all of it (less title squeezing). */
+  @State miniW: number = 132;
 
   aboutToAppear(): void {
     try {
@@ -152,10 +154,13 @@ export struct CaregiverView {
         r.key = 'a-' + t.id + (taken ? '-t' : '-d');
         r.icon = taken ? $r('sys.symbol.checkmark') : $r('sys.symbol.cross_case_fill');
         r.text = taken ? 'Took the ' + (slot.length > 0 ? slot + ' ' : '') + 'pills' :
-          (slot.length > 0 ? 'Pills ' + slot : t.title) + ' — not yet';
+          t.title + ' — not yet';
         r.time = taken ? t.subtitle.substring(9) : 'due';
         r.tone = taken ? 'ok' : 'danger';
-        out.push(r);
+        // Two medication tiles can describe the same dose: never list an identical row twice.
+        if (out.every((o: ActivityRow) => o.text !== r.text)) {
+          out.push(r);
+        }
       } else if (t.type === 'guardian') {
         const r: ActivityRow = new ActivityRow();
         if (this.hasDangerAlert(t)) {
@@ -267,7 +272,8 @@ export struct CaregiverView {
 
   build() {
     NavDestination() {
-      Stack({ alignContent: Alignment.Bottom }) {
+      // Column (not a floating Stack): the call button docks below the scroll so cards never slide under it.
+      Column() {
         Scroll() {
           Column({ space: 14 }) {
             this.topBar()
@@ -346,13 +352,13 @@ export struct CaregiverView {
               .lineHeight(18)
               .width('100%')
           }
-          .padding({ left: 16, right: 16, top: 14 + this.topPad(), bottom: 110 })
+          .padding({ left: 16, right: 16, top: 14 + this.topPad(), bottom: 20 })
         }
         .scrollBar(BarState.Off)
         .align(Alignment.Top)
         .width('100%')
-        .height('100%')
-        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
+        .layoutWeight(1)
+        .fadingEdge(true, { fadingEdgeLength: LengthMetrics.vp(40) })
 
         this.callButton()
       }
@@ -420,12 +426,16 @@ export struct CaregiverView {
             .width(8)
             .height(8)
             .fill(this.pal().ok)
+            .margin({ top: 6 })
           Text(this.caregiver().length > 0 ? 'Phone active · just now' :
             'No caregiver set: changes are approved here')
             .llText(14, FontWeight.Medium, this.pal().muted)
-            .maxLines(1)
+            .maxLines(2)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
         }
+        .width('100%')
+        .alignItems(VerticalAlign.Top)
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
@@ -554,11 +564,17 @@ export struct CaregiverView {
           appsHidden: this.appsHidden,
           highlight: Adaptation.focusTile(s.change),
           maxTiles: 6,
-          frameWidth: 132
+          frameWidth: this.miniW
         })
       }
       .layoutWeight(1)
       .alignItems(HorizontalAlign.Start)
+      .onAreaChange((o: Area, n: Area) => {
+        const w: number = Math.floor(Number(n.width));
+        if (!isNaN(w) && w > 80 && Math.abs(w - this.miniW) > 1) {
+          this.miniW = w;
+        }
+      })
 
       SymbolGlyph($r('sys.symbol.arrow_right'))
         .fontSize(18)
@@ -575,7 +591,7 @@ export struct CaregiverView {
           appsHidden: after.appsHidden,
           highlight: s.change.startsWith('remove:') ? '' : Adaptation.focusTile(s.change),
           maxTiles: 6,
-          frameWidth: 132
+          frameWidth: this.miniW
         })
       }
       .layoutWeight(1)
@@ -747,6 +763,6 @@ export struct CaregiverView {
       .accessibilityText('Call ' + this.callName() + ' (simulated)')
     }
     .width('100%')
-    .padding({ left: 16, right: 16, bottom: 24 })
+    .padding({ left: 16, right: 16, top: 6, bottom: 24 })
   }
 }

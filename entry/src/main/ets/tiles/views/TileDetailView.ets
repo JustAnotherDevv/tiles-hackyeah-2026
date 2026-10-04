@@ -8,7 +8,7 @@ import { TileActions } from '../platform/TileActions';
 import { TileHaptics } from '../platform/TileHaptics';
 import { Speech } from '../platform/Speech';
 import { K_DARK, K_REDUCE_MOTION, LLPageMotion, llToast, platformAction } from './ShellKeys';
-import { window } from '@kit.ArkUI';
+import { LengthMetrics, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 
 function sourceLabel(t: TileSpec, p: Profile): string {
@@ -559,6 +559,8 @@ export struct TileDetailView {
             colors: [[withAlpha(this.colors(this.cur()).bg2, this.dark ? 0.22 : 0.38), 0.0],
               [withAlpha(this.colors(this.cur()).bg1, 0.0), 1.0]]
           })
+          // Wash continues under the status bar (no hard band at the top edge).
+          .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
           .hitTestBehavior(HitTestMode.Transparent)
 
         Column() {
@@ -572,6 +574,7 @@ export struct TileDetailView {
           }
           .scrollBar(BarState.Off)
           .edgeEffect(EdgeEffect.Spring)
+          .fadingEdge(true, { fadingEdgeLength: LengthMetrics.vp(28) })
           .align(Alignment.Top)
           .layoutWeight(1)
           .width('100%')

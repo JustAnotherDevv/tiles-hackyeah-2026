@@ -199,6 +199,9 @@ export struct MiniHome {
       Text(m.tile.title)
         .fontFamily(LL_FONT_FAMILY)
         .fontSize(Math.max(6, Math.round(7 * this.profile.textScale)))
+        // Shrink-to-fit before ellipsis so narrow mini tiles never show "Call ..." / "Ph...".
+        .maxFontSize(Math.max(6, Math.round(7 * this.profile.textScale)))
+        .minFontSize(4)
         .fontWeight(FontWeight.Bold)
         .fontColor(TilesTheme.tile(m.tile.color, this.profile.highContrast, this.dark).on)
         .maxLines(m.h > 40 ? 2 : 1)

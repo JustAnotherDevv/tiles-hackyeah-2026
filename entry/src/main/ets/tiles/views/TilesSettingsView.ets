@@ -1,5 +1,5 @@
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
-import { window } from '@kit.ArkUI';
+import { LengthMetrics, window } from '@kit.ArkUI';
 import { LLPageMotion, llToast } from './ShellKeys';
 import { Profile, TileSpec } from '../model/Tile';
 import { TileStore } from '../data/TileStore';
@@ -422,6 +422,7 @@ export struct TilesSettingsView {
       }
       .scrollBar(BarState.Off)
       .edgeEffect(EdgeEffect.Spring)
+      .fadingEdge(true, { fadingEdgeLength: LengthMetrics.vp(28 + this.topPad()) })
       .align(Alignment.Top)
       .width('100%')
       .height('100%')
