@@ -59,7 +59,8 @@ export default class EntryAbility extends UIAbility {
   }
 
   onConfigurationUpdate(newConfig: Configuration): void {
-    this.styleWindow();
+    // this.context.config can lag one update behind; use the new color mode directly.
+    this.styleWindow(newConfig.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK ? 1 : 0);
   }
 
   onWindowStageDestroy(): void {
@@ -84,13 +85,13 @@ export default class EntryAbility extends UIAbility {
     }
   }
 
-  private styleWindow(): void {
+  private styleWindow(forced: number = -1): void {
     const stage: window.WindowStage | null = this.windowStage;
     if (stage === null) {
       return;
     }
     try {
-      const dark: boolean = this.isDark();
+      const dark: boolean = forced >= 0 ? forced === 1 : this.isDark();
       const bg: string = dark ? BG_DARK : BG_LIGHT;
       const fg: string = dark ? '#F4F1EC' : '#1C2230';
       const win: window.Window = stage.getMainWindowSync();

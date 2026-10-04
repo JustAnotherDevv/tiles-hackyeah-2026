@@ -15,6 +15,8 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DOCS="$(dirname "$HERE")"
 SHOTS_DIR="$DOCS/screenshots/tiles"
+# Number prefixes of the 4 screenshots shown on slide 9 (empty = first 4 by name).
+DECK_PICK="${DECK_PICK-02|07|09|12}"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 PDF="$HERE/Tiles_HackYeah2026_Huawei.pdf"
 COVER="$DOCS/cover.png"
@@ -30,7 +32,8 @@ COVER="$DOCS/cover.png"
       [ $first -eq 1 ] || printf ','
       first=0
       printf '\n  {"src": "../screenshots/tiles/%s", "caption": "%s"}' "$name" "$cap"
-    done < <(find "$SHOTS_DIR" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | sort | head -4)
+    done < <(find "$SHOTS_DIR" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | sort |
+             { if [ -n "$DECK_PICK" ]; then grep -E "/($DECK_PICK)-" || true; else cat; fi; } | head -4)
   fi
   printf '\n];\n'
 } > "$HERE/shots.js"

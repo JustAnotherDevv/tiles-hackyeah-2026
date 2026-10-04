@@ -332,12 +332,16 @@ export class TileStore {
       }
       next.push(c);
     }
+    // A new tile with the same type + title replaces the old one (no duplicate "Dinner Fri" tiles).
+    const sameKey = (a: TileSpec): string => a.type + '|' + a.title.trim().toLowerCase();
+    const newKeys: string[] = next.map((x: TileSpec) => sameKey(x));
+    const kept: TileSpec[] = this.list.filter((x: TileSpec) => newKeys.indexOf(sameKey(x)) < 0);
     // New tiles appear at the top, after pinned ones.
     let insertAt: number = 0;
-    while (insertAt < this.list.length && this.list[insertAt].pinned) {
+    while (insertAt < kept.length && kept[insertAt].pinned) {
       insertAt++;
     }
-    const out: TileSpec[] = this.list.slice(0, insertAt).concat(next).concat(this.list.slice(insertAt));
+    const out: TileSpec[] = kept.slice(0, insertAt).concat(next).concat(kept.slice(insertAt));
     this.list = out;
     this.changed(true);
   }

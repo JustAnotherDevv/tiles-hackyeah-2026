@@ -12,7 +12,20 @@ import { PROFILE_CHOICES } from './OnboardingView';
 export const K_DARK: string = 'tiles.dark';
 
 /** Applies the dark-mode choice app-wide: AppStorage flag for the views + the application color mode. */
+let lastDarkAt: number = 0;
+let lastDark: boolean = false;
+
 export function applyDarkMode(dark: boolean): void {
+  // Changing the app color mode rebuilds the view and the Toggle fires a spurious onChange with the old
+  // value right after; ignore a flip-back within 1.5 s so the user's choice sticks.
+  const now: number = Date.now();
+  if (now - lastDarkAt < 1500 && dark !== lastDark) {
+    return;
+  }
+  lastDarkAt = now;
+  lastDark = dark;
+  // Remember the explicit choice so Index.syncDark() does not overwrite it with a stale config value.
+  AppStorage.setOrCreate<number>('tiles.darkUser', dark ? 2 : 1);
   AppStorage.setOrCreate<boolean>(K_DARK, dark);
   const ctx: common.UIAbilityContext | null = TilesPlatform.context();
   if (ctx === null) {

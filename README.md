@@ -494,15 +494,16 @@ Only `@ohos.*` / OpenHarmony APIs are available there. HarmonyOS-only Kits are n
 ## Screenshots
 
 <!-- SHOTS:BEGIN -->
-Captured on the DevEco HarmonyOS 6.1.1 (API 24) emulator. All people, numbers and plans are fictional demo data. The
-Guardian call is a labelled demo sample. Files: [`docs/screenshots/tiles/`](docs/screenshots/tiles/). The images
-directly in `docs/screenshots/` show the superseded Aegis Pocket.
+Captured on the DevEco HarmonyOS 6.1.1 (API 24) emulator, in demo-story order. All people, numbers and plans are
+fictional demo data. The Guardian call is a labelled demo sample; "Kasia's phone" / "Mum's phone" is a simulated second
+device on the same emulator. Files: [`docs/screenshots/tiles/`](docs/screenshots/tiles/). The images directly in
+`docs/screenshots/` show the superseded Aegis Pocket.
 
 | | | | |
 |---|---|---|---|
-| ![Senior home](docs/screenshots/tiles/01-senior-home.jpeg) Halina (senior): big tiles, adaptation suggestion, tile waiting for Kasia | ![Ask Tiles](docs/screenshots/tiles/02-ask-tiles-plan.jpeg) Ask Tiles: dinner plan tile with votes | ![Guardian](docs/screenshots/tiles/03-guardian-demo-call.jpeg) Guardian: labelled demo call | ![Widgets](docs/screenshots/tiles/04-home-screen-widgets.jpeg) Home-screen widgets: Next up + My tiles |
-| ![Kid home](docs/screenshots/tiles/05-kid-home.jpeg) Zosia (kid) | ![Low vision home](docs/screenshots/tiles/06-low-vision-home.jpeg) Michał (low vision) | ![Everyday home](docs/screenshots/tiles/07-everyday-home.jpeg) Daniel (everyday) | ![Pills for approval](docs/screenshots/tiles/08-pills-sent-to-caregiver.jpeg) Assistant tile sent to Kasia |
-| ![Notifications](docs/screenshots/tiles/09-notifications.jpeg) Pill notification + caregiver alerts | ![Big buttons](docs/screenshots/tiles/10-big-buttons-widget.jpeg) Big buttons widget (4x4) | ![Red flags](docs/screenshots/tiles/11-guardian-red-flags-pl.jpeg) Guardian red flags (PL demo) | ![Dial screen](docs/screenshots/tiles/12-dial-screen.jpeg) Call → system dial screen |
+| ![Onboarding](docs/screenshots/tiles/01-onboarding-who-is-this-phone-for.jpeg) 1. Onboarding: "Who is this phone for?" | ![Senior home](docs/screenshots/tiles/02-senior-home-tiles-noticed.jpeg) 2. Halina's home: "Tiles noticed… make text bigger" | ![Pills taken](docs/screenshots/tiles/03-pills-taken-read-aloud.jpeg) 3. Pills "Taken" + read-aloud | ![Caregiver notification](docs/screenshots/tiles/04-caregiver-notification.jpeg) 4. Notification for Kasia |
+| ![Caregiver approves](docs/screenshots/tiles/05-caregiver-approves-bigger-text.jpeg) 5. Kasia approves with before/after | ![Home after approval](docs/screenshots/tiles/06-home-after-approval.jpeg) 6. Home rebuilt at 180% text | ![Guardian](docs/screenshots/tiles/07-guardian-scam-risk.jpeg) 7. Guardian: demo scam call, 97% risk | ![Kid home](docs/screenshots/tiles/08-kid-home.jpeg) 8. Switch to Zosia (kid): home regenerates |
+| ![Ask Tiles](docs/screenshots/tiles/09-kid-ask-tiles-reminder.jpeg) 9. Ask Tiles makes a reminder tile | ![Mum approves](docs/screenshots/tiles/10-mum-approves-new-tile.jpeg) 10. Mum approves the new tile | ![Dinner plan](docs/screenshots/tiles/11-everyday-dinner-plan-vote.jpeg) 11. Daniel: dinner plan tile with votes | ![Widgets](docs/screenshots/tiles/12-home-screen-widgets.jpeg) 12. Home-screen widgets: Next up + My tiles |
 <!-- SHOTS:END -->
 
 ## Demo (≤60 s)

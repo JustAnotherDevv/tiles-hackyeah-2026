@@ -47,6 +47,11 @@ struct Index {
   }
 
   syncDark(): void {
+    const userChoice: number | undefined = AppStorage.get<number>('tiles.darkUser');
+    if (userChoice !== undefined && userChoice !== 0) {
+      AppStorage.setOrCreate<boolean>(K_DARK, userChoice === 2);
+      return;
+    }
     let dark: boolean = false;
     try {
       const ctx: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;

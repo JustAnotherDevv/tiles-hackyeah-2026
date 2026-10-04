@@ -704,7 +704,7 @@ export struct HomeView {
         .height(this.autoRows() ? 'auto' : this.itemH(t))
         .transition(TransitionEffect.OPACITY.combine(TransitionEffect.scale({ x: 0.7, y: 0.7 }))
           .animation({ curve: TilesTheme.springIn(), duration: this.dur(TilesTheme.DUR_SLOW) }))
-      }, (t: TileSpec) => t.id + '|' + t.size)
+      }, (t: TileSpec) => t.id + '|' + t.size + '|' + t.subtitle + '|' + JSON.stringify(t.blocks))
     }
     .columnsTemplate(this.columnsTemplate())
     .columnsGap(TilesTheme.GRID_GAP)

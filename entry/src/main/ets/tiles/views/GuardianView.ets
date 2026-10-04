@@ -265,7 +265,8 @@ export struct GuardianView {
   }
 
   private ts(): TypeScale {
-    return TilesTheme.type(this.profile.textScale);
+    // Full-screen view is already large; cap so the verdict stays on one screen at 180% text.
+    return TilesTheme.type(Math.min(this.profile.textScale, 1.4));
   }
 
   private tap(): number {
