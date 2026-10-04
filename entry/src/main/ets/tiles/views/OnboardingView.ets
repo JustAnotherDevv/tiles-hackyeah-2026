@@ -565,6 +565,39 @@ export struct OnboardingView {
     return out;
   }
 
+  private slotIndexes(): number[] {
+    const n: number = Math.max(PROFILE_CHOICES.length, Math.min(MAX_SLOTS, this.buildTiles.length));
+    const out: number[] = [];
+    for (let i = 0; i < n; i++) {
+      out.push(i);
+    }
+    return out;
+  }
+
+  private slotAt(i: number): Slot {
+    const all: Slot[] = this.slots();
+    return i < all.length ? all[i] : new Slot();
+  }
+
+  private slotScale(i: number): number {
+    const sl: Slot = this.slotAt(i);
+    if (!sl.visible) {
+      return TilesTheme.LL_ENTER_SCALE;
+    }
+    const c: ChoiceDef | undefined = sl.card;
+    return c !== undefined && this.pressed === c.id ? 0.97 : 1;
+  }
+
+  private slotLabel(i: number): string {
+    const sl: Slot = this.slotAt(i);
+    const c: ChoiceDef | undefined = sl.card;
+    const t: TileSpec | undefined = sl.tile;
+    if (c !== undefined && !this.morph) {
+      return c.label + '. ' + c.line;
+    }
+    return t !== undefined ? t.title : '';
+  }
+
   private dur(): number {
     return this.reduced() ? 150 : TilesTheme.LL_DUR;
   }
@@ -740,9 +773,11 @@ export struct OnboardingView {
         }
       })
 
-      ForEach(this.slots(), (s: Slot) => {
-        this.slot(s)
-      }, (s: Slot) => s.key)
+      // Index-keyed so each slot persists across the morph; geometry is read from state (ForEach would not
+      // re-render an item whose key is unchanged).
+      ForEach(this.slotIndexes(), (i: number) => {
+        this.slot(i)
+      }, (i: number) => 'slot' + i.toString())
 
       // Secondary path: set the name and caregiver before building.
       Row({ space: 6 }) {
@@ -777,36 +812,32 @@ export struct OnboardingView {
   }
 
   @Builder
-  slot(s: Slot) {
+  slot(i: number) {
     Stack({ alignContent: Alignment.TopStart }) {
-      if (s.tile !== undefined) {
-        this.tileFace(s.tile, s.tw, s.th)
+      if (this.slotAt(i).tile !== undefined) {
+        this.tileFace(this.slotAt(i).tile as TileSpec, this.slotAt(i).tw, this.slotAt(i).th)
       }
-      if (s.card !== undefined) {
-        this.cardFace(s.card)
+      if (this.slotAt(i).card !== undefined) {
+        this.cardFace(this.slotAt(i).card as ChoiceDef)
       }
     }
-    .position({ x: s.x, y: s.y })
-    .width(s.w)
-    .height(s.h)
+    .position({ x: this.slotAt(i).x, y: this.slotAt(i).y })
+    .width(this.slotAt(i).w)
+    .height(this.slotAt(i).h)
     .borderRadius(TilesTheme.LL_RADIUS_L)
     .clip(true)
     .shadow(TilesTheme.LL_SHADOW_TILE)
-    .opacity(s.visible ? 1 : 0)
-    .scale({
-      x: !s.visible ? TilesTheme.LL_ENTER_SCALE : (s.card !== undefined && this.pressed === s.card.id ? 0.97 : 1),
-      y: !s.visible ? TilesTheme.LL_ENTER_SCALE : (s.card !== undefined && this.pressed === s.card.id ? 0.97 : 1)
-    })
-    .translate({ y: s.visible ? 0 : TilesTheme.LL_ENTER_TY })
-    .animation({ duration: this.morph ? this.dur() : 250, curve: this.curve(), delay: this.morph ? s.delay : 0 })
-    .hitTestBehavior(this.step === 0 && s.card !== undefined ? HitTestMode.Default : HitTestMode.None)
+    .opacity(this.slotAt(i).visible ? 1 : 0)
+    .scale({ x: this.slotScale(i), y: this.slotScale(i) })
+    .translate({ y: this.slotAt(i).visible ? 0 : TilesTheme.LL_ENTER_TY })
+    .animation({ duration: this.morph ? this.dur() : 250, curve: this.curve(), delay: this.morph ? this.slotAt(i).delay : 0 })
+    .hitTestBehavior(this.step === 0 && this.slotAt(i).card !== undefined ? HitTestMode.Default : HitTestMode.None)
     .onClick(() => {
-      if (this.step === 0 && s.card !== undefined) {
-        this.chooseCard(s.card.id);
+      if (this.step === 0 && this.slotAt(i).card !== undefined) {
+        this.chooseCard((this.slotAt(i).card as ChoiceDef).id);
       }
     })
-    .accessibilityText(s.card !== undefined && !this.morph ? s.card.label + '. ' + s.card.line :
-      (s.tile !== undefined ? s.tile.title : ''))
+    .accessibilityText(this.slotLabel(i))
   }
 
   @Builder

@@ -729,6 +729,10 @@ export struct TileView {
     .accessibilityLevel('no')
   }
 
+  private speakerSize(): number {
+    return this.style().minTap > 48 ? 48 : 44;
+  }
+
   /** Prototype read-aloud: 44 vp circle, rgba(0,0,0,.1), volume_up glyph at iconSize. */
   @Builder
   speaker() {
@@ -737,11 +741,18 @@ export struct TileView {
         .fontSize(Math.min(this.iconSize(), 26))
         .fontColor([this.fg()])
     }
-    .width(Math.max(44, this.style().minTap - 4))
-    .height(Math.max(44, this.style().minTap - 4))
+    // Prototype: 44 vp circle (48 for senior / low vision), hit area grown to the profile's minimum tap target.
+    .width(this.speakerSize())
+    .height(this.speakerSize())
+    .responseRegion({
+      x: -Math.max(0, (this.style().minTap - this.speakerSize()) / 2),
+      y: -Math.max(0, (this.style().minTap - this.speakerSize()) / 2),
+      width: Math.max(this.speakerSize(), this.style().minTap),
+      height: Math.max(this.speakerSize(), this.style().minTap)
+    })
     .borderRadius(TilesTheme.LL_RADIUS_PILL)
     .backgroundColor(this.style().roundFill)
-    .border({ width: this.profile.highContrast ? 2 : 0, color: this.fg() })
+    .border({ width: this.profile.highContrast ? 1.5 : 0, color: withAlpha(this.colors().on, 0.35) })
     .flexShrink(0)
     .accessibilityText('Read ' + this.tile.title + ' aloud')
     .accessibilityRole(AccessibilityRoleType.BUTTON)
