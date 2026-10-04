@@ -1,100 +1,143 @@
-import { AbilityConstant, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
+import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
-import { Log } from '../common/Format';
-import { Keys, PocketStore } from '../data/PocketStore';
-import { PARAM_APPROVAL_ID, PARAM_TARGET } from '../platform/NotificationService';
-import { BackgroundRefresh } from '../platform/BackgroundRefresh';
+import { PARAM_TILE_ID, PlatformKeys, TilesPlatform, TLog } from '../tiles/platform/TilesPlatform';
+import { TileNotifications } from '../tiles/platform/TileNotifications';
+import { TileStore } from '../tiles/data/TileStore';
+import { PlatformSelfTest } from '../tiles/platform/PlatformSelfTest';
+
+/** Warm light / dark page backgrounds (TilesTheme.palette bg). */
+const BG_LIGHT: string = '#F6F3EE';
+const BG_DARK: string = '#14161C';
 
 export default class EntryAbility extends UIAbility {
+  private windowStage: window.WindowStage | null = null;
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     try {
-      // Aegis Pocket is designed dark-first.
-      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
+      // Tiles follows the system light / dark setting.
+      this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     } catch (err) {
-      Log.error('Failed to set colorMode: ' + JSON.stringify(err));
+      TLog.warn('Failed to set colorMode: ' + JSON.stringify(err));
     }
-    PocketStore.seedStorage();
+    TilesPlatform.setContext(this.context);
+    TileStore.get().init(this.context);
+    AppStorage.setOrCreate<string>(PlatformKeys.OPEN_TILE_ID, '');
+    AppStorage.setOrCreate<string>(PlatformKeys.NAVIGATE, '');
+    AppStorage.setOrCreate<string>(PlatformKeys.SPEAKING, '');
+    AppStorage.setOrCreate<string>(PlatformKeys.SPEAKING_TILE, '');
     this.handleWant(want);
-    PocketStore.get().init(this.context);
-    // Background Tasks Kit: repeating deferred task that keeps the widget current while the app is closed.
-    BackgroundRefresh.schedule(this.context);
-    Log.info('Ability onCreate');
+    TLog.info('Ability onCreate');
   }
 
-  /** Called when a notification (WantAgent) or the widget (postCardAction router) re-opens the running app. */
+  /** A notification, reminder or the widget (postCardAction router) re-opens the running app. */
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.handleWant(want);
   }
 
   onDestroy(): void {
-    PocketStore.get().stop();
-    Log.info('Ability onDestroy');
+    TLog.info('Ability onDestroy');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
+    this.windowStage = windowStage;
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
-        Log.error('Failed to load the content: ' + JSON.stringify(err));
+        TLog.warn('Failed to load the content: ' + JSON.stringify(err));
         return;
       }
       try {
-        const win: window.Window = windowStage.getMainWindowSync();
-        win.setWindowBackgroundColor('#0B0F17');
-        win.setWindowSystemBarProperties({
-          statusBarColor: '#0B0F17',
-          statusBarContentColor: '#E6EDF7',
-          navigationBarColor: '#0B0F17',
-          navigationBarContentColor: '#E6EDF7'
-        }).catch((e: Error) => {
-          Log.warn('system bar style failed: ' + e.message);
-        });
+        TilesPlatform.setUIContext(windowStage.getMainWindowSync().getUIContext());
       } catch (e) {
-        Log.warn('window styling failed: ' + JSON.stringify(e));
+        TLog.warn('getUIContext failed: ' + JSON.stringify(e));
       }
-      // Ask once for notification permission (system dialog), as required before publishing.
-      PocketStore.get().requestNotifications().then((ok: boolean) => {
-        Log.info('Notifications enabled: ' + ok);
+      this.styleWindow();
+      // Ask once for notification permission (system dialog): reminders and caregiver alerts need it.
+      TileNotifications.requestPermission(false).then((ok: boolean) => {
+        TLog.info('Notifications enabled: ' + ok);
       });
     });
   }
 
+  onConfigurationUpdate(newConfig: Configuration): void {
+    this.styleWindow();
+  }
+
   onWindowStageDestroy(): void {
-    Log.info('Ability onWindowStageDestroy');
+    this.windowStage = null;
   }
 
   onForeground(): void {
-    PocketStore.get().start();
-    PocketStore.get().syncNotificationState();
+    TileNotifications.isEnabled().then((ok: boolean) => {
+      AppStorage.setOrCreate<boolean>(PlatformKeys.NOTIF_ENABLED, ok);
+    });
   }
 
   onBackground(): void {
-    // Keep timers: the OS freezes background apps anyway; polling resumes in onForeground.
-    Log.info('Ability onBackground');
+    TLog.info('Ability onBackground');
   }
 
+  private isDark(): boolean {
+    try {
+      return this.context.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  private styleWindow(): void {
+    const stage: window.WindowStage | null = this.windowStage;
+    if (stage === null) {
+      return;
+    }
+    try {
+      const dark: boolean = this.isDark();
+      const bg: string = dark ? BG_DARK : BG_LIGHT;
+      const fg: string = dark ? '#F4F1EC' : '#1C2230';
+      const win: window.Window = stage.getMainWindowSync();
+      win.setWindowBackgroundColor(bg);
+      win.setWindowSystemBarProperties({
+        statusBarColor: bg,
+        statusBarContentColor: fg,
+        navigationBarColor: bg,
+        navigationBarContentColor: fg
+      }).catch((e: Error) => {
+        TLog.warn('system bar style failed: ' + e.message);
+      });
+    } catch (e) {
+      TLog.warn('window styling failed: ' + JSON.stringify(e));
+    }
+  }
+
+  /**
+   * Want parameter `tileId` (notification / reminder WantAgent, or the widget's postCardAction 'router'
+   * whose params arrive as a JSON string in want.parameters.params) -> AppStorage `tiles.openTileId`.
+   */
   private handleWant(want: Want): void {
     const params: Record<string, Object> | undefined = want.parameters;
     if (params === undefined) {
       return;
     }
-    const approvalId: Object | undefined = params[PARAM_APPROVAL_ID];
-    if (typeof approvalId === 'string' && (approvalId as string).length > 0) {
-      AppStorage.setOrCreate<string>(Keys.OPEN_APPROVAL, (approvalId as string) + '#' + Date.now().toString());
-      return;
+    // Developer self-test of the platform layer (aa start ... --ps tilesDebug notify|remind|action:<id>:<kind>:<arg>).
+    const debug: Object | undefined = params['tilesDebug'];
+    if (typeof debug === 'string' && (debug as string).length > 0) {
+      const cmd: string = debug as string;
+      setTimeout(() => PlatformSelfTest.run(cmd), 1500);
     }
-    // postCardAction 'router': the card's params arrive as a JSON string in want.parameters.params.
-    let target: Object | undefined = params[PARAM_TARGET];
+    let tileId: Object | undefined = params[PARAM_TILE_ID];
     const cardParams: Object | undefined = params['params'];
-    if (target === undefined && typeof cardParams === 'string') {
+    if (tileId === undefined && typeof cardParams === 'string') {
       try {
         const parsed: Record<string, Object> = JSON.parse(cardParams as string) as Record<string, Object>;
-        target = parsed[PARAM_TARGET];
+        tileId = parsed[PARAM_TILE_ID];
       } catch (e) {
-        Log.warn('Bad widget params');
+        TLog.warn('Bad widget params');
       }
     }
-    if (typeof target === 'string' && (target as string).length > 0) {
-      AppStorage.setOrCreate<string>(Keys.OPEN_TARGET, (target as string) + '#' + Date.now().toString());
+    if (typeof tileId === 'string' && (tileId as string).length > 0) {
+      TLog.info('open tile from want: ' + (tileId as string));
+      // Reset first so opening the same tile twice still notifies @StorageLink watchers.
+      AppStorage.setOrCreate<string>(PlatformKeys.OPEN_TILE_ID, '');
+      AppStorage.setOrCreate<string>(PlatformKeys.OPEN_TILE_ID, tileId as string);
     }
   }
 }

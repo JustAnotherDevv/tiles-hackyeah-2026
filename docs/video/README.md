@@ -1,3 +1,6 @@
+> **Superseded (4 Oct 2026).** This is the earlier Aegis Pocket concept. The Huawei submission is now **Tiles**: see
+> [`README.md`](../../README.md) and [`docs/HACKTRIBE_TILES.md`](../HACKTRIBE_TILES.md). Kept for transparency only.
+
 # Aegis Pocket demo video (≤60 s)
 
 | File | What |

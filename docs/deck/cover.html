@@ -2,18 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Aegis Pocket cover</title>
+<title>Tiles cover</title>
 <!-- 1600x900 cover image for HackTribe. Rendered to docs/cover.png by docs/deck/build.sh. -->
 <link rel="stylesheet" href="deck.css">
 <style>
   html,body{width:1600px;height:900px;overflow:hidden}
-  .slide{width:1600px;height:900px;padding:70px 90px}
-  .title-grid{grid-template-columns:1fr 470px;gap:40px}
-  .phone-wrap{transform:scale(.86);transform-origin:center;margin-top:-30px}
-  .phone{height:700px}
-  .ph-card{flex:1}
-  h1{font-size:104px!important}
-  .foot{left:90px;right:90px;bottom:30px}
+  .slide{width:1600px;height:900px;padding:64px 90px}
+  .title-grid{grid-template-columns:1fr 440px;gap:40px}
+  .phone{transform:scale(.8);transform-origin:center top;margin-top:-6px}
+  h1{font-size:150px!important}
+  .foot{left:90px;right:90px;bottom:28px}
 </style>
 </head>
 <body>
@@ -21,36 +19,31 @@
   <div class="title-grid">
     <div>
       <div class="logo">
-        <svg width="72" height="82" viewBox="0 0 48 55" aria-hidden="true"><path d="M24 2 L44 9 V26 C44 39 35 48 24 53 C13 48 4 39 4 26 V9 Z" fill="none" stroke="#4F8CFF" stroke-width="3.5"/><path d="M15 27 L22 34 L34 20" fill="none" stroke="#2FD08A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="mark"><i class="b-sun"></i><i class="b-coral"></i><i class="b-sky"></i><i class="b-mint"></i></div>
         <div class="kicker">HackYeah 2026 · Huawei · Imagine What's Next</div>
       </div>
-      <h1 style="margin-top:36px">Aegis Pocket</h1>
-      <div class="sub" style="font-size:42px;color:var(--text-1);margin-top:8px">Approve AI Agents</div>
-      <div class="sub" style="font-size:26px;margin-top:26px;max-width:820px">Human-in-the-loop approvals for AI agents on HarmonyOS: notifications, home-screen widgets, biometric step-up and on-device privacy.</div>
-      <div style="margin-top:38px">
-        <span class="pill p-accent">ArkTS + ArkUI</span><span class="pill p-good">API 20+</span><span class="pill p-violet">Human-Centric</span>
+      <h1>Tiles</h1>
+      <div class="sub" style="font-size:48px;color:var(--ink);font-weight:800;margin-top:8px">A phone that adapts</div>
+      <div class="sub" style="font-size:27px;margin-top:24px;max-width:860px">Generative-UI home for HarmonyOS: big live tiles, an assistant that answers with new tiles, and a phone that reshapes itself for seniors, kids, low vision and everyone else.</div>
+      <div style="margin-top:34px">
+        <span class="pill b-sun">ArkTS + ArkUI</span><span class="pill b-mint">API 20+</span><span class="pill b-coral">Human-Centric</span><span class="pill b-grape">Intelligent</span>
       </div>
     </div>
-    <div class="phone-wrap">
+    <div>
       <div class="phone">
-        <div class="ph-status"><span>9:41</span><span class="ph-badge">MOCK</span></div>
-        <div class="ph-notif">
-          <div class="ph-app"><span class="dot"></span>Aegis Pocket · now</div>
-          <div class="ph-t">Approval needed: requires admin</div>
-          <div class="ph-b">trading-copilot wants to: Buy MarketPulse Pro (mp-pro-monthly) ($50.00)</div>
+        <div class="ph-status"><span>8:02</span><span>Halina</span></div>
+        <div class="ph-hello"><b>Good morning, Halina</b><span>Sunday, 4 October</span></div>
+        <div class="tg">
+          <div class="t w b-sun"><span class="k">Pills · 8:00</span><span class="v">Euthyrox 50</span><span class="btn">Tap when taken</span></div>
+          <div class="t b-mint"><span class="k">Call</span><span class="v">Kasia</span><span class="s">daughter</span></div>
+          <div class="t b-sky"><span class="k">Weather</span><span class="v">14° rain</span><span class="s">take the umbrella</span></div>
+          <div class="t w b-coral"><span class="k">Guardian</span><span class="v">Scam shield on</span><span class="s">calls and SMS checked on the phone</span></div>
         </div>
-        <div class="ph-card">
-          <div class="ph-h">Why a human is asked</div>
-          <div class="ph-score"><span class="big">33</span><span>/100 · medium</span></div>
-          <div class="ph-bar"><i style="width:33%"></i></div>
-          <ul><li>ACT-01 Spend guard</li><li>Moves money: $50</li><li>Needs an admin, not the agent's sponsor</li><li>Agent note: untrusted, not scored</li></ul>
-        </div>
-        <div class="ph-actions"><span class="deny">Deny</span><span class="ok">Approve · Face / PIN</span></div>
+        <div class="ask"><i></i>Ask Tiles…</div>
       </div>
-      <div class="illus">Illustration, not an app screenshot</div>
     </div>
   </div>
-  <div class="foot"><span>Team: JustAnotherDevv</span><span class="mono">github.com/JustAnotherDevv/tiles-hackyeah-2026</span></div>
+  <div class="foot"><span>Team: JustAnotherDevv · illustration, not an app screenshot</span><span class="mono">github.com/JustAnotherDevv/tiles-hackyeah-2026</span></div>
 </section>
 </body>
 </html>

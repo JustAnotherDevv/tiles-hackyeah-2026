@@ -1,229 +1,132 @@
-import { Colors, Fonts, Radius, Space } from '../common/Theme';
-import { HomeView } from '../views/HomeView';
-import { InboxView } from '../views/InboxView';
-import { PreviewView } from '../views/PreviewView';
-import { SettingsView } from '../views/SettingsView';
-import { DetailView } from '../views/DetailView';
+import { common, ConfigurationConstant } from '@kit.AbilityKit';
+import { Profile, TileSpec } from '../tiles/model/Tile';
+import { K_ONBOARDED, K_PROFILE, TileStore } from '../tiles/data/TileStore';
+import { TilesTheme } from '../tiles/theme/TilesTheme';
+import { PlatformKeys } from '../tiles/platform/TilesPlatform';
+import { HomeView } from '../tiles/views/HomeView';
+import { TileDetailView } from '../tiles/views/TileDetailView';
+import { GuardianView } from '../tiles/views/GuardianView';
+import { OnboardingView } from '../tiles/views/OnboardingView';
+import { CaregiverView } from '../tiles/views/CaregiverView';
+import { TilesSettingsView } from '../tiles/views/TilesSettingsView';
+import { RenderPreview } from '../tiles/views/RenderPreview';
+import { K_ASSISTANT_SEED, K_DARK } from '../tiles/views/ShellKeys';
 
-class TabDef {
-  index: number;
-  label: string;
-  glyph: string;
-
-  constructor(index: number, label: string, glyph: string) {
-    this.index = index;
-    this.label = label;
-    this.glyph = glyph;
-  }
-}
-
-const TAB_HOME = 0;
-const TAB_INBOX = 1;
-const TAB_PREVIEW = 2;
-const TAB_SETTINGS = 3;
-
-const TABS: TabDef[] = [
-  new TabDef(TAB_HOME, 'Home', '◉'),
-  new TabDef(TAB_INBOX, 'Inbox', '≡'),
-  new TabDef(TAB_PREVIEW, 'Preview', '◐'),
-  new TabDef(TAB_SETTINGS, 'Settings', '⋯')
-];
-
+/**
+ * Tiles shell: one Navigation whose root is the Home grid. Routes (NavPathStack names):
+ *   detail (param = tile id) · onboarding · caregiver · guardian · settings
+ * The Assistant is a sheet on Home (not a route). Notifications / reminders / the widget open a tile through
+ * AppStorage `tiles.openTileId`; 'navigate' tile actions arrive through `tiles.navigate`.
+ */
 @Entry
 @Component
 struct Index {
-  @Provide('pathStack') pathStack: NavPathStack = new NavPathStack();
-  @State currentTab: number = TAB_HOME;
-  @State bannerText: string = '';
-  @StorageProp('pendingCount') pending: number = 0;
-  @StorageProp('openApprovalId') @Watch('onOpenApproval') openApprovalId: string = '';
-  @StorageProp('openTarget') @Watch('onOpenTarget') openTarget: string = '';
-  @StorageProp('newRequestTitle') @Watch('onNewRequest') newRequest: string = '';
-  private tabsController: TabsController = new TabsController();
-  private bannerTimer: number = -1;
+  @Provide('tilesNav') nav: NavPathStack = new NavPathStack();
+  @StorageLink(K_PROFILE) profile: Profile = new Profile();
+  @StorageProp(K_ONBOARDED) onboarded: boolean = false;
+  @StorageProp(K_DARK) dark: boolean = false;
+  @StorageProp(PlatformKeys.OPEN_TILE_ID) @Watch('onOpenTile') openTileId: string = '';
+  @StorageProp(PlatformKeys.NAVIGATE) @Watch('onNavigate') navigateTo: string = '';
 
   aboutToAppear(): void {
-    // A cold start from a notification or the widget sets these before the page exists.
-    if (this.openApprovalId.length > 0) {
-      this.onOpenApproval();
+    this.syncDark();
+    if (!TileStore.get().isOnboarded()) {
+      this.nav.pushPathByName('onboarding', '', false);
     }
-    if (this.openTarget.length > 0) {
-      this.onOpenTarget();
+    // Cold start from a notification / reminder / widget.
+    if (this.openTileId.length > 0) {
+      this.onOpenTile();
+    }
+    if (this.navigateTo.length > 0) {
+      this.onNavigate();
     }
   }
 
-  onOpenApproval(): void {
-    if (this.openApprovalId.length === 0) {
+  onPageShow(): void {
+    this.syncDark();
+  }
+
+  syncDark(): void {
+    let dark: boolean = false;
+    try {
+      const ctx: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      dark = ctx.config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
+    } catch (e) {
+      dark = false;
+    }
+    AppStorage.setOrCreate<boolean>(K_DARK, dark);
+  }
+
+  onOpenTile(): void {
+    const id: string = this.openTileId;
+    if (id.length === 0) {
       return;
     }
-    this.openDetail(this.openApprovalId.split('#')[0]);
-  }
-
-  onOpenTarget(): void {
-    const target: string = this.openTarget.split('#')[0];
-    if (target === 'inbox') {
-      this.pathStack.clear();
-      this.switchTab(TAB_INBOX);
-    }
-  }
-
-  onNewRequest(): void {
-    if (this.newRequest.length === 0) {
+    AppStorage.setOrCreate<string>(PlatformKeys.OPEN_TILE_ID, '');
+    const t: TileSpec | null = TileStore.get().tile(id);
+    if (t === null) {
       return;
     }
-    const text: string = this.newRequest.split('#')[0];
-    this.getUIContext().animateTo({ duration: 320, curve: Curve.EaseOut }, () => {
-      this.bannerText = text;
-    });
-    if (this.bannerTimer !== -1) {
-      clearTimeout(this.bannerTimer);
+    if (t.type === 'guardian') {
+      this.nav.pushPathByName('guardian', id, true);
+      return;
     }
-    this.bannerTimer = setTimeout(() => {
-      this.getUIContext().animateTo({ duration: 260, curve: Curve.EaseIn }, () => {
-        this.bannerText = '';
-      });
-      this.bannerTimer = -1;
-    }, 5000);
+    // Replace an already open detail instead of stacking several.
+    const top: string[] = this.nav.getAllPathName();
+    if (top.length > 0 && top[top.length - 1] === 'detail') {
+      this.nav.replacePathByName('detail', id, true);
+    } else {
+      this.nav.pushPathByName('detail', id, true);
+    }
   }
 
-  openDetail(id: string): void {
-    this.pathStack.pushPathByName('detail', id + '#' + Date.now().toString(), true);
-  }
-
-  switchTab(index: number): void {
-    this.currentTab = index;
-    this.tabsController.changeIndex(index);
+  onNavigate(): void {
+    const route: string = this.navigateTo;
+    if (route.length === 0) {
+      return;
+    }
+    AppStorage.setOrCreate<string>(PlatformKeys.NAVIGATE, '');
+    if (route === 'assistant') {
+      this.nav.clear(false);
+      AppStorage.setOrCreate<string>(K_ASSISTANT_SEED, 'open#' + Date.now().toString());
+      return;
+    }
+    if (route === 'home') {
+      this.nav.clear(true);
+      return;
+    }
+    if (route === 'onboarding' || route === 'caregiver' || route === 'guardian' || route === 'settings' ||
+      route === 'gallery') {
+      this.nav.pushPathByName(route, '', true);
+    }
   }
 
   @Builder
   pageMap(name: string, param: Object) {
     if (name === 'detail') {
-      DetailView({ approvalId: param as string })
+      TileDetailView({ tileId: param as string })
+    } else if (name === 'onboarding') {
+      OnboardingView()
+    } else if (name === 'caregiver') {
+      CaregiverView()
+    } else if (name === 'guardian') {
+      GuardianView()
+    } else if (name === 'settings') {
+      TilesSettingsView()
+    } else if (name === 'gallery') {
+      RenderPreview()
     }
-  }
-
-  @Builder
-  tabBar(t: TabDef) {
-    Column({ space: 3 }) {
-      Stack({ alignContent: Alignment.TopEnd }) {
-        Text(t.glyph)
-          .fontSize(20)
-          .fontColor(this.currentTab === t.index ? Colors.ACCENT : Colors.TEXT_FAINT)
-          .width(36)
-          .height(26)
-          .textAlign(TextAlign.Center)
-        if (t.index === TAB_INBOX && this.pending > 0) {
-          Text(this.pending.toString())
-            .fontSize(9)
-            .fontWeight(FontWeight.Bold)
-            .fontColor(Color.White)
-            .backgroundColor(Colors.VIOLET)
-            .borderRadius(8)
-            .padding({ left: 4, right: 4 })
-            .height(15)
-            .constraintSize({ minWidth: 15 })
-            .textAlign(TextAlign.Center)
-            .transition(TransitionEffect.scale({ x: 0, y: 0 }).animation({ duration: 200 }))
-        }
-      }
-
-      Text(t.label)
-        .fontSize(10)
-        .fontWeight(this.currentTab === t.index ? FontWeight.Bold : FontWeight.Normal)
-        .fontColor(this.currentTab === t.index ? Colors.TEXT : Colors.TEXT_FAINT)
-    }
-    .width('100%')
-    .height('100%')
-    .justifyContent(FlexAlign.Center)
-    .accessibilityGroup(true)
-    .accessibilityText(t.label + ' tab' + (t.index === TAB_INBOX && this.pending > 0 ?
-      ', ' + this.pending.toString() + ' pending' : '') + (this.currentTab === t.index ? ', selected' : ''))
   }
 
   build() {
-    Navigation(this.pathStack) {
-      Stack({ alignContent: Alignment.Top }) {
-        Tabs({ barPosition: BarPosition.End, index: this.currentTab, controller: this.tabsController }) {
-          TabContent() {
-            HomeView({
-              onOpenApproval: (id: string) => this.openDetail(id),
-              onOpenInbox: () => this.switchTab(TAB_INBOX)
-            })
-          }
-          .tabBar(this.tabBar(TABS[TAB_HOME]))
-
-          TabContent() {
-            InboxView({ onOpenApproval: (id: string) => this.openDetail(id) })
-          }
-          .tabBar(this.tabBar(TABS[TAB_INBOX]))
-
-          TabContent() {
-            PreviewView()
-          }
-          .tabBar(this.tabBar(TABS[TAB_PREVIEW]))
-
-          TabContent() {
-            SettingsView()
-          }
-          .tabBar(this.tabBar(TABS[TAB_SETTINGS]))
-        }
-        .barHeight(60)
-        .barBackgroundColor(Colors.SURFACE)
-        .divider({ strokeWidth: 1, color: Colors.BORDER })
-        .animationDuration(250)
-        .onChange((index: number) => {
-          this.currentTab = index;
-        })
-        .width('100%')
-        .height('100%')
-
-        if (this.bannerText.length > 0) {
-          Row({ space: Space.MD }) {
-            Circle()
-              .width(10)
-              .height(10)
-              .fill(Colors.VIOLET)
-            Column({ space: 2 }) {
-              Text('New approval request')
-                .fontSize(Fonts.TINY)
-                .fontColor(Colors.VIOLET)
-                .fontWeight(FontWeight.Bold)
-              Text(this.bannerText)
-                .fontSize(Fonts.SMALL)
-                .fontColor(Colors.TEXT)
-                .maxLines(2)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            .alignItems(HorizontalAlign.Start)
-            .layoutWeight(1)
-            Text('Review')
-              .fontSize(Fonts.SMALL)
-              .fontColor(Colors.ACCENT)
-          }
-          .width('92%')
-          .padding(Space.MD)
-          .margin({ top: Space.SM })
-          .borderRadius(Radius.LG)
-          .backgroundColor(Colors.SURFACE_3)
-          .border({ width: 1, color: Colors.VIOLET_SOFT })
-          .shadow({ radius: 24, color: '#80000000', offsetY: 6 })
-          .transition(TransitionEffect.move(TransitionEdge.TOP).combine(TransitionEffect.OPACITY))
-          .accessibilityGroup(true)
-          .accessibilityText('New approval request: ' + this.bannerText)
-          .accessibilityDescription('Double-tap to open the inbox')
-          .onClick(() => {
-            this.bannerText = '';
-            this.switchTab(TAB_INBOX);
-          })
-        }
-      }
-      .width('100%')
-      .height('100%')
+    Navigation(this.nav) {
+      HomeView()
     }
     .navDestination(this.pageMap)
     .hideTitleBar(true)
+    .hideToolBar(true)
     .mode(NavigationMode.Stack)
-    .backgroundColor(Colors.BG)
+    .backgroundColor(TilesTheme.palette(this.dark, this.profile.highContrast).bg)
     .width('100%')
     .height('100%')
   }

@@ -1,42 +1,58 @@
 {
   "forms": [
     {
-      "name": "posture",
-      "displayName": "$string:widget_posture_name",
-      "description": "$string:widget_posture_desc",
-      "src": "./ets/widget/pages/PostureCard.ets",
+      "name": "next_up",
+      "displayName": "Next up",
+      "description": "Your next reminder or pills, big and colorful",
+      "src": "./ets/widget/pages/NextUpCard.ets",
       "uiSyntax": "arkts",
       "window": {
         "designWidth": 720,
         "autoDesignWidth": true
       },
-      "colorMode": "dark",
       "isDynamic": true,
       "isDefault": true,
       "updateEnabled": true,
-      "scheduledUpdateTime": "10:30",
+      "scheduledUpdateTime": "07:00",
       "updateDuration": 1,
       "defaultDimension": "2*2",
       "supportDimensions": ["2*2"]
     },
     {
-      "name": "posture_wide",
-      "displayName": "$string:widget_posture_wide_name",
-      "description": "$string:widget_posture_wide_desc",
-      "src": "./ets/widget/pages/PostureWideCard.ets",
+      "name": "my_tiles",
+      "displayName": "My tiles",
+      "description": "Your top 3 pinned tiles",
+      "src": "./ets/widget/pages/MyTilesCard.ets",
       "uiSyntax": "arkts",
       "window": {
         "designWidth": 720,
         "autoDesignWidth": true
       },
-      "colorMode": "dark",
       "isDynamic": true,
       "isDefault": false,
       "updateEnabled": true,
-      "scheduledUpdateTime": "10:30",
+      "scheduledUpdateTime": "07:00",
       "updateDuration": 1,
       "defaultDimension": "2*4",
       "supportDimensions": ["2*4"]
+    },
+    {
+      "name": "big_buttons",
+      "displayName": "Big buttons",
+      "description": "Call family, pills and SOS as very large buttons",
+      "src": "./ets/widget/pages/BigButtonsCard.ets",
+      "uiSyntax": "arkts",
+      "window": {
+        "designWidth": 720,
+        "autoDesignWidth": true
+      },
+      "isDynamic": true,
+      "isDefault": false,
+      "updateEnabled": true,
+      "scheduledUpdateTime": "07:00",
+      "updateDuration": 1,
+      "defaultDimension": "4*4",
+      "supportDimensions": ["4*4"]
     }
   ]
 }

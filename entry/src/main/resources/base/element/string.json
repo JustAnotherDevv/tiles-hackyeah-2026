@@ -1,16 +1,15 @@
 {
   "string": [
-    { "name": "module_desc", "value": "Aegis Pocket: approve AI agent actions from your phone" },
-    { "name": "EntryAbility_desc", "value": "Aegis Pocket main ability" },
-    { "name": "EntryAbility_label", "value": "Aegis Pocket" },
-    { "name": "form_ability_desc", "value": "Aegis Pocket home-screen widgets" },
+    { "name": "module_desc", "value": "Tiles: a phone that reshapes itself around the person using it" },
+    { "name": "EntryAbility_desc", "value": "Tiles home: big, live tiles generated for you" },
+    { "name": "EntryAbility_label", "value": "Tiles" },
+    { "name": "form_ability_desc", "value": "Tiles home-screen widgets" },
     { "name": "widget_posture_name", "value": "AI posture" },
     { "name": "widget_posture_desc", "value": "Pending approvals and AI security posture" },
     { "name": "widget_posture_wide_name", "value": "AI posture (wide)" },
     { "name": "widget_posture_wide_desc", "value": "Pending approvals, blocked threats, redactions and budget" },
-    { "name": "reason_internet", "value": "Connect to your Aegis gateway to load approval requests" },
-    { "name": "reason_biometric", "value": "Confirm it is you (face, fingerprint or PIN) before approving risky AI agent actions" },
-    { "name": "reason_vibrate", "value": "Haptic confirmation when you approve or deny a request" },
-    { "name": "work_ability_desc", "value": "Keeps the Aegis Pocket widget and notifications current in the background" }
+    { "name": "reason_vibrate", "value": "A gentle buzz when you tap a tile, finish a task or a reminder is due" },
+    { "name": "reason_reminder", "value": "Remind you about pills, plans and timers at the right time, even when Tiles is closed" },
+    { "name": "work_ability_desc", "value": "Keeps the Tiles widget and reminders current in the background" }
   ]
 }

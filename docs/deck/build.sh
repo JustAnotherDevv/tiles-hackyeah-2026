@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
-# Regenerate the Aegis Pocket HackTribe deck (PDF, 16:9, 10 slides) and the cover image.
+# Regenerate the Tiles HackTribe deck (PDF, 16:9, 10 slides) and the cover image.
 #
 #   docs/deck/build.sh
 #
-# Output:  docs/deck/AegisPocket_HackYeah2026_Huawei.pdf   (1920x1080 pages)
+# Output:  docs/deck/Tiles_HackYeah2026_Huawei.pdf   (1920x1080 pages)
 #          docs/cover.png                                  (1600x900)
-# Screenshots: put real emulator/device PNG/JPG files in docs/screenshots/ (up to 4 are used, sorted by
-# name; the caption is the file name without number prefix/extension, e.g. 02-risk-card.png -> "risk card").
-# With no screenshots, slide 8 shows a labelled placeholder frame. Never put mock-ups there.
+# Screenshots: put real emulator/device PNG/JPG files in docs/screenshots/tiles/ (up to 4 are used, sorted by
+# name; the caption is the file name without number prefix/extension, e.g. 02-ask-tiles.png -> "ask tiles").
+# With no screenshots, slide 9 shows a labelled placeholder frame. Never put mock-ups there.
+# (docs/screenshots/*.jpeg and AegisPocket_HackYeah2026_Huawei.pdf belong to the earlier Aegis Pocket concept.)
 # RAM-heavy (Chrome): on a shared machine run it under the lock, e.g. scratchpad/heavy.sh docs/deck/build.sh.
 # Needs only Google Chrome (set CHROME=/path/to/chrome to override). Chrome is stopped after each run.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 DOCS="$(dirname "$HERE")"
-SHOTS_DIR="$DOCS/screenshots"
+SHOTS_DIR="$DOCS/screenshots/tiles"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
-PDF="$HERE/AegisPocket_HackYeah2026_Huawei.pdf"
+PDF="$HERE/Tiles_HackYeah2026_Huawei.pdf"
 COVER="$DOCS/cover.png"
 [ -x "$CHROME" ] || { echo "Chrome not found at $CHROME (set CHROME=...)" >&2; exit 1; }
 
@@ -28,14 +29,14 @@ COVER="$DOCS/cover.png"
       name="$(basename "$f")"; cap="${name%.*}"; cap="$(printf '%s' "$cap" | sed -E 's/^[0-9]+[-_ ]*//; s/[-_]+/ /g')"
       [ $first -eq 1 ] || printf ','
       first=0
-      printf '\n  {"src": "../screenshots/%s", "caption": "%s"}' "$name" "$cap"
+      printf '\n  {"src": "../screenshots/tiles/%s", "caption": "%s"}' "$name" "$cap"
     done < <(find "$SHOTS_DIR" -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' \) | sort | head -4)
   fi
   printf '\n];\n'
 } > "$HERE/shots.js"
 echo "screenshots: $(grep -c '"src"' "$HERE/shots.js" || true) (from $SHOTS_DIR)"
 
-PROFILE="$(mktemp -d "${TMPDIR:-/tmp}/aegis-pocket-chrome.XXXXXX")"
+PROFILE="$(mktemp -d "${TMPDIR:-/tmp}/tiles-deck-chrome.XXXXXX")"
 trap 'rm -rf "$PROFILE" "$PROFILE.pdf" "$PROFILE.png"' EXIT
 # run_chrome OUTFILE ARGS...: headless Chrome may linger after writing, so wait until OUTFILE is
 # written and its size is stable, then stop every process that uses our temporary profile.

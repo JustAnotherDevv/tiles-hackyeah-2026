@@ -1,6 +1,6 @@
 window.SHOTS = [
-  {"src": "../screenshots/01-home.jpeg", "caption": "home"},
-  {"src": "../screenshots/02-risk-card.jpeg", "caption": "risk card"},
-  {"src": "../screenshots/03-step-up-fallback.jpeg", "caption": "step up fallback"},
-  {"src": "../screenshots/04-what-data-leaves.jpeg", "caption": "what data leaves"}
+  {"src": "../screenshots/tiles/01-senior-home.jpeg", "caption": "senior home"},
+  {"src": "../screenshots/tiles/02-ask-tiles-plan.jpeg", "caption": "ask tiles plan"},
+  {"src": "../screenshots/tiles/03-guardian-demo-call.jpeg", "caption": "guardian demo call"},
+  {"src": "../screenshots/tiles/04-home-screen-widgets.jpeg", "caption": "home screen widgets"}
 ];

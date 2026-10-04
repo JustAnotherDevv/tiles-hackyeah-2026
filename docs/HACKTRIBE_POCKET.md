@@ -1,3 +1,6 @@
+> **Superseded (4 Oct 2026).** This is the earlier Aegis Pocket concept. The Huawei submission is now **Tiles**: see
+> [`README.md`](../README.md) and [`docs/HACKTRIBE_TILES.md`](HACKTRIBE_TILES.md). Kept for transparency only.
+
 # HackTribe submission: Aegis Pocket (Huawei "Imagine What's Next")
 
 Copy-paste text for the HackTribe entry. The Goldman Sachs submission (Aegis, in `aegis/`) is a separate entry.

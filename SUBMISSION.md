@@ -5,7 +5,7 @@ This repository holds **two separate HackTribe entries**:
 | # | Entry | Category on HackTribe | Code |
 |---|---|---|---|
 | A | **Aegis: Local-First AI Guardrails** | Goldman Sachs: *AI Control Layer* | [`aegis/`](aegis/) |
-| B | **Aegis Pocket: Approve AI Agents** | Huawei: *Imagine What's Next* | repository root |
+| B | **Tiles: A Phone That Adapts** | Huawei: *Imagine What's Next* | repository root |
 
 **Deadline:** upload by **Sun 4 Oct 10:00** (hard limit **11:00 CEST**; read the "11 PM" in the English rules as
 11:00, see `research/goldman/06-rules-and-huawei-integration.md` §2.4). You cannot edit after the deadline. Upload
@@ -21,9 +21,9 @@ Word counts use whitespace split, the same as `aegis/docs/submission/build.py`. 
 | | Title words (≤ 5) | Description words (≤ 500) |
 |---|---|---|
 | A: Aegis | 4 | 491 |
-| B: Aegis Pocket | 5 | 486 |
+| B: Tiles | 5 | 479 |
 
-Each extra team member adds about 4 words. Entry A then has 491 + 4 per member; entry B has 486 + 4 per member.
+Each extra team member adds about 4 words. Entry A then has 491 + 4 per member; entry B has 479 + 4 per member.
 
 ---
 
@@ -122,7 +122,10 @@ Optional: make claude (Claude Code routed through Aegis with a demo settings pro
 
 ---
 
-## B. Aegis Pocket: Huawei "Imagine What's Next"
+## B. Tiles: Huawei "Imagine What's Next"
+
+> Pivot (Sun 4 Oct ~06:45): entry B was "Aegis Pocket: Approve AI Agents". It is now **Tiles**. The old Pocket
+> texts are superseded (`docs/HACKTRIBE_POCKET.md`); do not paste them.
 
 ### B1. Category
 
@@ -133,61 +136,61 @@ Huawei: Imagine What's Next
 ### B2. Title (5 words)
 
 ```text
-Aegis Pocket: Approve AI Agents
+Tiles: A Phone That Adapts
 ```
 
-### B3. Description (486 words incl. placeholder team line)
+### B3. Description (479 words incl. placeholder team line)
 
-Based on `docs/HACKTRIBE_POCKET.md`, with these changes:
-
-- The team line is a placeholder.
-- The repo link and the "verified" line are added.
-- The claims that are not yet verified on a device are softened:
-  - The "stolen phone cannot approve" sentence now names the labelled manual fallback.
-  - "usable for everyone" is gone.
-  - The risk score is described as deterministic rules, which matches the AI disclosure in `AI_WORKFLOW.md`.
+Source: `docs/HACKTRIBE_TILES.md` (copy of the same text). On HackTribe, replace the `Team:` line with each
+member's real first name, surname and email. The platform-capabilities sentence matches the README table "Platform
+capabilities used" (no background-reminder or TTS-engine claim).
 
 ```text
-AI agents are starting to act for us: they buy subscriptions, read company databases, deploy code and email customers. When one of them wants to do something risky, someone has to say yes or no, usually away from a desk. Aegis Pocket puts that human back in the loop, on a HarmonyOS phone.
+Phones are designed for one average person. Halina, 78, squints at tiny icons, misses taps and nearly fell for a "your grandson needs money" call. Zosia, 8, needs fewer, friendlier choices. Michał, with low vision, needs everything read aloud. Daniel, 29, wants Friday's dinner with friends settled. Same phone, four different people.
 
-When an agent governed by our Aegis gateway asks for a risky action ("Research agent wants to spend $50 on a SaaS subscription"), the request appears as a notification. Tapping it shows everything needed to decide: who asked, which agent sponsor is responsible, the amount, the policy checks that passed or failed, and an expiry countdown. A "Why a human is asked" card explains the risk in plain words and scores it from 0 to 100. The score is computed on the device by deterministic rules over the gateway's policy data: which control fired, how much money moves, whether production or personal data is involved. The agent's own justification is labelled untrusted and never scored, since agents can be prompt-injected.
+Tiles is a native HarmonyOS app that reshapes the phone around the person using it. The home screen is a grid of big, colourful tiles. Each tile is a small, live, actionable card: "Pills 8:00, tap when taken", "Call Kasia", "14° and rain, take the umbrella", "Homework: 3 of 5 done", "Dinner Fri 19:30 at Veganda, vote".
 
-Approval rules follow the person's role: members approve small actions for agents they sponsor, admins approve mid-size spend and sensitive data access, and owners approve large spend and budget raises, sometimes with a second approver (two-person rule). A sponsor can never approve their own agent's request. When a request is risky, Approve first asks for the user's face, fingerprint or PIN through HarmonyOS User Authentication Kit; on a device with no authenticator (such as the emulator) a clearly labelled manual fallback is shown instead. Denying never needs it: saying no is always the safe direction. Approve and deny give distinct haptic confirmations.
+Ask Tiles. Type a request ("Remind me to take Euthyrox at 8 every morning", "Dinner Friday with Ola and Kuba, vegan, near Kazimierz, under 80 zł") and the assistant answers with new tiles. This is generative UI: the assistant returns not text but a structured TileSpec (size, colour, content blocks such as checklist, progress, timer, chips and buttons, and actions such as call, remind, speak and vote) that the app renders natively in ArkUI. Today the generator is an on-device, deterministic intent planner for English and Polish (it extracts time, day, person, place, food, budget and medicine). No cloud model, and no personal data leaves the phone; a language model behind guardrails could fill the same schema later.
 
-A home-screen service widget (Form Kit, 2x2 and 2x4) shows the AI security posture at a glance: pending approvals, blocked threats, redacted personal data and budget left. A WorkScheduler background task refreshes the widget and raises notifications for new live requests while the app is closed. The "What data leaves" preview shows which personal data (emails, phone numbers, PESEL, IBAN, card numbers, validated by checksum) would be replaced with placeholders before a prompt goes to an AI model. It runs entirely on the device.
+One app, four homes. A profile switcher regenerates the home for each person: very large, high-contrast tiles with read-aloud and an SOS tile for Halina; a playful homework checklist, focus timer and screen-time meter for Zosia; a voice-first two-column layout for Michał; a dense, colourful grid with plans and commute for Daniel.
 
-Aegis Pocket is native ArkTS/ArkUI for HarmonyOS (minimum API 20, compiled against API 24). It uses User Authentication Kit, Notification Kit, Form Kit, Background Tasks Kit, Sensor Service Kit, Network Kit and ArkData, with screen-reader labels and system font scaling. Two clearly labelled modes: MOCK simulates the gateway on the device for demos; LIVE talks to the real Aegis gateway over HTTP. The same source also builds unchanged against the OpenHarmony 6.1 SDK. Verified: .hap builds, 17/17 unit tests, lint 0 errors.
+It adapts, but asks first. Tiles turns usage signals (missed taps, unused tiles, time of day) into plain suggestions such as "11 missed taps today: make text 40% bigger?". For seniors and kids, every adaptation and every tile the assistant proposes waits for a caregiver or parent to approve it on the Caregiver screen (shown as a "Kasia's phone" simulation in the demo).
 
-Themes: Human-Centric Technology (human oversight of AI agents, privacy, accessibility), with an Intelligent Experiences angle.
+Guardian. A scam-shield tile for seniors explains red flags in a suspicious call or SMS ("asks for money", "pressure: right now") and turns the screen into one calm instruction: "This looks like a scam. Hang up. Kasia already knows." In the demo the call is simulated and labelled "Demo call".
 
-Code, build and launch steps: https://github.com/JustAnotherDevv/tiles-hackyeah-2026 (repository root; the aegis/ folder is our separate Goldman Sachs entry). AI-assisted development is documented in AI_WORKFLOW.md.
+Native ArkTS/ArkUI for HarmonyOS (minimum API 20, compiled against API 24), running on the HarmonyOS 6.1 phone emulator. Platform capabilities: Form Kit home-screen widgets (2x2, 2x4, 4x4), Notification Kit pill notifications and caregiver alerts, calls handed to the system dial screen, read-aloud through the system screen reader, vibrator haptics, ArkData persistence, high-contrast text scaling and dark mode.
 
-Team: [YOUR FIRST NAME SURNAME — EMAIL]
+Themes: Human-Centric Technology (accessibility, seniors, kids, digital wellbeing) with Intelligent Experiences (generative UI, on-device personalisation).
+
+Code and build steps: https://github.com/JustAnotherDevv/tiles-hackyeah-2026 (repository root). AI-assisted development is documented in AI_WORKFLOW.md.
+
+Team: JustAnotherDevv
 ```
 
 ### B4. Image gallery (≥ 1 required)
 
 | Upload | File | Status |
 |---|---|---|
-| 1 (cover) | `docs/cover.png` (1600×900) | ⏳ exists locally (regenerated 04:06), **not yet committed or pushed** |
-| optional 2–10 | `docs/screenshots/01-home.jpeg` … `09-live-gateway-approved.jpeg` (1320×2856, DevEco HarmonyOS 6.1.1 emulator, mock data) | ✅ captured 06:16 on the emulator; not yet committed |
+| 1 (cover) | `docs/cover.png` (1600×900, Tiles title card; the phone is a labelled illustration) | ✅ regenerated by `docs/deck/build.sh`; not yet committed |
+| optional 2–10 | `docs/screenshots/tiles/*.jpeg` (real DevEco HarmonyOS 6.1.1 emulator screenshots) | ⏳ to be copied from the build fleet's device checks |
+
+Do **not** upload `docs/screenshots/0*.jpeg`: they show the superseded Aegis Pocket.
 
 ### B5. Presentation (PDF, ≤ 10 slides)
 
-`docs/deck/AegisPocket_HackYeah2026_Huawei.pdf`: ✅ 10 pages, regenerated 06:17 with real emulator screenshots on slide 8. **Not yet committed or pushed.** Open it and check it before uploading.
+`docs/deck/Tiles_HackYeah2026_Huawei.pdf`: 10 pages, built by `docs/deck/build.sh`. Slide 9 shows a placeholder
+until real screenshots are in `docs/screenshots/tiles/`; then rebuild and check the PDF before uploading. (The
+old `docs/deck/AegisPocket_HackYeah2026_Huawei.pdf` is superseded.)
 
 ### B6. Video URL (≤ 60 s; the Huawei rules require a recorded demo)
 
-`docs/video/aegis-pocket-demo-60s.mp4`: ✅ recorded on the DevEco HarmonyOS 6.1.1 emulator (mock mode, captions label
-mock data), 54.0 s, 1920×1080 H.264, 3.5 MB, silent track, burned-in captions. Cover: `docs/video/cover.png`. Not yet committed. Upload it to YouTube as Unlisted and paste the URL. Raw-file fallback, once it is pushed:
-
-```text
-https://github.com/JustAnotherDevv/tiles-hackyeah-2026/raw/main/docs/video/aegis-pocket-demo-60s.mp4
-```
+⏳ Not recorded yet. The shot list and voice-over are in `docs/HACKTRIBE_TILES.md`. Record on the emulator, then
+upload it to YouTube as **Unlisted** and paste the URL. (`docs/video/aegis-pocket-demo-60s.mp4` shows the
+superseded concept, so do not use it.)
 
 ### B7. Demo link
 
-Leave empty. You could paste the GitHub Release URL that holds the `.hap` here, once it exists (see B10).
+Leave empty, or paste the GitHub Release URL that holds the `.hap` once it exists.
 
 ### B8. Repository URL
 
@@ -198,31 +201,29 @@ https://github.com/JustAnotherDevv/tiles-hackyeah-2026
 ### B9. How to open the project (judge instructions)
 
 ```text
-Requirements: macOS on Apple Silicon, DevEco Studio 6.1.1 (bundles HarmonyOS SDK 6.1.1(24), hvigor, ohpm, hdc and the phone emulator), Node 22+, devecocli 1.3.4. Full steps: README.md sections 2-8.
-1. git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026 && cd tiles-hackyeah-2026   (Aegis Pocket is the repository root; aegis/ is a separate entry)
-2. Build: DEVECO_CLI_DISABLE_TELEMETRY=1 devecocli build --modules entry --build-mode debug   -> entry/build/default/outputs/default/entry-default-unsigned.hap
-3. Fastest: install the prebuilt debug-signed .hap from the GitHub Release (or release/ in the repo) on a running DevEco phone emulator: hdc install -r aegis-pocket-debug-signed.hap  (built with the OpenHarmony SDK and its debug keystore, no Huawei ID; rebuild it with: source .toolchain/env.sh && scripts/build-ohos-signed.sh, README §4.1). Or sign with your own Huawei ID in DevEco (README §4.2), rebuild and install entry/build/default/outputs/default/entry-default-signed.hap
-4. Launch: hdc shell aa start -a EntryAbility -b com.hackyeah.aegispocket   (allow notifications on first start)
-5. Try it: the app starts in MOCK mode (labelled; a new simulated agent request every 20-30 s). Open a request, switch persona in the Inbox (Piotr member / Emily admin / Katarzyna owner) to see role rules, Approve to trigger the face/fingerprint/PIN step-up (labelled manual fallback on the emulator), and paste text with an email or PESEL into the Preview tab. Add the "AI posture" service widget from the home screen.
-Optional LIVE mode: run the Aegis gateway (cd aegis && make setup && make up), then Settings > gateway URL http://10.0.2.2:8787 > Live gateway.
+Requirements: macOS on Apple Silicon, DevEco Studio 6.1.1 (HarmonyOS SDK 6.1.1(24), hdc and the phone emulator). Full steps: README.md sections 2-7.
+1. git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026 && cd tiles-hackyeah-2026   (Tiles is the repository root; aegis/ is a separate entry)
+2. Start a DevEco phone emulator (HarmonyOS 6.1.1, API 24).
+3. Fastest: install the prebuilt debug-signed .hap from the GitHub Release: hdc install -r <file>.hap  (built with the OpenHarmony SDK and its debug keystore, no Huawei ID). Rebuild it yourself: source .toolchain/env.sh && scripts/build-ohos-signed.sh (README section 4). Or build with DevEco: devecocli build --modules entry --build-mode debug, sign with your own Huawei ID (README 4.1).
+4. Launch: hdc shell aa start -a EntryAbility -b com.hackyeah.tiles   (allow notifications on first start)
+5. Try it: pick a profile ("Who is this phone for?"), tap tiles, type in "Ask Tiles..." (e.g. "Remind me to take Euthyrox at 8 every morning"), approve the proposal on the Caregiver screen, open Guardian (labelled demo call), switch profiles in Settings, add the "Tiles" service widget from the home screen.
+The assistant is an on-device rule-based generator (no LLM); the Guardian call and "Kasia's phone" are simulated and labelled.
 ```
 
 ### B10. Huawei deliverables checklist (organizers' `hackathon_challenge.md`, "Required Deliverables")
 
-Status as of Sun 4 Oct ~04:15: ✅ = done and pushed (`origin/main` = `6cb94c8`); ⏳ = missing, local-only or unverified.
-
 | # | Deliverable | Status | Evidence / what is missing |
 |---|---|---|---|
-| 1 | Public source repository | ✅ | `github.com/JustAnotherDevv/tiles-hackyeah-2026` is PUBLIC; local `HEAD` = `origin/main` |
-| 2 | Setup, build, install and launch instructions | ✅ | `README.md` §2–8. Build verified (devecocli exit 0, lint 0 errors, unit tests); `hdc install` + `aa start` verified on the DevEco HarmonyOS 6.1.1 emulator (06:14) with the no-Huawei-ID build (§4.1, `scripts/build-ohos-signed.sh`) |
-| 3 | Working `.hap` | ✅ runs / ⏳ release | **`release/aegis-pocket-debug-signed.hap`** (OpenHarmony SDK debug keystore, no Huawei ID) installs and runs on the DevEco HarmonyOS 6.1.1 emulator. `*.hap` is git-ignored: attach it to a GitHub Release (or `git add -f`). Older notes: | Built locally: `entry/build/default/outputs/default/entry-default-unsigned.hap` (HarmonyOS, unsigned, gitignored). Also `.toolchain/oniro-build/aegis-pocket/entry/build/default/outputs/default/entry-default-signed.hap` (OpenHarmony SDK debug key, gitignored). **No GitHub Release exists** (`gh release list` is empty), but README §4 says one does. **To do:** sign with a Huawei ID, install on an emulator, then attach the `.hap`(s) to a GitHub Release |
-| 4 | Recorded demonstration | ✅ | `docs/video/aegis-pocket-demo-60s.mp4` (54.0 s, 1920×1080 H.264, 3.5 MB, silent track, burned-in captions), recorded on the emulator; upload unlisted |
-| 5 | Architecture and implementation description | ✅ | `README.md` §9 (mermaid diagram plus data-flow notes) and the "Platform capabilities used" table |
-| 6 | `AI_WORKFLOW.md` | ✅ | `AI_WORKFLOW.md` (tools, prompts, work log, limitations), pushed |
-| 7 | Extra AI documentation for AI-integrated features | ✅ (N/A, declared) | `AI_WORKFLOW.md` "AI feature disclosure": no AI model in the app, and the risk card is rule-based |
-| – | API 20+ minimum | ✅ | `build-profile.json5`: compatible 6.0.0(20), compile/target 6.1.1(24). OpenHarmony build: minAPIVersion 20 (`docs/ONIRO_RUN.md`) |
-| – | Runs on an emulator or device | ✅ | DevEco HarmonyOS 6.1.1 (API 24) phone emulator `AegisPhone`, 06:11–06:20; screenshots in `docs/screenshots/` |
-| – | Demonstrates platform capabilities | ✅ | On the emulator: Notification Kit (permission, post, WantAgent tap-to-open), Form Kit widget, User Authentication Kit (availability check → labelled fallback; no authenticator enrolled), ArkData persistence. Network Kit live mode against the real gateway (06:22: trading copilot's $50 request approved on the phone, agent completed; vote recorded as `[step-up: manual (no device authentication)]`). Not exercised on a target: real biometric sheet, Sensor (vibration unsupported), WorkScheduler |
+| 1 | Public source repository | ✅ / ⏳ | `github.com/JustAnotherDevv/tiles-hackyeah-2026` is public; the Tiles code must be committed and pushed |
+| 2 | Setup, build, install and launch instructions | ✅ | `README.md` sections 2-7 (no-Huawei-ID signed build, emulator, `hdc install`, `aa start -b com.hackyeah.tiles`) |
+| 3 | Working `.hap` | ⏳ | `scripts/build-ohos-signed.sh` → `release/tiles-debug-signed.hap` (file name kept from the earlier concept; contents are Tiles). `*.hap` is git-ignored: attach it to a GitHub Release |
+| 4 | Recorded demonstration | ⏳ | Not recorded yet (script in `docs/HACKTRIBE_TILES.md`) |
+| 5 | Architecture and implementation description | ✅ | `README.md` section 9 (mermaid + notes), "Generative UI: the TileSpec contract", capabilities table |
+| 6 | `AI_WORKFLOW.md` | ✅ | Tools, prompts, the pivot and the build fleet, validation |
+| 7 | Extra AI documentation for AI-integrated features | ✅ | `README.md` section 10 + `AI_WORKFLOW.md` "AI feature disclosure": the assistant is an on-device rule-based generator, not an LLM |
+| – | API 20+ minimum | ✅ | `build-profile.json5`: compatible 6.0.0(20), compile/target 6.1.1(24); OpenHarmony build: min API 20 |
+| – | Runs on an emulator or device | see README "Verification status" | DevEco HarmonyOS 6.1.1 (API 24) phone emulator `AegisPhone` |
+| – | Demonstrates platform capabilities | see README table | Status per capability ("verified on emulator" / "implemented") |
 
 ---
 
@@ -251,19 +252,19 @@ Weak or unbacked claims:
 | Repo state | **~100 modified, uncommitted files under `aegis/web/`** (including `package.json` and `package-lock.json`), plus `aegis/config/policy.yaml`, where a leftover demo raise changed `team:platform` from usd 50 to 60.0 (see `git status`). The public repo is what judges clone | Commit (and rebuild `web/dist` if it is tracked) or discard them before submitting |
 | Eval/bench freshness | The numbers come from the CAL run (~01:55). LIVE/FIX code fixes landed afterwards, so INT-12 ("numbers on the final build") is left unticked | Acceptable. Re-run `make eval` only on a quiet machine |
 
-**B: Aegis Pocket.** The described behaviour is implemented in code, but **none of it has been seen running on a
-device or emulator**: the notification, widget, step-up sheet, haptics, WorkScheduler and LIVE mode
-(`HUAWEI_HANDOFF.md` 00:10 / 02:33 / 03:15; README "Known limitations"). The B3 text already avoids the strongest
-claims.
+**B: Tiles.** Checked against the build fleet's device reports (`HUAWEI_HANDOFF.md` log, README capability table):
 
 | Claim | Status | Suggestion |
 |---|---|---|
-| Notification, widget, step-up, haptics, background task "work" | Notification, widget and step-up fallback ✅ verified on the emulator (06:20); haptics, WorkScheduler and a real biometric sheet still unverified | Top priority: get one emulator run with screenshots and the video. If that is impossible, add to the description: "Verified by build and unit tests; not yet run on a device." |
-| "a stolen or unlocked phone cannot approve a $480 purchase" (original draft) | **Contradicted** by the labelled manual fallback when no authenticator is enrolled | Already replaced in B3 |
-| "Screen-reader labels and font scaling make it usable for everyone" (original draft) | Code only, never tested with a screen reader | Softened in B3 |
-| README §4: "A signed debug build … is attached to the GitHub Release" | **False right now.** No release exists | Create the release (see checklist) or edit the README |
-| "LIVE talks to the real Aegis gateway over HTTP" | Implemented (`LiveRepository.ets`). Emulator-to-host networking has never run | OK as a design statement; do not claim a live demo |
-| `HUAWEI_HANDOFF.md` line 3: "`aegis/` is gitignored here (own git repo)" | Stale: it is now a monorepo | Internal note only, not pasted |
+| Form Kit widgets (2x2, 2x4, 4x4) | ✅ verified on the emulator: all three on the home screen with live data | OK |
+| Notification Kit pill notifications and caregiver alerts | ✅ verified: permission dialog, caregiver and Guardian alerts in the shade | OK |
+| Calls handed to the system dial screen | ✅ verified: dial screen with a fictional number | OK |
+| Guardian red flags, caregiver alert | ✅ verified on labelled demo call/SMS samples | Keep "simulated, labelled Demo call" |
+| Generative UI assistant | ✅ verified (plan tile with votes added; senior pills sent for approval). Rule-based, **not an LLM** | Keep the sentence that says so |
+| Reminders | ⚠️ `reminderAgentManager` returns 1700002 without an AppGallery entitlement; the in-app timer + notification fallback fires only while Tiles runs | The description does not claim background reminders; keep it that way |
+| Read-aloud | ⚠️ Core Speech Kit is not in the OpenHarmony SDK; read-aloud goes through the system screen reader when it is on, otherwise a visible "Speaking…" state | Description says "read-aloud through the system screen reader" |
+| Haptics | ⚠️ implemented; the emulator has no vibrator | Do not claim it was felt on the emulator |
+| `.hap` name `release/tiles-debug-signed.hap` | Name kept from the earlier concept | Rename the asset on the GitHub Release (e.g. `tiles-debug-signed.hap`) |
 
 ---
 
@@ -275,16 +276,15 @@ claims.
       category.
 - [ ] In both descriptions, replace `[YOUR FIRST NAME SURNAME — EMAIL]` with the real name, surname and email of
       every member (1–6 members, one per line). Do this **only on HackTribe**. Re-check that each description is still ≤ 500 words.
-- [ ] **Videos:** upload `aegis/docs/submission/video/aegis-demo-60s.mp4` (and the Pocket video once it exists) to
+- [ ] **Videos:** upload `aegis/docs/submission/video/aegis-demo-60s.mp4` (and the Tiles video once it exists) to
       YouTube as **Unlisted**. Paste the URLs and confirm they play while logged out.
 - [ ] **Aegis repo hygiene:** commit (after `make web` and `make test` pass) or discard the ~100 modified `aegis/web/` files, then push. Do **not** commit `aegis/config/policy.yaml`; restore it with `cp aegis/config/policy.golden.yaml aegis/config/policy.yaml`.
-- [ ] **Pocket artifacts:** commit and push `docs/cover.png` and `docs/deck/AegisPocket_HackYeah2026_Huawei.pdf` (after
-      checking them).
-- [ ] **Pocket `.hap`:** sign with your Huawei ID (README §4; DevEco GUI step). Install and launch on the emulator. Then publish a
-      **GitHub Release** (e.g. `v1.0-hackyeah`) and attach the signed `.hap`, plus optionally the unsigned `.hap` and the
-      OpenHarmony-signed `.hap` from `.toolchain/oniro-build/…`. Never attach keys or `.p12`/`.p7b` files.
-- [ ] **Pocket demo:** record ≤ 60 s on the emulator in MOCK mode (shot list in `docs/HACKTRIBE_POCKET.md`) and save it as
-      `docs/video/aegis-pocket-demo-60s.mp4`. Upload it unlisted.
+- [ ] **Tiles artifacts:** copy the final emulator screenshots to `docs/screenshots/tiles/`, run `docs/deck/build.sh`,
+      check `docs/deck/Tiles_HackYeah2026_Huawei.pdf` and `docs/cover.png`, then commit and push them.
+- [ ] **Tiles `.hap`:** `source .toolchain/env.sh && scripts/build-ohos-signed.sh` (README §4, no Huawei ID). Install and launch
+      on the emulator. Then publish a **GitHub Release** (e.g. `v1.0-hackyeah`) and attach the signed `.hap` (renamed to
+      `tiles-debug-signed.hap`). Never attach keys or `.p12`/`.p7b` files.
+- [ ] **Tiles demo:** record ≤ 60 s on the emulator (shot list in `docs/HACKTRIBE_TILES.md`). Upload it unlisted.
 - [ ] Open **every link** in a private or incognito window: both repo URLs, the release, both video URLs, and the README
       anchors.
 - [ ] Upload the PDFs and images listed in A4/A5 and B4/B5. Click submit **before 10:00**. After 11:00 nothing can change.
@@ -294,13 +294,12 @@ claims.
 The organizers "strongly discourage submitting one project to more than one category" (FAQ, Tasks Q5). These are two
 different deliverables:
 
-| | A: Aegis (Goldman Sachs) | B: Aegis Pocket (Huawei) |
+| | A: Aegis (Goldman Sachs) | B: Tiles (Huawei) |
 |---|---|---|
-| What it is | Local-first **AI gateway / control layer**: policy engine, redaction, budgets, threat feed, dashboard, self-test suite | **Native HarmonyOS phone app**: the human-approval front end |
+| What it is | Local-first **AI gateway / control layer**: policy engine, redaction, budgets, threat feed, dashboard, self-test suite | **Native HarmonyOS phone app**: an adaptive, generative-UI home for seniors, kids, low-vision and everyday users |
 | Code | Python 3.13 / FastAPI / React in `aegis/` | ArkTS / ArkUI in `entry/`, `AppScope/` |
-| Judged on | Robustness, architecture, reporting, self-testing (GS criteria) | Platform capabilities: User Auth, Notification, Form, Background Tasks and Sensor Kits (Huawei criteria) |
+| Judged on | Robustness, architecture, reporting, self-testing (GS criteria) | Originality, usefulness, platform capabilities: Form, Notification, Background Tasks (reminders), Sensor, Accessibility Kits (Huawei criteria) |
 | Runs | macOS/Linux laptop, `make up` | HarmonyOS emulator or device, `.hap` |
-| Relationship | Stand-alone; needs nothing from B | Stand-alone in MOCK mode. Optional LIVE mode talks to A's REST API; the README names A as the separate GS submission |
+| Relationship | Stand-alone; needs nothing from B | Stand-alone and fully on-device; no dependency on A |
 
-If HackTribe asks, say it in one line: "Separate codebases and deliverables; the phone app optionally connects
-to the gateway's API."
+If HackTribe asks, say it in one line: "Separate codebases, products and deliverables."

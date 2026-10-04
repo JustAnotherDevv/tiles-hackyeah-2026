@@ -25,6 +25,7 @@ This project uses AI-assisted development. Keep this document current and public
 | Claude Code "device verification" sub-agent (POCKET-DEVICE) | Claude Opus 5.5, launched by the lead session | Ran the app on the DevEco HarmonyOS 6.1.1 emulator via `hdc` / `uitest`, fixed a Detail refresh bug found there, captured screenshots and the demo video, updated docs |
 | `oniro-app` CLI + OpenHarmony 6.1 public SDK (API 23) | Installed locally in `.toolchain/` (git-ignored), see `.toolchain/README.md` | No-Huawei-ID build and debug signing of the `.hap` (`scripts/build-ohos-signed.sh`) |
 | DevEco local documentation (`devecocli docs search` / `docs read`) | Bundled with DevEco Studio 6.1.1 (mostly Chinese-language pages, translated by the agent) | Grounding for the User Authentication Kit and WorkScheduler development guides and their constraints |
+| Claude Code "Tiles build fleet" sub-agents (T-CORE, T-RENDER, T-HOME, T-ASSIST, T-PROFILES, T-PLATFORM, T-GUARD, T-WIDGET, T-DOCS) | Claude Opus 5.5, launched in parallel by the lead session on 2026-10-04 | After the pivot from Aegis Pocket to Tiles: data model + store + theme, TileSpec renderer, home grid, assistant (on-device generator), profiles/onboarding/caregiver, platform services (reminders, notifications, read-aloud, calls, haptics), Guardian, home-screen widgets, and docs/deck. Each owns a disjoint set of files and reports in a short status file |
 
 ## Important prompts and instructions
 
@@ -41,6 +42,16 @@ This project uses AI-assisted development. Keep this document current and public
   Use the organizers' skills and grounded docs, do not invent APIs, build the .hap from the command line, keep signing configs
   empty, update README and AI_WORKFLOW.md."* The gateway API shapes came from the Aegis project's own contract document.
 
+- Tiles pivot brief (lead session to the build fleet, summarized): *"Pivot the Huawei app from Aegis Pocket (an
+  approvals dashboard, the wrong concept) to Tiles, per `docs/TILES_SPEC.md`: a generative-UI adaptive home of big,
+  live tiles plus an "Ask Tiles" assistant, for seniors, kids, low-vision and everyday users; caregiver approves
+  changes; Guardian scam shield with simulated, labelled input. The data model, store and theme interfaces are fixed
+  in the spec. New code under `entry/src/main/ets/tiles/`. ArkTS strict mode; verify every API in the grounded docs,
+  never invent APIs; ordinary-app APIs only. Build with the OpenHarmony debug keystore (no Huawei ID), check on the
+  emulator through a shared lock, save screenshots and a short report. The assistant is an on-device rule-based
+  generator: never claim an LLM."* The product idea came from the team's own concept sketches (`mockups/ideas.html`:
+  "Shapeshift", "Guardian", "Multiplayer agent").
+
 ## AI-assisted work log
 
 | Date | Tool/model | Request or task | Generated or changed | Human review and validation |
@@ -50,6 +61,7 @@ This project uses AI-assisted development. Keep this document current and public
 | 2026-10-03/04 | Claude Code sub-agent (Claude Opus 5.5) + skills `ohos-app-dev`, `hmos-arkui-develop-skill`, `hmos-arkts-knowledge-retriever`, `hmos-arkui-mvvm-pattern`; `devecocli` | Implement Aegis Pocket (brief above) | `entry/src/main/ets/**` (EntryAbility, Index page, 5 views, shared components, mock/live repositories, eligibility rules, store, NotificationService, WidgetBridge, SettingsStore, FormExtensionAbility, two widget cards, redactor), `module.json5` (form extension, INTERNET permission), `form_config.json`, strings/colors, bundle name `com.hackyeah.aegispocket`, `compileSdkVersion` to the installed `6.1.1(24)`, 10 local unit tests, README rewrite | `devecocli build --modules entry --build-mode debug`: exit 0, unsigned `.hap`. `devecocli check lint`: 0 errors, 7 performance warnings (justified in README). hvigor `test`: 10/10 pass. Redactor regexes also cross-checked in Node. **Not yet run on an emulator/device** (none available); human review of the diff pending |
 | 2026-10-04 | Claude Code sub-agent POCKET2 (Claude Opus 5.5) + skills `ohos-app-dev`, `hmos-arkui-develop-skill`, `hmos-arkts-knowledge-retriever`; `devecocli` | Strengthen platform-capability depth (brief below) | `platform/StepUpAuth.ets`, `platform/Haptics.ets`, `platform/BackgroundRefresh.ets`, `workscheduler/RefreshWorkAbility.ets`, `data/RiskExplainer.ets`, step-up rule in `data/Eligibility.ets`, DetailView risk card + step-up flow + fallback dialog, accessibility attributes across views, Settings "Security & background" section, `module.json5` (ACCESS_BIOMETRIC, VIBRATE, workScheduler extension), 7 new unit tests, README (two-submission note, capability table, demo shot list), `docs/HACKTRIBE_POCKET.md` | Every new API checked against the installed SDK `.d.ts` (`@since`, permissions, error codes) and DevEco's local guides; permissions checked in the SDK's `PermissionDefinitions.json` (all `system_grant`, normal APL). `devecocli build`: exit 0. Lint: 0 errors, the same 7 pre-existing performance hints. Unit tests: 17/17 pass. **Not run on an emulator/device** (none attached); human review of the diff pending |
 | 2026-10-04 | Claude Code sub-agent POCKET-DEVICE (Claude Opus 5.5); `hdc`, `uitest`, `oniro-app` | Verify Aegis Pocket on the DevEco HarmonyOS 6.1.1 (API 24) emulator; screenshots, deck, demo video, docs | Drove the app with `uitest` (dumpLayout + click/swipe) and `snapshot_display`: notification permission, Home, Inbox, Detail risk card, Approve on admin-level requests (User Authentication Kit returned 12500010 = not enrolled for face/fingerprint/PIN, so the labelled manual fallback appeared; confirmed it approves only after the explicit tap), Deny, simulated request + system notification + tap-to-open, Preview with the built-in synthetic sample (email, PESEL, IBAN, card), Settings, widget added via long-press > Widgets. Found and fixed a real bug: the Detail page kept showing "pending" and the Approve/Deny buttons after a successful vote (`@Builder` by-value parameter is not reactive) - now keyed `ForEach` in `views/DetailView.ets`; fallback button label shortened to "Confirm" (was truncated). Saved 8 screenshots to `docs/screenshots/`, rebuilt the deck, recorded the video with `scripts/pocket-video/record.sh` (driver updated to the real labels; typing skipped because the emulator keyboard opens its own terms dialog, which the agent must not accept). Added `scripts/build-ohos-signed.sh` (no-Huawei-ID OpenHarmony debug signing) | Each screen checked by the agent in the pulled screenshots and layout dumps; rebuilt + reinstalled after the fix and re-verified the approve path on the device. Live mode also verified: local gateway, app at `http://10.0.2.2:8787`, the trading copilot's $50 request approved on the phone and the agent completed (gateway recorded the manual step-up marker). Real biometric sheet, haptics and WorkScheduler remain unverified |
+| 2026-10-04 | Lead Claude Code session + Tiles build fleet (Claude Opus 5.5, 9 parallel sub-agents) + skills `hmos-arkui-develop-skill`, `hmos-arkts-knowledge-retriever`, `ohos-app-dev`; `hdc`, `uitest`, `oniro-app` | **Pivot** of the Huawei submission from Aegis Pocket to **Tiles** (team decision); spec `docs/TILES_SPEC.md`; parallel implementation (brief above) | `entry/src/main/ets/tiles/**` (model, store, theme, renderer + blocks, views, on-device generator, adaptation, Guardian, platform services), widget cards, `Index.ets` shell, bundle `com.hackyeah.tiles`, `PUBLISH_AGENT_REMINDER` permission; docs: README rewrite, `docs/HACKTRIBE_TILES.md`, 10-slide deck + cover, `SUBMISSION.md` section B, this log. Old Pocket docs and media kept, marked superseded | Each agent built with the shared OpenHarmony-SDK build script and checked its part on the DevEco HarmonyOS 6.1.1 emulator (screenshots + `uitest dumpLayout`); per-capability status in the README table ("verified on emulator" only where an agent saw it work). No automated tests for Tiles (time-boxed choice). Human review of the diff pending before commit |
 
 ### Platform-depth brief (lead session to POCKET2, summarized)
 
@@ -65,8 +77,11 @@ organizers' skills and grounded docs; never invent APIs; never touch the separat
 
 ### Ideation and architecture
 
-The concept (Aegis Pocket as the human-approval companion of the team's Aegis AI gateway) was chosen by the team; the lead
-Claude Code session wrote the brief. The implementer sub-agent chose the internal architecture within that brief: an
+The first concept (Aegis Pocket as the human-approval companion of the team's Aegis AI gateway) was chosen by the team; the lead
+Claude Code session wrote the brief. On 4 October the team replaced it with **Tiles** (an adaptive, generative-UI home for
+seniors, kids, low-vision and everyday users), based on its own concept sketches in `mockups/ideas.html`. The lead session
+wrote the product and data-model spec (`docs/TILES_SPEC.md`), fixed the shared interfaces first, and split the work into
+file-disjoint briefs for nine parallel sub-agents. The paragraph below describes the Aegis Pocket implementation. The implementer sub-agent chose the internal architecture within that brief: an
 MVVM-style split (UI models and views, a `PocketStore` service publishing to `AppStorage`, a repository interface with mock
 and live implementations), Form Kit + Notification Kit as the showcased platform capabilities, and a rule-based on-device
 redactor that mirrors the gateway's entity names and placeholders.
@@ -94,6 +109,14 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 
 ## Unsuccessful approaches
 
+- Tiles: `reminderAgentManager.publishReminder` returned 1700002 on the emulator. Ordinary apps without the
+  AppGallery agent-reminder entitlement have a reminder limit of 0. The app keeps the system call and falls back to
+  an in-app timer plus a Notification Kit notification, which fires only while Tiles is running. The docs therefore
+  do not claim background reminders.
+- Tiles: Core Speech Kit (`@kit.CoreSpeechKit`) is not in the public OpenHarmony SDK used for the no-Huawei-ID build,
+  so read-aloud uses an Accessibility Kit announcement (spoken by the screen reader) plus a visible "Speaking…" state.
+- Tiles: typing into the emulator with `uitest` opened the keyboard's first-run wizard. The agents declined it and
+  used the quick chips instead, so free-text typing on the device is not verified.
 - `compileSdkVersion "6.1.0(23)"` failed with "SDK component missing": DevEco Studio 6.1.1 only bundles the 6.1.1(24) SDK.
   Changed the compile SDK to `6.1.1(24)`; the minimum (`compatibleSdkVersion`) stays API 20.
 - The grounded-docs retriever skill returned only language-guide hits for Kit API queries, so the SDK `.d.ts` files and
@@ -106,6 +129,9 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 
 ## Known limitations
 
+- **Tiles:** see README "Known limitations" (read-aloud via the screen reader because Core Speech Kit is not in the
+  OpenHarmony SDK used for the signed build; no vibration or telephony on the emulator; caregiver simulated on the same
+  phone; Guardian on demo transcripts; no automated tests yet). The items below refer to the superseded Aegis Pocket.
 - Verified on the DevEco HarmonyOS emulator except a real biometric/PIN sheet, haptics and the WorkScheduler background
   task (see README "Known limitations").
 - The DevEco emulator cannot simulate biometrics or vibration; the app falls back to the lock-screen PIN or a labelled
@@ -116,6 +142,11 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 
 ## Lessons learned
 
+- For a parallel agent fleet, fix the shared data model, store API and theme first (here `docs/TILES_SPEC.md` and
+  `tiles/model/Tile.ets`), give every agent a disjoint set of files, and route shared-file changes through one
+  requests file. That kept nine agents building against the same code without conflicting edits.
+- Check SDK availability before promising a Kit: Core Speech Kit exists only in the HarmonyOS SDK, so the
+  no-Huawei-ID OpenHarmony build reads tiles aloud through the screen reader instead.
 - Check `PermissionDefinitions.json` in the SDK before declaring a permission: `ACCESS_BIOMETRIC`, `VIBRATE` and
   `INTERNET` are all `system_grant` with normal APL, so no runtime prompt and no system-app identity are needed.
 - Design hardware-dependent features (biometrics, vibration) with an explicit, labelled fallback from the start: the
@@ -129,7 +160,16 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 
 ## AI feature disclosure
 
-Not applicable. Aegis Pocket contains no AI model and calls no AI service (the "Why a human is asked" risk card is a
-deterministic, rule-based explanation computed on the device); it is the human approval front end for AI agents
-governed by the separate Aegis gateway. Its "What data leaves" preview is rule-based (patterns plus checksums) and runs on
-the device.
+**Tiles (current submission).** The in-app assistant ("Ask Tiles") is a **deterministic, rule-based generator that
+runs on the device**: keyword and slot extraction for English and Polish (time, day, person, place, food, budget,
+medicine, homework subject) mapped to `TileSpec` templates per profile. Adaptation suggestions (missed taps, unused
+tiles, time of day) and the Guardian scam red flags are also local rules. There is **no machine-learning model, no
+LLM and no network call**; no personal data leaves the device. The Guardian input is a built-in demo transcript,
+labelled "Demo call". The `TileSpec` JSON schema is designed so that a language model behind guardrails could fill
+it in a future mode; that mode is not implemented and is not claimed. Privacy: all people, contacts, places and
+numbers in the app are fictional (demo phone numbers in the 555-01xx range).
+
+**Aegis Pocket (superseded concept).** It contained no AI model and called no AI service (the "Why a human is asked"
+risk card is a deterministic, rule-based explanation computed on the device); it was the human approval front end for
+AI agents governed by the separate Aegis gateway. Its "What data leaves" preview is rule-based (patterns plus
+checksums) and runs on the device.

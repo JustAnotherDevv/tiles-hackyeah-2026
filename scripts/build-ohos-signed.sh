@@ -2,7 +2,7 @@
 # Build a signed debug .hap WITHOUT a Huawei ID: OpenHarmony public SDK (API 23) + the SDK's built-in debug keystore.
 #
 #   source .toolchain/env.sh          # no-login OpenHarmony toolchain (see .toolchain/README.md; git-ignored)
-#   scripts/build-ohos-signed.sh      # -> release/aegis-pocket-debug-signed.hap
+#   scripts/build-ohos-signed.sh      # -> release/tiles-debug-signed.hap
 #
 # The repository itself stays a HarmonyOS project (compile/target 6.1.1(24), minimum 6.0.0(20)). This script copies
 # the sources to .toolchain/oniro-build/aegis-pocket (git-ignored), switches that copy to runtimeOS "OpenHarmony"
@@ -40,5 +40,5 @@ oniro-app build --no-deps . 2>&1 | tail -15
 HAP=entry/build/default/outputs/default/entry-default-signed.hap
 [ -f "$HAP" ] || { echo "no signed .hap produced" >&2; exit 1; }
 mkdir -p "$ROOT/release"
-cp "$HAP" "$ROOT/release/aegis-pocket-debug-signed.hap"
-echo "wrote release/aegis-pocket-debug-signed.hap"
+cp "$HAP" "$ROOT/release/tiles-debug-signed.hap"
+echo "wrote release/tiles-debug-signed.hap"

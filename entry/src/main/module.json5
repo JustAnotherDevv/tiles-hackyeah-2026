@@ -12,31 +12,22 @@
     "pages": "$profile:main_pages",
     "requestPermissions": [
       {
-        // Live mode talks to the Aegis gateway over HTTP (system_grant, no user prompt).
-        "name": "ohos.permission.INTERNET",
-        "reason": "$string:reason_internet",
-        "usedScene": {
-          "abilities": ["EntryAbility"],
-          "when": "inuse"
-        }
-      },
-      {
-        // User Authentication Kit step-up (face / fingerprint / PIN) before risky approvals.
-        // system_grant, normal APL: available to ordinary apps, granted at install.
-        "name": "ohos.permission.ACCESS_BIOMETRIC",
-        "reason": "$string:reason_biometric",
-        "usedScene": {
-          "abilities": ["EntryAbility"],
-          "when": "inuse"
-        }
-      },
-      {
-        // Sensor Service Kit vibrator: haptic confirmation of approve / deny / new request (system_grant).
+        // Sensor Service Kit vibrator: haptic feedback on tile actions (system_grant, granted at install).
         "name": "ohos.permission.VIBRATE",
         "reason": "$string:reason_vibrate",
         "usedScene": {
           "abilities": ["EntryAbility"],
           "when": "inuse"
+        }
+      },
+      {
+        // Background Tasks Kit reminderAgentManager: pill / plan / timer reminders shown by the system
+        // even when the app is closed (system_grant, normal APL, granted at install).
+        "name": "ohos.permission.PUBLISH_AGENT_REMINDER",
+        "reason": "$string:reason_reminder",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "always"
         }
       }
     ],
