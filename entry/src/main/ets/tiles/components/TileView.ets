@@ -216,8 +216,9 @@ export struct TileView {
     return this.mode === 'detail';
   }
 
+  /** Type scale for the responsive tiers: the Living Light profile fs (the real tile text multiplier). */
   private typeScale(): number {
-    const s: number = TilesTheme.type(this.profile.textScale).scale;
+    const s: number = this.llFs();
     return s > 0 ? s : 1;
   }
 

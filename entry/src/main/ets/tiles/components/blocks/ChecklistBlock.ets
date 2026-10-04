@@ -44,7 +44,8 @@ export struct ChecklistBlock {
   }
 
   private rows(): CheckRow[] {
-    const max: number = this.bs.limit(2, 3, 5, 30);
+    // Wide (non-square) medium tiles are the 2x2 checklist tiles of scaled profiles: show all rows like the prototype.
+    const max: number = this.bs.limit(2, this.bs.square ? 3 : 5, 5, 30);
     const out: CheckRow[] = [];
     for (let i = 0; i < this.block.items.length && i < max; i++) {
       const r: CheckRow = new CheckRow();

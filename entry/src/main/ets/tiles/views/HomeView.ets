@@ -1,4 +1,4 @@
-import { window } from '@kit.ArkUI';
+import { LengthMetrics, window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 import { Profile, Suggestion, TileAction, TileSpec } from '../model/Tile';
 import { K_LIST, K_PENDING, K_PROFILE, K_SUGGESTIONS, TileStore } from '../data/TileStore';
@@ -118,9 +118,9 @@ export struct HomeView {
     return Math.max(0, this.sysTop - this.rootY);
   }
 
-  /** Dock distance from the bottom edge: clear of the gesture bar when laid out under it. */
+  /** Dock distance from the bottom edge (prototype: 30 vp incl. the gesture bar) when laid out under the bars. */
   bottomPad(): number {
-    return this.rootY < 1 && this.sysTop > 0 ? Math.max(16, this.sysBottom + 10) : 16;
+    return this.rootY < 1 && this.sysTop > 0 ? Math.max(30, this.sysBottom + 12) : 16;
   }
 
   pal(): ThemePalette {
@@ -991,7 +991,11 @@ export struct HomeView {
       height: SheetSize.LARGE,
       dragBar: true,
       showClose: false,
-      backgroundColor: this.pal().bg,
+      // AssistantSheet paints its own frosted sheetBg + blur + top radius.
+      backgroundColor: Color.Transparent,
+      blurStyle: BlurStyle.NONE,
+      radius: LengthMetrics.vp(TilesTheme.LL_RADIUS_L),
+      shadow: TilesTheme.LL_SHADOW_SHEET,
       onDisappear: () => {
         this.showAssistant = false;
       }

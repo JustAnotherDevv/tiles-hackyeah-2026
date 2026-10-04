@@ -1340,7 +1340,7 @@ controls:
     action: require_approval
     severity: medium
     fail_mode: deterministic_only
-    owasp: [ASI01, ASI10, ASI09]
+    owasp: [ASI01, ASI10]
     enabled: true
     threshold: 0.35
     timeout_ms: 400
@@ -1686,7 +1686,7 @@ controls:
     fail_mode: closed
     timeout_ms: 50
     owasp: [ASI08, ASI10, ASI07]
-    params: {scope: session, window_s: 300, block_threshold: 3, quarantine_ttl_s: 900, ignore_controls: [EXE-04, BUD-01, BUD-02, RES-01], circuit_targets: ["mcp:*", "host:*"], tool_failure_threshold: 5, tool_window_s: 60, tool_cooldown_s: 60, tool_action: block, failure_status_min: 500, taint_ttl_s: 900, taint_action: require_approval, quarantined_output_action: block, peer_keys: [peer_agent, source_agent, from_agent], taint_scope: session}
+    params: {scope: session, window_s: 300, block_threshold: 3, quarantine_ttl_s: 900, ignore_controls: [EXE-04, BUD-01, BUD-02, RES-01], circuit_targets: ["mcp:*", "host:*"], tool_failure_threshold: 5, tool_window_s: 60, tool_cooldown_s: 60, tool_action: block, failure_status_min: 500, taint_ttl_s: 900, taint_action: require_approval, quarantined_output_action: block, peer_keys: [peer_agent, source_agent, from_agent], taint_scope: session, agent_wide_after_sessions: 3}
     tests:
       - {name: healthy-agent-tool-call-allowed, kind: tool_call, surface: tool.input, tool_name: Read, tool_args: {file_path: "/tmp/aegis-demo/README.md"}, expect: allow}
   - id: EXE-05

@@ -237,6 +237,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     """Build the Aegis FastAPI app (routers included now; Runtime built in the lifespan)."""
     settings = settings or get_settings()
     setup_logging(settings.log_level, settings.log_json, settings.access_log)
+    try:  # ROG-01 behavioural baselines are per-gateway state: a new app starts clean
+        from aegis.rogue.store import STORE as _rogue_store
+
+        _rogue_store.reset()
+    except Exception:  # noqa: BLE001 - rogue module optional
+        pass
     routers = discovery.discover_routers()
 
     @asynccontextmanager

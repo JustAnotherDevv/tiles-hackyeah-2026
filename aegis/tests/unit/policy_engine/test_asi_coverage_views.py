@@ -98,7 +98,7 @@ async def test_real_app_coverage_is_evidence_based(policy_dir: Path, tmp_path: P
     asi = {it["id"]: it for fw in cov["frameworks"] if fw["id"] == "OWASP-ASI-2026" for it in fw["items"]}
     assert asi["ASI01"]["status"] == "covered" and "INJ-05" in asi["ASI01"]["tested"]
     for iid, it in asi.items():
-        if iid != "ASI01":
+        if "INJ-05" not in it["controls"]:
             assert it["status"] != "covered", (iid, it)
             assert it["detail"] in ("enforced_untested", "monitor", "disabled", "not_implemented", "no_control"), it
-    assert "ASI07" not in [i for c in ("GOV-01",) for i in asi["ASI07"]["controls"] if i == c]
+    assert "GOV-01" not in asi["ASI07"]["controls"]  # ASI07 credited to the dedicated A2A controls only
