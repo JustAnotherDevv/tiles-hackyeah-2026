@@ -4,6 +4,17 @@
 
 # Tiles: A Phone That Adapts
 
+**Problem.** Phones are designed for one kind of user. A 78-year-old misses small buttons, a child needs limits and
+a parent in the loop, a low-vision user needs everything spoken, and scammers target the most vulnerable.
+Accessibility settings exist, but people rarely find them and nobody tunes them over time.
+
+**Solution.** Tiles is a native HarmonyOS app that reshapes the phone around the person. The home is a grid of big,
+live, colorful tiles that rebuilds itself for a senior, a child, a low-vision user or an everyday user. Ask in plain
+words and an on-device assistant generates a new tile that ArkUI renders natively. Tiles learns from use (missed
+taps, unused apps) and proposes changes that a caregiver approves from their own phone. Guardian flags scam calls on
+the device and turns them into one calm instruction. Aegis, our local-first guardrail layer, is designed to keep
+future AI features safe on the device.
+
 <p align="center">
   <img src="docs/screenshots/living-light/01-onboarding.jpg" width="160" alt="Onboarding: who is this phone for?">
   <img src="docs/screenshots/living-light/02-senior-home.jpg" width="160" alt="Senior home for Halina with a Tiles noticed suggestion">
