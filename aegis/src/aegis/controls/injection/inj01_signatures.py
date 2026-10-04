@@ -9,7 +9,7 @@
   tag-character runs in untrusted text are always quarantined.
 
 Quarantine = ``Finding(replacement="[AEGIS-QUARANTINE: ...]")`` the redactor applies verbatim
-(Addendum A-42). Never raises: internal errors -> degraded allow + ERROR log.
+(Addendum A-42). Never raises: internal errors -> fail_mode decision (closed: degraded block) + ERROR log.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from aegis.controls.injection._common import (
     parse_params,
     remember_intent,
 )
+from aegis.controls.resilience._failsafe import internal_error_decision
 from aegis.core.policy_schema import ControlConfig
 from aegis.core.protocols import BaseControl
 from aegis.core.types import AppliesTo, Decision, Finding, Interaction, RequestContext
@@ -165,14 +166,10 @@ class InjectionSignatures(BaseControl):
                     self._evaluate_sync, ctx, interaction, cfg, p, units, rt
                 )
             return self._evaluate_sync(ctx, interaction, cfg, p, units, rt)
-        except Exception:
-            log.exception("INJ-01 internal error (degraded allow)")
-            return Decision(
-                action="allow",
-                control_id=self.id,
-                reason="INJ-01 internal error (degraded)",
-                degraded=True,
-            )
+        except Exception as exc:
+            # ASI08: honour fail_mode (closed -> degraded block) instead of a silent allow.
+            log.exception("INJ-01 internal error (fail_mode=%s)", getattr(cfg, "fail_mode", None))
+            return internal_error_decision(self.id, cfg, exc)
 
     def _evaluate_sync(
         self,
@@ -199,11 +196,9 @@ class InjectionSignatures(BaseControl):
         latest_user = ""
 
         for u in units:
-            try:
-                res = scan_text(u.text, trust=u.trust, opts=opts)  # type: ignore[arg-type]
-            except Exception:
-                log.exception("INJ-01 unit scan failed (skipped)")
-                continue
+            # ASI08: a failing unit scan is NOT skipped (that silently passed the unscanned
+            # text); the error reaches evaluate() which applies the configured fail_mode.
+            res = scan_text(u.text, trust=u.trust, opts=opts)  # type: ignore[arg-type]
             if u.trusted and u.block_eligible:
                 latest_user = u.text
             if not res.hits and not res.norm.hidden and not res.norm.layers:

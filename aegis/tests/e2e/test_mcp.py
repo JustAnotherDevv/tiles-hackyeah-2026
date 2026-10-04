@@ -25,6 +25,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 httpx = pytest.importorskip("httpx")
 yaml = pytest.importorskip("yaml")
 
@@ -191,7 +193,7 @@ class Mcp:
         h = {
             "Accept": "application/json, text/event-stream",
             "MCP-Protocol-Version": PROTOCOL,
-            "X-Aegis-Agent": self.agent,
+            **agent_headers(self.agent),  # ASI03: claim + key
             "X-Aegis-Session": self.session,
             "X-Aegis-Wait": str(self.wait),
         }

@@ -10,6 +10,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 
 @pytest.fixture
 def gw(client: Any) -> Any:
@@ -22,7 +24,7 @@ async def _guard(
     r = await gw.post(
         "/v1/guard",
         json={"interaction": interaction, "identity": {"agent_id": agent}, "dry_run": dry_run},
-        headers={"x-aegis-agent": agent},
+        headers=agent_headers(agent),
     )
     assert r.status_code == 200, r.text[:500]
     return r.json()

@@ -2,7 +2,7 @@
 // progress, live via SSE (approval.created/updated), ?id=apr_… deep link. Server can_vote/why_not
 // drive the locked/unlocked buttons; switching "view as" keeps the selection so the lock → unlock
 // transition is visible on stage. Owner: B18-dashboard-gov-approvals.
-import { CheckCheck, Clock, Info, ListFilter } from '@/components/icons';
+import { CheckCheck, Clock, Info, ListFilter, TriangleAlert } from '@/components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ApprovalRequest } from '@/api/types';
@@ -11,6 +11,7 @@ import { ApprovalList } from '@/components/governance/approvals/ApprovalList';
 import { DecideDialog } from '@/components/governance/approvals/DecideDialog';
 import { isMine, resolveVote, sortInbox, sponsorIdOf, type InboxTab, type KindFilter, type VoteState } from '@/components/governance/approvals/util';
 import { useApproval, useApprovalRules, useApprovals, useDirectory, useNow, useViewer } from '@/components/governance/hooks';
+import { floodSignals, floodText, requesterKey } from '@/components/governance/lib/approval-review';
 import { firstName, kindLabel } from '@/components/governance/lib/format-gov';
 import { PersonaSwitcher } from '@/components/governance/PersonaSwitcher';
 import { MockBadge, PageHeader } from '@/components/shell';
@@ -82,6 +83,10 @@ export default function ApprovalsPage() {
     for (const r of items) m.set(r.id, resolveVote(r, viewer, dir, serverFresh, now));
     return m;
   }, [items, viewer, dir, serverFresh, now]);
+
+  // ASI09 anti-fatigue: requesters with a burst of approval requests (>= 5 in 5 min).
+  const floods = useMemo(() => floodSignals(items, now), [items, now]);
+  const floodOf = (r: ApprovalRequest | null) => (r ? (floods.get(requesterKey(r)) ?? null) : null);
 
   const byKind = (r: ApprovalRequest) => kind === 'all' || r.kind === kind;
   const pending = items.filter((r) => r.status === 'pending');
@@ -224,6 +229,20 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
+      {floods.size > 0 ? (
+        <div data-testid="flood-banner" role="alert" className="mb-3 space-y-1 rounded-md border border-block/40 bg-block/10 px-3 py-2.5 sm:px-4">
+          {[...floods.values()].map((f) => (
+            <div key={f.key} className="flex items-start gap-2 text-[12.5px]">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-block" />
+              <span>
+                <span className="font-mono font-medium text-block">{f.label}</span> <span className="font-medium text-block">{floodText(f)}.</span>{' '}
+                <span className="text-text-2">Approval fatigue is an attack: review each request individually{f.pending ? ` (${f.pending} still pending)` : ''}; approvals from this requester need a typed confirmation.</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
         <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-card">
           <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2 text-2xs uppercase tracking-wider text-text-3">
@@ -244,6 +263,7 @@ export default function ApprovalsPage() {
               selectedId={selectedId}
               freshIds={new Set(items.filter((r) => Date.parse(r.created_at) > mountedAt).map((r) => r.id))}
               dir={dir}
+              flooded={new Set(floods.keys())}
               loading={list.loading}
               empty={list.error && !list.data ? 'Approvals could not be loaded' : emptyText}
               onSelect={select}
@@ -271,6 +291,7 @@ export default function ApprovalsPage() {
             viewerName={viewerName}
             onDecide={(mode) => setDecide({ mode, open: true })}
             onChanged={() => list.refresh()}
+            flood={floodOf(selected)}
             emptyHint={tab === 'needs' ? `Nothing is waiting for ${viewerFirst || 'you'}. Switch persona or open "All pending".` : undefined}
           />
         </section>
@@ -284,6 +305,7 @@ export default function ApprovalsPage() {
         viewer={viewer}
         viewerName={viewerName}
         sponsorId={selected ? sponsorIdOf(selected, dir) : null}
+        flood={floodOf(selected)}
         onDone={() => list.refresh()}
       />
     </div>

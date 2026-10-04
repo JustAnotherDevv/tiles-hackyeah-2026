@@ -2,7 +2,8 @@
 
 PERSON / ADDRESS / HEALTH / DOB on user-authored and tool-result segments via the single NER
 instance (``rt.semantic.ner``, bardsai eu-pii-anonimization-multilang INT8 ONNX) merged with
-deterministic heuristics; NER off/unavailable/timeout -> heuristics only and ``degraded=True``.
+deterministic heuristics; NER off/unavailable/timeout -> heuristics only and ``degraded=True``
+(fail_mode closed + NER timeout/error -> degraded block, ASI08).
 Spans already covered by Tier-D detectors (DLP-01/02) are dropped. Same matrix semantics as
 DLP-01 (neutral action ``redact``); ``threshold`` (default 0.6) is the score floor - heuristic
 hits score 0.65-0.75, so raising it to 0.8 turns names into ``log`` while PESEL/PAN stay
@@ -14,11 +15,12 @@ from __future__ import annotations
 import time
 from typing import ClassVar
 
+from aegis.controls.resilience._failsafe import internal_error_decision, is_fail_closed
 from aegis.core.policy_schema import ControlConfig
 from aegis.core.protocols import BaseControl
 from aegis.core.types import AppliesTo, Decision, Interaction, RequestContext
 from aegis.redaction import entities as E
-from aegis.redaction.ner import ner_spans
+from aegis.redaction.ner import ner_spans, ner_status
 from aegis.redaction.policy import (
     Resolved,
     SpanIn,
@@ -111,6 +113,12 @@ class Dlp07(BaseControl):
                         min_score=float(p.label_min_scores.get(s.entity, 0.0)),
                     )
                 )
+        if degraded and is_fail_closed(cfg):
+            # ASI08: NER *failure* (timeout / model error - not "off" or "not loaded") under
+            # fail_mode closed must not silently degrade to heuristics-only.
+            why = str((ner_status(eng) or {}).get("reason") or "")
+            if why == "timeout" or why.startswith("error"):
+                return internal_error_decision(self.id, cfg, f"NER {why}", what="NER failed")
         if not resolved:
             return None
         findings = build_findings(

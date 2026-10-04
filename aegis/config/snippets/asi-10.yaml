@@ -1,0 +1,57 @@
+# =============================================================================
+#  asi-10 snippet (ASI10 Rogue Agents) - owner ASI-ROGUE; merged by ASI-POLICY.
+# =============================================================================
+#  ROG-01 rogue-agent behavioural anomaly detector
+#  (src/aegis/controls/rogue/rog01_behaviour.py, baseline store src/aegis/rogue/store.py):
+#   * learns a per-agent baseline from EXECUTED calls (tools, external destinations,
+#     capabilities, hours, spend, call volume per active minute, sessions);
+#   * scores each outbound call with explainable additive signals: self-modification
+#     (policy/profiles/snippets/hook settings/GOV-06 paths/gateway env/control-plane API),
+#     sub-agent spawn & A2A delegation bursts, delegation depth, data-class escalation
+#     (sensitive read -> outbound send), first-time high-risk tool, new external destination,
+#     call-rate spike, spend spike, off-hours, repeated anomalies;
+#   * score >= medium (0.5) -> require_approval (card lists every signal);
+#     score >= high (0.85) -> block, answered like the kill switch (429 killed, no retry) and
+#     the session is quarantined (runtime kill + persisted kill_switch.sessions entry, released
+#     from the dashboard kill-switch panel).
+#  Novelty / spike signals need a mature baseline (>= 20 executed calls over >= 2 sessions), so
+#  new agents and the F6 runaway demo (EXE-04 loop -> BUD 402 -> kill switch) are unaffected.
+# =============================================================================
+controls:
+  - id: ROG-01
+    name: Rogue-agent behavioural anomaly detector (baseline + quarantine)
+    enabled: true
+    mode: enforce
+    action: require_approval     # medium score; high score always blocks + quarantines
+    severity: high
+    fail_mode: open              # detection layer: containment (EXE-04/BUD/GOV-06) stays fail-closed
+    timeout_ms: 50
+    owasp: [ASI10, ASI08, LLM06:2026]
+    params:
+      medium: 0.5
+      high: 0.85
+      medium_action: require_approval
+      high_action: block
+      min_events: 20
+      min_sessions: 2
+      rate_window_s: 60
+      rate_factor: 5
+      rate_floor: 20
+      spend_factor: 5
+      spend_floor_usd: 25
+      spawn_window_s: 60
+      spawn_burst_medium: 8
+      spawn_burst_high: 16
+      max_spawns_per_session: 50
+      max_delegation_depth: 3
+      quarantine: true
+      quarantine_scope: session    # session | agent (agent: kill_switch.agents entry)
+      quarantine_ttl_s: 900
+      persist_quarantine: true
+      exempt_agents: []
+    tests:
+      - {name: rogue-normal-quote-allowed, kind: mcp, surface: mcp.call, tool_name: marketpulse.get_quote,
+         tool_args: {ticker: PKO}, agent: trading-copilot@trading, expect: allow, control: ROG-01}
+      - {name: rogue-self-modify-policy-approval, kind: tool_call, surface: tool.input, destination: local,
+         tool_name: Edit, tool_args: {file_path: "/tmp/aegis-demo/config/policy.yaml", old_string: "mode: enforce", new_string: "mode: off"},
+         agent: claude-code@platform, expect: require_approval, control: ROG-01}

@@ -41,11 +41,12 @@ INJ-01|Deterministic injection signatures|injection-defense|D|mvp
 INJ-02|Semantic injection / jailbreak classifier|injection-defense|S|mvp
 INJ-03|Content safety + topic adherence|semantic-models|S|mvp
 INJ-04|Hidden-context exposure|injection-defense|H|mvp
-INJ-05|Goal-drift / grounding check|injection-defense|H|stretch
+INJ-05|Goal-drift / grounding check|injection-defense|H|mvp
 EXE-01|Dangerous command guard|action-guards|D|mvp
 EXE-02|Filesystem & network scope (SSRF)|action-guards|D|mvp
 EXE-03|Taint-flow breaker (lethal trifecta)|action-guards|St|mvp
 EXE-04|Loop / rate / circuit breaker / kill switch|budgets-ledger|St|mvp
+EXE-05|Code-execution provenance & sandbox guard|action-guards|St|mvp
 MCP-01|Server registry & launch check|mcp-proxy|D|mvp
 MCP-02|Tool-definition poisoning scan|mcp-proxy|H|mvp
 MCP-03|Tool pinning (rug pull) & shadowing|mcp-proxy|St|mvp
@@ -56,6 +57,11 @@ SIG-01|External exploit-signature engine|threat-feed|D|mvp
 SIG-02|Model-artifact gate (pickle / GGUF)|threat-feed|D|mvp
 SIG-03|Package-install / slopsquatting guard|threat-feed|D|mvp
 CUS-01|Customer-defined rules|semantic-models|H|mvp
+MEM-01|Persistent memory guard (memory & context poisoning)|asi-memory|St|mvp
+RES-01|Cascading-failure breaker (quarantine + circuit + taint)|asi-failclosed|St|mvp
+A2A-01|Peer identity & message integrity|asi-a2a|D|mvp
+A2A-02|Inter-agent smuggling & delegation guard|asi-a2a|H|mvp
+ROG-01|Rogue-agent behavioural anomaly detector|asi-rogue|St|mvp
 """
 
 CATALOG: list[CatalogControl] = [
@@ -74,6 +80,10 @@ FAMILY_FILES = {
     "BUD": "bud.yaml",
     "SIG": "sig.yaml",
     "CUS": "cus.yaml",
+    "MEM": "asi06.yaml",
+    "RES": "asi08.yaml",
+    "A2A": "asi07.yaml",
+    "ROG": "asi10.yaml",
 }
 
 SUITES = {

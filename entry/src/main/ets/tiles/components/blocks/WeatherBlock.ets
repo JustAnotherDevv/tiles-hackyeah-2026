@@ -1,35 +1,18 @@
 import { LengthMetrics } from '@kit.ArkUI';
 import { TileBlock } from '../../model/Tile';
 import { BlockStyle } from './BlockStyle';
+import { llBodySize, llNumSize } from './TextBlock';
 
 class WearRow {
   key: string = '';
   text: string = '';
 }
 
-/** Icon picked from the condition text (EN + PL keywords). */
-function weatherIcon(text: string): Resource {
-  const t: string = text.toLowerCase();
-  if (t.indexOf('storm') >= 0 || t.indexOf('burz') >= 0 || t.indexOf('thunder') >= 0) {
-    return $r('sys.symbol.bolt_1');
-  }
-  if (t.indexOf('rain') >= 0 || t.indexOf('deszcz') >= 0 || t.indexOf('shower') >= 0 || t.indexOf('umbrella') >= 0 ||
-    t.indexOf('parasol') >= 0) {
-    return $r('sys.symbol.umbrella');
-  }
-  if (t.indexOf('snow') >= 0 || t.indexOf('śnieg') >= 0) {
-    return $r('sys.symbol.snowflake');
-  }
-  if (t.indexOf('cloud') >= 0 || t.indexOf('pochmur') >= 0 || t.indexOf('chmur') >= 0) {
-    return $r('sys.symbol.cloud_fill');
-  }
-  if (t.indexOf('sun') >= 0 || t.indexOf('słon') >= 0 || t.indexOf('clear') >= 0) {
-    return $r('sys.symbol.sun_max_fill');
-  }
-  return $r('sys.symbol.cloud_sun_fill');
-}
-
-/** `weather`: `value` = temperature, `text` = condition line, `items` = what-to-wear hints. */
+/**
+ * `weather`: `value` = temperature, `text` = condition line, `items` = what-to-wear hints.
+ * Living Light: big tabular temperature + condition beside it (the tile header carries the weather icon),
+ * wear hints as soft pills.
+ */
 @Component
 export struct WeatherBlock {
   @Prop block: TileBlock = new TileBlock();
@@ -47,48 +30,51 @@ export struct WeatherBlock {
     return out;
   }
 
+  private chipSize(): number {
+    return this.bs.chipSize;
+  }
+
   build() {
-    Column({ space: 10 }) {
-      Row({ space: 12 }) {
-        if (!this.bs.compact) {
-          SymbolGlyph(weatherIcon(this.block.text))
-            .fontSize(this.bs.fs(this.bs.narrow ? 32 : 44))
-            .fontColor([this.bs.fg])
-        }
-        Column({ space: 0 }) {
-          Text(this.block.value)
-            .fontSize(this.bs.fs(this.bs.compact ? 26 : (this.bs.narrow ? 32 : 40)))
-            .fontWeight(FontWeight.Bolder)
+    Column({ space: 8 }) {
+      Row({ space: 8 }) {
+        Text(this.block.value)
+          .fontSize(llNumSize(this.bs))
+          .fontWeight(this.bs.numWeight)
+          .fontColor(this.bs.fg)
+          .letterSpacing(this.bs.numLs())
+          .fontFamily(this.bs.font)
+          .lineHeight(Math.round(llNumSize(this.bs) * 1.04))
+          .maxLines(1)
+          .minFontSize(14)
+          .maxFontSize(llNumSize(this.bs))
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .flexShrink(0)
+        if (this.block.text.length > 0 && !this.bs.small) {
+          Text(this.block.text)
+            .fontSize(llBodySize(this.bs))
             .fontColor(this.bs.fg)
-            .maxLines(1)
-            .minFontSize(14)
-            .maxFontSize(this.bs.fs(this.bs.compact ? 26 : (this.bs.narrow ? 32 : 40)))
+            .opacity(this.bs.highContrast ? 1 : 0.85)
+            .lineHeight(Math.round(llBodySize(this.bs) * 1.2))
+            .maxLines(this.bs.compact ? 2 : 3)
+            .wordBreak(WordBreak.NORMAL)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
-          if (this.block.text.length > 0) {
-            Text(this.block.text)
-              .fontSize(this.bs.fs(15))
-              .fontWeight(FontWeight.Medium)
-              .fontColor(this.bs.fgDim)
-              .maxLines(this.bs.compact ? 1 : 2)
-              .wordBreak(WordBreak.NORMAL)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
+            .layoutWeight(1)
         }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
       }
+      .alignItems(VerticalAlign.Center)
       .width('100%')
 
       if (this.wear().length > 0) {
         Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(6), cross: LengthMetrics.vp(6) } }) {
           ForEach(this.wear(), (r: WearRow) => {
             Text(r.text)
-              .fontSize(this.bs.fs(14))
-              .fontWeight(FontWeight.Medium)
+              .fontSize(this.chipSize())
+              .fontWeight(600)
               .fontColor(this.bs.fg)
+              .lineHeight(Math.round(this.chipSize() * 1.2))
               .padding({ left: 10, right: 10, top: 5, bottom: 5 })
               .borderRadius(999)
-              .backgroundColor(this.bs.well)
+              .backgroundColor(this.bs.highContrast ? this.bs.well : this.bs.pill)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
               .constraintSize({ maxWidth: '100%' })

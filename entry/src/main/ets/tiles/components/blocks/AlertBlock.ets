@@ -1,13 +1,27 @@
+import { LengthMetrics } from '@kit.ArkUI';
 import { TileBlock } from '../../model/Tile';
 import { BlockStyle } from './BlockStyle';
+import { llBodySize } from './TextBlock';
 
 class FlagRow {
   key: string = '';
   text: string = '';
 }
 
+// Living Light (THEMES.C) semantic tones: soft pill fill + ink. Local until TilesTheme exposes them.
+const LL_DANGER_SOFT: string = '#1FC62B4A'; // rgba(198,43,74,.12)
+const LL_DANGER_INK: string = '#8E1B33';
+const LL_WARN_SOFT: string = '#1F8A4B00';
+const LL_WARN_INK: string = '#6B3A00';
+const LL_INFO_SOFT: string = '#1F4F5BD5'; // accent .12
+const LL_INFO_INK: string = '#3540A8';
+/** Frosted inset for the quoted message (Living Light surface on top of the tile gradient). */
+const LL_QUOTE_BG: string = '#8CFFFFFF';
+
 /**
- * `alert`: a high-visibility card (Guardian scam shield, warnings). Always a solid light card so it reads on any tile.
+ * `alert` (Guardian scam shield, warnings), Living Light: an inline warning line in the tile's ink (filled warning
+ * glyph + semibold body text, as the prototype), the quoted message on a frosted inset, red flags as soft danger
+ * pills (the scam screen's flag chips).
  *  - text  = what happened (e.g. the demo call quote)
  *  - value = what to do ("This looks like a scam. Hang up.") — or a bare severity 'danger' | 'warn' | 'info'
  *  - items = red flags ("asks for money", "pressure: right now")
@@ -28,15 +42,20 @@ export struct AlertBlock {
     return v === 'info' || v === 'warn' || v === 'danger' ? '' : v;
   }
 
-  private tone(): string {
+  private ink(): string {
     const s: string = this.severity();
     if (s === 'info') {
-      return '#0B57D0';
+      return LL_INFO_INK;
     }
-    if (s === 'warn') {
-      return '#8A4B00';
+    return s === 'warn' ? LL_WARN_INK : LL_DANGER_INK;
+  }
+
+  private soft(): string {
+    const s: string = this.severity();
+    if (s === 'info') {
+      return LL_INFO_SOFT;
     }
-    return '#B3261E';
+    return s === 'warn' ? LL_WARN_SOFT : LL_DANGER_SOFT;
   }
 
   private flags(): FlagRow[] {
@@ -51,66 +70,77 @@ export struct AlertBlock {
     return out;
   }
 
+  private body(): number {
+    return llBodySize(this.bs);
+  }
+
+  /** Quote shown under the warning line (only when the line is the advice). */
+  private showQuote(): boolean {
+    return this.advice().length > 0 && this.block.text.length > 0 && !this.bs.compact && !this.bs.small;
+  }
+
   build() {
     Column({ space: 8 }) {
-      Row({ space: 10 }) {
-        if (this.severity() === 'info') {
-          SymbolGlyph($r('sys.symbol.exclamationmark_circle'))
-            .fontSize(this.bs.fs(26))
-            .fontColor([this.tone()])
-        } else {
-          SymbolGlyph($r('sys.symbol.exclamationmark_triangle_fill'))
-            .fontSize(this.bs.fs(26))
-            .fontColor([this.tone()])
-        }
+      Row({ space: 8 }) {
+        SymbolGlyph(this.severity() === 'info' ? $r('sys.symbol.exclamationmark_circle') :
+          $r('sys.symbol.exclamationmark_triangle_fill'))
+          .fontSize(Math.max(20, Math.round(this.body() * 1.4)))
+          .fontColor([this.bs.fg])
         Text(this.advice().length > 0 ? this.advice() : this.block.text)
-          .fontSize(this.bs.fs(this.bs.compact ? 15 : 18))
-          .fontWeight(FontWeight.Bolder)
-          .fontColor(this.advice().length > 0 ? this.tone() : '#1C2230')
-          .maxLines(this.bs.limit(2, 3, 4, 4))
+          .fontSize(this.body())
+          .fontWeight(600)
+          .fontColor(this.bs.fg)
+          .lineHeight(Math.round(this.body() * 1.25))
+          .maxLines(this.bs.limit(2, 3, 4, 6))
           .wordBreak(WordBreak.NORMAL)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
       }
-      .alignItems(VerticalAlign.Top)
+      .alignItems(VerticalAlign.Center)
       .width('100%')
 
-      if (this.advice().length > 0 && this.block.text.length > 0 && !this.bs.compact && !this.bs.narrow) {
+      if (this.showQuote()) {
         Text(this.block.text)
-          .fontSize(this.bs.fs(15))
+          .fontSize(this.body())
           .fontStyle(FontStyle.Italic)
-          .fontColor('#3A3F4B')
-          .lineHeight(Math.round(this.bs.fs(15) * 1.35))
+          .fontColor(this.bs.fg)
+          .lineHeight(Math.round(this.body() * 1.3))
           .maxLines(this.bs.detail ? 8 : 3)
+          .wordBreak(WordBreak.NORMAL)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .width('100%')
-          .padding({ left: 10 })
-          .border({ width: { left: 3 }, color: { left: this.tone() } })
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .borderRadius(14)
+          .backgroundColor(this.bs.highContrast ? '#FFFFFF' : LL_QUOTE_BG)
       }
 
-      ForEach(this.flags(), (r: FlagRow) => {
-        Row({ space: 8 }) {
-          SymbolGlyph($r('sys.symbol.xmark_circle_fill'))
-            .fontSize(this.bs.fs(16))
-            .fontColor([this.tone()])
-          Text(r.text)
-            .fontSize(this.bs.fs(15))
-            .fontWeight(FontWeight.Medium)
-            .fontColor('#3A3F4B')
-            .maxLines(2)
-            .wordBreak(WordBreak.NORMAL)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .layoutWeight(1)
+      if (this.flags().length > 0) {
+        Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(6), cross: LengthMetrics.vp(6) } }) {
+          ForEach(this.flags(), (r: FlagRow) => {
+            Row({ space: 6 }) {
+              SymbolGlyph($r('sys.symbol.flag_fill'))
+                .fontSize(Math.max(14, Math.round(this.body() * 1.15)))
+                .fontColor([this.ink()])
+              Text(r.text)
+                .fontSize(Math.max(11, this.body()))
+                .fontWeight(700)
+                .fontColor(this.ink())
+                .maxLines(1)
+                .textOverflow({ overflow: TextOverflow.Ellipsis })
+                .flexShrink(1)
+            }
+            .padding({ left: 12, right: 12, top: 7, bottom: 7 })
+            .borderRadius(999)
+            .backgroundColor(this.bs.highContrast ? '#FFFFFF' : this.soft())
+            .border({ width: this.bs.highContrast ? 2 : 0, color: this.ink() })
+            .constraintSize({ maxWidth: '100%' })
+          }, (r: FlagRow) => r.key)
         }
         .width('100%')
-      }, (r: FlagRow) => r.key)
+      }
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(12)
-    .borderRadius(16)
-    .backgroundColor('#FFFFFF')
-    .border({ width: this.bs.highContrast ? 3 : 2, color: this.tone() })
     .accessibilityGroup(true)
     .accessibilityText('Warning. ' + (this.advice().length > 0 ? this.advice() + '. ' : '') + this.block.text +
       (this.block.items.length > 0 ? '. ' + this.block.items.join(', ') : ''))

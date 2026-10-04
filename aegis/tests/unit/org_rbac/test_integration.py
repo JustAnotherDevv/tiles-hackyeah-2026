@@ -75,7 +75,14 @@ async def test_org_rbac_end_to_end(live):
             "text": "hi",
         }
     }
-    out = await _guard(client, body2, {"X-Aegis-Agent": "trading-copilot@trading"})
+    out = await _guard(  # ASI03: the claim carries the agent's key
+        client,
+        body2,
+        {
+            "X-Aegis-Agent": "trading-copilot@trading",
+            "Authorization": "Bearer aegis_demo_trading_copilot_0000000000000003_NOT_A_SECRET",
+        },
+    )
     assert out["verdict"]["action"] == "block", out["verdict"]
     assert out["verdict"]["primary"]["control_id"] == "GOV-02"
 

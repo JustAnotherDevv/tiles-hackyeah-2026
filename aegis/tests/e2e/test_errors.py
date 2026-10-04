@@ -19,6 +19,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 httpx = pytest.importorskip("httpx")
 yaml = pytest.importorskip("yaml")
 
@@ -197,7 +199,7 @@ def _msg(
     s: LocalStack, model: str = "mock-echo", text: str = "hello", **headers: str
 ) -> httpx.Response:
     h = {
-        "X-Aegis-Agent": "trading-copilot@trading",
+        **agent_headers("trading-copilot@trading"),  # ASI03: claim + key
         "X-Aegis-Session": f"ses_b22_{uuid.uuid4().hex[:6]}",
         **headers,
     }
@@ -214,7 +216,7 @@ def test_malformed_json_400(stack: LocalStack) -> None:
     r = stack.http.post(
         "/v1/messages",
         content=b'{"model": "mock-echo", "messages": [',
-        headers={"content-type": "application/json", "X-Aegis-Agent": "trading-copilot@trading"},
+        headers={"content-type": "application/json", **agent_headers("trading-copilot@trading")},
     )
     assert r.status_code == 400, (r.status_code, r.text[:200])
     assert envelope(r)["type"] == "invalid_request"
@@ -251,7 +253,7 @@ def test_unknown_mcp_server_32001(stack: LocalStack) -> None:
         "/mcp/not-a-server",
         headers={
             "Accept": "application/json, text/event-stream",
-            "X-Aegis-Agent": "trading-copilot@trading",
+            **agent_headers("trading-copilot@trading"),
         },
         json={
             "jsonrpc": "2.0",
@@ -347,7 +349,7 @@ def test_budget_stop_is_402_wire_error(stack: LocalStack) -> None:
     if r.status_code in (404, 405, 501):
         pytest.fail("/api/budgets/usage not available", pytrace=False)
     assert r.status_code == 200, r.text
-    r = _msg(stack, **{"X-Aegis-Agent": "chaos-agent@platform"})
+    r = _msg(stack, **agent_headers("chaos-agent@platform"))
     assert r.status_code == 402, r.text[:200]
     assert r.json().get("type") == "error", r.text[:200]  # Anthropic wire envelope
     assert envelope(r)["type"] == "budget_exceeded"

@@ -1,243 +1,923 @@
 {
-  "repo": "../iskra",
-  "research": "research/hubmi",
-  "rules": [
-    "You are one of many parallel agents building 'Iskra', a Polish-language web app for the HackYeah 2026 HubMI.pl task (ROPS Kraków). The deadline is hard (11:00 CEST), so be fast and pragmatic. A thin but working feature beats a perfect one that isn't finished.",
-    "Repo: {repo}. The research and plan are in {research} (read 08-iskra-task-plan.md §2 for the architecture, and 05-accessibility-ux.md for UX rules if you build UI).",
-    "FILE OWNERSHIP: you may create or edit ONLY the paths listed in your WP's 'owns'. You may read anything. Frozen shared files (lib/contracts.ts, lib/db/schema.ts, lib/ai/*, components/ui/*, components/shell/*, lib/nav.ts, app/layout.tsx, app/globals.css, package.json, configs) must NOT be edited. If you need a change, describe it in 'contract_requests' in your final output and work around it.",
-    "NEVER run: pnpm install/add/remove, next build, next dev, a full 'tsc', git commit/push/checkout/stash, vercel, drizzle-kit push. These are run by the lead only. Shared processes already running: 'tsc --watch' writes to .tsc-watch.log, and 'next dev' serves http://localhost:3000.",
-    "Typecheck with: pnpm check:owned <your paths...>. It reads .tsc-watch.log and reports only errors in your files, so wait about 5 s after saving. Unit tests: pnpm vitest run <your test files> (keep tests co-located as *.test.ts in your owned paths). UI check: curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/<route> must be 200, and curl the HTML for your expected Polish heading. Optional: pnpm playwright test e2e/<WP-ID>.spec.ts --workers=1.",
-    "If you depend on another WP's module that is not done yet, import it from its path anyway. The foundation created typed stubs that return fixtures, and the real implementation will replace them at the same path and signature.",
-    "UI rules: Polish copy, plain language (≤15 words per sentence, concrete verbs on buttons). Use only components/ui/* and design tokens: no raw colours, ≥44px targets, visible labels plus hints, inline errors with an error summary starting 'Błąd:', and a single <h1>. Announce dynamic results through <StatusRegion>. Wrap every AI output in <AiLabel>. Never use colour alone. Every chart or map needs a <TableWithCaption> equivalent.",
-    "AI rules: call models ONLY through lib/ai/gateway.ts (aiObject/aiText/embedTexts). Each call needs an 'offline' fallback for AI_MODE=off. In unit tests, mock the gateway. Make at most 2 live AI calls in total for your own verification. Always pass text through redact() before any AI call or DB write of user text.",
-    "Data rules: no real personal data. Seeded or demo rows set synthetic=true. ROPS library content is credited 'Źródło: ROPS Kraków, Biblioteka Innowacji Społecznych' with the licence and a link.",
-    "Finish by returning the structured result: id, status (done | partial | blocked), files you changed, the verify commands you ran with pass/fail, contract_requests, and short notes. Do not claim a check passed unless you ran it."
-  ],
-  "wps": [
-    {"id": "F0", "wave": "foundation", "est": 8, "title": "Scaffold, all dependencies, configs, shared processes",
-     "owns": ["*"],
-     "after": [],
-     "spec": "Create the Next.js app (App Router, TS, Tailwind, ESLint, src-less, pnpm) at {repo}. If the repo dir already exists as a git clone, scaffold into it. Install ALL deps once: ai, zod, drizzle-orm, @neondatabase/serverless, drizzle-kit, minisearch, clsx, tailwind-merge, @radix-ui/react-* (dialog, radio-group, select, checkbox, popover, tabs, accordion), lucide-react, vitest, @vitest/coverage-v8, jsdom, @testing-library/react, playwright, @playwright/test, @axe-core/playwright, tsx. Add vercel.json {\"regions\":[\"fra1\"]}. .gitignore must cover .env*, .vercel, .next, node_modules, .tsc-watch.log, test-results, playwright-report. Package scripts: dev, build, start, lint, typecheck (tsc --noEmit), 'tsc:watch' (tsc --noEmit --watch --preserveWatchOutput --pretty false > .tsc-watch.log 2>&1), 'check:owned' (scripts/check-owned.ts: reads the last completed cycle in .tsc-watch.log and prints errors whose path starts with any given arg, exiting 1 if any), test (vitest run), e2e (playwright test), db:push (drizzle-kit push), seed (tsx scripts/seed-db.ts). Add vitest.config.ts (jsdom for *.test.tsx, node otherwise, pool threads maxThreads 2), playwright.config.ts (baseURL http://localhost:3000, workers 1, chromium only) and e2e/helpers.ts (axeCheck(page) asserting 0 serious/critical violations with tags wcag2a/aa, wcag21a/aa, wcag22aa). Create empty dirs for app/(public), app/admin, lib/match, lib/db/q, components, scripts, data, e2e, docs.",
-     "verify": "pnpm build passes; pnpm vitest run --passWithNoTests passes; git check-ignore .env.local prints the path; node -e \"require('./package.json').scripts['check:owned']\" is set."},
-
-    {"id": "F1", "wave": "contracts", "est": 12, "title": "Design system + accessible app shell",
-     "owns": ["app/layout.tsx", "app/globals.css", "components/ui/", "components/shell/", "lib/nav.ts", "app/(public)/layout.tsx", "app/admin/layout.tsx"],
-     "after": ["F0"],
-     "spec": "Tokens from research 05 §3.8 as CSS variables (text #1B1B1B, primary #0052A5, primary-hover #006CD7, danger #A7162D, success #16692C, muted #656565, border #767676, surface #F1F1F1, a high-contrast theme of #FFFF00 on #000, focus ring 3px), base 18px, line-height 1.5. Iskra wordmark: text plus a small inline-SVG spark, with no gov.pl or herb. components/ui: Button (variants primary/secondary/link, min-h 44px), Field (label + hint + error, ids wired with aria-describedby), TextInput, Textarea, Select, RadioGroup (fieldset/legend), Checkbox, Card, Badge, StatusRegion (role=status, visually hidden option), AiLabel (wraps children with the badge 'Odpowiedź przygotowała sztuczna inteligencja – może zawierać błędy'), Notice (info/warn/success), ErrorSummary, PageHeader (one h1 + lead), StepIndicator ('Krok X z Y' as text), TableWithCaption, Disclaimer, VisuallyHidden. components/shell: Header (Iskra wordmark, nav from lib/nav.ts, ETR and PJM links, a <Bell/> slot importing components/shell/Bell.tsx stub, RoleSwitcher labelled 'Tryb demo – rola'), Footer (links: Deklaracja dostępności, O projekcie i AI, Źródła danych, ROPS Kraków institutional contact), SkipLink 'Przejdź do treści głównej', DisplaySettings panel (A / A+ / A++ text size and high-contrast toggle, persisted in localStorage inside try/catch), RouteFocus (moves focus to h1 and updates document.title on navigation). lib/nav.ts: public nav (Zgłoś potrzebę /zglos, Biblioteka /biblioteka, Wyzwania /wyzwania, Wiedza /wiedza, Zgłoś pomysł /pomysl, Wdrożenie /wdrozenie, Testuj /testuj, Wiadomości /wiadomosci) and admin nav (Skrzynka /admin, Trendy /admin/trendy, Luki /admin/luki, Biblioteka /admin/biblioteka, Nabory /admin/nabory, Poczta /admin/poczta, Testy /admin/testy, Koszty AI /admin/koszty-ai). app/layout.tsx: <html lang=\"pl\">, landmarks, Open Sans or system font. The Bell stub renders a link to /wiadomosci with aria-label 'Powiadomienia'.",
-     "verify": "pnpm check:owned app/layout.tsx components/ lib/nav.ts; a contrast unit test in components/ui/tokens.test.ts (text pairs ≥4.5, borders and focus ≥3); curl http://localhost:3000/ contains lang=\"pl\" and 'Przejdź do treści głównej'."},
-
-    {"id": "F2", "wave": "contracts", "est": 10, "title": "Database schema + client + push",
-     "owns": ["lib/db/schema.ts", "lib/db/client.ts", "drizzle.config.ts", "lib/db/q/_shared.ts"],
-     "after": ["F0"],
-     "spec": "Drizzle schema for Neon Postgres, using DATABASE_URL from .env.local. Tables, each with id (text uuid default), created_at, and synthetic boolean default false where user-generated: sessions(id, role); innovations(id text pk e.g. rops-001, title, summary, problem, target_groups text[], obszar, type, evidence, who_can_use, sections jsonb, video_urls text[], materials_zip text, source_url, licence, attribution, keywords text[], embedding real[] null, status text default 'opublikowana', seeking_testers boolean default false, edited_at); reports(id, session_id, author_role, on_behalf boolean, helper_role, gmina_teryt, powiat_teryt, text_redacted, structured jsonb, picks jsonb, candidate_ids text[], luka boolean, status text default 'nowe'); ideas(id, session_id, author_role, from_report_id, title, fiszka jsonb, kanwa jsonb, assessment jsonb, grant_draft jsonb, call_id, status text default 'nowe'); calls(id, name, active boolean, opens_at, closes_at, description); threads(id, subject_type text in report|idea|innovation|middleman, subject_id, title, author_session_id, mentor text null); messages(id, thread_id, author_role, author_session_id, body); notifications(id, recipient text ('rops' or 'session:<id>'), type, ref, title, read_at null); email_log(id, to_label, subject, body); test_signups(id, innovation_id, session_id, role, gmina_teryt, message); ratings(id, innovation_id, session_id, stars int, feedback, improvement); middleman_cards(id, innovation_id, session_id, profile jsonb, card jsonb, uw jsonb); ai_audit(id, kind, model, input_tokens int, output_tokens int, ms int, ok boolean). lib/db/client.ts exports db (neon-http). lib/db/q/_shared.ts exports small helpers (newId). Run drizzle-kit push (you ARE allowed to run db:push for this WP only).",
-     "verify": "pnpm db:push exits 0; a tsx one-liner counting information_schema.tables in public returns ≥14; pnpm check:owned lib/db/."},
-
-    {"id": "F3", "wave": "contracts", "est": 14, "title": "Contracts, AI gateway, session, stubs for every module, route skeletons",
-     "owns": ["lib/contracts.ts", "lib/ai/", "lib/session.ts", "lib/data.ts", "STUBS (see spec)", "ROUTE SKELETONS (see spec)", "scripts/smoke-ai.ts"],
-     "after": ["F0"],
-     "spec": "lib/contracts.ts: export the types Role ('mieszkaniec'|'ngo'|'jst'|'ekspert'|'rops'); Obszar (the 9 ROPS library categories plus 'Inne'): Dzieci, młodzież i rodzina | Seniorzy | Osoby z niepełnosprawnością sensoryczną | Osoby o ograniczonej mobilności | Osoby z niepełnosprawnością intelektualną | Zdrowie i medycyna | Cudzoziemcy | Rynek pracy | Osoby w kryzysie bezdomności | Inne; and OBSZARY const. Innovation (matches the DB innovations row, camelCase). Structured {obszar: Obszar; grupaDocelowa: string[]; slowaKluczowe: string[]; skala: 'jedna osoba'|'rodzina'|'społeczność lokalna'|'gmina'|'region'; podsumowanie: string; pytania: {pytanie: string; opcje: string[]}[]}. Candidate {id; score; bm25Rank?; denseRank?; matchedTerms: string[]}. MatchLabel 'Bardzo pasuje'|'Pasuje'|'Może pasować'. Pick {id; label: MatchLabel; dlaczego: string[]; dopasowaneSlowa: string[]; coDostosowac: string}. MatchInput {text; gminaTeryt?; onBehalf?: boolean; helperRole?: string; answers?: Record<string,string>}. MatchResult {reportId; structured; picks: Pick[]; candidates: Candidate[]; luka: boolean}. Fiszka {tytul; naCzymPolega; dlaKogo; problem; etap}. Kanwa {problem; odbiorcy; rozwiazanie; zmiana; innowacyjnosc; skala; zasobyKoszty; zespol}. IwsCriterion (5 names). IwsScores Record<IwsCriterion, number>. IwsAssessment {scores; uzasadnienia: Record<IwsCriterion,string>; verdict: {pass: boolean; reasons: string[]}; doPoprawy: string[]}. InstitutionProfile {typ: 'OPS'|'CUS'|'gmina'|'NGO'|'szkoła'|'DPS'|'inna'; gminaTeryt; wielkosc: string; budzetPln?: number; kadra?: string; partnerzy?: string}. ServiceCard {rdzen: string[]; doDostosowania: string[]; kroki: {krok: string; miesiac: string}[]; role: string[]; kosztyOrientacyjne: string; partnerzy: string[]; ryzyka: string[]; wskazniki: string[]; zrodlaFinansowania: string[]}. UwCheck {route: 'A'|'B'|'niekwalifikowane'; checklist: {item: string; stan: 'macie'|'brakuje'|'do ustalenia'}[]; nextStep: string; sourceUrl: string; caveat: string}. LocalContext {gmina; powiat; rows: {label; value; regionAvg; unit; source; year}[]}. NotificationType. lib/ai/models.ts: MODELS {fast: env AI_MODEL_FAST ?? 'anthropic/claude-haiku-4.5', smart: env AI_MODEL_SMART ?? 'anthropic/claude-sonnet-5.5', embed: env AI_MODEL_EMBED ?? 'alibaba/qwen3-embedding-8b'}. lib/ai/gateway.ts: aiObject<T>({kind, tier: 'fast'|'smart', schema (zod), system, prompt, offline: () => T}), aiText({kind, tier, system, prompt, offline}), embedTexts(texts) → number[][] | null. When process.env.AI_MODE==='off', return offline() or null. Use the AI SDK generateObject/generateText/embedMany with gateway model strings. Log every call via lib/ai/audit.ts logAi() (inserts into ai_audit, and never throws). lib/session.ts: getSession() (cookie iskra_sid + iskra_role, default mieszkaniec), setRole server action, requireRole('rops'). lib/data.ts: loaders for data/corpus.json, data/teryt.json, data/powiaty.json, data/challenges.json (tolerate missing files by returning []). STUBS: create each of these with the exact signature and a fixture or empty return plus a '// STUB – replaced by <WP>' comment: lib/match/redact.ts redact(text) → {text, found} (M1); lib/match/structure.ts structureProblem(text, ctx?) → Promise<Structured> (M2); lib/match/retrieve.ts retrieve(q:{text; structured?}, k?) → Promise<Candidate[]> (M3); lib/match/rerank.ts rerank(text, structured, candidates) → Promise<Pick[]> (M4); lib/match/gap.ts isGap(picks, candidates) → boolean (M5); lib/match/index.ts runMatch(input) → Promise<MatchResult> (M5); lib/notify.ts notify({recipient,type,ref,title}), emailSim({toLabel,subject,body}), unreadCount(recipient) (C1); lib/iws.ts IWS_CRITERIA, passes(scores) (K1); lib/prescore.ts prescoreIdea(fiszka, kanwa?) → Promise<IwsAssessment> (K4); lib/uw.ts checkUw(profile, innovation) → UwCheck (W3); lib/middleman.ts buildServiceCard(innovation, profile) → Promise<ServiceCard> (W2); lib/local-context.ts localContext(gminaTeryt) → LocalContext|null (U6). Component stubs (default export, typed props, rendering null or a simple placeholder): components/shell/Bell.tsx (C1, owned by C1 after F1 imports it), components/voice/MicButton.tsx {onTranscript(text)} (U2), components/voice/ReadAloudButton.tsx {text} (U2), components/SimplifyButton.tsx {text} (U5), components/zglos/LocalContextStrip.tsx {gminaTeryt} (U6), components/zglos/Clarify.tsx {pytania, onDone(answers)} (U3), components/tester/TesterWidget.tsx {innovationId} (T1), components/wdrozenie/UwPanel.tsx {check: UwCheck} (W4). ROUTE SKELETONS: create page.tsx for each route below, rendering <PageHeader title='…'/> plus 'W przygotowaniu' so nav works: / ; /zglos ; /zglos/wyniki/[id] ; /zglos/wyniki/[id]/kartka ; /biblioteka ; /biblioteka/[id] ; /wyzwania ; /wiedza ; /pomysl ; /pomysl/[id]/kanwa ; /pomysl/[id]/ocena ; /pomysl/[id]/wniosek ; /wdrozenie ; /wdrozenie/[id] ; /testuj ; /wiadomosci ; /wiadomosci/[id] ; /admin ; /admin/trendy ; /admin/luki ; /admin/biblioteka ; /admin/biblioteka/[id] ; /admin/nabory ; /admin/poczta ; /admin/testy ; /admin/koszty-ai ; /dostepnosc ; /o-projekcie ; /etr ; /pjm. Public pages live under app/(public)/. scripts/smoke-ai.ts: one aiText in Polish plus one embedTexts, printing the text and dim=N (this is Gate G0).",
-     "verify": "pnpm check:owned lib/ components/ app/; every route above returns 200 through curl; pnpm tsx scripts/smoke-ai.ts prints Polish text and dim>0 (G0). If it fails, report it and the lead sets AI_MODE=off."},
-
-    {"id": "F4", "wave": "contracts", "est": 12, "title": "Data build: corpus, TERYT, powiaty, challenges, PII and licence audit",
-     "owns": ["scripts/build-corpus.ts", "data/", "docs/data-audit.md"],
-     "after": ["F0"],
-     "spec": "Copy {research}/data/*.json|csv and {research}/rops-biblioteka-innowacji.json into data/raw/. scripts/build-corpus.ts merges data/raw/innovations.json (items), innovations_rops_sections.json (items) and rops-biblioteka-innowacji.json (video, materials_zip, selected_for_dissemination by slug or url) into data/corpus.json: an array of 115 Innovation objects (camelCase as in lib/contracts.ts). obszar maps from thematic_area onto the Obszar list ('Dla cudzoziemców' → 'Cudzoziemcy'). evidence = 'Rekomendowana do upowszechniania' if selected, else 'Przetestowana w inkubatorze ROPS'. sections = the 5 ROPS fields ONLY for CC BY entries; the 15 without a licence mark get sections:null and licence:'brak oznaczenia licencji'. Attribution 'Źródło: ROPS Kraków, Biblioteka Innowacji Społecznych (CC BY 4.0)' where applicable. Also emit data/teryt.json (gminas + powiats from teryt_malopolska.csv), data/powiaty.json (from powiaty_indicators.csv, numbers parsed, plus a Małopolska average row id '12'), data/challenges.json (normalised 8 areas: id, nazwa, definicja, wyzwania[], zrodlo) and data/synthetic.json (from synthetic_problems.json, keeping synthetic:true). PII audit: regex for phone numbers, e-mails, PESEL and 'imię nazwisko'-like capitalised pairs in all text fields. Write docs/data-audit.md with counts and a 10-record spot check, and remove any personal names found from corpus text.",
-     "verify": "node -e \"const c=require('./data/corpus.json');if(c.length!==115)process.exit(1)\"; every record has sourceUrl, licence and a valid obszar; the audit reports 0 phones and 0 e-mails; data/powiaty.json has 23 rows (22 + average)."},
-
-    {"id": "M1", "wave": "fan", "est": 8, "title": "PII redaction", "owns": ["lib/match/redact.ts", "lib/match/redact.test.ts"], "after": ["F3"],
-     "spec": "redact(text) masks PESEL (11 digits, checksum optional) as [PESEL], phones (PL formats incl. +48, spaces and dashes) as [TELEFON], e-mails as [EMAIL], IBAN/account numbers as [KONTO], street address patterns 'ul. X 12/3' as [ADRES], and ID card numbers 'ABC123456' as [DOWÓD]. Returns {text, found: string[] of kinds}. Ordinary text stays unchanged.",
-     "verify": "pnpm vitest run lib/match/redact.test.ts with ≥10 fixtures (positive and negative) passes; pnpm check:owned lib/match/redact.ts."},
-
-    {"id": "M2", "wave": "fan", "est": 12, "title": "Problem structuring (LLM)", "owns": ["lib/match/structure.ts", "lib/match/structure.test.ts", "lib/match/prompts/structure.ts"], "after": ["F3"],
-     "spec": "structureProblem(text, ctx) uses aiObject (tier fast) with a zod schema matching Structured. obszar is a z.enum over OBSZARY. slowaKluczowe are 5–12 Polish lemmas (base forms) plus synonyms. pytania holds at most 2 clarifying questions, each with ≤4 options plus 'Nie wiem', only when ambiguous. System prompt in Polish: a social-policy analyst at ROPS Kraków who never invents facts. Offline fallback: keyword rules mapping words to obszar (e.g. senior|starsz|emeryt → Seniorzy), slowaKluczowe = top content words with a 6-char prefix.",
-     "verify": "vitest with a mocked gateway: the schema accepts the mock and the offline fallback maps 'Moja mama ma 82 lata i jest samotna' → Seniorzy. One live call on data/synthetic.json syn-001 returns obszar Seniorzy (record the result)."},
-
-    {"id": "M3", "wave": "fan", "est": 15, "title": "Hybrid retrieval (BM25 + dense + RRF)", "owns": ["lib/match/retrieve.ts", "lib/match/retrieve.test.ts", "lib/match/stem.ts"], "after": ["F3", "F4"],
-     "spec": "Build the MiniSearch index lazily from getCorpus() over title^3, keywords^2, summary, problem, targetGroups and sections text. processTerm: lowercase, then emit both the diacritics-stripped token and stem(token) (a 6-char prefix, in lib/match/stem.ts), dropping a Polish stopword list. Search uses fuzzy 0.2, prefix true, and the query is the text plus structured.slowaKluczowe. Dense: if data/corpus.embedded.json exists, embed the query via embedTexts and take cosine top 20; if not, skip dense. Tag boost: +1 rank bucket when obszar matches structured.obszar. Fuse with RRF k=60 and return the top k (default 10) Candidates with matchedTerms (the query terms found in the doc).",
-     "verify": "vitest (offline, no embeddings): 'samotność seniorów na wsi' → the top 10 contain ≥1 Seniorzy item; 'dziecko w spektrum autyzmu w szkole' → the top 10 contain an item whose targetGroups or keywords mention autyzm or niepełnosprawność. The test also passes with AI_MODE=off."},
-
-    {"id": "M4", "wave": "fan", "est": 12, "title": "Rerank + explanation with ID guard", "owns": ["lib/match/rerank.ts", "lib/match/rerank.test.ts", "lib/match/prompts/rerank.ts"], "after": ["F3"],
-     "spec": "rerank(text, structured, candidates) sends the top 10 candidates (id, title, summary, targetGroups, whoCanUse) to aiObject (tier fast). Schema: picks array (max 5) whose id is z.enum(candidateIds), so the model CANNOT return an unknown id; label is MatchLabel; dlaczego holds ≤2 plain-Polish bullets of ≤15 words; dopasowaneSlowa; coDostosowac is 1 sentence. Return [] if none fit. Server-side, re-check that every id is in candidates. Offline fallback: the top 3 candidates labelled by rank (Pasuje / Może pasować) with dlaczego built from matchedTerms ('Pasujące słowa: …').",
-     "verify": "vitest: a mocked model output with a non-candidate id fails schema parsing (the guard works); the offline fallback returns ≤3 picks with ids ⊂ candidates."},
-
-    {"id": "M5", "wave": "fan", "est": 14, "title": "Match orchestrator + gap + submitReport action", "owns": ["lib/match/index.ts", "lib/match/gap.ts", "lib/match/index.test.ts", "app/(public)/zglos/actions.ts", "lib/db/q/reports.ts"], "after": ["F2", "F3"],
-     "spec": "runMatch(input): redact → structureProblem → retrieve → rerank → isGap (luka when there are no picks, OR every pick is 'Może pasować', OR the top candidate score is below a threshold) → insert the report (text_redacted, structured, picks, candidate_ids, luka, gmina/powiat teryt from data/teryt.json, on_behalf, helper_role, session_id) → notify({recipient:'rops', type: luka ? 'luka' : 'nowe_zgloszenie', ref: reportId, title}) → return MatchResult. Server action submitReport(formData) calls runMatch and redirects to /zglos/wyniki/[id]. lib/db/q/reports.ts exports getReport(id), listReports(filters) and setReportStatus(id, status).",
-     "verify": "vitest with all deps mocked: luka logic on 3 fixtures. Live: a tsx one-off calling runMatch on syn-003 returns ≥1 pick and inserts a row (print the reportId)."},
-
-    {"id": "E1", "wave": "fan", "est": 8, "title": "Build-time embeddings", "owns": ["scripts/embed.ts", "data/corpus.embedded.json", "data/corpus.meta.json"], "after": ["F3", "F4"],
-     "spec": "Embed title + summary + problem + targetGroups + keywords for all 115 corpus items with embedTexts, in batches of 32. Write data/corpus.embedded.json as [{id, v:number[]}] and corpus.meta.json as {model, dim, date, count}. Also update the innovations.embedding column for each row (an update loop; skip the DB if no rows exist yet). If AI_MODE=off or the call fails, write meta {skipped:true} and exit 0.",
-     "verify": "count==115, all vectors the same dim, no NaN (asserted by the script), meta.dim>0, or meta.skipped=true with the reason printed."},
-
-    {"id": "U1", "wave": "fan", "est": 18, "title": "Intake wizard /zglos (Krok 1–3 flow)", "owns": ["app/(public)/zglos/page.tsx", "components/zglos/IntakeForm.tsx", "components/zglos/GminaPicker.tsx", "e2e/U1.spec.ts"], "after": ["F1", "F3"],
-     "spec": "Per research 05 §3.3. Krok 1 z 2: h1 'Opisz problem własnymi słowami'. A large Textarea (label 'Co się dzieje? Kogo to dotyczy?', hint with an example) and <MicButton onTranscript> that appends editable text and NEVER auto-submits. Topic chips (Samotność, Opieka nad bliskim, Dojazd, Praca, Niepełnosprawność, Młodzież) that prefill the text. An optional GminaPicker (an accessible combobox over data/teryt.json gminas, with typed filter and a listbox, or a native <select> grouped by powiat if faster). A 'Pomagam komuś' checkbox that reveals 'Kim jesteś dla tej osoby?' (opiekun/rodzina/pracownik socjalny/sąsiad/inna) and switches the copy to third person. A notice 'Nie podawaj danych osobowych'. Then a Krok 2 z 2 confirmation, or straight submit via the submitReport action (M5) with a pending state ('Szukam rozwiązań…' in StatusRegion). 'Wstecz' keeps the input. Autosave the draft to localStorage (try/catch). Clarify questions (U3) are optional: if structured.pytania is non-empty, the results page shows them instead.",
-     "verify": "curl /zglos → 200 with the h1 text; e2e/U1.spec.ts: a keyboard-only fill and submit lands on /zglos/wyniki/<id>, and axeCheck passes on /zglos."},
-
-    {"id": "U2", "wave": "fan", "est": 12, "title": "Voice: speech input + read aloud", "owns": ["components/voice/MicButton.tsx", "components/voice/ReadAloudButton.tsx", "components/voice/useSpeech.ts", "components/voice/voice.test.tsx"], "after": ["F1", "F3"],
-     "spec": "MicButton: render ONLY if window.SpeechRecognition || webkitSpeechRecognition exists. lang pl-PL, interimResults; button text 'Powiedz zamiast pisać', then 'Słucham… (kliknij, aby zakończyć)'; announce state via StatusRegion; a privacy hint 'Rozpoznawanie mowy realizuje przeglądarka (Google/Apple).'; onTranscript(final text). ReadAloudButton: speechSynthesis with a pl-PL voice if available, toggling 'Przeczytaj na głos' / 'Zatrzymaj czytanie', cancelling on unmount, hidden if speechSynthesis is unsupported.",
-     "verify": "vitest jsdom: with SpeechRecognition undefined, MicButton renders nothing; with a stubbed speechSynthesis, clicking ReadAloudButton calls speak with lang pl-PL."},
-
-    {"id": "U3", "wave": "fan", "est": 8, "title": "Clarifying questions component", "owns": ["components/zglos/Clarify.tsx", "components/zglos/Clarify.test.tsx"], "after": ["F1", "F3"],
-     "spec": "Clarify {pytania, onDone(answers)}: one question at a time (fieldset/legend + RadioGroup + an always-present 'Nie wiem / Pomiń'), 'Dalej' and 'Wstecz', with StepIndicator 'Pytanie X z Y'. On finish, call onDone. On the results page it appears above the cards as 'Doprecyzuj, żeby wyniki były trafniejsze (opcjonalnie)', and the answers re-run the match through a server action owned by U4.",
-     "verify": "vitest: 2 questions → onDone receives both answers; keyboard navigation works (radio arrows)."},
-
-    {"id": "U4", "wave": "fan", "est": 18, "title": "Results page /zglos/wyniki/[id]", "owns": ["app/(public)/zglos/wyniki/[id]/page.tsx", "app/(public)/zglos/wyniki/[id]/actions.ts", "components/zglos/ResultCard.tsx", "e2e/U4.spec.ts"], "after": ["F1", "F3"],
-     "spec": "Load the report (lib/db/q/reports getReport) and corpus items for the picks. Header 'Znaleźliśmy N rozwiązań' plus a StatusRegion message. A summary of the understood problem (structured.podsumowanie plus obszar and grupa chips, with a link 'Coś się nie zgadza? Opisz inaczej'). <LocalContextStrip gminaTeryt>. A list of ResultCards: h2 title, summary, label badge (Bardzo pasuje / Pasuje / Może pasować, as text, not colour alone), evidence badge, 'Dlaczego to pasuje?' bullets, 'Co trzeba dostosować', and the source link with licence. Buttons: <ReadAloudButton>, <SimplifyButton text>, 'Wdróż u siebie' → /wdrozenie?innowacja=ID&raport=RID, 'Zapytaj pracownika ROPS' → a server action that creates a thread (subject report) then redirects to /wiadomosci/[id], 'Szczegóły' → /biblioteka/ID. Everything AI-generated is wrapped in AiLabel. If luka: a Notice 'Nie znaleźliśmy dobrze pasującego rozwiązania' plus 'Zgłoś pomysł' → /pomysl?z=RID, and 'Twoja potrzeba trafi do ROPS jako sygnał'. 'Wydrukuj kartkę' → ./kartka. If pytania exist, render <Clarify> whose onDone posts answers to a re-run action (runMatch with answers) and redirects to the new report.",
-     "verify": "Seed one report via M5 (or insert a fixture row), then curl /zglos/wyniki/<id> → 200 with 'Dlaczego to pasuje'; e2e/U4.spec.ts runs axeCheck plus a button presence check."},
-
-    {"id": "U5", "wave": "fan", "est": 8, "title": "'Wyjaśnij prościej' (AI simplification)", "owns": ["components/SimplifyButton.tsx", "app/api/simplify/route.ts", "lib/ai/prompts-simplify.ts"], "after": ["F1", "F3"],
-     "spec": "POST /api/simplify {text} → aiText (tier fast) rewriting into very plain Polish (sentences ≤10 words, no jargon, 3–5 sentences); offline returns the first 2 sentences. Button 'Wyjaśnij prościej' shows the result below, inside AiLabel, titled 'Wersja uproszczona (AI) – to nie jest tekst ETR', with a StatusRegion announcement and aria-expanded. Rate-limit by caching responses per text hash in memory.",
-     "verify": "curl -X POST localhost:3000/api/simplify -d '{\"text\":\"…\"}' returns 200 JSON with text; pnpm check:owned on owned files."},
-
-    {"id": "U6", "wave": "fan", "est": 10, "title": "'Dlaczego to ważne u Ciebie' local context strip", "owns": ["lib/local-context.ts", "lib/local-context.test.ts", "components/zglos/LocalContextStrip.tsx"], "after": ["F3", "F4"],
-     "spec": "localContext(gminaTeryt) looks up the gmina (data/teryt.json: population, 65+ share) and its powiat (data/powiaty.json: wsp_obciazenia_osobami_starszymi, beneficjenci_pomocy_spol_na_10tys, zmiana_ludnosci_2022_2025_proc) against the Małopolska average row. Returns ≤4 rows with a source 'GUS BDL' and the year. The strip renders a compact TableWithCaption ('Twoja okolica na tle Małopolski') plus one plain sentence (e.g. 'W gminie X osób 65+ jest więcej niż średnio w Małopolsce.'). Hidden when gminaTeryt is empty.",
-     "verify": "vitest: the Szczurowa TERYT (from data/synthetic.json syn-001) returns ≥3 rows with numbers; an unknown teryt returns null."},
-
-    {"id": "U7", "wave": "fan", "est": 8, "title": "Printable 'kartka'", "cut": 3, "owns": ["app/(public)/zglos/wyniki/[id]/kartka/page.tsx", "app/(public)/zglos/wyniki/[id]/kartka/print.css"], "after": ["F1", "F3"],
-     "spec": "An A4 print layout at 16pt+: 'Twoja sprawa' summary, the top 3 innovations (title plus 1 sentence plus a short URL), 'Co dalej' (3 steps), the ROPS Kraków institutional contact, the date. A 'Drukuj' button calling window.print(). The print CSS hides the header and footer.",
-     "verify": "curl the route → 200; the HTML contains the top-1 title."},
-
-    {"id": "U8", "wave": "fan", "est": 10, "title": "Spoken loop 'Tryb głosowy'", "cut": 4, "owns": ["components/voice/VoiceMode.tsx", "components/voice/VoiceMode.test.tsx"], "after": ["U2"],
-     "spec": "VoiceMode is a toggle 'Tryb głosowy – czytaj pytania na głos'. Once the user enables it (a user gesture), it reads the current step's h1 and hint aloud via speechSynthesis, and on the results page reads the 'Znaleźliśmy N…' sentence and each card title plus its first 'dlaczego' bullet in sequence, with 'Zatrzymaj'. Expose <VoiceMode scope='intake'|'results'/>. U1 and U4 may mount it if available, so mention this in notes.",
-     "verify": "vitest with a stubbed speechSynthesis: enabling it calls speak at least once; disabling calls cancel."},
-
-    {"id": "L1", "wave": "fan", "est": 12, "title": "Library list /biblioteka", "owns": ["app/(public)/biblioteka/page.tsx", "components/biblioteka/Filters.tsx", "lib/db/q/innovations.ts", "e2e/L1.spec.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "lib/db/q/innovations.ts: listInnovations({obszar?, type?, evidence?, withVideo?, q?}) reads the DB, falling back to getCorpus() if the table is empty; getInnovation(id); updateInnovation(id, patch) (used by A3). Page: h1 'Biblioteka innowacji społecznych', a filters <form method=get> with a 'Pokaż wyniki' submit (no auto-filtering), a result count in StatusRegion, and Card list items (title link, summary, obszar, evidence, a 'Film' badge if video). Footer attribution to ROPS Kraków plus the licence.",
-     "verify": "curl /biblioteka?obszar=Seniorzy → 200 and the count equals the corpus count for Seniorzy; e2e axeCheck passes."},
-
-    {"id": "L2", "wave": "fan", "est": 14, "title": "Innovation detail /biblioteka/[id]", "owns": ["app/(public)/biblioteka/[id]/page.tsx", "components/biblioteka/VideoEmbed.tsx", "components/biblioteka/Sections.tsx", "e2e/L2.spec.ts"], "after": ["F1", "F3"],
-     "spec": "h1 title; badges; summary; the 5 ROPS sections (Na czym polega rozwiązanie?, Jakich problemów dotyczy?, Grupa docelowa, Kto może skorzystać?, Czy to działa?) when sections exist, else a Notice with a link to the source only. VideoEmbed: YouTube nocookie iframe with a descriptive title, cc_load_policy=1&cc_lang_pref=pl&hl=pl, no autoplay, and a 'Opis filmu' details element. Materials ZIP link. Attribution and licence. Actions: ReadAloudButton (summary), SimplifyButton, 'Wdróż u siebie' → /wdrozenie?innowacja=ID, and <TesterWidget innovationId> (T1).",
-     "verify": "curl /biblioteka/rops-001 → 200 with 'Na czym polega'; e2e axeCheck on one entry with a video and one without a licence."},
-
-    {"id": "L3", "wave": "fan", "est": 10, "title": "Challenges /wyzwania", "owns": ["app/(public)/wyzwania/page.tsx", "e2e/L3.spec.ts"], "after": ["F1", "F3", "F4"],
-     "spec": "h1 'Wyzwania społeczne Małopolski'. The 8 areas from data/challenges.json as accordion or sections (definicja, key wyzwania, source link to the ROPS Mapa Wyzwań Społecznych PDF), with a note that the data are national (from the Mapa). Then 'Małopolska w liczbach – powiaty': a sortable TableWithCaption from data/powiaty.json (powiat, ludność, % 65+, obciążenie osobami starszymi, beneficjenci pomocy społ. /10 tys., zmiana ludności %), a source line 'GUS BDL, 2025/2024', and a 2-sentence text summary (the highest and lowest 65+ share). No map needed.",
-     "verify": "curl → 200; the table has 22 data rows; axeCheck passes."},
-
-    {"id": "L4", "wave": "fan", "est": 10, "title": "Knowledge pages /wiedza", "owns": ["app/(public)/wiedza/page.tsx", "content/wiedza.ts"], "after": ["F1"],
-     "spec": "Plain-Polish educational sections with sources (read {research}/01-rops-ecosystem.md): 1) Czym jest innowacja społeczna; 2) Jak ROPS Kraków testuje innowacje (Inkubator Włączenia Społecznego, IWS 2.0: pomysł → test → upowszechnienie, grants up to 120 tys. zł); 3) Usługa Wrażliwa: wdrażanie sprawdzonych innowacji w gminach (Ścieżka A grants up to 600 tys. zł, Ścieżka B doradztwo); 4) Jak zgłosić pomysł w Iskrze; 5) Słowniczek (JST, OPS, CUS, DPS, ETR, PJM). Every factual claim links to its rops.krakow.pl source. Headings h2, ≤15-word sentences.",
-     "verify": "curl → 200 containing 'Usługa Wrażliwa' and ≥4 rops.krakow.pl links."},
-
-    {"id": "T1", "wave": "fan", "est": 14, "title": "Tester widget (module IV)", "owns": ["components/tester/TesterWidget.tsx", "components/tester/actions.ts", "lib/db/q/tester.ts", "e2e/T1.spec.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "A section 'Przetestuj i oceń'. (a) 'Zgłoś się do testów' form: rola, gmina (optional), wiadomość, then insert into test_signups and notify rops 'nowy_tester'. (b) An accessible rating: RadioGroup legend 'Jak oceniasz to rozwiązanie?' with options 1–5 labelled in words (1 – słabo … 5 – bardzo dobrze), 'Co działa?' and 'Co poprawić?' textareas, inserted into ratings. Show the aggregate 'Średnia ocena: X/5 (N ocen)' and the latest 3 feedback snippets (redacted). lib/db/q/tester.ts: addSignup, addRating, getAggregate(innovationId), listSignups(sessionId), listAll() (for A4).",
-     "verify": "e2e: submit a 4-star rating on /biblioteka/rops-001 and the aggregate text updates; DB rows exist."},
-
-    {"id": "T2", "wave": "fan", "est": 8, "title": "/testuj page", "owns": ["app/(public)/testuj/page.tsx"], "after": ["T1", "L1"],
-     "spec": "h1 'Testuj innowacje'. A list of innovations with seeking_testers=true (fall back to the top 6 'Rekomendowana do upowszechniania' if none), each linking to its detail #testuj. Below, 'Twoje zgłoszenia do testów' for the current session.",
-     "verify": "curl → 200; after a T1 signup, the innovation title appears in the section."},
-
-    {"id": "K1", "wave": "fan", "est": 8, "title": "IWS 2.0 criteria + thresholds (verify R2)", "owns": ["lib/iws.ts", "lib/iws.test.ts"], "after": ["F3"],
-     "spec": "FIRST verify the thresholds against the official IWS 2.0 'Karta oceny merytorycznej' (zał. 5). Find the URL in {research}/01-rops-ecosystem.md and fetch it if reachable. Expected criteria: Innowacyjność rozwiązania; Adekwatność do potrzeb odbiorców i użytkowników; Efektywność kosztowa; Uniwersalność; Wizja rozwoju pomysłu w przyszłości, each 0–10. Pass = total ≥21 AND innowacyjność ≥5 AND each other ≥4. Put the source URL plus the verification status in a comment. passes(scores) returns {pass, reasons[]} with Polish reasons ('Suma 19 < 21', 'Innowacyjność 4 < 5').",
-     "verify": "vitest ≥6 boundary fixtures pass; notes state whether the thresholds were confirmed from the PDF."},
-
-    {"id": "K2", "wave": "fan", "est": 14, "title": "Kreator step 1: fiszka /pomysl", "owns": ["app/(public)/pomysl/page.tsx", "app/(public)/pomysl/actions.ts", "lib/db/q/ideas.ts", "components/pomysl/IdeaSteps.tsx", "e2e/K2.spec.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "h1 'Zgłoś pomysł na innowację społeczną'. StepIndicator 'Krok 1 z 4: Fiszka'. Fields: tytuł, na czym polega, dla kogo, jaki problem rozwiązuje, etap (pomysł/prototyp/testowane/działa). If ?z=<reportId>, prefill problem from report.structured.podsumowanie. Save → insert the idea, notify rops 'nowy_pomysl' plus emailSim to 'Zespół ROPS (symulacja)', redirect to /pomysl/[id]/kanwa. lib/db/q/ideas.ts: createIdea, getIdea, updateIdea(id, patch), listIdeas(). components/pomysl/IdeaSteps.tsx: a shared step nav for the 4 steps (Fiszka, Kanwa, Ocena IWS, Wniosek), with Wniosek shown only if an active call exists.",
-     "verify": "e2e: fill the fiszka → redirected to /pomysl/<id>/kanwa; the DB idea row exists; the admin notification count increased."},
-
-    {"id": "K3", "wave": "fan", "est": 14, "title": "Kreator step 2: kanwa + AI assistant", "owns": ["app/(public)/pomysl/[id]/kanwa/page.tsx", "app/(public)/pomysl/[id]/kanwa/actions.ts", "lib/ai/prompts-kanwa.ts"], "after": ["K2"],
-     "spec": "Kanwa fields (labelled 'Kanwa inspirowana formularzem IWS 2.0'): problem, odbiorcy, rozwiązanie, zmiana, innowacyjność, skala i wdrożenie, zasoby i koszty, zespół. Each Textarea has a hint question. 'Poproś asystenta AI o podpowiedzi' → aiObject (tier smart) returns, per field, ≤3 suggestions plus 1 question (wrapped in AiLabel), shown next to the fields. The user copies them manually; nothing auto-overwrites. Save → updateIdea(kanwa) → /pomysl/[id]/ocena.",
-     "verify": "curl the route for an existing idea → 200; one live assistant call returns suggestions (or offline fallback suggestions when AI is off)."},
-
-    {"id": "K4", "wave": "fan", "est": 14, "title": "Kreator step 3: IWS 2.0 pre-score", "owns": ["lib/prescore.ts", "lib/prescore.test.ts", "app/(public)/pomysl/[id]/ocena/page.tsx", "app/(public)/pomysl/[id]/ocena/actions.ts"], "after": ["K1", "K2"],
-     "spec": "prescoreIdea(fiszka, kanwa) uses aiObject (tier smart): scores 0–10 per IWS criterion plus a one-sentence uzasadnienie each plus doPoprawy[] (≤3). The VERDICT is computed by passes() from lib/iws.ts, never by the LLM. The page has a TableWithCaption 'Ocena wstępna wg karty IWS 2.0' (kryterium, punkty, próg, uzasadnienie), a big verdict 'Przeszłoby ocenę merytoryczną' or 'Nie przeszłoby – popraw: …', a Disclaimer 'Symulacja AI. Oficjalną ocenę wystawia komisja ROPS.', 'Popraw kanwę' → back, and 'Dalej: wniosek' (only if a call is active). Persist the assessment.",
-     "verify": "vitest: a mocked LLM with innowacyjność 4 and total 30 → verdict fail with reason; the page renders for a seeded idea."},
-
-    {"id": "K5", "wave": "fan", "est": 14, "title": "Kreator step 4: grant application draft", "owns": ["app/(public)/pomysl/[id]/wniosek/page.tsx", "app/(public)/pomysl/[id]/wniosek/actions.ts", "lib/ai/prompts-wniosek.ts"], "after": ["K2"],
-     "spec": "Visible only if a calls row is active (otherwise a Notice 'Generator wniosków działa tylko w trakcie naboru' plus the call dates). aiObject (tier smart) drafts sections following the IWS 2.0 application form (Opis innowacji, Innowacyjność rozwiązania, Diagnoza problemu (with a reference to the Mapa Wyzwań Społecznych), Opis odbiorców, Zmiana, Wizja przyszłości, Plan działania i koszty (okres przygotowawczy ≤3 mies., testowanie ≤9 mies.), Wnioskowana kwota (≤120 000 zł), Zespół) from the fiszka plus kanwa. Each section is an editable Textarea inside AiLabel. 'Pobierz szkic (.md)' downloads via a Blob. Persist grant_draft.",
-     "verify": "With the DEMO call active, the page renders ≥8 section textareas after generation; with the call inactive, the Notice shows."},
-
-    {"id": "W1", "wave": "fan", "est": 12, "title": "Middleman: institution profile /wdrozenie", "owns": ["app/(public)/wdrozenie/page.tsx", "app/(public)/wdrozenie/actions.ts", "lib/db/q/middleman.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "h1 'Middleman Innowacji – wdróż sprawdzone rozwiązanie u siebie'. If ?innowacja=ID, show the innovation card summary; else an innovation Select over the corpus. Profile form: typ instytucji (OPS, CUS, gmina, NGO, szkoła, DPS, inna), gmina (the GminaPicker from U1, or a native select of data/teryt.json), wielkość (liczba mieszkańców/odbiorców), budżet orientacyjny (zł), kadra, partnerzy. Submit → buildServiceCard + checkUw → insert middleman_cards → redirect /wdrozenie/[id]. lib/db/q/middleman.ts: createCard, getCard.",
-     "verify": "e2e or curl: posting the form with rops-001 creates a card row and redirects."},
-
-    {"id": "W2", "wave": "fan", "est": 14, "title": "Middleman: service card generation + page", "owns": ["lib/middleman.ts", "lib/middleman.test.ts", "lib/ai/prompts-middleman.ts", "app/(public)/wdrozenie/[id]/page.tsx"], "after": ["W1"],
-     "spec": "buildServiceCard(innovation, profile) uses aiObject (tier smart) with the ServiceCard zod schema. The prompt includes the innovation's sections (Na czym polega, Kto może skorzystać, Czy to działa) and the profile. Use the EU transfer method: separate the 'rdzeń' (must stay) from the 'elementy do dostosowania'. Realistic costs as ranges with assumptions; steps by month. Offline fallback: a template from the innovation fields. Page /wdrozenie/[id]: h1 'Karta usługi: <tytuł> w <gmina>', sections (Rdzeń, Do dostosowania, Kroki (an ordered list with months), Role, Koszty, Partnerzy, Ryzyka, Wskaźniki, Źródła finansowania) in AiLabel, <UwPanel check>, and 'Wyślij do ROPS' → a thread (subject middleman) plus notify rops, then redirect to the thread. ReadAloudButton on the summary.",
-     "verify": "vitest: the offline template validates against the schema; the page renders for a created card with 'Rdzeń' and 'Usługa Wrażliwa'."},
-
-    {"id": "W3", "wave": "fan", "est": 12, "title": "Usługa Wrażliwa readiness rules (verify R1)", "owns": ["lib/uw.ts", "lib/uw.test.ts"], "after": ["F3"],
-     "spec": "FIRST verify the rules on the ROPS Usługa Wrażliwa pages (URL in {research}/01-rops-ecosystem.md, source [10]): who may apply, the Ścieżka A grant cap (600 000 zł?), the Ścieżka B (doradztwo/instruktaż) scope, and the current call status. Encode them deterministically: Małopolska TERYT (starts with '12') required; the innovation must come from the ROPS library; the institution type must be eligible per the rules; budget ≤ cap and a plausible team → route A, else B; outside Małopolska → 'niekwalifikowane'. The checklist uses 'macie / brakuje / do ustalenia' items (e.g. 'Partner realizujący (NGO/OPS)', 'Wkład kadrowy', 'Grupa odbiorców zdiagnozowana', 'Budżet ≤ limit'). nextStep includes the ROPS UW page URL. caveat: 'Uproszczone zasady – sprawdź aktualny regulamin naboru.' Put the source URLs and the verification status in comments.",
-     "verify": "vitest ≥5 fixtures (non-Małopolska → niekwalifikowane; budget over the cap → B; complete OPS → A; …); notes report which rules were confirmed from the source."},
-
-    {"id": "W4", "wave": "fan", "est": 8, "title": "Usługa Wrażliwa panel UI", "owns": ["components/wdrozenie/UwPanel.tsx", "components/wdrozenie/UwPanel.test.tsx"], "after": ["F1", "F3"],
-     "spec": "UwPanel {check}: h2 'Czy to może być Usługa Wrażliwa?'. A route badge (Ścieżka A – grant / Ścieżka B – doradztwo / Niekwalifikowane), as text. A checklist table (Wymaganie | Stan) with stan as text plus an icon (never colour alone). nextStep with a link. The caveat in a Notice. Note that the rule logic is deterministic, not AI.",
-     "verify": "vitest renders all 3 routes; the checklist rows count matches the input."},
-
-    {"id": "C1", "wave": "fan", "est": 12, "title": "Notifications + e-mail simulation + Bell", "owns": ["lib/notify.ts", "lib/notify.test.ts", "components/shell/Bell.tsx", "app/api/notifications/route.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "notify inserts into notifications; emailSim inserts into email_log (labelled simulation, with no real sending); unreadCount(recipient); listFor(recipient); markRead(ids). Recipient for the current user: 'session:<sid>', or also 'rops' when role=rops. Bell (a server component, with a client refresh every 20 s via /api/notifications) is a link to /wiadomosci (or /admin for rops) with aria-label 'Powiadomienia, N nowych' and a visible count badge. When notifying 'rops', also emailSim 'Nowe zgłoszenie w Iskrze'. When notifying 'session:*', emailSim to 'Autor zgłoszenia (symulacja)'.",
-     "verify": "vitest with a mocked db: notify then unreadCount increments; curl /api/notifications returns JSON {count}."},
-
-    {"id": "C2", "wave": "fan", "est": 16, "title": "Threads /wiadomosci (module V)", "owns": ["app/(public)/wiadomosci/page.tsx", "app/(public)/wiadomosci/[id]/page.tsx", "app/(public)/wiadomosci/actions.ts", "lib/db/q/threads.ts", "e2e/C2.spec.ts"], "after": ["C1"],
-     "spec": "lib/db/q/threads.ts: createThread({subjectType, subjectId, title, authorSessionId, firstMessage}), listThreadsForSession(sid), listAllThreads() (admin), getThread(id) with messages, addMessage. /wiadomosci: 'Twoje sprawy' with status and unread markers, plus a 'Zadaj pytanie ROPS' form. /wiadomosci/[id]: the message list (an ordered list, role label 'Ty' / 'ROPS Kraków' / 'Mentor'), a reply form, and the message 'ROPS zwykle odpowiada w ciągu 7 dni roboczych (tryb demo: od razu)'. When the author posts → notify rops. When rops posts → notify session:<author> plus emailSim to the author and mark the thread 'odpowiedziano'. Admin sees all threads. Mentor assignment is an optional select (CUT 2).",
-     "verify": "e2e with two browser contexts (mieszkaniec, rops via the role cookie): the resident asks → the rops bell count increases → rops replies → the resident's bell increases → an email_log row exists. This proves the DETAILS §6 communication loop."},
-
-    {"id": "A1", "wave": "fan", "est": 14, "title": "Admin inbox /admin", "owns": ["app/admin/page.tsx", "app/admin/actions.ts", "e2e/A1.spec.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "requireRole('rops') (otherwise a Notice explaining how to switch the demo role). h1 'Panel ROPS – skrzynka'. Tabs or sections: Zgłoszenia (reports: date, obszar, gmina, luka badge, status Select (nowe / w weryfikacji / opublikowane / zamknięte) with a 'Zapisz' per row, link to the results, 'Odpowiedz' → create or open a thread), Pomysły (ideas: title, IWS verdict, status), Wdrożenia (middleman cards: innovation, gmina, UW route). Counters at the top (nowe zgłoszenia, luki, nowe pomysły, nieprzeczytane wiadomości). A status change notifies the author's session.",
-     "verify": "e2e as rops: change a report status → persisted after reload; axeCheck passes."},
-
-    {"id": "A2", "wave": "fan", "est": 14, "title": "Admin trends + gaps", "owns": ["app/admin/trendy/page.tsx", "app/admin/luki/page.tsx", "lib/db/q/trends.ts", "components/admin/BarChart.tsx"], "after": ["F1", "F2", "F3"],
-     "spec": "lib/db/q/trends.ts: countsByObszar(), countsByPowiat(), countsByWeek(), lukiByObszar() with sample redacted texts. /admin/trendy: h1 'Trendy potrzeb'. An accessible SVG BarChart (role=img plus aria-label summary, direct value labels, a pattern or label rather than colour alone) and ALWAYS a TableWithCaption 'Pokaż dane w tabeli' (details open by default), plus a 2–3 sentence auto-summary ('Najczęściej zgłaszane: Seniorzy (12)…'). Also by powiat. /admin/luki: h1 'Luki innowacyjne – potrzeby bez dobrego rozwiązania'. Grouped by obszar with counts and 2 sample texts each, and the button 'Przekaż jako temat naboru' (sets a note on the call description via the calls table, or shows a confirmation Notice).",
-     "verify": "With the seeded synthetic reports (or ≥3 inserted fixtures), both pages render non-empty tables; axeCheck passes."},
-
-    {"id": "A3", "wave": "fan", "est": 12, "title": "Admin library editor", "owns": ["app/admin/biblioteka/page.tsx", "app/admin/biblioteka/[id]/page.tsx", "app/admin/biblioteka/actions.ts"], "after": ["L1"],
-     "spec": "List: title, obszar, status, seeking_testers, edited_at, and 'Edytuj'. Edit form: title, summary, obszar (Select), keywords (comma separated), status (opublikowana/ukryta), seeking_testers checkbox. Save → updateInnovation (L1's q module) plus edited_at plus a Notice 'Zapisano – zmiany widoczne od razu'. Hidden items are excluded from the public list and from matching (note this for M3 in contract_requests if retrieval reads the corpus JSON instead of the DB).",
-     "verify": "Edit the title of rops-002 → /biblioteka/rops-002 shows the new title."},
-
-    {"id": "A4", "wave": "fan", "est": 12, "title": "Admin: nabory, poczta, testy", "owns": ["app/admin/nabory/page.tsx", "app/admin/nabory/actions.ts", "app/admin/poczta/page.tsx", "app/admin/testy/page.tsx"], "after": ["F1", "F2", "F3"],
-     "spec": "/admin/nabory: a list of calls with an 'Aktywny' toggle (a form plus submit) and dates. A 'Dodaj nabór (DEMO)' form. /admin/poczta: an email_log table (data, do, temat, treść as details) titled 'Poczta wychodząca – symulacja (e-maile nie są wysyłane)'. /admin/testy: test_signups and ratings tables (innowacja, ocena, opinia, data) plus per-innovation averages.",
-     "verify": "Toggle the DEMO call off → /pomysl/<id>/wniosek shows the 'tylko w trakcie naboru' notice (when K5 is done); the tables render."},
-
-    {"id": "A5", "wave": "fan", "est": 8, "title": "Admin AI cost & audit", "owns": ["app/admin/koszty-ai/page.tsx", "lib/ai/pricing.ts"], "after": ["F1", "F2", "F3"],
-     "spec": "lib/ai/pricing.ts: USD per 1M tokens for the MODELS (copy current prices from {research}/04-architecture-ai-cost.md and cite it) and PLN_PER_USD 3.8881. The page: h1 'Koszty i audyt AI'. A TableWithCaption by kind (calls, avg ms, tokens in/out, estimated cost PLN), totals, 'koszt na 1 zgłoszenie' (the average of kinds structure+rerank per report), and a note on the AI Act: logs exist for oversight. These numbers feed the cost slide.",
-     "verify": "After some live calls, the page shows totals > 0; the pricing constants cite the 04 doc."},
-
-    {"id": "X1", "wave": "fan", "est": 12, "title": "Landing page /", "owns": ["app/(public)/page.tsx", "components/landing/"], "after": ["F1"],
-     "spec": "h1 'Iskra – od potrzeby do wdrożenia w Twojej gminie'. Lead: 1–2 plain sentences. A primary big button 'Opisz problem' → /zglos (with a hint 'Możesz też powiedzieć – mikrofon'). Three role tiles: 'Mieszkaniec / NGO: zgłoś potrzebę', 'Gmina / instytucja: znajdź i wdróż rozwiązanie' → /wdrozenie, 'Masz pomysł? Zgłoś innowację' → /pomysl. A 'Jak to działa' 4-step ordered list (Opisz → Dopasujemy sprawdzone innowacje ROPS → Wdrożenie z kartą usługi i ścieżką Usługa Wrażliwa → ROPS widzi luki i ogłasza nabory). Trust strip: '115 innowacji z Biblioteki ROPS Kraków', 'WCAG 2.1 AA', 'AI z nadzorem człowieka'. A non-digital channel: 'Wolisz zadzwonić? ROPS Kraków' (institutional contact). A demo-mode notice.",
-     "verify": "curl / → 200 with the h1; axeCheck passes."},
-
-    {"id": "X2", "wave": "fan", "est": 8, "title": "Deklaracja dostępności /dostepnosc", "owns": ["app/(public)/dostepnosc/page.tsx"], "after": ["F1"],
-     "spec": "Use the Polish template from {research}/05-accessibility-ux.md §4: the a11y-* ids (a11y-podmiot, a11y-data-publikacja, a11y-data-aktualizacja, a11y-status, a11y-kontakt, a11y-procedura, etc. exactly as in the template) and <time datetime> elements. Clearly mark it as a prototype for the HackYeah demo: placeholders, no personal data. Known limitations: PJM in preparation, the voice features depend on the browser, the AI text simplification is not ETR.",
-     "verify": "curl → 200; the HTML contains id=\"a11y-podmiot\", id=\"a11y-kontakt\" and <time."},
-
-    {"id": "X3", "wave": "fan", "est": 10, "title": "O projekcie, ETR, PJM pages", "owns": ["app/(public)/o-projekcie/page.tsx", "app/(public)/etr/page.tsx", "app/(public)/pjm/page.tsx"], "after": ["F1", "F3"],
-     "spec": "/o-projekcie: what Iskra is; AI use (which models from lib/ai/models.ts are imported and listed, what AI does and doesn't do, human oversight, the AI Act Art. 50 transparency statement, logs); data sources and licences (ROPS Biblioteka CC BY 4.0 with links, Mapa Wyzwań, GUS BDL, TERYT), the synthetic-data notice, the demo-mode notice, privacy (redaction before AI, no personal data, EU region fra1), the roadmap (Bielik/PLLuM endpoint via env, login.gov.pl, Witkac export, innowacjespoleczne.pl import, PJM videos, an external WCAG audit). /etr: a short easy-to-read page about the service (very short sentences, one idea per line) labelled 'Tekst prosty (nie jest to certyfikowany ETR)'. /pjm: an honest placeholder 'Tłumaczenie na PJM – w przygotowaniu' plus a contact.",
-     "verify": "curl all 3 → 200; /o-projekcie contains every model id string from lib/ai/models.ts."},
-
-    {"id": "X4", "wave": "post", "est": 12, "title": "Seed script (demo data)", "owns": ["scripts/seed-db.ts"], "after": ["M5", "E1", "K2", "C2"],
-     "spec": "Idempotent seeding (it deletes rows with synthetic=true first): upsert the 115 innovations from data/corpus.json plus embeddings (from corpus.embedded.json if present), with seeking_testers=true on 6 recommended ones. Insert 1 active call 'Nabór DEMO – Inkubator (IWS 2.0) – symulacja'. Run runMatch over all 25 data/synthetic.json texts with gminaTeryt (marking the rows synthetic=true; if AI fails, set AI_MODE=off for the run). Add 3 synthetic ideas (one with a failing IWS verdict), 6 ratings, 3 test signups, and 1 thread with a ROPS reply. Print the counts.",
-     "verify": "pnpm seed prints innovations=115, reports≥25, calls≥1; a re-run gives the same counts (idempotent)."},
-
-    {"id": "E2", "wave": "post", "est": 10, "title": "Matchmaking eval hit@3", "owns": ["scripts/eval-match.ts", "docs/eval.md"], "after": ["M5", "E1"],
-     "spec": "For each of the 25 synthetic problems, run the pipeline WITHOUT the DB write (call structure → retrieve → rerank directly). A pick is relevant if its obszar, targetGroups or keywords intersect expected_tags (case-insensitive, stem match). Compute hit@1, hit@3 and MRR for AI_MODE=on and AI_MODE=off. Write docs/eval.md: a method paragraph, a results table, the 3 worst cases with an explanation, and an honest note on weak corpus areas (poverty, depopulation, homelessness).",
-     "verify": "docs/eval.md exists with numeric hit@3 for both modes."},
-
-    {"id": "Q1", "wave": "post", "est": 12, "title": "A11y scan + Lighthouse report", "owns": ["scripts/a11y-scan.ts", "e2e/a11y.spec.ts", "docs/a11y-report.md"], "after": ["U1", "U4", "L2", "K4", "W2", "A2", "X1"],
-     "spec": "A Playwright spec visiting /, /zglos, a seeded /zglos/wyniki/<id>, /biblioteka/rops-001, /pomysl, /wdrozenie/<seeded card id>, /admin/trendy (as rops), /dostepnosc: axe with tags wcag2a, wcag2aa, wcag21a, wcag21aa, wcag22aa. Write docs/a11y-report.md (route | violations by impact | top rule ids). Run npx lighthouse (if available offline) on / and /zglos, mobile, accessibility category only, and record the scores. List serious/critical items per owning WP for the fixers.",
-     "verify": "docs/a11y-report.md has 8 routes with counts."},
-
-    {"id": "Q2", "wave": "post", "est": 8, "title": "Production smoke test", "owns": ["scripts/smoke-prod.ts"], "after": ["X4"],
-     "spec": "Given BASE_URL, check (with fetch plus a cookie jar) that: / 200; POST a report through the /zglos form action (or call the API) yields a results page with ≥1 card or a luka notice; /biblioteka/rops-001 200; /pomysl 200; /wdrozenie?innowacja=rops-001 200; /wiadomosci 200; /admin with role=rops cookie 200 containing 'skrzynka'; /admin/trendy 200; /dostepnosc 200. Print a ✓/✗ table and exit 1 on any ✗.",
-     "verify": "BASE_URL=http://localhost:3000 pnpm tsx scripts/smoke-prod.ts → all ✓."},
-
-    {"id": "D1", "wave": "fan", "est": 10, "title": "README + AI_WORKFLOW + dependency list", "owns": ["README.md", "AI_WORKFLOW.md", "docs/dependencies.md"], "after": ["F0"],
-     "spec": "README in Polish with a short English section: what Iskra is, the live URL placeholder, demo roles, modules I–VII with routes, setup (pnpm i; vercel link; vercel env pull .env.local; pnpm db:push; pnpm seed; pnpm dev), tests (pnpm test, pnpm e2e), data sources and licences, AI use, and a statement that only the research existed before 3 Oct 11:00 (the research was done 3–4 Oct during the event). AI_WORKFLOW.md: models (Claude Opus 5.5 via Claude Code as the orchestrator, subagents, Claude Haiku 4.5 / Sonnet 5.5 via Vercel AI Gateway in the product, qwen3-embedding), the workflow (research tracks → contract-first fan-out of ~45 work packages → integration → materials), main prompts summarised, validation (unit tests, e2e, axe, eval), limitations, with no secrets. docs/dependencies.md: generated from package.json (name, version, licence via node_modules/<pkg>/package.json) — the contract asks for a complete toolchain list.",
-     "verify": "The files exist; git grep -nE '(sk-|postgres://|@[a-z0-9-]+\\.(pl|com))' README.md AI_WORKFLOW.md finds no secrets or e-mails."},
-
-    {"id": "G1", "wave": "fan", "est": 15, "title": "Pitch deck HTML (10 slides, PL)", "owns": ["docs/deck/"], "after": ["F0"],
-     "spec": "docs/deck/index.html: 10 slides at 1280×720 using @page size and page-breaks, the Iskra brand tokens, Polish, and {{placeholders}} for numbers and screenshots (filled in the materials wave). Slides: 1 Iskra – od potrzeby do wdrożenia w Twojej gminie; 2 Problem (the Mapa Wyzwań areas plus Małopolska numbers: 65+ share 18.6% → 21.8%, 93.8k people on social assistance, sources); 3 Rozwiązanie: the loop (zgłoszenie → dopasowanie → wdrożenie → luka → nabór); 4 Demo: {{shots}}; 5 Moduły I–VII matrix (built / simplified / simulated, honest); 6 Dostępność (WCAG 2.1 AA + 2.2 items, voice, read aloud, the deklaracja, {{axe}} {{lighthouse}}); 7 AI: architecture, ID guard, PII redaction, AI Act label, human oversight, eval {{hit3}}, Bielik/PLLuM-ready; 8 Wdrożenie: Usługa Wrażliwa path plus the IWS 2.0 pre-score plus integrations (Witkac export, login.gov.pl, the grant DB) plus {{cost_table}}; 9 Roadmap; 10 Zespół {{team}} plus links {{demo_url}} {{video_url}}. Add scripts/build-deck.ts? NO, that's the lead's: just make index.html printable via Playwright page.pdf(). Read research 00/03/04/05/07 for content. No competitor names on slides.",
-     "verify": "Opening the file in Chromium prints exactly 10 pages (the lead checks); every placeholder is listed in docs/deck/PLACEHOLDERS.md."},
-
-    {"id": "G2", "wave": "fan", "est": 10, "title": "Cost estimate table (PL)", "owns": ["docs/koszty.md", "docs/koszty.json"], "after": ["F0"],
-     "spec": "From {research}/04-architecture-ai-cost.md §6: pilot (1 000 users, 500 reports/month) and region scale (50 000 users, 10 000 reports) monthly costs in PLN: hosting, DB, LLM per operation, embeddings, e-mail, monitoring, maintenance staff (FTE), plus 05 §7.2 items (a PJM translation budget, an external WCAG audit, as one-off 'szac.' items). Include the assumptions, the exchange rate (NBP 3.8881) and the sources. The JSON has the same numbers, and a check that the row sums equal the totals. Polish headings, ready for slide 8 and the HackTribe 'przewidywany koszt' field.",
-     "verify": "A node one-liner recomputes the sums in docs/koszty.json and they equal the stated totals."},
-
-    {"id": "G3", "wave": "fan", "est": 12, "title": "Video script + captions (PL, ≤3:00)", "owns": ["docs/video/"], "after": ["F0"],
-     "spec": "docs/video/script.md: a shot list with timecodes ≤2:55 following {research}/05 §7.1, adapted to Iskra and the plan's demo anchors (08 §6): the persona from syn-001 (a daughter reports for an 82-year-old mother in Szczurowa via 'Pomagam komuś' and voice) → results with 'Dlaczego to pasuje' plus local context → Wyjaśnij prościej / read aloud → Wdróż u siebie → the service card plus Usługa Wrażliwa route → Kreator IWS verdict → admin: bell, reply, trendy/luki → keyboard plus screen reader plus high contrast flash → axe/Lighthouse plus the deklaracja → close with the name and URL. Narration in plain Polish. docs/video/captions.srt matching the timecodes. docs/video/checklist.md: what the user must click, in order, while recording.",
-     "verify": "The timecodes sum to ≤175 s (verified by a script in the notes); the .srt parses (sequential indices, valid times)."},
-
-    {"id": "G4", "wave": "fan", "est": 10, "title": "HackTribe submission text (PL)", "owns": ["docs/hacktribe.md"], "after": ["F0"],
-     "spec": "Polish: title (≤5 words, e.g. 'Iskra – od potrzeby do wdrożenia'), a description (≤500 words: problem, solution, modules I–VII, what's unique (Usługa Wrażliwa path, the IWS 2.0 pre-score with thresholds in code, the senior voice flow plus proxy mode, local GUS context), real ROPS data (CC BY 4.0) plus synthetic labels, AI use and oversight, accessibility, how to test (demo roles, URL), cost summary {{koszt}}, and a TEAM placeholder line). Also the field-by-field paste list (PDF, mp4, demo link, mockups, repo access note: 'repozytorium prywatne – dostęp na prośbę jury' per the copyright terms). Word count printed at the end.",
-     "verify": "The description word count is ≤500 (count with wc -w on the description block)."},
-
-    {"id": "G5", "wave": "post", "est": 10, "title": "Screenshots / UX-UI mockups board", "owns": ["scripts/shots.ts", "docs/mockups/"], "after": ["X4"],
-     "spec": "A Playwright script taking screenshots at 1440×900 and 390×844 of: /, /zglos, a results page, /biblioteka/rops-001, /pomysl/<id>/ocena, /wdrozenie/<id>, /wiadomosci/<id>, /admin/trendy (rops), plus the high-contrast and A++ variants of /zglos. Compose docs/mockups/board.html (a grid with Polish captions) and render it to board.png. These are the UX/UI mockups deliverable.",
-     "verify": "≥10 PNGs plus board.png exist."}
-  ]
+ "repo": "../iskra",
+ "research": "research/hubmi",
+ "rules": [
+  "You are one of many parallel agents building 'Iskra', a Polish-language web app for the HackYeah 2026 HubMI.pl task (ROPS Kraków). The deadline is hard (11:00 CEST), so be fast and pragmatic. A thin but working feature beats a perfect one that isn't finished.",
+  "Repo: {repo}. The research and plan are in {research} (read 08-iskra-task-plan.md §2 for the architecture, and 05-accessibility-ux.md for UX rules if you build UI).",
+  "FILE OWNERSHIP: you may create or edit ONLY the paths listed in your WP's 'owns'. You may read anything. Frozen shared files (lib/contracts.ts, lib/db/schema.ts, lib/ai/*, components/ui/*, components/shell/*, lib/nav.ts, app/layout.tsx, app/globals.css, package.json, configs) must NOT be edited. If you need a change, describe it in 'contract_requests' in your final output and work around it.",
+  "NEVER run: pnpm install/add/remove, next build, next dev, a full 'tsc', git commit/push/checkout/stash, vercel, drizzle-kit push. These are run by the lead only. Shared processes already running: 'tsc --watch' writes to .tsc-watch.log, and 'next dev' serves http://localhost:3000.",
+  "Typecheck with: pnpm check:owned <your paths...>. It reads .tsc-watch.log and reports only errors in your files, so wait about 5 s after saving. Unit tests: pnpm vitest run <your test files> (keep tests co-located as *.test.ts in your owned paths). UI check: curl -s -o /dev/null -w '%{http_code}' http://localhost:3000/<route> must be 200, and curl the HTML for your expected Polish heading. Optional: pnpm playwright test e2e/<WP-ID>.spec.ts --workers=1.",
+  "If you depend on another WP's module that is not done yet, import it from its path anyway. The foundation created typed stubs that return fixtures, and the real implementation will replace them at the same path and signature.",
+  "UI rules: Polish copy, plain language (≤15 words per sentence, concrete verbs on buttons). Use only components/ui/* and design tokens: no raw colours, ≥44px targets, visible labels plus hints, inline errors with an error summary starting 'Błąd:', and a single <h1>. Announce dynamic results through <StatusRegion>. Wrap every AI output in <AiLabel>. Never use colour alone. Every chart or map needs a <TableWithCaption> equivalent.",
+  "AI rules: call models ONLY through lib/ai/gateway.ts (aiObject/aiText/embedTexts). Each call needs an 'offline' fallback for AI_MODE=off. In unit tests, mock the gateway. Make at most 2 live AI calls in total for your own verification. Always pass text through redact() before any AI call or DB write of user text.",
+  "Data rules: no real personal data. Seeded or demo rows set synthetic=true. ROPS library content is credited 'Źródło: ROPS Kraków, Biblioteka Innowacji Społecznych' with the licence and a link.",
+  "Finish by returning the structured result: id, status (done | partial | blocked), files you changed, the verify commands you ran with pass/fail, contract_requests, and short notes. Do not claim a check passed unless you ran it."
+ ],
+ "wps": [
+  {
+   "id": "F0",
+   "wave": "foundation",
+   "est": 8,
+   "title": "Scaffold, all dependencies, configs, shared processes",
+   "owns": [
+    "*"
+   ],
+   "after": [],
+   "spec": "Create the Next.js app (App Router, TS, Tailwind, ESLint, src-less, pnpm) at {repo}. If the repo dir already exists as a git clone, scaffold into it. Install ALL deps once: ai, zod, drizzle-orm, @neondatabase/serverless, drizzle-kit, minisearch, clsx, tailwind-merge, @radix-ui/react-* (dialog, radio-group, select, checkbox, popover, tabs, accordion), lucide-react, vitest, @vitest/coverage-v8, jsdom, @testing-library/react, playwright, @playwright/test, @axe-core/playwright, tsx. Add vercel.json {\"regions\":[\"fra1\"]}. .gitignore must cover .env*, .vercel, .next, node_modules, .tsc-watch.log, test-results, playwright-report. Package scripts: dev, build, start, lint, typecheck (tsc --noEmit), 'tsc:watch' (tsc --noEmit --watch --preserveWatchOutput --pretty false > .tsc-watch.log 2>&1), 'check:owned' (scripts/check-owned.ts: reads the last completed cycle in .tsc-watch.log and prints errors whose path starts with any given arg, exiting 1 if any), test (vitest run), e2e (playwright test), db:push (drizzle-kit push), seed (tsx scripts/seed-db.ts). Add vitest.config.ts (jsdom for *.test.tsx, node otherwise, pool threads maxThreads 2), playwright.config.ts (baseURL http://localhost:3000, workers 1, chromium only) and e2e/helpers.ts (axeCheck(page) asserting 0 serious/critical violations with tags wcag2a/aa, wcag21a/aa, wcag22aa). Create empty dirs for app/(public), app/admin, lib/match, lib/db/q, components, scripts, data, e2e, docs. next.config: eslint.ignoreDuringBuilds=true (lint runs separately via pnpm lint, so it never blocks a deploy) and output default. Keep TypeScript build errors ON.",
+   "verify": "pnpm build passes; pnpm vitest run --passWithNoTests passes; git check-ignore .env.local prints the path; node -e \"require('./package.json').scripts['check:owned']\" is set."
+  },
+  {
+   "id": "F1",
+   "wave": "contracts",
+   "est": 12,
+   "title": "Design system + accessible app shell",
+   "owns": [
+    "app/layout.tsx",
+    "app/globals.css",
+    "components/ui/",
+    "components/shell/",
+    "lib/nav.ts",
+    "app/(public)/layout.tsx",
+    "app/admin/layout.tsx"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "Tokens from research 05 §3.8 as CSS variables (text #1B1B1B, primary #0052A5, primary-hover #006CD7, danger #A7162D, success #16692C, muted #656565, border #767676, surface #F1F1F1, a high-contrast theme of #FFFF00 on #000, focus ring 3px), base 18px, line-height 1.5. Iskra wordmark: text plus a small inline-SVG spark, with no gov.pl or herb. components/ui: Button (variants primary/secondary/link, min-h 44px), Field (label + hint + error, ids wired with aria-describedby), TextInput, Textarea, Select, RadioGroup (fieldset/legend), Checkbox, Card, Badge, StatusRegion (role=status, visually hidden option), AiLabel (wraps children with the badge 'Odpowiedź przygotowała sztuczna inteligencja – może zawierać błędy'), Notice (info/warn/success), ErrorSummary, PageHeader (one h1 + lead), StepIndicator ('Krok X z Y' as text), TableWithCaption, Disclaimer, VisuallyHidden. components/shell: Header (Iskra wordmark, nav from lib/nav.ts, ETR and PJM links, a <Bell/> slot importing components/shell/Bell.tsx stub, RoleSwitcher labelled 'Tryb demo – rola'), Footer (links: Deklaracja dostępności, O projekcie i AI, Źródła danych, ROPS Kraków institutional contact), SkipLink 'Przejdź do treści głównej', DisplaySettings panel (A / A+ / A++ text size and high-contrast toggle, persisted in localStorage inside try/catch), RouteFocus (moves focus to h1 and updates document.title on navigation). lib/nav.ts: public nav (Zgłoś potrzebę /zglos, Biblioteka /biblioteka, Wyzwania /wyzwania, Wiedza /wiedza, Zgłoś pomysł /pomysl, Wdrożenie /wdrozenie, Testuj /testuj, Wiadomości /wiadomosci) and admin nav (Skrzynka /admin, Trendy /admin/trendy, Luki /admin/luki, Biblioteka /admin/biblioteka, Nabory /admin/nabory, Poczta /admin/poczta, Testy /admin/testy, Koszty AI /admin/koszty-ai). app/layout.tsx: <html lang=\"pl\">, landmarks, Open Sans or system font. The Bell stub renders a link to /wiadomosci with aria-label 'Powiadomienia'.",
+   "verify": "pnpm check:owned app/layout.tsx components/ lib/nav.ts; a contrast unit test in components/ui/tokens.test.ts (text pairs ≥4.5, borders and focus ≥3); curl http://localhost:3000/ contains lang=\"pl\" and 'Przejdź do treści głównej'."
+  },
+  {
+   "id": "F2",
+   "wave": "contracts",
+   "est": 10,
+   "title": "Database schema + client + push",
+   "owns": [
+    "lib/db/schema.ts",
+    "lib/db/client.ts",
+    "drizzle.config.ts",
+    "lib/db/q/_shared.ts"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "Drizzle schema for Neon Postgres, using DATABASE_URL from .env.local. Tables, each with id (text uuid default), created_at, and synthetic boolean default false where user-generated: sessions(id, role); innovations(id text pk e.g. rops-001, title, summary, problem, target_groups text[], obszar, type, evidence, who_can_use, sections jsonb, video_urls text[], materials_zip text, source_url, licence, attribution, keywords text[], embedding real[] null, status text default 'opublikowana', seeking_testers boolean default false, edited_at); reports(id, session_id, author_role, on_behalf boolean, helper_role, gmina_teryt, powiat_teryt, text_redacted, structured jsonb, picks jsonb, candidate_ids text[], luka boolean, status text default 'nowe'); ideas(id, session_id, author_role, from_report_id, title, fiszka jsonb, kanwa jsonb, assessment jsonb, grant_draft jsonb, call_id, status text default 'nowe'); calls(id, name, active boolean, opens_at, closes_at, description); threads(id, subject_type text in report|idea|innovation|middleman, subject_id, title, author_session_id, mentor text null); messages(id, thread_id, author_role, author_session_id, body); notifications(id, recipient text ('rops' or 'session:<id>'), type, ref, title, read_at null); email_log(id, to_label, subject, body); test_signups(id, innovation_id, session_id, role, gmina_teryt, message); ratings(id, innovation_id, session_id, stars int, feedback, improvement); middleman_cards(id, innovation_id, session_id, profile jsonb, card jsonb, uw jsonb); ai_audit(id, kind, model, input_tokens int, output_tokens int, ms int, ok boolean). lib/db/client.ts exports db (neon-http). lib/db/q/_shared.ts exports small helpers (newId). Run drizzle-kit push (you ARE allowed to run db:push for this WP only).",
+   "verify": "pnpm db:push exits 0; a tsx one-liner counting information_schema.tables in public returns ≥14; pnpm check:owned lib/db/."
+  },
+  {
+   "id": "F3",
+   "wave": "contracts",
+   "est": 14,
+   "title": "Contracts, AI gateway, session, stubs for every module, route skeletons",
+   "owns": [
+    "lib/contracts.ts",
+    "lib/ai/",
+    "lib/session.ts",
+    "lib/data.ts",
+    "STUBS (see spec)",
+    "ROUTE SKELETONS (see spec)",
+    "scripts/smoke-ai.ts"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "lib/contracts.ts: export the types Role ('mieszkaniec'|'ngo'|'jst'|'ekspert'|'rops'); Obszar (the 9 ROPS library categories plus 'Inne'): Dzieci, młodzież i rodzina | Seniorzy | Osoby z niepełnosprawnością sensoryczną | Osoby o ograniczonej mobilności | Osoby z niepełnosprawnością intelektualną | Zdrowie i medycyna | Cudzoziemcy | Rynek pracy | Osoby w kryzysie bezdomności | Inne; and OBSZARY const. Innovation (matches the DB innovations row, camelCase). Structured {obszar: Obszar; grupaDocelowa: string[]; slowaKluczowe: string[]; skala: 'jedna osoba'|'rodzina'|'społeczność lokalna'|'gmina'|'region'; podsumowanie: string; pytania: {pytanie: string; opcje: string[]}[]}. Candidate {id; score; bm25Rank?; denseRank?; matchedTerms: string[]}. MatchLabel 'Bardzo pasuje'|'Pasuje'|'Może pasować'. Pick {id; label: MatchLabel; dlaczego: string[]; dopasowaneSlowa: string[]; coDostosowac: string}. MatchInput {text; gminaTeryt?; onBehalf?: boolean; helperRole?: string; answers?: Record<string,string>}. MatchResult {reportId; structured; picks: Pick[]; candidates: Candidate[]; luka: boolean}. Fiszka {tytul; naCzymPolega; dlaKogo; problem; etap}. Kanwa {problem; odbiorcy; rozwiazanie; zmiana; innowacyjnosc; skala; zasobyKoszty; zespol}. IwsCriterion (5 names). IwsScores Record<IwsCriterion, number>. IwsAssessment {scores; uzasadnienia: Record<IwsCriterion,string>; verdict: {pass: boolean; reasons: string[]}; doPoprawy: string[]}. InstitutionProfile {typ: 'OPS'|'CUS'|'gmina'|'NGO'|'szkoła'|'DPS'|'inna'; gminaTeryt; wielkosc: string; budzetPln?: number; kadra?: string; partnerzy?: string}. ServiceCard {rdzen: string[]; doDostosowania: string[]; kroki: {krok: string; miesiac: string}[]; role: string[]; kosztyOrientacyjne: string; partnerzy: string[]; ryzyka: string[]; wskazniki: string[]; zrodlaFinansowania: string[]}. UwCheck {route: 'A'|'B'|'niekwalifikowane'; checklist: {item: string; stan: 'macie'|'brakuje'|'do ustalenia'}[]; nextStep: string; sourceUrl: string; caveat: string}. LocalContext {gmina; powiat; rows: {label; value; regionAvg; unit; source; year}[]}. NotificationType. lib/ai/models.ts: MODELS {fast: env AI_MODEL_FAST ?? 'anthropic/claude-haiku-4.5', smart: env AI_MODEL_SMART ?? 'anthropic/claude-sonnet-5.5', embed: env AI_MODEL_EMBED ?? 'alibaba/qwen3-embedding-8b'}. lib/ai/gateway.ts: aiObject<T>({kind, tier: 'fast'|'smart', schema (zod), system, prompt, offline: () => T}), aiText({kind, tier, system, prompt, offline}), embedTexts(texts) → number[][] | null. When process.env.AI_MODE==='off', return offline() or null. Use the AI SDK generateObject/generateText/embedMany with gateway model strings. Log every call via lib/ai/audit.ts logAi() (inserts into ai_audit, and never throws). lib/session.ts: getSession() (cookie iskra_sid + iskra_role, default mieszkaniec), setRole server action, requireRole('rops'). lib/data.ts: loaders for data/corpus.json, data/teryt.json, data/powiaty.json, data/challenges.json (tolerate missing files by returning []). STUBS: create each of these with the exact signature and a fixture or empty return plus a '// STUB – replaced by <WP>' comment: lib/match/redact.ts redact(text) → {text, found} (M1); lib/match/structure.ts structureProblem(text, ctx?) → Promise<Structured> (M2); lib/match/retrieve.ts retrieve(q:{text; structured?}, k?) → Promise<Candidate[]> (M3); lib/match/rerank.ts rerank(text, structured, candidates) → Promise<Pick[]> (M4); lib/match/gap.ts isGap(picks, candidates) → boolean (M5); lib/match/index.ts runMatch(input) → Promise<MatchResult> (M5); lib/notify.ts notify({recipient,type,ref,title}), emailSim({toLabel,subject,body}), unreadCount(recipient) (C1); lib/iws.ts IWS_CRITERIA, passes(scores) (K1); lib/prescore.ts prescoreIdea(fiszka, kanwa?) → Promise<IwsAssessment> (K4); lib/uw.ts checkUw(profile, innovation) → UwCheck (W3); lib/middleman.ts buildServiceCard(innovation, profile) → Promise<ServiceCard> (W2); lib/local-context.ts localContext(gminaTeryt) → LocalContext|null (U6). Component stubs (default export, typed props, rendering null or a simple placeholder): components/shell/Bell.tsx (C1, owned by C1 after F1 imports it), components/voice/MicButton.tsx {onTranscript(text)} (U2), components/voice/ReadAloudButton.tsx {text} (U2), components/SimplifyButton.tsx {text} (U5), components/zglos/LocalContextStrip.tsx {gminaTeryt} (U6), components/zglos/Clarify.tsx {pytania, onDone(answers)} (U3), components/tester/TesterWidget.tsx {innovationId} (T1), components/wdrozenie/UwPanel.tsx {check: UwCheck} (W4). ROUTE SKELETONS: create page.tsx for each route below, rendering <PageHeader title='…'/> plus 'W przygotowaniu' so nav works: / ; /zglos ; /zglos/wyniki/[id] ; /zglos/wyniki/[id]/kartka ; /biblioteka ; /biblioteka/[id] ; /wyzwania ; /wiedza ; /pomysl ; /pomysl/[id]/kanwa ; /pomysl/[id]/ocena ; /pomysl/[id]/wniosek ; /wdrozenie ; /wdrozenie/[id] ; /testuj ; /wiadomosci ; /wiadomosci/[id] ; /admin ; /admin/trendy ; /admin/luki ; /admin/biblioteka ; /admin/biblioteka/[id] ; /admin/nabory ; /admin/poczta ; /admin/testy ; /admin/koszty-ai ; /dostepnosc ; /o-projekcie ; /etr ; /pjm. Public pages live under app/(public)/. scripts/smoke-ai.ts: one aiText in Polish plus one embedTexts, printing the text and dim=N (this is Gate G0).",
+   "verify": "pnpm check:owned lib/ components/ app/; every route above returns 200 through curl; pnpm tsx scripts/smoke-ai.ts prints Polish text and dim>0 (G0). If it fails, report it and the lead sets AI_MODE=off."
+  },
+  {
+   "id": "F4",
+   "wave": "contracts",
+   "est": 12,
+   "title": "Data build: corpus, TERYT, powiaty, challenges, PII and licence audit",
+   "owns": [
+    "scripts/build-corpus.ts",
+    "data/",
+    "docs/data-audit.md"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "Copy {research}/data/*.json|csv and {research}/rops-biblioteka-innowacji.json into data/raw/. scripts/build-corpus.ts merges data/raw/innovations.json (items), innovations_rops_sections.json (items) and rops-biblioteka-innowacji.json (video, materials_zip, selected_for_dissemination by slug or url) into data/corpus.json: an array of 115 Innovation objects (camelCase as in lib/contracts.ts). obszar maps from thematic_area onto the Obszar list ('Dla cudzoziemców' → 'Cudzoziemcy'). evidence = 'Rekomendowana do upowszechniania' if selected, else 'Przetestowana w inkubatorze ROPS'. sections = the 5 ROPS fields ONLY for CC BY entries; the 15 without a licence mark get sections:null and licence:'brak oznaczenia licencji'. Attribution 'Źródło: ROPS Kraków, Biblioteka Innowacji Społecznych (CC BY 4.0)' where applicable. Also emit data/teryt.json (gminas + powiats from teryt_malopolska.csv), data/powiaty.json (from powiaty_indicators.csv, numbers parsed, plus a Małopolska average row id '12'), data/challenges.json (normalised 8 areas: id, nazwa, definicja, wyzwania[], zrodlo) and data/synthetic.json (from synthetic_problems.json, keeping synthetic:true). PII audit: regex for phone numbers, e-mails, PESEL and 'imię nazwisko'-like capitalised pairs in all text fields. Write docs/data-audit.md with counts and a 10-record spot check, and remove any personal names found from corpus text.",
+   "verify": "node -e \"const c=require('./data/corpus.json');if(c.length!==115)process.exit(1)\"; every record has sourceUrl, licence and a valid obszar; the audit reports 0 phones and 0 e-mails; data/powiaty.json has 23 rows (22 + average)."
+  },
+  {
+   "id": "M1",
+   "wave": "fan",
+   "est": 8,
+   "title": "PII redaction",
+   "owns": [
+    "lib/match/redact.ts",
+    "lib/match/redact.test.ts"
+   ],
+   "after": [
+    "F3"
+   ],
+   "spec": "redact(text) masks PESEL (11 digits, checksum optional) as [PESEL], phones (PL formats incl. +48, spaces and dashes) as [TELEFON], e-mails as [EMAIL], IBAN/account numbers as [KONTO], street address patterns 'ul. X 12/3' as [ADRES], and ID card numbers 'ABC123456' as [DOWÓD]. Returns {text, found: string[] of kinds}. Ordinary text stays unchanged.",
+   "verify": "pnpm vitest run lib/match/redact.test.ts with ≥10 fixtures (positive and negative) passes; pnpm check:owned lib/match/redact.ts."
+  },
+  {
+   "id": "M2",
+   "wave": "fan",
+   "est": 12,
+   "title": "Problem structuring (LLM)",
+   "owns": [
+    "lib/match/structure.ts",
+    "lib/match/structure.test.ts",
+    "lib/match/prompts/structure.ts"
+   ],
+   "after": [
+    "F3"
+   ],
+   "spec": "structureProblem(text, ctx) uses aiObject (tier fast) with a zod schema matching Structured. obszar is a z.enum over OBSZARY. slowaKluczowe are 5–12 Polish lemmas (base forms) plus synonyms. pytania holds at most 2 clarifying questions, each with ≤4 options plus 'Nie wiem', only when ambiguous. System prompt in Polish: a social-policy analyst at ROPS Kraków who never invents facts. Offline fallback: keyword rules mapping words to obszar (e.g. senior|starsz|emeryt → Seniorzy), slowaKluczowe = top content words with a 6-char prefix.",
+   "verify": "vitest with a mocked gateway: the schema accepts the mock and the offline fallback maps 'Moja mama ma 82 lata i jest samotna' → Seniorzy. One live call on data/synthetic.json syn-001 returns obszar Seniorzy (record the result)."
+  },
+  {
+   "id": "M3",
+   "wave": "fan",
+   "est": 15,
+   "title": "Hybrid retrieval (BM25 + dense + RRF)",
+   "owns": [
+    "lib/match/retrieve.ts",
+    "lib/match/retrieve.test.ts",
+    "lib/match/stem.ts"
+   ],
+   "after": [
+    "F3",
+    "F4"
+   ],
+   "spec": "Build the MiniSearch index lazily from getCorpus() over title^3, keywords^2, summary, problem, targetGroups and sections text. processTerm: lowercase, then emit both the diacritics-stripped token and stem(token) (a 6-char prefix, in lib/match/stem.ts), dropping a Polish stopword list. Search uses fuzzy 0.2, prefix true, and the query is the text plus structured.slowaKluczowe. Dense: if data/corpus.embedded.json exists, embed the query via embedTexts and take cosine top 20; if not, skip dense. Tag boost: +1 rank bucket when obszar matches structured.obszar. Fuse with RRF k=60 and return the top k (default 10) Candidates with matchedTerms (the query terms found in the doc).",
+   "verify": "vitest (offline, no embeddings): 'samotność seniorów na wsi' → the top 10 contain ≥1 Seniorzy item; 'dziecko w spektrum autyzmu w szkole' → the top 10 contain an item whose targetGroups or keywords mention autyzm or niepełnosprawność. The test also passes with AI_MODE=off."
+  },
+  {
+   "id": "M4",
+   "wave": "fan",
+   "est": 12,
+   "title": "Rerank + explanation with ID guard",
+   "owns": [
+    "lib/match/rerank.ts",
+    "lib/match/rerank.test.ts",
+    "lib/match/prompts/rerank.ts"
+   ],
+   "after": [
+    "F3"
+   ],
+   "spec": "rerank(text, structured, candidates) sends the top 10 candidates (id, title, summary, targetGroups, whoCanUse) to aiObject (tier fast). Schema: picks array (max 5) whose id is z.enum(candidateIds), so the model CANNOT return an unknown id; label is MatchLabel; dlaczego holds ≤2 plain-Polish bullets of ≤15 words; dopasowaneSlowa; coDostosowac is 1 sentence. Return [] if none fit. Server-side, re-check that every id is in candidates. Offline fallback: the top 3 candidates labelled by rank (Pasuje / Może pasować) with dlaczego built from matchedTerms ('Pasujące słowa: …').",
+   "verify": "vitest: a mocked model output with a non-candidate id fails schema parsing (the guard works); the offline fallback returns ≤3 picks with ids ⊂ candidates."
+  },
+  {
+   "id": "M5",
+   "wave": "fan",
+   "est": 14,
+   "title": "Match orchestrator + gap + submitReport action",
+   "owns": [
+    "lib/match/index.ts",
+    "lib/match/gap.ts",
+    "lib/match/index.test.ts",
+    "app/(public)/zglos/actions.ts",
+    "lib/db/q/reports.ts"
+   ],
+   "after": [
+    "F2",
+    "F3"
+   ],
+   "spec": "runMatch(input): redact → structureProblem → retrieve → rerank → isGap (luka when there are no picks, OR every pick is 'Może pasować', OR the top candidate score is below a threshold) → insert the report (text_redacted, structured, picks, candidate_ids, luka, gmina/powiat teryt from data/teryt.json, on_behalf, helper_role, session_id) → notify({recipient:'rops', type: luka ? 'luka' : 'nowe_zgloszenie', ref: reportId, title}) → return MatchResult. Server action submitReport(formData) calls runMatch and redirects to /zglos/wyniki/[id]. lib/db/q/reports.ts exports getReport(id), listReports(filters) and setReportStatus(id, status).",
+   "verify": "vitest with all deps mocked: luka logic on 3 fixtures. Live: a tsx one-off calling runMatch on syn-003 returns ≥1 pick and inserts a row (print the reportId)."
+  },
+  {
+   "id": "E1",
+   "wave": "fan",
+   "est": 8,
+   "title": "Build-time embeddings",
+   "owns": [
+    "scripts/embed.ts",
+    "data/corpus.embedded.json",
+    "data/corpus.meta.json"
+   ],
+   "after": [
+    "F3",
+    "F4"
+   ],
+   "spec": "Embed title + summary + problem + targetGroups + keywords for all 115 corpus items with embedTexts, in batches of 32. Write data/corpus.embedded.json as [{id, v:number[]}] and corpus.meta.json as {model, dim, date, count}. Also update the innovations.embedding column for each row (an update loop; skip the DB if no rows exist yet). If AI_MODE=off or the call fails, write meta {skipped:true} and exit 0.",
+   "verify": "count==115, all vectors the same dim, no NaN (asserted by the script), meta.dim>0, or meta.skipped=true with the reason printed."
+  },
+  {
+   "id": "U1",
+   "wave": "fan",
+   "est": 18,
+   "title": "Intake wizard /zglos (Krok 1–3 flow)",
+   "owns": [
+    "app/(public)/zglos/page.tsx",
+    "components/zglos/IntakeForm.tsx",
+    "components/zglos/GminaPicker.tsx",
+    "e2e/U1.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "Per research 05 §3.3. Krok 1 z 2: h1 'Opisz problem własnymi słowami'. A large Textarea (label 'Co się dzieje? Kogo to dotyczy?', hint with an example) and <MicButton onTranscript> that appends editable text and NEVER auto-submits. Topic chips (Samotność, Opieka nad bliskim, Dojazd, Praca, Niepełnosprawność, Młodzież) that prefill the text. An optional GminaPicker (an accessible combobox over data/teryt.json gminas, with typed filter and a listbox, or a native <select> grouped by powiat if faster). A 'Pomagam komuś' checkbox that reveals 'Kim jesteś dla tej osoby?' (opiekun/rodzina/pracownik socjalny/sąsiad/inna) and switches the copy to third person. A notice 'Nie podawaj danych osobowych'. Then a Krok 2 z 2 confirmation, or straight submit via the submitReport action (M5) with a pending state ('Szukam rozwiązań…' in StatusRegion). 'Wstecz' keeps the input. Autosave the draft to localStorage (try/catch). Clarify questions (U3) are optional: if structured.pytania is non-empty, the results page shows them instead.",
+   "verify": "curl /zglos → 200 with the h1 text; e2e/U1.spec.ts: a keyboard-only fill and submit lands on /zglos/wyniki/<id>, and axeCheck passes on /zglos."
+  },
+  {
+   "id": "U2",
+   "wave": "fan",
+   "est": 12,
+   "title": "Voice: speech input + read aloud",
+   "owns": [
+    "components/voice/MicButton.tsx",
+    "components/voice/ReadAloudButton.tsx",
+    "components/voice/useSpeech.ts",
+    "components/voice/voice.test.tsx"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "MicButton: render ONLY if window.SpeechRecognition || webkitSpeechRecognition exists. lang pl-PL, interimResults; button text 'Powiedz zamiast pisać', then 'Słucham… (kliknij, aby zakończyć)'; announce state via StatusRegion; a privacy hint 'Rozpoznawanie mowy realizuje przeglądarka (Google/Apple).'; onTranscript(final text). ReadAloudButton: speechSynthesis with a pl-PL voice if available, toggling 'Przeczytaj na głos' / 'Zatrzymaj czytanie', cancelling on unmount, hidden if speechSynthesis is unsupported.",
+   "verify": "vitest jsdom: with SpeechRecognition undefined, MicButton renders nothing; with a stubbed speechSynthesis, clicking ReadAloudButton calls speak with lang pl-PL."
+  },
+  {
+   "id": "U3",
+   "wave": "fan",
+   "est": 8,
+   "title": "Clarifying questions component",
+   "owns": [
+    "components/zglos/Clarify.tsx",
+    "components/zglos/Clarify.test.tsx"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "Clarify {pytania, onDone(answers)}: one question at a time (fieldset/legend + RadioGroup + an always-present 'Nie wiem / Pomiń'), 'Dalej' and 'Wstecz', with StepIndicator 'Pytanie X z Y'. On finish, call onDone. On the results page it appears above the cards as 'Doprecyzuj, żeby wyniki były trafniejsze (opcjonalnie)', and the answers re-run the match through a server action owned by U4.",
+   "verify": "vitest: 2 questions → onDone receives both answers; keyboard navigation works (radio arrows)."
+  },
+  {
+   "id": "U4",
+   "wave": "fan",
+   "est": 18,
+   "title": "Results page /zglos/wyniki/[id]",
+   "owns": [
+    "app/(public)/zglos/wyniki/[id]/page.tsx",
+    "app/(public)/zglos/wyniki/[id]/actions.ts",
+    "components/zglos/ResultCard.tsx",
+    "e2e/U4.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "Load the report (lib/db/q/reports getReport) and corpus items for the picks. Header 'Znaleźliśmy N rozwiązań' plus a StatusRegion message. A summary of the understood problem (structured.podsumowanie plus obszar and grupa chips, with a link 'Coś się nie zgadza? Opisz inaczej'). <LocalContextStrip gminaTeryt>. A list of ResultCards: h2 title, summary, label badge (Bardzo pasuje / Pasuje / Może pasować, as text, not colour alone), evidence badge, 'Dlaczego to pasuje?' bullets, 'Co trzeba dostosować', and the source link with licence. Buttons: <ReadAloudButton>, <SimplifyButton text>, 'Wdróż u siebie' → /wdrozenie?innowacja=ID&raport=RID, 'Zapytaj pracownika ROPS' → a server action that creates a thread (subject report) then redirects to /wiadomosci/[id], 'Szczegóły' → /biblioteka/ID. Everything AI-generated is wrapped in AiLabel. If luka: a Notice 'Nie znaleźliśmy dobrze pasującego rozwiązania' plus 'Zgłoś pomysł' → /pomysl?z=RID, and 'Twoja potrzeba trafi do ROPS jako sygnał'. 'Wydrukuj kartkę' → ./kartka. If pytania exist, render <Clarify> whose onDone posts answers to a re-run action (runMatch with answers) and redirects to the new report.",
+   "verify": "Seed one report via M5 (or insert a fixture row), then curl /zglos/wyniki/<id> → 200 with 'Dlaczego to pasuje'; e2e/U4.spec.ts runs axeCheck plus a button presence check."
+  },
+  {
+   "id": "U5",
+   "wave": "fan",
+   "est": 8,
+   "title": "'Wyjaśnij prościej' (AI simplification)",
+   "owns": [
+    "components/SimplifyButton.tsx",
+    "app/api/simplify/route.ts",
+    "lib/ai/prompts-simplify.ts"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "POST /api/simplify {text} → aiText (tier fast) rewriting into very plain Polish (sentences ≤10 words, no jargon, 3–5 sentences); offline returns the first 2 sentences. Button 'Wyjaśnij prościej' shows the result below, inside AiLabel, titled 'Wersja uproszczona (AI) – to nie jest tekst ETR', with a StatusRegion announcement and aria-expanded. Rate-limit by caching responses per text hash in memory.",
+   "verify": "curl -X POST localhost:3000/api/simplify -d '{\"text\":\"…\"}' returns 200 JSON with text; pnpm check:owned on owned files."
+  },
+  {
+   "id": "U6",
+   "wave": "fan",
+   "est": 10,
+   "title": "'Dlaczego to ważne u Ciebie' local context strip",
+   "owns": [
+    "lib/local-context.ts",
+    "lib/local-context.test.ts",
+    "components/zglos/LocalContextStrip.tsx"
+   ],
+   "after": [
+    "F3",
+    "F4"
+   ],
+   "spec": "localContext(gminaTeryt) looks up the gmina (data/teryt.json: population, 65+ share) and its powiat (data/powiaty.json: wsp_obciazenia_osobami_starszymi, beneficjenci_pomocy_spol_na_10tys, zmiana_ludnosci_2022_2025_proc) against the Małopolska average row. Returns ≤4 rows with a source 'GUS BDL' and the year. The strip renders a compact TableWithCaption ('Twoja okolica na tle Małopolski') plus one plain sentence (e.g. 'W gminie X osób 65+ jest więcej niż średnio w Małopolsce.'). Hidden when gminaTeryt is empty.",
+   "verify": "vitest: the Szczurowa TERYT (from data/synthetic.json syn-001) returns ≥3 rows with numbers; an unknown teryt returns null."
+  },
+  {
+   "id": "U7",
+   "wave": "fan",
+   "est": 8,
+   "title": "Printable 'kartka'",
+   "cut": 3,
+   "owns": [
+    "app/(public)/zglos/wyniki/[id]/kartka/page.tsx",
+    "app/(public)/zglos/wyniki/[id]/kartka/print.css"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "An A4 print layout at 16pt+: 'Twoja sprawa' summary, the top 3 innovations (title plus 1 sentence plus a short URL), 'Co dalej' (3 steps), the ROPS Kraków institutional contact, the date. A 'Drukuj' button calling window.print(). The print CSS hides the header and footer.",
+   "verify": "curl the route → 200; the HTML contains the top-1 title."
+  },
+  {
+   "id": "U8",
+   "wave": "fan",
+   "est": 10,
+   "title": "Spoken loop 'Tryb głosowy'",
+   "cut": 4,
+   "owns": [
+    "components/voice/VoiceMode.tsx",
+    "components/voice/VoiceMode.test.tsx"
+   ],
+   "after": [
+    "U2"
+   ],
+   "spec": "VoiceMode is a toggle 'Tryb głosowy – czytaj pytania na głos'. Once the user enables it (a user gesture), it reads the current step's h1 and hint aloud via speechSynthesis, and on the results page reads the 'Znaleźliśmy N…' sentence and each card title plus its first 'dlaczego' bullet in sequence, with 'Zatrzymaj'. Expose <VoiceMode scope='intake'|'results'/>. U1 and U4 may mount it if available, so mention this in notes.",
+   "verify": "vitest with a stubbed speechSynthesis: enabling it calls speak at least once; disabling calls cancel."
+  },
+  {
+   "id": "L1",
+   "wave": "fan",
+   "est": 12,
+   "title": "Library list /biblioteka",
+   "owns": [
+    "app/(public)/biblioteka/page.tsx",
+    "components/biblioteka/Filters.tsx",
+    "lib/db/q/innovations.ts",
+    "e2e/L1.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "lib/db/q/innovations.ts: listInnovations({obszar?, type?, evidence?, withVideo?, q?}) reads the DB, falling back to getCorpus() if the table is empty; getInnovation(id); updateInnovation(id, patch) (used by A3). Page: h1 'Biblioteka innowacji społecznych', a filters <form method=get> with a 'Pokaż wyniki' submit (no auto-filtering), a result count in StatusRegion, and Card list items (title link, summary, obszar, evidence, a 'Film' badge if video). Footer attribution to ROPS Kraków plus the licence.",
+   "verify": "curl /biblioteka?obszar=Seniorzy → 200 and the count equals the corpus count for Seniorzy; e2e axeCheck passes."
+  },
+  {
+   "id": "L2",
+   "wave": "fan",
+   "est": 14,
+   "title": "Innovation detail /biblioteka/[id]",
+   "owns": [
+    "app/(public)/biblioteka/[id]/page.tsx",
+    "components/biblioteka/VideoEmbed.tsx",
+    "components/biblioteka/Sections.tsx",
+    "e2e/L2.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "h1 title; badges; summary; the 5 ROPS sections (Na czym polega rozwiązanie?, Jakich problemów dotyczy?, Grupa docelowa, Kto może skorzystać?, Czy to działa?) when sections exist, else a Notice with a link to the source only. VideoEmbed: YouTube nocookie iframe with a descriptive title, cc_load_policy=1&cc_lang_pref=pl&hl=pl, no autoplay, and a 'Opis filmu' details element. Materials ZIP link. Attribution and licence. Actions: ReadAloudButton (summary), SimplifyButton, 'Wdróż u siebie' → /wdrozenie?innowacja=ID, and <TesterWidget innovationId> (T1).",
+   "verify": "curl /biblioteka/rops-001 → 200 with 'Na czym polega'; e2e axeCheck on one entry with a video and one without a licence."
+  },
+  {
+   "id": "L3",
+   "wave": "fan",
+   "est": 10,
+   "title": "Challenges /wyzwania",
+   "owns": [
+    "app/(public)/wyzwania/page.tsx",
+    "e2e/L3.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F3",
+    "F4"
+   ],
+   "spec": "h1 'Wyzwania społeczne Małopolski'. The 8 areas from data/challenges.json as accordion or sections (definicja, key wyzwania, source link to the ROPS Mapa Wyzwań Społecznych PDF), with a note that the data are national (from the Mapa). Then 'Małopolska w liczbach – powiaty': a sortable TableWithCaption from data/powiaty.json (powiat, ludność, % 65+, obciążenie osobami starszymi, beneficjenci pomocy społ. /10 tys., zmiana ludności %), a source line 'GUS BDL, 2025/2024', and a 2-sentence text summary (the highest and lowest 65+ share). No map needed.",
+   "verify": "curl → 200; the table has 22 data rows; axeCheck passes."
+  },
+  {
+   "id": "L4",
+   "wave": "fan",
+   "est": 10,
+   "title": "Knowledge pages /wiedza",
+   "owns": [
+    "app/(public)/wiedza/page.tsx",
+    "content/wiedza.ts"
+   ],
+   "after": [
+    "F1"
+   ],
+   "spec": "Plain-Polish educational sections with sources (read {research}/01-rops-ecosystem.md): 1) Czym jest innowacja społeczna; 2) Jak ROPS Kraków testuje innowacje (Inkubator Włączenia Społecznego, IWS 2.0: pomysł → test → upowszechnienie, grants up to 120 tys. zł); 3) Usługa Wrażliwa: wdrażanie sprawdzonych innowacji w gminach (Ścieżka A grants up to 600 tys. zł, Ścieżka B doradztwo); 4) Jak zgłosić pomysł w Iskrze; 5) Słowniczek (JST, OPS, CUS, DPS, ETR, PJM). Every factual claim links to its rops.krakow.pl source. Headings h2, ≤15-word sentences.",
+   "verify": "curl → 200 containing 'Usługa Wrażliwa' and ≥4 rops.krakow.pl links."
+  },
+  {
+   "id": "T1",
+   "wave": "fan",
+   "est": 14,
+   "title": "Tester widget (module IV)",
+   "owns": [
+    "components/tester/TesterWidget.tsx",
+    "components/tester/actions.ts",
+    "lib/db/q/tester.ts",
+    "e2e/T1.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "A section 'Przetestuj i oceń'. (a) 'Zgłoś się do testów' form: rola, gmina (optional), wiadomość, then insert into test_signups and notify rops 'nowy_tester'. (b) An accessible rating: RadioGroup legend 'Jak oceniasz to rozwiązanie?' with options 1–5 labelled in words (1 – słabo … 5 – bardzo dobrze), 'Co działa?' and 'Co poprawić?' textareas, inserted into ratings. Show the aggregate 'Średnia ocena: X/5 (N ocen)' and the latest 3 feedback snippets (redacted). lib/db/q/tester.ts: addSignup, addRating, getAggregate(innovationId), listSignups(sessionId), listAll() (for A4).",
+   "verify": "e2e: submit a 4-star rating on /biblioteka/rops-001 and the aggregate text updates; DB rows exist."
+  },
+  {
+   "id": "T2",
+   "wave": "fan",
+   "est": 8,
+   "title": "/testuj page",
+   "owns": [
+    "app/(public)/testuj/page.tsx"
+   ],
+   "after": [
+    "T1",
+    "L1"
+   ],
+   "spec": "h1 'Testuj innowacje'. A list of innovations with seeking_testers=true (fall back to the top 6 'Rekomendowana do upowszechniania' if none), each linking to its detail #testuj. Below, 'Twoje zgłoszenia do testów' for the current session.",
+   "verify": "curl → 200; after a T1 signup, the innovation title appears in the section."
+  },
+  {
+   "id": "K1",
+   "wave": "fan",
+   "est": 8,
+   "title": "IWS 2.0 criteria + thresholds (verify R2)",
+   "owns": [
+    "lib/iws.ts",
+    "lib/iws.test.ts"
+   ],
+   "after": [
+    "F3"
+   ],
+   "spec": "FIRST verify the thresholds against the official IWS 2.0 'Karta oceny merytorycznej' (zał. 5). Find the URL in {research}/01-rops-ecosystem.md and fetch it if reachable. Expected criteria: Innowacyjność rozwiązania; Adekwatność do potrzeb odbiorców i użytkowników; Efektywność kosztowa; Uniwersalność; Wizja rozwoju pomysłu w przyszłości, each 0–10. Pass = total ≥21 AND innowacyjność ≥5 AND each other ≥4. Put the source URL plus the verification status in a comment. passes(scores) returns {pass, reasons[]} with Polish reasons ('Suma 19 < 21', 'Innowacyjność 4 < 5').",
+   "verify": "vitest ≥6 boundary fixtures pass; notes state whether the thresholds were confirmed from the PDF."
+  },
+  {
+   "id": "K2",
+   "wave": "fan",
+   "est": 14,
+   "title": "Kreator step 1: fiszka /pomysl",
+   "owns": [
+    "app/(public)/pomysl/page.tsx",
+    "app/(public)/pomysl/actions.ts",
+    "lib/db/q/ideas.ts",
+    "components/pomysl/IdeaSteps.tsx",
+    "e2e/K2.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "h1 'Zgłoś pomysł na innowację społeczną'. StepIndicator 'Krok 1 z 4: Fiszka'. Fields: tytuł, na czym polega, dla kogo, jaki problem rozwiązuje, etap (pomysł/prototyp/testowane/działa). If ?z=<reportId>, prefill problem from report.structured.podsumowanie. Save → insert the idea, notify rops 'nowy_pomysl' plus emailSim to 'Zespół ROPS (symulacja)', redirect to /pomysl/[id]/kanwa. lib/db/q/ideas.ts: createIdea, getIdea, updateIdea(id, patch), listIdeas(). components/pomysl/IdeaSteps.tsx: a shared step nav for the 4 steps (Fiszka, Kanwa, Ocena IWS, Wniosek), with Wniosek shown only if an active call exists.",
+   "verify": "e2e: fill the fiszka → redirected to /pomysl/<id>/kanwa; the DB idea row exists; the admin notification count increased."
+  },
+  {
+   "id": "K3",
+   "wave": "fan",
+   "est": 14,
+   "title": "Kreator step 2: kanwa + AI assistant",
+   "owns": [
+    "app/(public)/pomysl/[id]/kanwa/page.tsx",
+    "app/(public)/pomysl/[id]/kanwa/actions.ts",
+    "lib/ai/prompts-kanwa.ts"
+   ],
+   "after": [
+    "K2"
+   ],
+   "spec": "Kanwa fields (labelled 'Kanwa inspirowana formularzem IWS 2.0'): problem, odbiorcy, rozwiązanie, zmiana, innowacyjność, skala i wdrożenie, zasoby i koszty, zespół. Each Textarea has a hint question. 'Poproś asystenta AI o podpowiedzi' → aiObject (tier smart) returns, per field, ≤3 suggestions plus 1 question (wrapped in AiLabel), shown next to the fields. The user copies them manually; nothing auto-overwrites. Save → updateIdea(kanwa) → /pomysl/[id]/ocena.",
+   "verify": "curl the route for an existing idea → 200; one live assistant call returns suggestions (or offline fallback suggestions when AI is off)."
+  },
+  {
+   "id": "K4",
+   "wave": "fan",
+   "est": 14,
+   "title": "Kreator step 3: IWS 2.0 pre-score",
+   "owns": [
+    "lib/prescore.ts",
+    "lib/prescore.test.ts",
+    "app/(public)/pomysl/[id]/ocena/page.tsx",
+    "app/(public)/pomysl/[id]/ocena/actions.ts"
+   ],
+   "after": [
+    "K1",
+    "K2"
+   ],
+   "spec": "prescoreIdea(fiszka, kanwa) uses aiObject (tier smart): scores 0–10 per IWS criterion plus a one-sentence uzasadnienie each plus doPoprawy[] (≤3). The VERDICT is computed by passes() from lib/iws.ts, never by the LLM. The page has a TableWithCaption 'Ocena wstępna wg karty IWS 2.0' (kryterium, punkty, próg, uzasadnienie), a big verdict 'Przeszłoby ocenę merytoryczną' or 'Nie przeszłoby – popraw: …', a Disclaimer 'Symulacja AI. Oficjalną ocenę wystawia komisja ROPS.', 'Popraw kanwę' → back, and 'Dalej: wniosek' (only if a call is active). Persist the assessment.",
+   "verify": "vitest: a mocked LLM with innowacyjność 4 and total 30 → verdict fail with reason; the page renders for a seeded idea."
+  },
+  {
+   "id": "K5",
+   "wave": "fan",
+   "est": 14,
+   "title": "Kreator step 4: grant application draft",
+   "owns": [
+    "app/(public)/pomysl/[id]/wniosek/page.tsx",
+    "app/(public)/pomysl/[id]/wniosek/actions.ts",
+    "lib/ai/prompts-wniosek.ts"
+   ],
+   "after": [
+    "K2"
+   ],
+   "spec": "Visible only if a calls row is active (otherwise a Notice 'Generator wniosków działa tylko w trakcie naboru' plus the call dates). aiObject (tier smart) drafts sections following the IWS 2.0 application form (Opis innowacji, Innowacyjność rozwiązania, Diagnoza problemu (with a reference to the Mapa Wyzwań Społecznych), Opis odbiorców, Zmiana, Wizja przyszłości, Plan działania i koszty (okres przygotowawczy ≤3 mies., testowanie ≤9 mies.), Wnioskowana kwota (≤120 000 zł), Zespół) from the fiszka plus kanwa. Each section is an editable Textarea inside AiLabel. 'Pobierz szkic (.md)' downloads via a Blob. Persist grant_draft.",
+   "verify": "With the DEMO call active, the page renders ≥8 section textareas after generation; with the call inactive, the Notice shows."
+  },
+  {
+   "id": "W1",
+   "wave": "fan",
+   "est": 12,
+   "title": "Middleman: institution profile /wdrozenie",
+   "owns": [
+    "app/(public)/wdrozenie/page.tsx",
+    "app/(public)/wdrozenie/actions.ts",
+    "lib/db/q/middleman.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "h1 'Middleman Innowacji – wdróż sprawdzone rozwiązanie u siebie'. If ?innowacja=ID, show the innovation card summary; else an innovation Select over the corpus. Profile form: typ instytucji (OPS, CUS, gmina, NGO, szkoła, DPS, inna), gmina (the GminaPicker from U1, or a native select of data/teryt.json), wielkość (liczba mieszkańców/odbiorców), budżet orientacyjny (zł), kadra, partnerzy. Submit → buildServiceCard + checkUw → insert middleman_cards → redirect /wdrozenie/[id]. lib/db/q/middleman.ts: createCard, getCard.",
+   "verify": "e2e or curl: posting the form with rops-001 creates a card row and redirects."
+  },
+  {
+   "id": "W2",
+   "wave": "fan",
+   "est": 14,
+   "title": "Middleman: service card generation + page",
+   "owns": [
+    "lib/middleman.ts",
+    "lib/middleman.test.ts",
+    "lib/ai/prompts-middleman.ts",
+    "app/(public)/wdrozenie/[id]/page.tsx"
+   ],
+   "after": [
+    "W1"
+   ],
+   "spec": "buildServiceCard(innovation, profile) uses aiObject (tier smart) with the ServiceCard zod schema. The prompt includes the innovation's sections (Na czym polega, Kto może skorzystać, Czy to działa) and the profile. Use the EU transfer method: separate the 'rdzeń' (must stay) from the 'elementy do dostosowania'. Realistic costs as ranges with assumptions; steps by month. Offline fallback: a template from the innovation fields. Page /wdrozenie/[id]: h1 'Karta usługi: <tytuł> w <gmina>', sections (Rdzeń, Do dostosowania, Kroki (an ordered list with months), Role, Koszty, Partnerzy, Ryzyka, Wskaźniki, Źródła finansowania) in AiLabel, <UwPanel check>, and 'Wyślij do ROPS' → a thread (subject middleman) plus notify rops, then redirect to the thread. ReadAloudButton on the summary.",
+   "verify": "vitest: the offline template validates against the schema; the page renders for a created card with 'Rdzeń' and 'Usługa Wrażliwa'."
+  },
+  {
+   "id": "W3",
+   "wave": "fan",
+   "est": 12,
+   "title": "Usługa Wrażliwa readiness rules (verify R1)",
+   "owns": [
+    "lib/uw.ts",
+    "lib/uw.test.ts"
+   ],
+   "after": [
+    "F3"
+   ],
+   "spec": "FIRST verify the rules on the ROPS Usługa Wrażliwa pages (URL in {research}/01-rops-ecosystem.md, source [10]): who may apply, the Ścieżka A grant cap (600 000 zł?), the Ścieżka B (doradztwo/instruktaż) scope, and the current call status. Encode them deterministically: Małopolska TERYT (starts with '12') required; the innovation must come from the ROPS library; the institution type must be eligible per the rules; budget ≤ cap and a plausible team → route A, else B; outside Małopolska → 'niekwalifikowane'. The checklist uses 'macie / brakuje / do ustalenia' items (e.g. 'Partner realizujący (NGO/OPS)', 'Wkład kadrowy', 'Grupa odbiorców zdiagnozowana', 'Budżet ≤ limit'). nextStep includes the ROPS UW page URL. caveat: 'Uproszczone zasady – sprawdź aktualny regulamin naboru.' Put the source URLs and the verification status in comments.",
+   "verify": "vitest ≥5 fixtures (non-Małopolska → niekwalifikowane; budget over the cap → B; complete OPS → A; …); notes report which rules were confirmed from the source."
+  },
+  {
+   "id": "W4",
+   "wave": "fan",
+   "est": 8,
+   "title": "Usługa Wrażliwa panel UI",
+   "owns": [
+    "components/wdrozenie/UwPanel.tsx",
+    "components/wdrozenie/UwPanel.test.tsx"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "UwPanel {check}: h2 'Czy to może być Usługa Wrażliwa?'. A route badge (Ścieżka A – grant / Ścieżka B – doradztwo / Niekwalifikowane), as text. A checklist table (Wymaganie | Stan) with stan as text plus an icon (never colour alone). nextStep with a link. The caveat in a Notice. Note that the rule logic is deterministic, not AI.",
+   "verify": "vitest renders all 3 routes; the checklist rows count matches the input."
+  },
+  {
+   "id": "C1",
+   "wave": "fan",
+   "est": 12,
+   "title": "Notifications + e-mail simulation + Bell",
+   "owns": [
+    "lib/notify.ts",
+    "lib/notify.test.ts",
+    "components/shell/Bell.tsx",
+    "app/api/notifications/route.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "notify inserts into notifications; emailSim inserts into email_log (labelled simulation, with no real sending); unreadCount(recipient); listFor(recipient); markRead(ids). Recipient for the current user: 'session:<sid>', or also 'rops' when role=rops. Bell (a server component, with a client refresh every 20 s via /api/notifications) is a link to /wiadomosci (or /admin for rops) with aria-label 'Powiadomienia, N nowych' and a visible count badge. When notifying 'rops', also emailSim 'Nowe zgłoszenie w Iskrze'. When notifying 'session:*', emailSim to 'Autor zgłoszenia (symulacja)'.",
+   "verify": "vitest with a mocked db: notify then unreadCount increments; curl /api/notifications returns JSON {count}."
+  },
+  {
+   "id": "C2",
+   "wave": "fan",
+   "est": 16,
+   "title": "Threads /wiadomosci (module V)",
+   "owns": [
+    "app/(public)/wiadomosci/page.tsx",
+    "app/(public)/wiadomosci/[id]/page.tsx",
+    "app/(public)/wiadomosci/actions.ts",
+    "lib/db/q/threads.ts",
+    "e2e/C2.spec.ts"
+   ],
+   "after": [
+    "C1"
+   ],
+   "spec": "lib/db/q/threads.ts: createThread({subjectType, subjectId, title, authorSessionId, firstMessage}), listThreadsForSession(sid), listAllThreads() (admin), getThread(id) with messages, addMessage. /wiadomosci: 'Twoje sprawy' with status and unread markers, plus a 'Zadaj pytanie ROPS' form. /wiadomosci/[id]: the message list (an ordered list, role label 'Ty' / 'ROPS Kraków' / 'Mentor'), a reply form, and the message 'ROPS zwykle odpowiada w ciągu 7 dni roboczych (tryb demo: od razu)'. When the author posts → notify rops. When rops posts → notify session:<author> plus emailSim to the author and mark the thread 'odpowiedziano'. Admin sees all threads. Mentor assignment is an optional select (CUT 2).",
+   "verify": "e2e with two browser contexts (mieszkaniec, rops via the role cookie): the resident asks → the rops bell count increases → rops replies → the resident's bell increases → an email_log row exists. This proves the DETAILS §6 communication loop."
+  },
+  {
+   "id": "A1",
+   "wave": "fan",
+   "est": 14,
+   "title": "Admin inbox /admin",
+   "owns": [
+    "app/admin/page.tsx",
+    "app/admin/actions.ts",
+    "e2e/A1.spec.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "requireRole('rops') (otherwise a Notice explaining how to switch the demo role). h1 'Panel ROPS – skrzynka'. Tabs or sections: Zgłoszenia (reports: date, obszar, gmina, luka badge, status Select (nowe / w weryfikacji / opublikowane / zamknięte) with a 'Zapisz' per row, link to the results, 'Odpowiedz' → create or open a thread), Pomysły (ideas: title, IWS verdict, status), Wdrożenia (middleman cards: innovation, gmina, UW route). Counters at the top (nowe zgłoszenia, luki, nowe pomysły, nieprzeczytane wiadomości). A status change notifies the author's session.",
+   "verify": "e2e as rops: change a report status → persisted after reload; axeCheck passes."
+  },
+  {
+   "id": "A2",
+   "wave": "fan",
+   "est": 14,
+   "title": "Admin trends + gaps",
+   "owns": [
+    "app/admin/trendy/page.tsx",
+    "app/admin/luki/page.tsx",
+    "lib/db/q/trends.ts",
+    "components/admin/BarChart.tsx"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "lib/db/q/trends.ts: countsByObszar(), countsByPowiat(), countsByWeek(), lukiByObszar() with sample redacted texts. /admin/trendy: h1 'Trendy potrzeb'. An accessible SVG BarChart (role=img plus aria-label summary, direct value labels, a pattern or label rather than colour alone) and ALWAYS a TableWithCaption 'Pokaż dane w tabeli' (details open by default), plus a 2–3 sentence auto-summary ('Najczęściej zgłaszane: Seniorzy (12)…'). Also by powiat. /admin/luki: h1 'Luki innowacyjne – potrzeby bez dobrego rozwiązania'. Grouped by obszar with counts and 2 sample texts each, and the button 'Przekaż jako temat naboru' (sets a note on the call description via the calls table, or shows a confirmation Notice).",
+   "verify": "With the seeded synthetic reports (or ≥3 inserted fixtures), both pages render non-empty tables; axeCheck passes."
+  },
+  {
+   "id": "A3",
+   "wave": "fan",
+   "est": 12,
+   "title": "Admin library editor",
+   "owns": [
+    "app/admin/biblioteka/page.tsx",
+    "app/admin/biblioteka/[id]/page.tsx",
+    "app/admin/biblioteka/actions.ts"
+   ],
+   "after": [
+    "L1"
+   ],
+   "spec": "List: title, obszar, status, seeking_testers, edited_at, and 'Edytuj'. Edit form: title, summary, obszar (Select), keywords (comma separated), status (opublikowana/ukryta), seeking_testers checkbox. Save → updateInnovation (L1's q module) plus edited_at plus a Notice 'Zapisano – zmiany widoczne od razu'. Hidden items are excluded from the public list and from matching (note this for M3 in contract_requests if retrieval reads the corpus JSON instead of the DB).",
+   "verify": "Edit the title of rops-002 → /biblioteka/rops-002 shows the new title."
+  },
+  {
+   "id": "A4",
+   "wave": "fan",
+   "est": 12,
+   "title": "Admin: nabory, poczta, testy",
+   "owns": [
+    "app/admin/nabory/page.tsx",
+    "app/admin/nabory/actions.ts",
+    "app/admin/poczta/page.tsx",
+    "app/admin/testy/page.tsx"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "/admin/nabory: a list of calls with an 'Aktywny' toggle (a form plus submit) and dates. A 'Dodaj nabór (DEMO)' form. /admin/poczta: an email_log table (data, do, temat, treść as details) titled 'Poczta wychodząca – symulacja (e-maile nie są wysyłane)'. /admin/testy: test_signups and ratings tables (innowacja, ocena, opinia, data) plus per-innovation averages.",
+   "verify": "Toggle the DEMO call off → /pomysl/<id>/wniosek shows the 'tylko w trakcie naboru' notice (when K5 is done); the tables render."
+  },
+  {
+   "id": "A5",
+   "wave": "fan",
+   "est": 8,
+   "title": "Admin AI cost & audit",
+   "owns": [
+    "app/admin/koszty-ai/page.tsx",
+    "lib/ai/pricing.ts"
+   ],
+   "after": [
+    "F1",
+    "F2",
+    "F3"
+   ],
+   "spec": "lib/ai/pricing.ts: USD per 1M tokens for the MODELS (copy current prices from {research}/04-architecture-ai-cost.md and cite it) and PLN_PER_USD 3.8881. The page: h1 'Koszty i audyt AI'. A TableWithCaption by kind (calls, avg ms, tokens in/out, estimated cost PLN), totals, 'koszt na 1 zgłoszenie' (the average of kinds structure+rerank per report), and a note on the AI Act: logs exist for oversight. These numbers feed the cost slide.",
+   "verify": "After some live calls, the page shows totals > 0; the pricing constants cite the 04 doc."
+  },
+  {
+   "id": "X1",
+   "wave": "fan",
+   "est": 12,
+   "title": "Landing page /",
+   "owns": [
+    "app/(public)/page.tsx",
+    "components/landing/"
+   ],
+   "after": [
+    "F1"
+   ],
+   "spec": "h1 'Iskra – od potrzeby do wdrożenia w Twojej gminie'. Lead: 1–2 plain sentences. A primary big button 'Opisz problem' → /zglos (with a hint 'Możesz też powiedzieć – mikrofon'). Three role tiles: 'Mieszkaniec / NGO: zgłoś potrzebę', 'Gmina / instytucja: znajdź i wdróż rozwiązanie' → /wdrozenie, 'Masz pomysł? Zgłoś innowację' → /pomysl. A 'Jak to działa' 4-step ordered list (Opisz → Dopasujemy sprawdzone innowacje ROPS → Wdrożenie z kartą usługi i ścieżką Usługa Wrażliwa → ROPS widzi luki i ogłasza nabory). Trust strip: '115 innowacji z Biblioteki ROPS Kraków', 'WCAG 2.1 AA', 'AI z nadzorem człowieka'. A non-digital channel: 'Wolisz zadzwonić? ROPS Kraków' (institutional contact). A demo-mode notice.",
+   "verify": "curl / → 200 with the h1; axeCheck passes."
+  },
+  {
+   "id": "X2",
+   "wave": "fan",
+   "est": 8,
+   "title": "Deklaracja dostępności /dostepnosc",
+   "owns": [
+    "app/(public)/dostepnosc/page.tsx"
+   ],
+   "after": [
+    "F1"
+   ],
+   "spec": "Use the Polish template from {research}/05-accessibility-ux.md §4: the a11y-* ids (a11y-podmiot, a11y-data-publikacja, a11y-data-aktualizacja, a11y-status, a11y-kontakt, a11y-procedura, etc. exactly as in the template) and <time datetime> elements. Clearly mark it as a prototype for the HackYeah demo: placeholders, no personal data. Known limitations: PJM in preparation, the voice features depend on the browser, the AI text simplification is not ETR.",
+   "verify": "curl → 200; the HTML contains id=\"a11y-podmiot\", id=\"a11y-kontakt\" and <time."
+  },
+  {
+   "id": "X3",
+   "wave": "fan",
+   "est": 10,
+   "title": "O projekcie, ETR, PJM pages",
+   "owns": [
+    "app/(public)/o-projekcie/page.tsx",
+    "app/(public)/etr/page.tsx",
+    "app/(public)/pjm/page.tsx"
+   ],
+   "after": [
+    "F1",
+    "F3"
+   ],
+   "spec": "/o-projekcie: what Iskra is; AI use (which models from lib/ai/models.ts are imported and listed, what AI does and doesn't do, human oversight, the AI Act Art. 50 transparency statement, logs); data sources and licences (ROPS Biblioteka CC BY 4.0 with links, Mapa Wyzwań, GUS BDL, TERYT), the synthetic-data notice, the demo-mode notice, privacy (redaction before AI, no personal data, EU region fra1), the roadmap (Bielik/PLLuM endpoint via env, login.gov.pl, Witkac export, innowacjespoleczne.pl import, PJM videos, an external WCAG audit). /etr: a short easy-to-read page about the service (very short sentences, one idea per line) labelled 'Tekst prosty (nie jest to certyfikowany ETR)'. /pjm: an honest placeholder 'Tłumaczenie na PJM – w przygotowaniu' plus a contact.",
+   "verify": "curl all 3 → 200; /o-projekcie contains every model id string from lib/ai/models.ts."
+  },
+  {
+   "id": "X4",
+   "wave": "post",
+   "est": 12,
+   "title": "Seed script (demo data)",
+   "owns": [
+    "scripts/seed-db.ts"
+   ],
+   "after": [
+    "M5",
+    "E1",
+    "K2",
+    "C2"
+   ],
+   "spec": "Idempotent seeding (it deletes rows with synthetic=true first): upsert the 115 innovations from data/corpus.json plus embeddings (from corpus.embedded.json if present), with seeking_testers=true on 6 recommended ones. Insert 1 active call 'Nabór DEMO – Inkubator (IWS 2.0) – symulacja'. Run runMatch over all 25 data/synthetic.json texts with gminaTeryt (marking the rows synthetic=true; if AI fails, set AI_MODE=off for the run). Add 3 synthetic ideas (one with a failing IWS verdict), 6 ratings, 3 test signups, and 1 thread with a ROPS reply. Print the counts.",
+   "verify": "pnpm seed prints innovations=115, reports≥25, calls≥1; a re-run gives the same counts (idempotent)."
+  },
+  {
+   "id": "E2",
+   "wave": "post",
+   "est": 10,
+   "title": "Matchmaking eval hit@3",
+   "owns": [
+    "scripts/eval-match.ts",
+    "docs/eval.md"
+   ],
+   "after": [
+    "M5",
+    "E1"
+   ],
+   "spec": "For each of the 25 synthetic problems, run the pipeline WITHOUT the DB write (call structure → retrieve → rerank directly). A pick is relevant if its obszar, targetGroups or keywords intersect expected_tags (case-insensitive, stem match). Compute hit@1, hit@3 and MRR for AI_MODE=on and AI_MODE=off. Write docs/eval.md: a method paragraph, a results table, the 3 worst cases with an explanation, and an honest note on weak corpus areas (poverty, depopulation, homelessness).",
+   "verify": "docs/eval.md exists with numeric hit@3 for both modes."
+  },
+  {
+   "id": "Q1",
+   "wave": "post",
+   "est": 12,
+   "title": "A11y scan + Lighthouse report",
+   "owns": [
+    "scripts/a11y-scan.ts",
+    "e2e/a11y.spec.ts",
+    "docs/a11y-report.md"
+   ],
+   "after": [
+    "U1",
+    "U4",
+    "L2",
+    "K4",
+    "W2",
+    "A2",
+    "X1"
+   ],
+   "spec": "A Playwright spec visiting /, /zglos, a seeded /zglos/wyniki/<id>, /biblioteka/rops-001, /pomysl, /wdrozenie/<seeded card id>, /admin/trendy (as rops), /dostepnosc: axe with tags wcag2a, wcag2aa, wcag21a, wcag21aa, wcag22aa. Write docs/a11y-report.md (route | violations by impact | top rule ids). Run npx lighthouse (if available offline) on / and /zglos, mobile, accessibility category only, and record the scores. List serious/critical items per owning WP for the fixers.",
+   "verify": "docs/a11y-report.md has 8 routes with counts."
+  },
+  {
+   "id": "Q2",
+   "wave": "post",
+   "est": 8,
+   "title": "Production smoke test",
+   "owns": [
+    "scripts/smoke-prod.ts"
+   ],
+   "after": [
+    "X4"
+   ],
+   "spec": "Given BASE_URL, check (with fetch plus a cookie jar) that: / 200; POST a report through the /zglos form action (or call the API) yields a results page with ≥1 card or a luka notice; /biblioteka/rops-001 200; /pomysl 200; /wdrozenie?innowacja=rops-001 200; /wiadomosci 200; /admin with role=rops cookie 200 containing 'skrzynka'; /admin/trendy 200; /dostepnosc 200. Print a ✓/✗ table and exit 1 on any ✗.",
+   "verify": "BASE_URL=http://localhost:3000 pnpm tsx scripts/smoke-prod.ts → all ✓."
+  },
+  {
+   "id": "D1",
+   "wave": "fan",
+   "est": 10,
+   "title": "README + AI_WORKFLOW + dependency list",
+   "owns": [
+    "README.md",
+    "AI_WORKFLOW.md",
+    "docs/dependencies.md"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "README in Polish with a short English section: what Iskra is, the live URL placeholder, demo roles, modules I–VII with routes, setup (pnpm i; vercel link; vercel env pull .env.local; pnpm db:push; pnpm seed; pnpm dev), tests (pnpm test, pnpm e2e), data sources and licences, AI use, and a statement that only the research existed before 3 Oct 11:00 (the research was done 3–4 Oct during the event). AI_WORKFLOW.md: models (Claude Opus 5.5 via Claude Code as the orchestrator, subagents, Claude Haiku 4.5 / Sonnet 5.5 via Vercel AI Gateway in the product, qwen3-embedding), the workflow (research tracks → contract-first fan-out of ~45 work packages → integration → materials), main prompts summarised, validation (unit tests, e2e, axe, eval), limitations, with no secrets. docs/dependencies.md: generated from package.json (name, version, licence via node_modules/<pkg>/package.json) — the contract asks for a complete toolchain list.",
+   "verify": "The files exist; git grep -nE '(sk-|postgres://|@[a-z0-9-]+\\.(pl|com))' README.md AI_WORKFLOW.md finds no secrets or e-mails."
+  },
+  {
+   "id": "G1",
+   "wave": "fan",
+   "est": 15,
+   "title": "Pitch deck HTML (10 slides, PL)",
+   "owns": [
+    "docs/deck/"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "docs/deck/index.html: 10 slides at 1280×720 using @page size and page-breaks, the Iskra brand tokens, Polish, and {{placeholders}} for numbers and screenshots (filled in the materials wave). Slides: 1 Iskra – od potrzeby do wdrożenia w Twojej gminie; 2 Problem (the Mapa Wyzwań areas plus Małopolska numbers: 65+ share 18.6% → 21.8%, 93.8k people on social assistance, sources); 3 Rozwiązanie: the loop (zgłoszenie → dopasowanie → wdrożenie → luka → nabór); 4 Demo: {{shots}}; 5 Moduły I–VII matrix (built / simplified / simulated, honest); 6 Dostępność (WCAG 2.1 AA + 2.2 items, voice, read aloud, the deklaracja, {{axe}} {{lighthouse}}); 7 AI: architecture, ID guard, PII redaction, AI Act label, human oversight, eval {{hit3}}, Bielik/PLLuM-ready; 8 Wdrożenie: Usługa Wrażliwa path plus the IWS 2.0 pre-score plus integrations (Witkac export, login.gov.pl, the grant DB) plus {{cost_table}}; 9 Roadmap; 10 Zespół {{team}} plus links {{demo_url}} {{video_url}}. Add scripts/build-deck.ts? NO, that's the lead's: just make index.html printable via Playwright page.pdf(). Read research 00/03/04/05/07 for content. No competitor names on slides.",
+   "verify": "Opening the file in Chromium prints exactly 10 pages (the lead checks); every placeholder is listed in docs/deck/PLACEHOLDERS.md."
+  },
+  {
+   "id": "G2",
+   "wave": "fan",
+   "est": 10,
+   "title": "Cost estimate table (PL)",
+   "owns": [
+    "docs/koszty.md",
+    "docs/koszty.json"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "From {research}/04-architecture-ai-cost.md §6: pilot (1 000 users, 500 reports/month) and region scale (50 000 users, 10 000 reports) monthly costs in PLN: hosting, DB, LLM per operation, embeddings, e-mail, monitoring, maintenance staff (FTE), plus 05 §7.2 items (a PJM translation budget, an external WCAG audit, as one-off 'szac.' items). Include the assumptions, the exchange rate (NBP 3.8881) and the sources. The JSON has the same numbers, and a check that the row sums equal the totals. Polish headings, ready for slide 8 and the HackTribe 'przewidywany koszt' field.",
+   "verify": "A node one-liner recomputes the sums in docs/koszty.json and they equal the stated totals."
+  },
+  {
+   "id": "G3",
+   "wave": "fan",
+   "est": 12,
+   "title": "Video script + captions (PL, ≤3:00)",
+   "owns": [
+    "docs/video/"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "docs/video/script.md: a shot list with timecodes ≤2:55 following {research}/05 §7.1, adapted to Iskra and the plan's demo anchors (08 §6): the persona from syn-001 (a daughter reports for an 82-year-old mother in Szczurowa via 'Pomagam komuś' and voice) → results with 'Dlaczego to pasuje' plus local context → Wyjaśnij prościej / read aloud → Wdróż u siebie → the service card plus Usługa Wrażliwa route → Kreator IWS verdict → admin: bell, reply, trendy/luki → keyboard plus screen reader plus high contrast flash → axe/Lighthouse plus the deklaracja → close with the name and URL. Narration in plain Polish. docs/video/captions.srt matching the timecodes. docs/video/checklist.md: what the user must click, in order, while recording.",
+   "verify": "The timecodes sum to ≤175 s (verified by a script in the notes); the .srt parses (sequential indices, valid times)."
+  },
+  {
+   "id": "G4",
+   "wave": "fan",
+   "est": 10,
+   "title": "HackTribe submission text (PL)",
+   "owns": [
+    "docs/hacktribe.md"
+   ],
+   "after": [
+    "F0"
+   ],
+   "spec": "Polish: title (≤5 words, e.g. 'Iskra – od potrzeby do wdrożenia'), a description (≤500 words: problem, solution, modules I–VII, what's unique (Usługa Wrażliwa path, the IWS 2.0 pre-score with thresholds in code, the senior voice flow plus proxy mode, local GUS context), real ROPS data (CC BY 4.0) plus synthetic labels, AI use and oversight, accessibility, how to test (demo roles, URL), cost summary {{koszt}}, and a TEAM placeholder line). Also the field-by-field paste list (PDF, mp4, demo link, mockups, repo access note: 'repozytorium prywatne – dostęp na prośbę jury' per the copyright terms). Word count printed at the end.",
+   "verify": "The description word count is ≤500 (count with wc -w on the description block)."
+  },
+  {
+   "id": "G5",
+   "wave": "post",
+   "est": 10,
+   "title": "Screenshots / UX-UI mockups board",
+   "owns": [
+    "scripts/shots.ts",
+    "docs/mockups/"
+   ],
+   "after": [
+    "X4"
+   ],
+   "spec": "A Playwright script taking screenshots at 1440×900 and 390×844 of: /, /zglos, a results page, /biblioteka/rops-001, /pomysl/<id>/ocena, /wdrozenie/<id>, /wiadomosci/<id>, /admin/trendy (rops), plus the high-contrast and A++ variants of /zglos. Compose docs/mockups/board.html (a grid with Polish captions) and render it to board.png. These are the UX/UI mockups deliverable.",
+   "verify": "≥10 PNGs plus board.png exist."
+  }
+ ]
 }

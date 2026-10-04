@@ -1,5 +1,7 @@
 # 08: Iskra build plan: tasks and verifiable atomic subtasks
 
+**Execution model superseded by [09-iskra-parallel-runbook.md](09-iskra-parallel-runbook.md)** (54 WPs in [iskra-wps.json](iskra-wps.json), 3 concurrent fan-out workflows). The architecture (§2) and the acceptance checks here still apply.
+
 **Status:** PLAN ONLY. Nothing is built yet (per user, Sun 4 Oct ~06:50 CEST). Deadline is **11:00 CEST** on HackTribe, in Polish.
 Background and justification: [00-plan](00-plan.md) and tracks 01–07.
 

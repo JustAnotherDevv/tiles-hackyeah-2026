@@ -14,6 +14,7 @@ import httpx
 import pytest
 
 from aegis.proxy import upstream
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
 from tests.unit.core_gateway_proxy.fakes import echo_anthropic
 
 pytestmark = pytest.mark.slow
@@ -42,7 +43,7 @@ async def test_v13_redact_rehydrate_real_stack(tmp_path, monkeypatch, stream) ->
                 r = await c.post("/v1/messages", json={
                     "model": "mock-echo", "max_tokens": 64, "stream": stream,
                     "messages": [{"role": "user", "content": TEXT}]},
-                    headers={"x-aegis-agent": "trading-copilot@trading"})
+                    headers=agent_headers("trading-copilot@trading"))
                 assert r.status_code == 200, r.text
                 sent = json.loads(seen[-1].content)["messages"][0]["content"]
                 assert "44051401359" not in sent and "jan.kowalski@example.com" not in sent

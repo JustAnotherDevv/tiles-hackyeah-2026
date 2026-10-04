@@ -19,6 +19,7 @@ from typing import Any
 
 from aegis.controls.injection import _common as _c
 from aegis.controls.injection._common import Inj05Params, mask, parse_params, session_data
+from aegis.controls.resilience._failsafe import internal_error_decision
 from aegis.core.paths import glob_match
 from aegis.core.policy_schema import ControlConfig
 from aegis.core.protocols import BaseControl
@@ -106,14 +107,10 @@ class GoalDrift(BaseControl):
     ) -> Decision | None:
         try:
             return await self._evaluate(ctx, interaction, cfg)
-        except Exception:
-            log.exception("INJ-05 internal error (degraded allow)")
-            return Decision(
-                action="allow",
-                control_id=self.id,
-                reason="INJ-05 internal error (degraded)",
-                degraded=True,
-            )
+        except Exception as exc:
+            # ASI08: honour fail_mode (closed -> degraded block) instead of a silent allow.
+            log.exception("INJ-05 internal error (fail_mode=%s)", getattr(cfg, "fail_mode", None))
+            return internal_error_decision(self.id, cfg, exc)
 
     async def _evaluate(
         self, ctx: RequestContext, interaction: Interaction, cfg: ControlConfig

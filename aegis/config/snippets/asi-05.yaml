@@ -1,0 +1,69 @@
+# =============================================================================
+#  ASI-EXEC snippet (OWASP ASI05 Unexpected Code Execution) - merged into
+#  config/policy.yaml by ASI-POLICY (`python -m aegis.policy.snippets merge --only asi-05`).
+# =============================================================================
+#  EXE-05 "Code-execution provenance & sandbox guard":
+#  src/aegis/controls/actions/exe05_code_exec.py; classifier aegis.actions.commands.exec_profile;
+#  write provenance aegis.actions.taint (session namespace `written`).
+#    * write-then-exec: running a file the agent wrote (Write/Edit/MCP write tools, shell
+#      redirects/tee/cp/sed -i) -> require_approval (admin via rule code-exec-unsandboxed);
+#      written while the session held untrusted content -> block; downloaded (curl -o/wget) and
+#      run in a LATER call -> block. A package script (npm run/make/...) whose manifest the
+#      agent edited counts as executing the manifest.
+#    * deferred execution: writes to git hooks / shell rc / LaunchAgents / cron -> require_approval.
+#    * sandbox posture: require_sandbox_for: [code.exec] -> interpreter-on-file (python/node/bash/
+#      sh/zsh/ruby/perl/php/deno/bun/pwsh), -c/-e/eval one-liners, ./script, npx/uvx/pipx run/
+#      npm exec/dlx and code tools need approval unless the run is sandboxed by POLICY (sandbox
+#      runner bwrap/firejail/nsjail/sandbox-exec/minijail0/runsc/systemd-run or docker run
+#      --network none without host mounts; `sandbox_tools`; `sandboxed_agents`). A caller's
+#      own meta.sandbox claim is ignored unless trust_declared_sandbox: true.
+#    * npm run / make / cargo run with an untouched manifest -> log (visible, not blocked).
+#  EXE-01 keeps `curl … | sh` (pipe-to-shell inside one command): it blocks first (priority 20).
+#  Judge levers: controls[EXE-05].params.require_sandbox_for: []  -> no sandbox requirement
+#                controls[EXE-05].params.write_exec_action: block -> write-then-exec hard-blocks
+#                controls[EXE-05].params.sandbox_tools: ["e2b.*"] -> that MCP server counts as a sandbox
+#  Profiles (ASI-POLICY, see ASI_REQUESTS.md): permissive {require_sandbox_for: [], write_exec_action: log};
+#  strict/paranoid {write_exec_action: block}.
+# =============================================================================
+actions:
+  # widened code.exec classifier (ACT-04 / EXE-05 refine it structurally; this keeps dashboards and
+  # GOV-03 action-type checks right even when EXE-05 is switched off)
+  - {id: code.exec, category: code_exec, tools: ["Bash"],
+     args_match: {command: "(?i)\\b((docker|podman)\\s+run|ssh|scp|rsync|python[0-9.]*\\s+-c|node\\s+-e|(perl|ruby|bun)\\s+-e|php\\s+-r|deno\\s+eval|(npx|bunx|uvx)\\b|pipx\\s+run|npm\\s+exec|(pnpm|yarn)\\s+dlx|(python[0-9.]*|node|nodejs|bash|sh|zsh|ruby|perl|php|deno(\\s+run)?|bun(\\s+run)?|pwsh|powershell|tsx|ts-node)\\s+(-\\S+\\s+)*[^-\\s]\\S*\\.(py|pyw|js|mjs|cjs|ts|sh|bash|zsh|rb|pl|php|ps1)\\b)"}}
+
+controls:
+  - id: EXE-05
+    name: Code-execution provenance & sandbox guard
+    enabled: true
+    mode: enforce
+    action: require_approval            # per-finding actions live in params (block for download/untrusted write-then-exec)
+    severity: high
+    fail_mode: closed
+    timeout_ms: 100
+    owasp: [ASI05, LLM10:2026, MCP05:2025]
+    params:
+      require_sandbox_for: [code.exec]
+      unsandboxed_action: require_approval
+      write_exec_action: require_approval
+      untrusted_write_exec_action: block
+      download_exec_action: block
+      sandboxed_write_exec_action: log
+      autoexec_write_action: require_approval
+      pkg_script_action: log
+      sandbox_tools: []                 # e.g. ["e2b.*", "code-sandbox.*"]: MCP tools that execute in an isolated sandbox
+      sandboxed_agents: []              # agent globs the operator attests run inside an isolated container
+      trust_declared_sandbox: false     # a caller's meta.sandbox is a claim, not proof
+      written_ttl_s: 86400
+    tests:
+      - {name: python-script-needs-sandbox, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "python3 scripts/cleanup.py --all"}, agent: claude-code@platform, expect: require_approval, control: EXE-05}
+      - {name: node-eval-needs-sandbox, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "node --eval \"require('fs').readdirSync('.')\""}, agent: claude-code@platform, expect: require_approval}
+      - {name: npx-runner-needs-sandbox, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "npx -y some-cli-tool@latest init"}, agent: claude-code@platform, expect: require_approval, control: EXE-05}
+      - {name: bwrap-sandboxed-allowed, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "bwrap --ro-bind /usr /usr --unshare-all --die-with-parent -- python3 analysis.py"}, agent: claude-code@platform, expect: allow, control: EXE-05}
+      - {name: pytest-allowed, kind: tool_call, surface: tool.input, destination: local, tool_name: Bash,
+         tool_args: {command: "python3 -m pytest -q tests/unit"}, agent: claude-code@platform, expect: allow, control: EXE-05}
+      - {name: husky-hook-write-needs-approval, kind: tool_call, surface: tool.input, destination: local, tool_name: Write,
+         tool_args: {file_path: "/tmp/aegis-demo/project/.husky/pre-commit", content: "npm test"}, agent: claude-code@platform, expect: require_approval, control: EXE-05}

@@ -20,6 +20,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 httpx = pytest.importorskip("httpx")
 yaml = pytest.importorskip("yaml")
 
@@ -183,7 +185,7 @@ def stack() -> Iterator[LocalStack]:
 def secrets(stack: LocalStack) -> dict[str, str]:
     """Drive traffic carrying sensitive values through guard, proxy and hook surfaces."""
     vals = {"pesel": _pesel(), "pan": _pan(), "aws": _aws_key(), "email": _email()}
-    agent = {"X-Aegis-Agent": "trading-copilot@trading"}
+    agent = agent_headers("trading-copilot@trading")  # ASI03: claim + key
     for text in (
         f"Client PESEL {vals['pesel']}, email {vals['email']}",
         f"Card {vals['pan']} for the refund",
@@ -215,7 +217,7 @@ def secrets(stack: LocalStack) -> dict[str, str]:
         )
     stack.http.post(
         "/v1/hooks/claude-code",
-        headers={"X-Aegis-Agent": "claude-code@platform"},
+        headers=agent_headers("claude-code@platform"),
         json={
             "session_id": str(uuid.uuid4()),
             "transcript_path": "/tmp/aegis-demo/t.jsonl",

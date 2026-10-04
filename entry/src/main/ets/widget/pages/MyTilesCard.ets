@@ -1,5 +1,7 @@
 // 2x4 "My tiles" Tiles widget: the top 3 pinned tiles as colorful chips. Tap a chip -> opens that tile in the
 // app (postCardAction router, params.tileId). Data: formBindingData from platform/WidgetBridge.ets.
+// Living Light (direction C) skin: pale LL page gradient, palette-gradient chips (radius 18, soft shadow), centered
+// icon + label. Palette inlined (form pages cannot import app modules). No animation (widget constraints).
 let myTilesStorage = new LocalStorage();
 
 // Symbol for a tile's icon key (SeedTiles / Composer names) or, if unknown, its type. Literal $r only (widget).
@@ -49,6 +51,41 @@ function myTilesSymbol(icon: string, type: string): Resource {
   }
 }
 
+// Living Light palette gradient (135deg) recovered from the on-color (unique per LL key); legacy on-colors map
+// onto their LL successor. Unknown -> flat `bg`.
+function myTilesGrad(bg: string, on: string): string[] {
+  switch (on.toUpperCase()) {
+    case '#3B2500': case '#3D2C00': return ['#FFE48F', '#FFB870']; // sun
+    case '#0F2A5F': case '#06243F': return ['#D4E4FF', '#A9C4FF']; // sky
+    case '#0E3B1F': case '#173A07': return ['#D2F3D8', '#9FDFB3']; // leaf
+    case '#5A1424': case '#3B0E08': return ['#FFD6DE', '#FFADBE']; // rose (coral)
+    case '#2B1A5E': case '#170B38': return ['#E6D9FF', '#C2ADFF']; // plum (grape)
+    case '#3A2E1E': return ['#F7F0E6', '#E8DCCB']; // sand
+    case '#F0F2FF': return ['#2A2E48', '#1B1E33']; // ink
+    case '#0B3B35': case '#04362A': return ['#D3F5EF', '#9FE3DA']; // mint
+    case '#4A2208': case '#3E1A05': return ['#FFDFC9', '#FFBE98']; // peach
+    default: return [bg, bg];
+  }
+}
+
+function myTilesOn(on: string): string {
+  switch (on.toUpperCase()) {
+    case '#3D2C00': return '#3B2500';
+    case '#06243F': return '#0F2A5F';
+    case '#173A07': return '#0E3B1F';
+    case '#3B0E08': return '#5A1424';
+    case '#170B38': return '#2B1A5E';
+    case '#04362A': return '#0B3B35';
+    case '#3E1A05': return '#4A2208';
+    default: return on;
+  }
+}
+
+function myTilesStops(bg: string, on: string): Array<[ResourceColor, number]> {
+  const g: string[] = myTilesGrad(bg, on);
+  return [[g[0], 0.0], [g[1], 1.0]];
+}
+
 // One object-literal argument = @Builder pass-by-reference, so chips update when formBindingData arrives.
 class ChipArgs {
   id: string = '';
@@ -69,51 +106,57 @@ struct MyTilesCard {
   @LocalStorageProp('t1Id') t1Id: string = '';
   @LocalStorageProp('t1Title') t1Title: string = '';
   @LocalStorageProp('t1Sub') t1Sub: string = '';
-  @LocalStorageProp('t1Bg') t1Bg: string = '#FFC83D';
-  @LocalStorageProp('t1On') t1On: string = '#3D2C00';
+  @LocalStorageProp('t1Bg') t1Bg: string = '#FFD17F';
+  @LocalStorageProp('t1On') t1On: string = '#3B2500';
   @LocalStorageProp('t1Icon') t1Icon: string = '';
   @LocalStorageProp('t1Type') t1Type: string = 'custom';
   @LocalStorageProp('t2Id') t2Id: string = '';
   @LocalStorageProp('t2Title') t2Title: string = '';
   @LocalStorageProp('t2Sub') t2Sub: string = '';
-  @LocalStorageProp('t2Bg') t2Bg: string = '#FF6B5A';
-  @LocalStorageProp('t2On') t2On: string = '#3B0E08';
+  @LocalStorageProp('t2Bg') t2Bg: string = '#FFC2CE';
+  @LocalStorageProp('t2On') t2On: string = '#5A1424';
   @LocalStorageProp('t2Icon') t2Icon: string = '';
   @LocalStorageProp('t2Type') t2Type: string = 'custom';
   @LocalStorageProp('t3Id') t3Id: string = '';
   @LocalStorageProp('t3Title') t3Title: string = '';
   @LocalStorageProp('t3Sub') t3Sub: string = '';
-  @LocalStorageProp('t3Bg') t3Bg: string = '#2ED3A0';
-  @LocalStorageProp('t3On') t3On: string = '#04362A';
+  @LocalStorageProp('t3Bg') t3Bg: string = '#B9ECE4';
+  @LocalStorageProp('t3On') t3On: string = '#0B3B35';
   @LocalStorageProp('t3Icon') t3Icon: string = '';
   @LocalStorageProp('t3Type') t3Type: string = 'custom';
 
   @Builder
   chip(a: ChipArgs) {
-    Column() {
+    Column({ space: 6 }) {
       SymbolGlyph(myTilesSymbol(a.icon, a.type))
-        .fontSize(22)
-        .fontColor([a.on])
-      Blank()
+        .fontSize(30)
+        .fontColor([myTilesOn(a.on)])
       Text(a.title)
-        .fontSize(14)
+        .fontSize(13)
         .fontWeight(FontWeight.Bold)
-        .fontColor(a.on)
+        .lineHeight(15)
+        .fontColor(myTilesOn(a.on))
+        .textAlign(TextAlign.Center)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-      Text(a.sub)
-        .fontSize(10)
-        .fontColor(a.on)
-        .opacity(0.8)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      if (a.sub.length > 0) {
+        Text(a.sub)
+          .fontSize(11)
+          .fontColor(myTilesOn(a.on))
+          .opacity(0.85)
+          .textAlign(TextAlign.Center)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
     }
     .layoutWeight(1)
     .height('100%')
-    .alignItems(HorizontalAlign.Start)
-    .padding(10)
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .padding({ left: 6, right: 6, top: 8, bottom: 8 })
     .borderRadius(18)
-    .backgroundColor(a.bg)
+    .linearGradient({ angle: 135, colors: myTilesStops(a.bg, a.on) })
+    .shadow({ radius: 14, color: '#4028326E', offsetX: 0, offsetY: 8 })
     .accessibilityText(a.title + '. ' + a.sub)
     .onClick(() => {
       postCardAction(this, {
@@ -127,17 +170,20 @@ struct MyTilesCard {
   build() {
     Column() {
       Row() {
-        Text('My tiles')
-          .fontSize(13)
+        Text('MY TILES')
+          .fontSize(11)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#1C2230')
+          .letterSpacing(1.3)
+          .fontColor('#5B6283')
         Blank()
         Text(this.profileName.length > 0 ? this.profileName : 'Tiles')
-          .fontSize(11)
-          .fontColor('#5B6170')
+          .fontSize(12)
+          .fontWeight(FontWeight.Medium)
+          .fontColor('#5B6283')
           .maxLines(1)
       }
       .width('100%')
+      .padding({ left: 4, right: 4 })
       .margin({ bottom: 8 })
 
       if (this.hasData && this.tCount > 0) {
@@ -153,23 +199,24 @@ struct MyTilesCard {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column() {
+        Column({ space: 4 }) {
           Text('Open Tiles to pick your profile')
-            .fontSize(15)
+            .fontSize(16)
             .fontWeight(FontWeight.Bold)
-            .fontColor('#3D2C00')
+            .fontColor('#3B2500')
           Text('Your pinned tiles will show here')
-            .fontSize(11)
-            .fontColor('#3D2C00')
-            .opacity(0.8)
+            .fontSize(12)
+            .fontColor('#3B2500')
+            .opacity(0.85)
         }
         .width('100%')
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
         .alignItems(HorizontalAlign.Start)
-        .padding(12)
+        .padding(16)
         .borderRadius(18)
-        .backgroundColor('#FFC83D')
+        .linearGradient({ angle: 135, colors: [['#FFE48F', 0.0], ['#FFB870', 1.0]] })
+        .shadow({ radius: 14, color: '#4028326E', offsetX: 0, offsetY: 8 })
         .onClick(() => {
           postCardAction(this, {
             action: 'router',
@@ -182,6 +229,7 @@ struct MyTilesCard {
     .width('100%')
     .height('100%')
     .padding(12)
-    .backgroundColor('#F6F3EE')
+    .borderRadius(26)
+    .linearGradient({ angle: 165, colors: [['#EDF1FC', 0.0], ['#F6F0FA', 0.5], ['#FFF3EA', 1.0]] })
   }
 }

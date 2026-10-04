@@ -1,5 +1,5 @@
 import { AbilityConstant, Configuration, ConfigurationConstant, UIAbility, Want } from '@kit.AbilityKit';
-import { window } from '@kit.ArkUI';
+import { UIContext, window } from '@kit.ArkUI';
 import { PARAM_TILE_ID, PlatformKeys, TilesPlatform, TLog } from '../tiles/platform/TilesPlatform';
 import { TileNotifications } from '../tiles/platform/TileNotifications';
 import { TileStore } from '../tiles/data/TileStore';
@@ -38,9 +38,32 @@ export default class EntryAbility extends UIAbility {
     TLog.info('Ability onDestroy');
   }
 
+  /** Living Light font: Manrope (OFL) static faces bundled in rawfile/fonts, all under the family 'Manrope'. */
+  private registerFonts(ui: UIContext): void {
+    const faces: Resource[] = [
+      $rawfile('fonts/Manrope-Medium.ttf'),
+      $rawfile('fonts/Manrope-SemiBold.ttf'),
+      $rawfile('fonts/Manrope-Bold.ttf'),
+      $rawfile('fonts/Manrope-ExtraBold.ttf')
+    ];
+    for (let i = 0; i < faces.length; i++) {
+      try {
+        ui.getFont().registerFont({ familyName: 'Manrope', familySrc: faces[i] });
+      } catch (e) {
+        TLog.warn('registerFont Manrope #' + i + ' failed: ' + JSON.stringify(e));
+      }
+    }
+  }
+
   onWindowStageCreate(windowStage: window.WindowStage): void {
     this.windowStage = windowStage;
     windowStage.loadContent('pages/Index', (err) => {
+      // The UIContext exists only once content is loaded (earlier: 1300002); register before the first frames settle.
+      try {
+        this.registerFonts(windowStage.getMainWindowSync().getUIContext());
+      } catch (e) {
+        TLog.warn('font registration failed: ' + JSON.stringify(e));
+      }
       if (err.code) {
         TLog.warn('Failed to load the content: ' + JSON.stringify(err));
         return;

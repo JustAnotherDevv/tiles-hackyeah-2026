@@ -94,7 +94,8 @@ def bound_params(masker: Masker, tool_name: str | None, args: Any, extra: dict[s
 
 
 def trimmed(req: ApprovalRequest) -> dict[str, Any]:
-    """JSON for SSE / list rows: `payload.proposal.yaml` -> {yaml_sha256, yaml_bytes}."""
+    """JSON for SSE / list rows: `payload.proposal.yaml` -> {yaml_sha256, yaml_bytes}; plus the
+    additive `review` block (aegis.approvals.serialize_review, ASI09)."""
     data = req.model_dump(mode="json")
     payload = data.get("payload") or {}
     proposal = payload.get("proposal")
@@ -110,6 +111,12 @@ def trimmed(req: ApprovalRequest) -> dict[str, Any]:
         payload["yaml_sha256"] = hashlib.sha256(y.encode()).hexdigest()
         payload["yaml_bytes"] = len(y.encode())
     data["payload"] = payload
+    try:  # ASI09: additive `review` block (bound action, untrusted agent text, risk signals)
+        from aegis.approvals.serialize_review import review_block
+
+        data["review"] = review_block(data)
+    except Exception:  # never break the inbox over a display helper
+        data["review"] = None
     return data
 
 

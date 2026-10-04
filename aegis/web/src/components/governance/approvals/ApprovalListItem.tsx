@@ -2,7 +2,7 @@
 // Owner: B18-dashboard-gov-approvals.
 import { displayTitle } from '@/components/governance/lib/format-gov';
 import { motion } from 'framer-motion';
-import { Lock } from '@/components/icons';
+import { Bot, Lock, TriangleAlert } from '@/components/icons';
 import { forwardRef } from 'react';
 import type { ApprovalRequest } from '@/api/types';
 import { resolveIcon } from '@/lib/icons';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { ApproverBadge } from '../ApproverBadge';
 import { ExpiryCountdown } from '../ExpiryCountdown';
 import type { Directory } from '../hooks';
+import { reviewOf } from '../lib/approval-review';
 import { approvalIcon, firstName, fmtMoney, statusMeta } from '../lib/format-gov';
 import { TwoPersonProgress } from '../TwoPersonProgress';
 import type { VoteState } from './util';
@@ -28,14 +29,17 @@ export interface ApprovalListItemProps {
   fresh: boolean;
   dir: Directory;
   onSelect: (id: string) => void;
+  /** Requester is flooding the inbox (ASI09 anti-fatigue). */
+  flooded?: boolean;
 }
 
-export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps>(function ApprovalListItem({ req, vote, selected, fresh, dir, onSelect }, ref) {
+export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps>(function ApprovalListItem({ req, vote, selected, fresh, dir, onSelect, flooded = false }, ref) {
   const Icon = resolveIcon(approvalIcon(req.kind, req.action_type));
   const pending = req.status === 'pending';
   const who = req.requester.agent_id ?? firstName(dir.memberById.get(req.requester.member_id ?? '')?.name ?? req.requester.display_name ?? req.requester.member_id ?? '');
   const st = statusMeta(req.status);
   const locked = pending && !vote.ok;
+  const review = reviewOf(req);
   return (
     <motion.div
       ref={ref}
@@ -84,6 +88,21 @@ export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps
             {req.amount_usd !== null ? <span className="tabular text-text-2">{fmtMoney(req.amount_usd)}</span> : null}
             {pending ? <ExpiryCountdown expiresAt={req.expires_at} /> : null}
             {req.two_person ? <TwoPersonProgress votes={req.votes} /> : null}
+            {review.destructive ? (
+              <span className="inline-flex h-[18px] items-center gap-0.5 rounded-sm border border-block/30 bg-block/10 px-1 text-2xs text-block" title={review.destructive_reason ?? undefined}>
+                <TriangleAlert className="size-3" /> destructive
+              </span>
+            ) : null}
+            {review.agent_text.length ? (
+              <span className="inline-flex h-[18px] items-center gap-0.5 rounded-sm border border-dashed border-redact/50 px-1 text-2xs text-redact" title="Includes text written by the agent (untrusted)">
+                <Bot className="size-3" /> agent text
+              </span>
+            ) : null}
+            {flooded && pending ? (
+              <span className="inline-flex h-[18px] items-center rounded-sm border border-block/30 bg-block/10 px-1 text-2xs text-block" title="This requester is sending many approval requests — possible approval flooding">
+                burst
+              </span>
+            ) : null}
           </div>
         </div>
         {locked ? (

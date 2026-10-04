@@ -78,6 +78,20 @@ def agent_key(agent_id: str | None) -> str | None:
     return DEMO_AGENTS.get(agent_id or "")
 
 
+def agent_headers(agent_id: str | None, key: str | None = None) -> dict[str, str]:
+    """`X-Aegis-Agent` + `X-Aegis-Agent-Key` for an agent (seed key unless `key` is given).
+
+    ASI03: the gateway never trusts a bare `X-Aegis-Agent` claim of a registered agent - the
+    claim must come with that agent's key (GOV-01 "agent identity not proven")."""
+    if not agent_id:
+        return {}
+    h = {"X-Aegis-Agent": agent_id}
+    k = key if key is not None else agent_key(agent_id)
+    if k:
+        h["X-Aegis-Agent-Key"] = k
+    return h
+
+
 def resolve_member(member: str | None) -> str | None:
     """Member id from an id, a role alias (`owner|admin|member`) or a short name (`emily`)."""
     if not member:
@@ -102,6 +116,7 @@ __all__ = [
     "EXPIRED_KEY",
     "REVOKED_KEY",
     "ROLE_ALIASES",
+    "agent_headers",
     "agent_key",
     "default_url",
     "resolve_member",

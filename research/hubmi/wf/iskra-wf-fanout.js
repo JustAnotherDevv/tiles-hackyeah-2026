@@ -5,11 +5,13 @@ export const meta = {
   phases: [{ title: 'Fan-out', detail: 'one agent per work package, started as soon as its dependencies finish' }],
 }
 
-// args: { repo, research, rules: string[], wps: WP[], partition: 'A' | 'B' | 'DOCS', only?: string[] }
+// args: { repo, research, rules: string[], wps: WP[], partition: 'A' | 'B' | 'C', only?: string[] }
+// Three partitions launched as three concurrent workflow runs (6 agents each on this 8-CPU machine → ~18 live).
+// Simulated makespan with 6 slots each: A ≈ 46 min, B ≈ 36 min, C ≈ 25 min. No dependency crosses partitions.
 const PARTITIONS = {
-  A: ['M1', 'M2', 'M3', 'M4', 'M5', 'E1', 'U1', 'U4', 'U6', 'U2', 'U3', 'U5', 'L1', 'L2', 'L3', 'T1', 'T2', 'A3', 'X1', 'L4', 'X2', 'X3', 'U7', 'U8'],
+  A: ['M1', 'M2', 'M3', 'M4', 'M5', 'E1', 'U1', 'U4', 'U6', 'U2', 'U3', 'U5', 'L1', 'L2', 'T1', 'T2', 'A3', 'U8'],
   B: ['C1', 'C2', 'K1', 'K2', 'K4', 'K3', 'K5', 'W3', 'W1', 'W2', 'W4', 'A1', 'A2', 'A4', 'A5'],
-  DOCS: ['D1', 'G1', 'G2', 'G3', 'G4'],
+  C: ['X1', 'L3', 'L4', 'X2', 'X3', 'D1', 'G2', 'G4', 'G1', 'G3', 'U7'],
 }
 
 const RESULT = {

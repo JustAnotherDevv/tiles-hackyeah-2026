@@ -32,3 +32,6 @@ controls:
   INJ-05: {mode: "off"}
   EXE-03: {action: log}
   MCP-04: {mode: monitor}
+  EXE-05: {params: {require_sandbox_for: [], write_exec_action: log}}
+  MEM-01: {params: {directive_action: log, tainted_session_action: log, pii_action: log}}
+  ROG-01: {mode: monitor}

@@ -9,6 +9,7 @@ from collections.abc import Callable
 from typing import Any
 
 from aegis.core.types import Identity
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
 from tests.eval.adapter import EvalCase
 from tests.eval.scoring import CaseResult, score_verdict
 
@@ -140,7 +141,7 @@ async def run_http(
                 body["session_id"] = case.session_id(profile)
                 try:
                     r = await client.post("/v1/guard", json=body,
-                                          headers={"X-Aegis-Agent": case.agent_id})
+                                          headers=agent_headers(case.agent_id))  # ASI03
                     if r.status_code != 200:
                         res.error = f"http {r.status_code}: {r.text[:120]}"
                     else:

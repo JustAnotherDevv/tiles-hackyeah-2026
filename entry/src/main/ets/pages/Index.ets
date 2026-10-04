@@ -1,7 +1,8 @@
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
+import { window } from '@kit.ArkUI';
 import { Profile, TileSpec } from '../tiles/model/Tile';
 import { K_ONBOARDED, K_PROFILE, TileStore } from '../tiles/data/TileStore';
-import { TilesTheme } from '../tiles/theme/TilesTheme';
+import { ThemePalette, TilesTheme } from '../tiles/theme/TilesTheme';
 import { PlatformKeys } from '../tiles/platform/TilesPlatform';
 import { HomeView } from '../tiles/views/HomeView';
 import { TileDetailView } from '../tiles/views/TileDetailView';
@@ -24,12 +25,13 @@ struct Index {
   @Provide('tilesNav') nav: NavPathStack = new NavPathStack();
   @StorageLink(K_PROFILE) profile: Profile = new Profile();
   @StorageProp(K_ONBOARDED) onboarded: boolean = false;
-  @StorageProp(K_DARK) dark: boolean = false;
+  @StorageProp(K_DARK) @Watch('onDarkChange') dark: boolean = false;
   @StorageProp(PlatformKeys.OPEN_TILE_ID) @Watch('onOpenTile') openTileId: string = '';
   @StorageProp(PlatformKeys.NAVIGATE) @Watch('onNavigate') navigateTo: string = '';
 
   aboutToAppear(): void {
     this.syncDark();
+    this.styleSystemBars();
     if (!TileStore.get().isOnboarded()) {
       this.nav.pushPathByName('onboarding', '', false);
     }
@@ -44,6 +46,52 @@ struct Index {
 
   onPageShow(): void {
     this.syncDark();
+    this.styleSystemBars();
+  }
+
+  onDarkChange(): void {
+    this.styleSystemBars();
+  }
+
+  /**
+   * Living Light chrome: status / navigation bars continue the page gradient with ink content (onInk in dark).
+   * Re-applied after a short delay because the ability styles the window once content loads.
+   */
+  styleSystemBars(): void {
+    this.applySystemBars();
+    setTimeout(() => {
+      this.applySystemBars();
+    }, 400);
+  }
+
+  applySystemBars(): void {
+    let ctx: common.UIAbilityContext;
+    try {
+      ctx = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    } catch (e) {
+      return;
+    }
+    const dark: boolean = this.dark;
+    const inkColor: string = dark ? '#F3F5FF' : '#1D2140';
+    window.getLastWindow(ctx).then((win: window.Window) => {
+      try {
+        win.setWindowBackgroundColor(dark ? '#14162A' : '#EDF1FC');
+      } catch (e) {
+        // Background color is cosmetic.
+      }
+      // The window is not laid out full screen (full-screen layout pushed Navigation content under the clock),
+      // so the bars take the gradient's end colors: top #EDF1FC, bottom #FFF3EA (dark: #1A1D38 / #1E1A30).
+      win.setWindowSystemBarProperties({
+        statusBarColor: dark ? '#1A1D38' : '#EDF1FC',
+        statusBarContentColor: inkColor,
+        navigationBarColor: dark ? '#1E1A30' : '#FFF3EA',
+        navigationBarContentColor: inkColor
+      }).catch(() => {
+        // System bar styling is cosmetic.
+      });
+    }).catch(() => {
+      // No window yet (e.g. preview).
+    });
   }
 
   syncDark(): void {
@@ -124,15 +172,31 @@ struct Index {
   }
 
   build() {
-    Navigation(this.nav) {
-      HomeView()
+    Stack() {
+      // Living Light page gradient, drawn under the (transparent) status and navigation bars.
+      Column()
+        .width('100%')
+        .height('100%')
+        .linearGradient({ angle: this.pal().bgGradient.angle, colors: this.pal().bgGradient.colors })
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+
+      Navigation(this.nav) {
+        HomeView()
+      }
+      .navDestination(this.pageMap)
+      .hideTitleBar(true)
+      .hideToolBar(true)
+      .mode(NavigationMode.Stack)
+      .backgroundColor(Color.Transparent)
+      .width('100%')
+      .height('100%')
     }
-    .navDestination(this.pageMap)
-    .hideTitleBar(true)
-    .hideToolBar(true)
-    .mode(NavigationMode.Stack)
-    .backgroundColor(TilesTheme.palette(this.dark, this.profile.highContrast).bg)
     .width('100%')
     .height('100%')
+    .backgroundColor(this.pal().bg)
+  }
+
+  pal(): ThemePalette {
+    return TilesTheme.palette(this.dark, this.profile.highContrast);
   }
 }

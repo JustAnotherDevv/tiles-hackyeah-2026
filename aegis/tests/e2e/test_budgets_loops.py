@@ -19,6 +19,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 httpx = pytest.importorskip("httpx")
 yaml = pytest.importorskip("yaml")
 
@@ -173,7 +175,7 @@ def _msg(
     session: str | None = None,
 ) -> httpx.Response:
     headers = {
-        "X-Aegis-Agent": agent,
+        **agent_headers(agent),  # ASI03: claim + key
         "X-Aegis-Session": session or f"ses_b22_{uuid.uuid4().hex[:8]}",
         "X-Aegis-Wait": "0",
     }
@@ -694,7 +696,7 @@ def _ollama_chat(
     return stack.http.post(
         "/ollama/api/chat",
         headers={
-            "X-Aegis-Agent": LOCAL_AGENT,
+            **agent_headers(LOCAL_AGENT),
             "X-Aegis-Session": session or f"ses_b22_loc_{uuid.uuid4().hex[:8]}",
             "X-Aegis-Wait": "0",
         },

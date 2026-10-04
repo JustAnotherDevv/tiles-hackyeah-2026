@@ -208,7 +208,8 @@ class Demo:
         """F4 via the raw client (agent identity headers): $50 purchase -> approval -> retry."""
         async with httpx.AsyncClient(timeout=60) as http:
             async with McpHttpClient(
-                self.gw, "marketpulse", headers={"X-Aegis-Agent": "trading-copilot@trading"}
+                self.gw, "marketpulse", headers={"X-Aegis-Agent": "trading-copilot@trading",  # ASI03: claim + key
+                         "X-Aegis-Agent-Key": "aegis_demo_trading_copilot_0000000000000003_NOT_A_SECRET"}
             ) as c:
                 await c.list_tools()
                 args = {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50}

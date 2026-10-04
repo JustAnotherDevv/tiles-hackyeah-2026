@@ -18,7 +18,10 @@ FAMILIES: dict[str, str] = {
     "BUD": "Budgets, cost & compute",
     "SIG": "External threat signatures & artifacts",
     "CUS": "Customer-defined rules",
-    "A2A": "Agent-to-agent (reserved)",
+    "A2A": "Agent-to-agent communication",
+    "RES": "Resilience & cascading failures",
+    "MEM": "Persistent memory & context",
+    "ROG": "Rogue-agent detection",
 }
 FAMILY_ORDER: tuple[str, ...] = tuple(FAMILIES)
 
@@ -133,6 +136,9 @@ _ENTRIES: list[CatalogEntry] = [
                  ("ASI01", "ASI02", "MCP06:2025", "MCP10:2025", "LLM02:2026")),
     CatalogEntry("EXE-04", "EXE", "Loop / rate / circuit breaker / kill switch", "budgets-ledger",
                  "stateful", _OUT_ALL, "block", "MVP", ("ASI08", "ASI10", "LLM06:2026")),
+    CatalogEntry("EXE-05", "EXE", "Code-execution provenance & sandbox guard", "action-guards",
+                 "stateful", ("tool.input", "mcp.call"), "require_approval", "MVP",
+                 ("ASI05", "LLM10:2026", "MCP05:2025")),
     # ------------------------------------------------------------------ MCP
     CatalogEntry("MCP-01", "MCP", "Server registry & launch check", "mcp-proxy", "deterministic",
                  ("mcp.init", "mcp.call"), "block", "MVP", ("MCP09:2025", "MCP04:2025", "ASI04")),
@@ -167,12 +173,25 @@ _ENTRIES: list[CatalogEntry] = [
                  ("prompt.user", "model.request", "tool.input", "mcp.call"), "block", "MVP",
                  ("LLM02:2026",)),
     # ------------------------------------------------------------------ A2A (reserved)
-    CatalogEntry("A2A-01", "A2A", "Peer identity & message integrity (reserved)", "unassigned",
-                 "deterministic", ("a2a.message", "a2a.result"), "block", "reserved",
+    CatalogEntry("A2A-01", "A2A", "Peer identity & message integrity", "asi-a2a",
+                 "deterministic", ("a2a.message", "a2a.result"), "block", "MVP",
                  ("ASI07", "ASI03")),
-    CatalogEntry("A2A-02", "A2A", "Inter-agent smuggling guard (reserved)", "unassigned", "hybrid",
-                 ("a2a.message", "a2a.result"), "require_approval", "reserved",
+    CatalogEntry("A2A-02", "A2A", "Inter-agent smuggling & delegation guard", "asi-a2a", "hybrid",
+                 ("a2a.message", "a2a.result"), "block", "MVP",
                  ("ASI01", "ASI07", "ASI08")),
+    # ------------------------------------------------------------------ MEM
+    CatalogEntry("MEM-01", "MEM", "Persistent memory guard (memory & context poisoning)", "asi-memory", "stateful",
+                 ("tool.input", "mcp.call", "tool.output", "mcp.result", "a2a.result", "egress.response",
+                  "model.request"), "require_approval", "MVP", ("ASI06", "ASI01", "LLM01:2026", "LLM04:2026")),
+    # ------------------------------------------------------------------ RES
+    CatalogEntry("RES-01", "RES", "Cascading-failure breaker (quarantine + circuit + taint)", "asi-failclosed",
+                 "stateful", ("tool.input", "mcp.call", "mcp.init", "egress.request", "a2a.message", "a2a.result",
+                              "tool.output", "mcp.result"), "require_approval", "MVP", ("ASI08", "ASI10", "ASI07")),
+    # ------------------------------------------------------------------ ROG
+    CatalogEntry("ROG-01", "ROG", "Rogue-agent behavioural anomaly detector (baseline + quarantine)", "asi-rogue",
+                 "stateful", ("tool.input", "mcp.call", "mcp.init", "egress.request", "a2a.message", "tool.output",
+                              "mcp.result", "egress.response", "a2a.result"), "require_approval", "MVP",
+                 ("ASI10", "ASI08", "LLM06:2026")),
 ]
 
 #: id -> CatalogEntry, in family order (GOV, ACT, DLP, INJ, EXE, MCP, BUD, SIG, CUS, A2A).

@@ -1,5 +1,5 @@
 import { TileAction, TileBlock, TileSpec, Profile } from '../model/Tile';
-import { TileColors, TilesTheme, withAlpha } from '../theme/TilesTheme';
+import { LL_FONT_FAMILY, ProfileLayout, TileColors, TilesTheme, withAlpha } from '../theme/TilesTheme';
 import { BlockStyle, tileIcon } from './blocks/BlockStyle';
 import { BlockView } from './blocks/BlockView';
 import { percentOf } from './blocks/ProgressBlock';
@@ -18,6 +18,40 @@ const KEY_KINDS: string[] = ['big', 'timer', 'progress', 'weather', 'alert'];
 
 /** How long after creation an assistant tile still plays its "spring in" entrance. */
 const APPEAR_WINDOW_MS: number = 20000;
+
+/** Living Light (design C) tile shell constants — design/tiles-motion/source/Tiles_Stage.dc.html. */
+const LL_BREATHE_HALF_MS: number = 1400; // @keyframes breathe 2.8s ease-in-out infinite (1 -> 1.022 -> 1)
+const LL_SHIMMER_MS: number = 1400; // @keyframes shimmer 1.4s linear infinite
+const LL_HIGHLIGHT: string = '#CCFFFFFF'; // inset 0 1px 0 rgba(255,255,255,.8)
+const LL_HIGHLIGHT_DARK: string = '#2EFFFFFF';
+/** Tile types that carry live, time-relevant data and "breathe" on the home grid (prototype spec.live). */
+const LIVE_TYPES: string[] = ['pills', 'reminder'];
+
+/** Relative luminance check for '#RRGGBB' / '#AARRGGBB' (true = light color). */
+function isLightHex(hex: string): boolean {
+  const rgb: string = hex.length === 9 ? hex.substring(3) : hex.substring(1);
+  if (rgb.length !== 6) {
+    return false;
+  }
+  const r: number = parseInt(rgb.substring(0, 2), 16);
+  const g: number = parseInt(rgb.substring(2, 4), 16);
+  const b: number = parseInt(rgb.substring(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 160;
+}
+
+/** Seeded textScale per profile: Adaptation's "make text bigger" scales the prototype fs relative to it. */
+function baseTextScale(id: string): number {
+  switch (id) {
+    case 'senior':
+      return 1.4;
+    case 'kid':
+      return 1.15;
+    case 'lowvision':
+      return 1.6;
+    default:
+      return 1.0;
+  }
+}
 
 /**
  * Generative-UI renderer: draws ANY TileSpec natively (size 1x1 / 2x1 / 2x2, palette color + on-color text,
@@ -52,6 +86,18 @@ export struct TileView {
   @State private pressed: boolean = false;
   @State private appearScale: number = 1;
   @State private appearOpacity: number = 1;
+  @State private appearTy: number = 0;
+  /** Living Light "breathe" loop for live tiles (1 -> 1.022). */
+  @State private breatheScale: number = 1;
+  /** Skeleton shimmer sweep position (0 -> 1). */
+  @State private shimmerT: number = 0;
+  /** Generating placeholder: shimmer skeleton instead of content (prototype tile birth before the flood). */
+  @Prop skeleton: boolean = false;
+  /**
+   * Progressive build (prototype tile birth): -1 = everything visible; otherwise the header shows once
+   * built >= 1 and block #i once built >= i + 2, each fading/sliding in (opacity .35s, translateY 12 -> 0 .45s LL ease).
+   */
+  @Prop built: number = -1;
   @State private cardW: number = 0;
   @State private cardH: number = 0;
   /** tile.blocks indexes dropped because they did not fit the measured tile height. */
@@ -62,6 +108,7 @@ export struct TileView {
   private bottoms: Map<number, number> = new Map<number, number>();
   private fitPending: boolean = false;
   private animateIn: boolean = false;
+  private breathing: boolean = false;
   onAction: (action: TileAction, tile: TileSpec) => void = (action: TileAction, tile: TileSpec) => {
   };
   /** Optional long-press (reorder / remove menu in the home grid). */
@@ -72,13 +119,83 @@ export struct TileView {
     this.animateIn = !this.reduceMotion && this.mode === 'tile' && this.tile.source === 'assistant' &&
       (this.tile.createdAt <= 0 || Date.now() - this.tile.createdAt < APPEAR_WINDOW_MS);
     if (this.animateIn) {
-      this.appearScale = 0.6;
+      this.appearScale = TilesTheme.LL_ENTER_SCALE;
+      this.appearTy = TilesTheme.LL_ENTER_TY;
       this.appearOpacity = 0;
     }
   }
 
   onInputs(): void {
     this.resetFit();
+    this.syncBreathe();
+  }
+
+  /** Prototype: live tiles breathe on the home grid (never in detail, skeleton, or with reduced motion). */
+  private isLive(): boolean {
+    return this.mode === 'tile' && !this.skeleton && !this.reduceMotion && !this.llLayout().reducedMotion &&
+      LIVE_TYPES.indexOf(this.tile.type) >= 0;
+  }
+
+  private syncBreathe(): void {
+    const want: boolean = this.isLive();
+    if (want === this.breathing) {
+      return;
+    }
+    this.breathing = want;
+    if (want) {
+      this.getUIContext().animateTo({
+        duration: LL_BREATHE_HALF_MS, curve: Curve.EaseInOut, iterations: -1, playMode: PlayMode.Alternate
+      }, () => {
+        this.breatheScale = TilesTheme.LL_BREATHE_SCALE;
+      });
+    } else {
+      this.getUIContext().animateTo({ duration: 0 }, () => {
+        this.breatheScale = 1;
+      });
+    }
+  }
+
+  private startShimmer(): void {
+    if (!this.skeleton || this.reduceMotion) {
+      return;
+    }
+    this.shimmerT = 0;
+    this.getUIContext().animateTo({ duration: LL_SHIMMER_MS, curve: Curve.Linear, iterations: -1 }, () => {
+      this.shimmerT = 1;
+    });
+  }
+
+  private llLayout(): ProfileLayout {
+    return TilesTheme.layoutFor(this.profile);
+  }
+
+  /** Prototype font multiplier (PROFILES fs), grown by Adaptation's text-size changes; detail never below 1. */
+  private llFs(): number {
+    const base: number = baseTextScale(this.profile.id);
+    const ts: number = isFinite(this.profile.textScale) && this.profile.textScale > 0 ? this.profile.textScale : base;
+    const f: number = this.llLayout().fs * ts / base;
+    return this.isDetail() ? Math.max(1.0, f) : f;
+  }
+
+  /** Measured width (vp) for the prototype's `small` (< 120) / `square` (< 200) header variants. */
+  private measuredW(): number {
+    return this.cardW > 0 ? this.cardW : (this.tile.size === '1x1' ? 110 : 300);
+  }
+
+  private small(): boolean {
+    return !this.isDetail() && this.measuredW() < 120;
+  }
+
+  private square(): boolean {
+    return !this.isDetail() && this.measuredW() < 200;
+  }
+
+  private headShown(): boolean {
+    return this.built < 0 || this.built >= 1;
+  }
+
+  private blockShown(i: number): boolean {
+    return this.built < 0 || this.built >= i + 2;
   }
 
   private resetFit(): void {
@@ -149,31 +266,57 @@ export struct TileView {
     return !this.isDetail() && this.effW() < 120;
   }
 
-  /** Title next to the icon (wide or short tiles) vs. icon row on top + full-width title (narrow, tall tiles). */
-  private titleBeside(): boolean {
-    return !this.tiny() && (!this.narrow() || this.effH() < 170);
-  }
-
+  /** Prototype pad: small ? 10 : 16 (PROFILES pad); detail 22. */
   private pad(): number {
     if (this.isDetail()) {
       return 22;
     }
-    if (this.tiny()) {
-      return 10;
+    return this.small() ? 10 : 16;
+  }
+
+  /** Prototype gapY: small ? 3 : 8. */
+  private gapY(): number {
+    if (this.isDetail()) {
+      return 14;
     }
-    return this.isCompact() ? 12 : 16;
+    return this.small() ? 3 : 8;
   }
 
   private style(): BlockStyle {
     const c: TileColors = this.colors();
     const s: BlockStyle = new BlockStyle();
+    const f: number = this.llFs();
+    const small: boolean = this.small();
+    const body: number = Math.round(14 * f);
+    const num: number = Math.round(38 * f);
     s.fg = c.on;
     s.fgDim = c.onMuted;
     s.bg = c.bg;
-    s.well = c.soft;
+    s.bgFrom = c.bg1;
+    s.bgTo = c.bg2;
+    // Prototype: secondary pills / chips rgba(0,0,0,.1), track rgba(0,0,0,.14); high contrast uses the on-color wash.
+    s.well = this.profile.highContrast ? c.soft : (this.dark ? '#1FFFFFFF' : '#1A000000');
+    s.pill = s.well;
+    s.track = this.profile.highContrast ? withAlpha(c.on, 0.24) : (this.dark ? '#29FFFFFF' : '#24000000');
+    s.roundFill = this.profile.highContrast ? c.soft : (this.dark ? '#24FFFFFF' : '#1F000000');
+    // Primary pill = on-color with white label (light on-colors, e.g. 'ink', take the deep gradient stop instead).
     s.solid = c.on;
-    s.onSolid = c.bg;
-    s.scale = this.typeScale();
+    s.onSolid = isLightHex(c.on) ? c.bg2 : '#FFFFFF';
+    s.scale = f;
+    s.llFs = f;
+    s.small = small;
+    s.square = this.square();
+    s.font = LL_FONT_FAMILY;
+    s.titleSize = this.titleFs();
+    s.bodySize = this.isDetail() ? Math.round(body * 1.15) : (small ? Math.round(body * 0.9) : body);
+    s.numSize = small ? Math.round(num * 0.78) : (this.isDetail() ? Math.round(num * 1.15) : num);
+    s.iconSize = this.iconSize();
+    s.chipSize = Math.max(11, Math.round(s.bodySize * 0.85));
+    s.btnH = Math.max(40, Math.round(s.bodySize * 2.5));
+    s.btnPad = Math.max(10, Math.round(s.bodySize * 0.9));
+    s.rowMin = Math.max(28, Math.round(s.bodySize * 2));
+    s.bodyLines = !this.isDetail() && this.fillHeight && this.cardH > 0 && this.cardH < 120 ? 1 : 3;
+    s.gapY = this.gapY();
     s.highContrast = this.profile.highContrast;
     s.minTap = TilesTheme.tapTarget(this.profile);
     s.detail = this.isDetail();
@@ -189,11 +332,16 @@ export struct TileView {
     return Math.round(base * this.typeScale() * (this.isDetail() ? 1.15 : 1.0));
   }
 
+  /** Prototype titleSize = 19 * fs (small .82, square .94); detail a step larger. */
   private titleFs(): number {
-    if (this.isCompact()) {
-      return this.fs(this.tiny() ? 15 : 16);
+    const t: number = 19 * this.llFs();
+    if (this.isDetail()) {
+      return Math.round(t * 1.25);
     }
-    return this.fs(this.narrow() ? 18 : 20);
+    if (this.small()) {
+      return Math.round(t * 0.82);
+    }
+    return Math.round(this.square() ? t * 0.94 : t);
   }
 
   private firstKind(kind: string): number {
@@ -470,20 +618,18 @@ export struct TileView {
     return this.tile.source === 'adaptation' ? 'ADAPTED' : '';
   }
 
-  /** Narrow / compact tiles show the NEW / ADAPTED badge as a dot on the icon instead of a pill. */
-  private smallBadge(): boolean {
-    return this.isCompact() || this.narrow();
-  }
-
+  /** Prototype hides the read-aloud button on square (< 200 vp) tiles; detail always shows it. */
   private showSpeaker(): boolean {
-    return this.profile.readAloud || this.isDetail();
+    return (this.profile.readAloud && !this.square()) || this.isDetail();
   }
 
+  /** Prototype iconSize = 24 * fs (small .85): a bare filled glyph, no plate. */
   private iconSize(): number {
-    if (this.tiny()) {
-      return 32;
+    const i: number = 24 * this.llFs();
+    if (this.isDetail()) {
+      return Math.round(i * 1.25);
     }
-    return this.isCompact() || this.narrow() ? 38 : 44;
+    return Math.round(this.small() ? i * 0.85 : i);
   }
 
   private emit(kind: string, arg: string, label: string): void {
@@ -498,58 +644,103 @@ export struct TileView {
     this.emit('speak', this.tile.speakText.length > 0 ? this.tile.speakText : this.a11yText(), 'Read aloud');
   }
 
+  /** On-color for text/icons (skeleton tiles use the muted ink, like the prototype). */
+  private fg(): string {
+    return this.skeleton ? '#5B6283' : this.colors().on;
+  }
+
+  private fgMuted(): string {
+    return this.skeleton ? '#995B6283' : this.colors().onMuted;
+  }
+
+  /** Background gradient stops: palette 135deg, or the flat skeleton glass while generating. */
+  private bgStops(): Array<[ResourceColor, number]> {
+    if (this.skeleton) {
+      return [['#8CFFFFFF', 0.0], ['#8CFFFFFF', 1.0]];
+    }
+    return this.colors().gradient.colors;
+  }
+
+  /** High contrast: hairline in the on-color; otherwise the 1 vp inner top highlight (inset 0 1px 0 white .8). */
+  private borderOpts(): BorderOptions {
+    if (this.profile.highContrast) {
+      const hc: BorderOptions = { width: 1.5, color: this.colors().border };
+      return hc;
+    }
+    const hl: string = this.dark ? LL_HIGHLIGHT_DARK : LL_HIGHLIGHT;
+    const o: BorderOptions = {
+      width: { top: 1, left: 0, right: 0, bottom: 0 } as EdgeWidths,
+      color: { top: hl, left: '#00000000', right: '#00000000', bottom: '#00000000' } as EdgeColors
+    };
+    return o;
+  }
+
+  /** Living Light tile shadow: 0 16px 34px -20px rgba(40,50,110,.45) (theme token); deeper black in dark mode. */
+  private shadowOpts(): ShadowOptions {
+    if (this.dark) {
+      const d: ShadowOptions = { radius: 20, color: '#66000000', offsetX: 0, offsetY: 12 };
+      return d;
+    }
+    return TilesTheme.LL_SHADOW_TILE;
+  }
+
+  private radius(): number {
+    return TilesTheme.LL_RADIUS_L;
+  }
+
   @Builder
   badgePill() {
     Text(this.badgeText())
-      .fontSize(this.fs(11))
+      .fontFamily(LL_FONT_FAMILY)
+      .fontSize(Math.max(10, Math.round(11 * this.llFs())))
       .fontWeight(FontWeight.Bold)
-      .fontColor(this.colors().bg)
+      .fontColor(this.style().onSolid)
       .letterSpacing(0.6)
       .maxLines(1)
       .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-      .borderRadius(999)
-      .backgroundColor(this.colors().on)
+      .borderRadius(TilesTheme.LL_RADIUS_PILL)
+      .backgroundColor(this.fg())
       .flexShrink(0)
   }
 
+  /** Prototype icon: Material Symbols Rounded, FILL 1, wght 500, no plate -> SymbolGlyph (filled), medium weight. */
   @Builder
   iconBox() {
     Stack({ alignContent: Alignment.TopEnd }) {
-      Stack() {
-        SymbolGlyph(tileIcon(this.tile.icon, this.tile.type))
-          .fontSize(Math.round(this.iconSize() * 0.56))
-          .fontColor([this.colors().on])
-      }
-      .width(this.iconSize())
-      .height(this.iconSize())
-      .borderRadius(this.tiny() ? 11 : 14)
-      .backgroundColor(this.colors().soft)
+      SymbolGlyph(tileIcon(this.tile.icon, this.tile.type))
+        .fontSize(this.iconSize())
+        .fontWeight(FontWeight.Medium)
+        .fontColor([this.fg()])
+        .width(this.iconSize())
+        .height(this.iconSize())
 
-      if (this.smallBadge() && this.badgeText().length > 0) {
+      if (this.square() && this.badgeText().length > 0) {
         Circle()
-          .width(14)
-          .height(14)
-          .fill(this.colors().on)
-          .stroke(this.colors().bg)
-          .strokeWidth(2.5)
-          .margin({ top: -4, right: -4 })
+          .width(10)
+          .height(10)
+          .fill(this.fg())
+          .stroke(this.colors().bg1)
+          .strokeWidth(2)
+          .margin({ top: -3, right: -5 })
       }
     }
     .flexShrink(0)
+    .accessibilityLevel('no')
   }
 
+  /** Prototype read-aloud: 44 vp circle, rgba(0,0,0,.1), volume_up glyph at iconSize. */
   @Builder
   speaker() {
     Stack() {
       SymbolGlyph($r('sys.symbol.speaker_wave_2_fill'))
-        .fontSize(this.fs(this.isCompact() ? 18 : 20))
-        .fontColor([this.colors().on])
+        .fontSize(Math.min(this.iconSize(), 26))
+        .fontColor([this.fg()])
     }
-    .width(this.isCompact() || this.narrow() ? 44 : 48)
-    .height(this.isCompact() || this.narrow() ? 44 : 48)
-    .borderRadius(999)
-    .backgroundColor(this.colors().soft)
-    .border({ width: this.profile.highContrast ? 2 : 0, color: this.colors().on })
+    .width(Math.max(44, this.style().minTap - 4))
+    .height(Math.max(44, this.style().minTap - 4))
+    .borderRadius(TilesTheme.LL_RADIUS_PILL)
+    .backgroundColor(this.style().roundFill)
+    .border({ width: this.profile.highContrast ? 2 : 0, color: this.fg() })
     .flexShrink(0)
     .accessibilityText('Read ' + this.tile.title + ' aloud')
     .accessibilityRole(AccessibilityRoleType.BUTTON)
@@ -558,65 +749,64 @@ export struct TileView {
     })
   }
 
-  /** Title: up to 2 lines, breaks only between words, shrinks (down to ~75%) before it ellipsizes. */
+  /** Title: Manrope 700, -0.012em, lineHeight 1.08; up to 2 lines, word breaks only, shrinks before ellipsis. */
   @Builder
   titleText() {
     Text(this.tile.title)
+      .fontFamily(LL_FONT_FAMILY)
       .fontSize(this.titleFs())
       .maxFontSize(this.titleFs())
-      .minFontSize(Math.max(11, Math.round(this.titleFs() * 0.75)))
+      .minFontSize(Math.max(10, Math.round(this.titleFs() * 0.75)))
       .heightAdaptivePolicy(TextHeightAdaptivePolicy.MAX_LINES_FIRST)
       .fontWeight(FontWeight.Bold)
-      .fontColor(this.colors().on)
-      .lineHeight(Math.round(this.titleFs() * 1.2))
-      .maxLines(2)
+      .fontColor(this.fg())
+      .letterSpacing(this.small() ? 0 : TilesTheme.letterSpacing(this.titleFs()))
+      .lineHeight(Math.round(this.titleFs() * 1.08))
+      .maxLines(this.isDetail() ? 3 : 2)
       .wordBreak(WordBreak.NORMAL)
       .textOverflow({ overflow: TextOverflow.Ellipsis })
+      .layoutWeight(this.square() ? 0 : 1)
   }
 
+  /** Subtitle reads like the prototype's first text block: bodySize, lineHeight 1.3, opacity .92. */
   @Builder
   subtitleText() {
     Text(this.tile.subtitle)
-      .fontSize(this.fs(this.narrow() ? 13 : 14))
+      .fontFamily(LL_FONT_FAMILY)
+      .fontSize(this.style().bodySize)
       .fontWeight(FontWeight.Medium)
-      .fontColor(this.colors().onMuted)
-      .maxLines(this.isDetail() ? 3 : 1)
+      .fontColor(this.fg())
+      .opacity(0.92)
+      .lineHeight(Math.round(this.style().bodySize * 1.3))
+      .maxLines(this.isDetail() ? 3 : (this.isCompact() ? 1 : this.style().bodyLines))
       .wordBreak(WordBreak.NORMAL)
       .textOverflow({ overflow: TextOverflow.Ellipsis })
+      .width('100%')
   }
 
+  /** Prototype head: row (icon + title + speaker, gap 8, centered) or, when the tile is < 200 vp wide, a column
+   * (icon above title, gap 6 / small 4). Fades + rises in during a progressive build (headOp / headTy). */
   @Builder
   header() {
-    if (this.titleBeside()) {
-      Row({ space: this.isCompact() || this.narrow() ? 10 : 12 }) {
-        this.iconBox()
-        if (!this.titleRepeated()) {
-          Column({ space: 2 }) {
-            this.titleText()
-            if (!this.isCompact() && this.tile.subtitle.length > 0) {
-              this.subtitleText()
-            }
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
-        } else {
-          Blank()
-        }
-        if (!this.smallBadge() && this.badgeText().length > 0) {
-          this.badgePill()
-        }
-        if (this.showSpeaker()) {
-          this.speaker()
-        }
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Center)
-    } else {
-      Column({ space: 6 }) {
-        Row() {
+    Column() {
+      if (this.square()) {
+        Column({ space: this.small() ? 4 : 6 }) {
           this.iconBox()
-          Blank()
-          if (!this.smallBadge() && this.badgeText().length > 0) {
+          if (!this.titleRepeated()) {
+            this.titleText()
+          }
+        }
+        .width('100%')
+        .alignItems(HorizontalAlign.Start)
+      } else {
+        Row({ space: 8 }) {
+          this.iconBox()
+          if (!this.titleRepeated()) {
+            this.titleText()
+          } else {
+            Blank()
+          }
+          if (this.badgeText().length > 0) {
             this.badgePill()
           }
           if (this.showSpeaker()) {
@@ -624,31 +814,50 @@ export struct TileView {
           }
         }
         .width('100%')
-
-        if (!this.titleRepeated()) {
-          this.titleText()
-        }
-        if (!this.isCompact() && this.tile.subtitle.length > 0) {
-          this.subtitleText()
-        }
+        .alignItems(VerticalAlign.Center)
       }
-      .width('100%')
-      .alignItems(HorizontalAlign.Start)
     }
+    .width('100%')
+    .opacity(this.headShown() ? 1 : 0)
+    .translate({ y: this.headShown() ? 0 : 12 })
+    .animation({ duration: this.reduceMotion ? 0 : 450, curve: TilesTheme.ease() })
   }
 
-  build() {
-    Stack({ alignContent: Alignment.TopStart }) {
-      // Decorative oversized glyph in the corner: gives every tile a distinct, poster-like look.
-      SymbolGlyph(tileIcon(this.tile.icon, this.tile.type))
-        .fontSize(this.isCompact() ? 72 : (this.tile.size === '2x2' || this.isDetail() ? 150 : 110))
-        .fontColor([this.colors().on])
-        .opacity(this.profile.highContrast ? 0 : 0.08)
-        .position({ right: -18, bottom: -22 })
-        .accessibilityLevel('no')
+  /** Skeleton shimmer band (prototype: 100deg rgba(255,255,255,.55) -> .98 -> .55, 1.4 s linear, right to left). */
+  @Builder
+  shimmerBand() {
+    Column()
+      .width(Math.max(1, this.cardW))
+      .height('100%')
+      .linearGradient({
+        angle: 100,
+        colors: [['#00FFFFFF', 0.0], ['#00FFFFFF', 0.3], ['#73FFFFFF', 0.5], ['#00FFFFFF', 0.7], ['#00FFFFFF', 1.0]]
+      })
+      .position({ left: 0, top: 0 })
+      .translate({ x: this.cardW * (1 - 2 * this.shimmerT) })
+      .hitTestBehavior(HitTestMode.Transparent)
+      .accessibilityLevel('no')
+  }
 
-      Column({ space: this.isCompact() ? 8 : (this.isDetail() ? 14 : 12) }) {
+  @Builder
+  card() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      if (this.skeleton) {
+        this.shimmerBand()
+      }
+
+      Column({ space: this.gapY() }) {
         this.header()
+
+        if (this.tile.subtitle.length > 0 && !this.tiny()) {
+          Column() {
+            this.subtitleText()
+          }
+          .width('100%')
+          .opacity(this.blockShown(-1) ? 1 : 0)
+          .translate({ y: this.blockShown(-1) ? 0 : 12 })
+          .animation({ duration: this.reduceMotion ? 0 : 450, curve: TilesTheme.ease() })
+        }
 
         ForEach(this.slots(), (s: BlockSlot) => {
           Column() {
@@ -662,6 +871,9 @@ export struct TileView {
             })
           }
           .width('100%')
+          .opacity(this.blockShown(s.index) ? 1 : 0)
+          .translate({ y: this.blockShown(s.index) ? 0 : 12 })
+          .animation({ duration: this.reduceMotion ? 0 : 450, curve: TilesTheme.ease() })
           .onAreaChange((oldArea: Area, newArea: Area) => {
             const bottom: number = Number(newArea.position.y) + Number(newArea.height);
             if (!isNaN(bottom)) {
@@ -682,7 +894,7 @@ export struct TileView {
           .height(28)
           .linearGradient({
             direction: GradientDirection.Bottom,
-            colors: [[withAlpha(this.colors().bg, 0), 0.0], [this.colors().bg, 1.0]]
+            colors: [[withAlpha(this.colors().bg2, 0), 0.0], [this.colors().bg2, 1.0]]
           })
           .position({ left: 0, bottom: 0 })
           .hitTestBehavior(HitTestMode.Transparent)
@@ -692,22 +904,17 @@ export struct TileView {
     .width('100%')
     .height(this.fillHeight ? '100%' : 'auto')
     .constraintSize({ minHeight: this.minHeight() })
-    .borderRadius(TilesTheme.radiusFor(this.isDetail() ? '2x2' : this.tile.size))
-    .backgroundColor(this.colors().bg)
-    .border({ width: this.profile.highContrast ? 3 : 0, color: this.colors().border })
-    .shadow({
-      radius: this.pressed ? 6 : 18,
-      color: withAlpha(this.dark ? '#000000' : this.colors().bg, this.dark ? 0.4 : 0.35),
-      offsetX: 0,
-      offsetY: this.pressed ? 2 : 8
-    })
+    .borderRadius(this.radius())
+    // Living Light: 135deg palette gradient + soft indigo drop shadow + 1 vp inner top highlight (white .8).
+    .linearGradient({ angle: 135, colors: this.bgStops() })
+    .border(this.borderOpts())
+    .shadow(this.shadowOpts())
     .clip(true)
-    .opacity(this.appearOpacity)
     .scale({
-      x: this.appearScale * (this.pressed ? TilesTheme.PRESS_SCALE : 1),
-      y: this.appearScale * (this.pressed ? TilesTheme.PRESS_SCALE : 1)
+      x: this.pressed ? TilesTheme.PRESS_SCALE : 1,
+      y: this.pressed ? TilesTheme.PRESS_SCALE : 1
     })
-    .animation({ curve: TilesTheme.springPress(), duration: this.reduceMotion ? 0 : 250 })
+    .animation({ curve: TilesTheme.ease(), duration: this.reduceMotion ? 0 : TilesTheme.LL_DUR })
     .onAreaChange((oldArea: Area, newArea: Area) => {
       const w: number = Number(newArea.width);
       const h: number = Number(newArea.height);
@@ -724,14 +931,6 @@ export struct TileView {
         this.resetFit();
       }
     })
-    .onAppear(() => {
-      if (this.animateIn) {
-        this.getUIContext().animateTo({ curve: TilesTheme.springIn() }, () => {
-          this.appearScale = 1;
-          this.appearOpacity = 1;
-        });
-      }
-    })
     .onTouch((e: TouchEvent) => {
       if (this.isDetail()) {
         return;
@@ -743,7 +942,7 @@ export struct TileView {
       }
     })
     .onClick(() => {
-      if (!this.isDetail()) {
+      if (!this.isDetail() && !this.skeleton) {
         this.emit('open', this.tile.id, this.tile.title);
       }
     })
@@ -754,7 +953,35 @@ export struct TileView {
           this.onLongPress(this.tile);
         })
     )
-    .accessibilityText(this.a11yText())
+    .accessibilityText(this.skeleton ? 'Tiles is making ' + this.tile.title : this.a11yText())
     .accessibilityDescription(this.isDetail() ? '' : 'Double tap to open')
+  }
+
+  build() {
+    // Outer: Living Light entrance (scale .92 + translateY 22 -> rest, LL ease 720 ms). Middle: live "breathe" loop.
+    Stack() {
+      Stack() {
+        this.card()
+      }
+      .width('100%')
+      .height(this.fillHeight ? '100%' : 'auto')
+      .scale({ x: this.breatheScale, y: this.breatheScale })
+    }
+    .width('100%')
+    .height(this.fillHeight ? '100%' : 'auto')
+    .opacity(this.appearOpacity)
+    .scale({ x: this.appearScale, y: this.appearScale })
+    .translate({ y: this.appearTy })
+    .onAppear(() => {
+      if (this.animateIn) {
+        this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: TilesTheme.LL_DUR }, () => {
+          this.appearScale = 1;
+          this.appearTy = 0;
+          this.appearOpacity = 1;
+        });
+      }
+      this.syncBreathe();
+      this.startShimmer();
+    })
   }
 }

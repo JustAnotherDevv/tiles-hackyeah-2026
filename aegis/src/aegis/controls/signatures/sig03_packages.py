@@ -11,7 +11,8 @@ the signed feed's `lists`:
 - anything else                                                      -> params.unknown_action
   (`require_approval`, signal `unknown_package`; `mcp.init` -> `unknown_action_mcp_init`)
 
-No lists (empty feed) -> None + degraded. This control never blocks blindly.
+No lists (empty feed) -> degraded; fail_mode closed -> require_approval (cannot verify, ASI08),
+otherwise allow. This control never blocks blindly.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Literal
 
+from aegis.controls.resilience._failsafe import is_fail_closed
 from aegis.controls.signatures import _common as C
 from aegis.core.protocols import BaseControl
 from aegis.core.types import AppliesTo, ApprovalDraft, Decision, Finding
@@ -89,6 +91,22 @@ class PackageInstallGuard(BaseControl):
         feed = C.feed()
         lists = feed.lists() if feed is not None and hasattr(feed, "lists") else {}
         if not lists:
+            if is_fail_closed(cfg):
+                # ASI08: fail-closed - an install we cannot check against the feed lists is
+                # treated like an unknown package that needs a human (never a blind block).
+                return Decision(
+                    action="require_approval",
+                    control_id=self.id,
+                    degraded=True,
+                    severity=getattr(cfg, "severity", None) or "medium",
+                    reason="package lists unavailable (no feed bundle) - cannot verify "
+                    f"{', '.join(f'{e}:{n}' for e, n, _v in pkgs[:3])} (fail-closed)",
+                    meta={
+                        "internal_error": True,
+                        "fail_mode": "closed",
+                        "error": "feed package lists unavailable",
+                    },
+                )
             return Decision(
                 action="allow",
                 control_id=self.id,

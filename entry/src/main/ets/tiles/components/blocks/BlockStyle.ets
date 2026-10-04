@@ -36,6 +36,63 @@ export class BlockStyle {
   /** Very narrow (< ~120 vp scaled, e.g. 1x1 in a 4-column grid): hero value only, no controls. */
   tiny: boolean = false;
 
+  // ---------- Living Light (design C) shared block tokens — filled by TileView from the prototype formulas ----------
+  // Prototype: titleSize 19*fs, bodySize 14*fs, numSize 38*fs, iconSize 24*fs (small tiles: .82/.9/.78/.85),
+  // chipSize max(11, body*.85), btnH max(40, body*2.5), btnPad max(10, body*.9), rowMin max(28, body*2).
+  /** Tile gradient stops (135deg) — e.g. a checked checkbox's tick uses `bgTo`-ish white on the on-color. */
+  bgFrom: string = '#D4E4FF';
+  bgTo: string = '#A9C4FF';
+  /** Progress track / timer ring track: rgba(0,0,0,.14). */
+  track: string = '#24000000';
+  /** Secondary pill / chip / round control fill: rgba(0,0,0,.1) (`well` holds the same value). */
+  pill: string = '#1A000000';
+  /** Profile font multiplier from the prototype PROFILES table (Halina 1.1, Zosia .95, Michał 1.3, Daniel .78). */
+  llFs: number = 1.0;
+  /** Measured tile width < 120 vp (prototype `small`). */
+  small: boolean = false;
+  /** Measured tile width < 200 vp (prototype `square`): header stacks, no speaker/timer controls. */
+  square: boolean = false;
+  titleSize: number = 19;
+  bodySize: number = 14;
+  numSize: number = 38;
+  iconSize: number = 24;
+  chipSize: number = 12;
+  btnH: number = 40;
+  btnPad: number = 13;
+  rowMin: number = 28;
+  /** Body text max lines (prototype: 1 when the tile is shorter than 120 vp, else 3). */
+  bodyLines: number = 3;
+  /** Gap between blocks (prototype gapY: 8, small 3). */
+  gapY: number = 8;
+  /** Checklist circle: 24 vp, 2.5 vp stroke; progress bar 12 vp / radius 6. */
+  checkSize: number = 24;
+  checkStroke: number = 2.5;
+  barH: number = 12;
+  /** Round icon controls (play/pause, read aloud): 44 vp, rgba(0,0,0,.12) / .1 fill. */
+  roundSize: number = 44;
+  roundFill: string = '#1F000000';
+  /** Font family (Manrope) — pass to .fontFamily(). */
+  font: string = 'Manrope';
+  /** Hero numbers: weight 800, letterSpacing -0.03em, lineHeight .95. */
+  numWeight: number = 800;
+  /** Title weight 700, letterSpacing -0.012em. */
+  titleWeight: number = 700;
+
+  /** letterSpacing (fp) for hero numbers: -0.03em. */
+  numLs(): number {
+    return Math.round(this.numSize * -0.03 * 100) / 100;
+  }
+
+  /** letterSpacing (fp) for titles: -0.012em (0 on small tiles, like the prototype). */
+  titleLs(size: number): number {
+    return this.small ? 0 : Math.round(size * -0.012 * 100) / 100;
+  }
+
+  /** Text color for content drawn on `solid` (primary pill button / checked circle tick). */
+  onSolidColor(): string {
+    return this.onSolid;
+  }
+
   /** Pick a per-tier limit (items, rows, buttons...). */
   limit(compactN: number, mediumN: number, fullN: number, detailN: number): number {
     if (this.detail) {
@@ -167,7 +224,50 @@ function aliasOf(k: string): string {
       return 'hand_thumbsup_fill';
     case 'sparkle':
     case 'custom':
+    case 'auto_awesome':
       return 'wand_and_stars_fill';
+    // Material Symbols names used by the Living Light prototype (design/tiles-motion) -> closest HarmonyOS symbol.
+    case 'medication':
+      return 'cross_case_fill';
+    case 'restaurant':
+      return 'fork_knife';
+    case 'directions_run':
+      return 'figure_run';
+    case 'music_note':
+      return 'music_fill';
+    case 'footprint':
+    case 'directions_walk':
+      return 'figure_walk';
+    case 'event':
+      return 'calendar_fill';
+    case 'group':
+      return 'person_2_fill';
+    case 'rainy':
+      return 'umbrella';
+    case 'emergency':
+      return 'phone_sos';
+    case 'timer':
+      return 'stopwatch_fill';
+    case 'menu_book':
+      return 'book_open_fill';
+    case 'photo_camera':
+    case 'photo_library':
+      return 'camera_fill';
+    case 'bolt':
+      return 'bolt_fill';
+    case 'child_care':
+    case 'elderly':
+      return 'person_fill';
+    case 'visibility_off':
+      return 'eye_slash';
+    case 'volume_up':
+      return 'speaker_wave_2_fill';
+    case 'explore':
+      return 'map';
+    case 'spellcheck':
+      return 'doc_text_fill';
+    case 'mail_outline':
+      return 'envelope_fill';
     default:
       return k;
   }

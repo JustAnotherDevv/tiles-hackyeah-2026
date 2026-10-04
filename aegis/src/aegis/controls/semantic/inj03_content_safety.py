@@ -22,6 +22,7 @@ import re
 import time
 from typing import Any
 
+from aegis.controls.resilience._failsafe import is_fail_closed
 from aegis.controls.semantic import _common as c
 from aegis.core.policy_schema import ControlConfig
 from aegis.core.protocols import BaseControl
@@ -158,6 +159,24 @@ class ContentSafety(BaseControl):
 
         candidates: list[Decision] = []
         meta: dict[str, Any] = {"profile": profile, "surface": surface}
+        for leg, r in (("safety", res[0]), ("adherence", res[1])):
+            if isinstance(r, BaseException):
+                c.log.warning("INJ-03 %s leg failed: %s", leg, type(r).__name__)
+        if isinstance(res[1], BaseException) and is_fail_closed(cfg):
+            # ASI08: the adherence leg used to vanish silently on error; closed -> block.
+            candidates.append(
+                self.decide(
+                    cfg,
+                    action="block",
+                    degraded=True,
+                    reason="INJ-03 adherence check failed (fail-closed)",
+                    meta={
+                        "internal_error": True,
+                        "fail_mode": "closed",
+                        "error": type(res[1]).__name__,
+                    },
+                )
+            )
         degraded = False
         fallbacks: list[str] = []
         excerpt = c.mask(text, 120)

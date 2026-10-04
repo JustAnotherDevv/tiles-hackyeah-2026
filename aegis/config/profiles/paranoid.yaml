@@ -32,3 +32,6 @@ controls:
   INJ-05: {mode: enforce}
   EXE-03: {action: block}
   MCP-04: {mode: enforce}
+  EXE-05: {params: {write_exec_action: block}}
+  MEM-01: {action: block, params: {tainted_session_action: block}}
+  ROG-01: {params: {medium: 0.4, high: 0.75}}

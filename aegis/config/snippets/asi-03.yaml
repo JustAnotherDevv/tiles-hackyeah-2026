@@ -1,0 +1,53 @@
+# =============================================================================
+#  Aegis - ASI03 Identity & Privilege Abuse   (owner: ASI-IDENT)
+#  GOV-01 now treats an identity CLAIM as attribution, never as a credential:
+#    * X-Aegis-Agent naming a
+#      REGISTERED agent without that agent's key -> block 401 "agent identity not proven"
+#      (gov.identity_unproven). With a non-blocking action the caller is downgraded to the
+#      anonymous least-privilege tool allowlist instead.
+#    * anonymous callers + unregistered agent ids get a restrictive tool allowlist on
+#      tool.input / mcp.call (read-only discovery only) -> block 403 gov.anonymous_tool.
+#      (Previously they skipped every per-agent allowlist.)
+#    * per-session credential scope: an explicit session id is bound to the first credential
+#      that used it; another principal / a credential-less call in it -> block 401
+#      gov.session_binding (session hijack / credential relay).
+#  Registered agents keep their per-agent RBAC (GOV-03 tools, GOV-02 models, budgets keyed on the
+#  PROVEN agent id), so an agent cannot escalate by claiming a more privileged sibling.
+#  Clients: the SDK (aegis.sdk.AegisClient / agent_headers), demo agents, the Claude Code hook
+#  (scripts/aegis-hook), demo/claude/mcp.json and settings*.json already send the seed key
+#  (Authorization: Bearer aegis_demo_... or X-Aegis-Agent-Key).
+#  A request with NO claim is never blocked for being anonymous: model calls pass the normal
+#  pipeline; only high-risk tools (spend/send/write/exec) are outside the anonymous allowlist.
+#  Judge levers:
+#    controls[GOV-01].params.unproven_hint_sources: [guard] -> demo-mode guard body identity hints count as claims
+#    controls[GOV-01].params.unproven_agent_action: log   -> header claims downgraded, not blocked
+#    controls[GOV-01].params.anonymous_allowed_tools: null -> legacy (anonymous skips the allowlist)
+#    controls[GOV-01].params.session_binding_action: allow -> no per-session credential binding
+# =============================================================================
+controls:
+  - id: GOV-01
+    name: Caller identity & attribution
+    action: log                         # A-17: anonymous model calls allowed (attribution); unknown agent id -> log
+    severity: high
+    owasp: [ASI03, MCP07:2025, LLM03:2026]
+    params:
+      anonymous_action: allow
+      unknown_agent_action: log
+      invalid_key_action: block
+      disabled_principal_action: block
+      principal_mismatch_action: block
+      require_auth: null
+      require_auth_sources: [proxy, mcp, hook, egress, guard]
+      enforce_key_scopes: false
+      exempt_agents: [selftest]
+      # ASI03
+      unproven_agent_action: block
+      unproven_hint_sources: []          # hints (demo guard body identity, Claude Code UA) = attribution only
+      anonymous_allowed_tools: [Read, Glob, Grep, LS, TodoWrite, "*.list_*", "*.get_*", "*.search_*", "*.describe_*"]
+      anonymous_tool_action: block
+      session_binding_action: block
+    fail_mode: closed
+    timeout_ms: 50
+    tests:
+      - {name: disabled-agent-blocked, agent: legacy-bot@platform, destination: remote, text: "hello", expect: block, control: GOV-01}
+      - {name: valid-agent, agent: trading-copilot@trading, destination: remote, text: "Summarize today's PKO BP price action.", expect: allow, control: GOV-01}

@@ -57,11 +57,14 @@ async def test_disabled_agent_blocks_even_as_plain_identity(rt, helpers):
     assert d.action == "block"
 
 
-async def test_unknown_agent_logs_anonymous_allows(rt, helpers):
+async def test_unknown_agent_logs_anonymous_allows_header_claim_blocks(rt, helpers):
     d = await _eval(rt, helpers, {"X-Aegis-Agent": "ghost@nowhere"})
     assert d.action == "log" and d.findings[0].detector == "gov.unregistered_agent"
     assert await _eval(rt, helpers, {}) is None
-    assert await _eval(rt, helpers, {"X-Aegis-Agent": "trading-copilot@trading"}) is None
+    # ASI03: a header-only claim of a REGISTERED agent is not a credential -> blocked
+    d = await _eval(rt, helpers, {"X-Aegis-Agent": "trading-copilot@trading"})
+    assert d.action == "block" and d.http_status == 401
+    assert "agent identity not proven" in d.reason
     assert await _eval(rt, helpers, {"Authorization": f"Bearer {helpers.KEYS['cc']}"}) is None
     plain = Identity(org_id="acme-capital", agent_id="research-agent@research", role="agent")
     assert await _eval(rt, helpers, identity=plain, source="selftest") is None

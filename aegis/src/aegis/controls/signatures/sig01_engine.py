@@ -14,6 +14,7 @@ import logging
 import re
 from typing import Any, Literal
 
+from aegis.controls.resilience._failsafe import internal_error_decision, is_fail_closed
 from aegis.controls.signatures import _common as C
 from aegis.core.protocols import BaseControl
 from aegis.core.types import AppliesTo, Decision, Finding, Mutation
@@ -121,18 +122,21 @@ class ExploitSignatureEngine(BaseControl):
         else:
             hits = feed.scan(interaction, ctx=ctx, segments=segs, snapshot=snap)
         degraded = any(h.get("degraded") for h in hits)
+        failed = [str(h.get("signature_id")) for h in hits if h.get("degraded")]
         hits = [h for h in hits if not h.get("degraded")]
         if not hits:
-            return (
-                Decision(
-                    action="allow",
-                    control_id=self.id,
-                    degraded=True,
-                    reason="signature evaluation error",
-                )
-                if degraded
-                else None
+            if not degraded:
+                return None
+            # ASI08: an erroring signature means this surface was not fully checked -> honour
+            # fail_mode (closed: degraded block naming the failed signatures; else degraded allow).
+            d = internal_error_decision(
+                self.id,
+                cfg,
+                f"signature evaluation error: {', '.join(failed)[:160]}",
+                what="signature evaluation error",
             )
+            d.meta["failed_signatures"] = failed
+            return d
         ovs = C.overrides(ctx)
         resolved: list[dict] = []
         for h in hits:
@@ -155,7 +159,18 @@ class ExploitSignatureEngine(BaseControl):
                 h["action"],
                 h["mode"],
             )
-        return self._decide(cfg, interaction, snap, selected, resolved, degraded)
+        d = self._decide(cfg, interaction, snap, selected, resolved, degraded)
+        if (
+            failed
+            and is_fail_closed(cfg)
+            and d.mode != "monitor"
+            and (C.ACTION_PRECEDENCE.get(d.action, 0) < C.ACTION_PRECEDENCE["block"])
+        ):
+            # ASI08: other signatures matched weakly, but some errored -> fail-closed wins.
+            d.action = "block"
+            d.reason = f"{d.reason}; {len(failed)} signature(s) errored (fail-closed)"
+            d.meta["failed_signatures"] = failed
+        return d
 
     def _decide(
         self,

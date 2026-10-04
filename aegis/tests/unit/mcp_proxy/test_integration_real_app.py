@@ -13,6 +13,7 @@ import pytest
 from asgi_lifespan import LifespanManager
 
 from aegis.mcp.client import McpHttpClient, aegis_decision, result_text
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
 
 GW = "http://127.0.0.1:8787"
 
@@ -56,7 +57,7 @@ async def real(tmp_path, monkeypatch, mock_app) -> Any:
 
 
 def _c(gw, server, agent="claude-code@platform"):
-    return McpHttpClient(GW, server, headers={"X-Aegis-Agent": agent}, client=gw)
+    return McpHttpClient(GW, server, headers=agent_headers(agent), client=gw)
 
 
 async def test_f9_real_app(real):

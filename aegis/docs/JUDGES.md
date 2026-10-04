@@ -63,7 +63,7 @@ The same check from a terminal (always answers 200 with a verdict):
 
 ```bash
 curl -s localhost:8787/v1/guard -H 'content-type: application/json' \
-  -H 'X-Aegis-Agent: trading-copilot@trading' \
+  -H 'X-Aegis-Agent: trading-copilot@trading' -H 'X-Aegis-Agent-Key: aegis_demo_trading_copilot_0000000000000003_NOT_A_SECRET' \
   -d '{"interaction":{"surface":"prompt.user","destination":"remote","text":"<your text>"}}' \
   | jq '{action: .verdict.action, control: .verdict.primary.control_id, text}'
 ```

@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Archivo:wdth,wght@100,400..900&family=Manrope:wght@400;500;600;700;800&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..700,0..1,0&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+a{color:inherit}a:hover{color:inherit}
+input::placeholder{color:inherit;opacity:.55}
+@keyframes wave{0%,100%{transform:scaleY(.3)}50%{transform:scaleY(1)}}
+@keyframes wiggle{0%{transform:rotate(-1.1deg)}100%{transform:rotate(1.1deg)}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.022)}}
+@keyframes shimmer{from{background-position:130% 0}to{background-position:-130% 0}}
+@keyframes blink{0%,91%,100%{transform:scaleY(1)}95%{transform:scaleY(.08)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(.8)}}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(120,120,120,.35)}100%{box-shadow:0 0 0 28px rgba(120,120,120,0)}}
+@keyframes dots{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-6px)}}
+</style>
+</helmet>
+<div style="display:flex;gap:40px;align-items:flex-start;padding:14px;font-variant-numeric:tabular-nums">
+
+<div data-screen-label="{{ phoneLabel }}" style="position:relative;flex:none;width:393px;height:852px;border-radius:46px;overflow:hidden;background:{{ t.bg }};color:{{ t.ink }};font-family:{{ t.font }};box-shadow:0 0 0 10px {{ t.bezel }},0 0 0 11px rgba(0,0,0,.25),0 40px 80px -40px rgba(0,0,0,.55);user-select:none;-webkit-user-select:none" onPointerMove="{{ homeMove }}" onPointerLeave="{{ homeLeave }}">
+  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:15px;font-weight:600;z-index:30;pointer-events:none;color:{{ t.statusInk }}">
+    <span>{{ clock }}</span>
+    <span style="position:absolute;left:50%;top:13px;width:12px;height:12px;border-radius:50%;background:#000;transform:translateX(-50%)"></span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;text-transform:none;letter-spacing:0">signal_cellular_alt</span><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;text-transform:none;letter-spacing:0">wifi</span><span style="font-size:13px">82</span><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">battery_5_bar</span></span>
+  </div>
+  <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:{{ t.ink }};opacity:.75;z-index:30;pointer-events:none"></div>
+
+  <sc-if value="{{ isChooser }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;top:44px;left:0;right:0;bottom:0;padding:30px 20px 40px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;opacity:{{ fxChooser.op }};transition:{{ t.fxT }}">
+    <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ t.muted }}">Tiles · setup</div>
+    <div style="font-size:34px;line-height:1.05;font-weight:{{ t.weight }};letter-spacing:-.02em;text-transform:{{ t.upper }};text-wrap:pretty">Who is this phone for?</div>
+    <div style="font-size:16px;line-height:1.4;color:{{ t.muted }};margin-bottom:8px;text-wrap:pretty">The home will shape itself around them. You can change it any time.</div>
+    <sc-for list="{{ chooser }}" as="c" hint-placeholder-count="4">
+      <button onClick="{{ c.pick }}" style="appearance:none;border:0;font:inherit;text-align:left;display:flex;align-items:center;gap:16px;padding:16px 18px;min-height:96px;border-radius:{{ t.rL }};background:{{ c.bg }};color:{{ c.fg }};box-shadow:{{ t.shadow }};transform:{{ c.tf }};transition:transform .25s {{ t.ease }};cursor:pointer">
+        <span style="font-family:'Material Symbols Rounded';font-size:34px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 500">{{ c.icon }}</span>
+        <span style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:0"><span style="font-size:22px;font-weight:{{ t.weight }};text-transform:{{ t.upper }};letter-spacing:{{ t.ls }}">{{ c.label }}</span><span style="font-size:15px;opacity:.85;line-height:1.3">{{ c.sub }}</span></span>
+        <span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0">arrow_forward</span>
+      </button>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;top:44px;left:0;right:0;bottom:0;overflow-y:auto;overflow-x:hidden;padding:10px 16px {{ homePadBottom }}px;box-sizing:border-box;scrollbar-width:none">
+    <sc-if value="{{ showSwitcher }}" hint-placeholder-val="{{ false }}">
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ t.muted }}">Who is this phone for?</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+        <sc-for list="{{ switcher }}" as="s" hint-placeholder-count="4">
+          <button onClick="{{ s.pick }}" style="appearance:none;font:inherit;cursor:pointer;min-width:0;min-height:44px;padding:0 4px;border-radius:{{ t.rPill }};border:1.5px solid {{ s.border }};background:{{ s.bg }};color:{{ s.fg }};font-size:12.5px;font-weight:700;letter-spacing:0;transition:background .3s,color .3s,border-color .3s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.label }}</button>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:4px 0 16px">
+      <div style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+        <div style="font-size:{{ greetSize }}px;line-height:1.1;font-weight:{{ t.weight }};letter-spacing:-.02em;text-transform:{{ t.upper }};text-wrap:pretty;transition:font-size {{ t.dur }}ms {{ t.ease }}">{{ greet }}</div>
+        <div style="font-size:15px;color:{{ t.muted }};font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ sub }}</div>
+      </div>
+      <sc-if value="{{ editMode }}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{ exitEdit }}" style="appearance:none;border:0;font:inherit;cursor:pointer;flex:none;height:44px;padding:0 18px;border-radius:{{ t.rPill }};background:{{ t.ink }};color:{{ t.onInk }};font-weight:700;font-size:15px;opacity:{{ fxEdit.op }};transform:{{ fxEdit.tf }};transition:{{ t.fxTS }}">Done</button>
+      </sc-if>
+    </div>
+    <div ref="{{ gridRef }}" style="position:relative;height:{{ gridH }}px;transition:height {{ t.dur }}ms {{ t.ease }}">
+      <sc-for list="{{ tiles }}" as="tile" hint-placeholder-count="6">
+        <div onPointerDown="{{ tile.down }}" onPointerMove="{{ tile.move }}" onPointerUp="{{ tile.up }}" onPointerCancel="{{ tile.up }}" style="position:absolute;left:0;top:0;width:{{ tile.w }}px;height:{{ tile.h }}px;transform:{{ tile.transform }};opacity:{{ tile.opacity }};z-index:{{ tile.z }};transition:{{ tile.transition }};transition-delay:{{ tile.delay }}ms;pointer-events:{{ tile.pe }};visibility:{{ tile.visibility }};cursor:pointer;touch-action:none;will-change:transform">
+          <div style="position:absolute;inset:0;border-radius:{{ tile.radius }};background:{{ tile.bg }};background-size:{{ tile.bgSize }};box-shadow:{{ tile.shadow }};animation:{{ tile.liveAnim }};outline:2px dashed {{ tile.outline }};outline-offset:-3px;transition:background {{ t.dur }}ms ease,border-radius {{ t.dur }}ms ease,box-shadow .3s ease"></div>
+          <div style="position:absolute;inset:0;border-radius:{{ tile.radius }};background:{{ tile.floodBg }};clip-path:circle({{ tile.floodR }}% at 84% 80%);transition:{{ tile.floodTransition }};color:{{ tile.floodFg }};display:flex;align-items:center;justify-content:center;gap:10px;overflow:hidden;padding:0 12px;box-sizing:border-box">
+            <sc-if value="{{ tile.isDone }}" hint-placeholder-val="{{ false }}">
+              <span style="font-family:'Material Symbols Rounded';font-size:{{ tile.doneIcon }}px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 600;transform:{{ tile.doneTf }};transition:{{ t.fxTS }}">check_circle</span>
+              <span style="display:flex;flex-direction:column;gap:2px;min-width:0;opacity:{{ tile.doneOp }};transition:{{ t.fxT }}"><span style="font-size:{{ tile.titleSize }}px;font-weight:800;line-height:1;text-transform:{{ t.upper }}">Taken</span><span style="font-size:{{ tile.bodySize }}px;opacity:.85;line-height:1.2">{{ tile.doneAt }} · Kasia can see it</span></span>
+            </sc-if>
+          </div>
+          <div style="position:absolute;inset:0;padding:{{ tile.pad }}px;box-sizing:border-box;display:flex;flex-direction:column;gap:{{ tile.gapY }}px;color:{{ tile.fg }};opacity:{{ tile.contentOp }};animation:{{ tile.wiggle }};overflow:hidden;transition:opacity .3s">
+            <div style="display:flex;flex-direction:{{ tile.headDir }};align-items:{{ tile.headAlign }};gap:{{ tile.headGap }}px;opacity:{{ tile.headOp }};transform:translateY({{ tile.headTy }}px);transition:opacity .35s ease,transform .45s {{ t.ease }}">
+              <span style="font-family:'Material Symbols Rounded';font-size:{{ tile.iconSize }}px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 500;flex:none">{{ tile.icon }}</span>
+              <span style="flex:1;min-width:0;align-self:stretch;font-size:{{ tile.titleSize }}px;line-height:1.08;font-weight:{{ t.weight }};letter-spacing:{{ tile.titleLs }};text-transform:{{ tile.titleUpper }};text-wrap:pretty;overflow-wrap:anywhere;transition:font-size {{ t.dur }}ms {{ t.ease }}">{{ tile.title }}</span>
+              <sc-if value="{{ tile.hasSpeak }}" hint-placeholder-val="{{ false }}">
+                <button onPointerDown="{{ stop }}" onPointerUp="{{ stop }}" onClick="{{ tile.speakNow }}" aria-label="Read aloud" style="appearance:none;border:0;cursor:pointer;flex:none;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.1);color:inherit;display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:{{ tile.iconSize }}px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">volume_up</span></button>
+              </sc-if>
+            </div>
+            <sc-for list="{{ tile.blocks }}" as="b" hint-placeholder-count="0">
+              <div style="opacity:{{ b.op }};transform:translateY({{ b.ty }}px);transition:opacity .35s ease,transform .45s {{ t.ease }};display:flex;flex-direction:column;gap:6px;min-height:0;flex:{{ b.flex }}">
+                <sc-if value="{{ b.isText }}" hint-placeholder-val="{{ false }}"><div style="font-size:{{ tile.bodySize }}px;line-height:1.3;opacity:.92;text-wrap:pretty;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:{{ tile.bodyLines }};overflow:hidden;transition:font-size {{ t.dur }}ms {{ t.ease }}">{{ b.text }}</div></sc-if>
+                <sc-if value="{{ b.isNumber }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:baseline;gap:6px"><span style="font-size:{{ tile.numSize }}px;font-weight:800;line-height:.95;letter-spacing:-.03em">{{ b.value }}</span><span style="font-size:{{ tile.bodySize }}px;opacity:.8">{{ b.unit }}</span></div></sc-if>
+                <sc-if value="{{ b.isWeather }}" hint-placeholder-val="{{ false }}"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:{{ tile.numSize }}px;font-weight:800;line-height:.95;letter-spacing:-.03em">{{ b.temp }}</span><span style="font-size:{{ tile.bodySize }}px;line-height:1.2;opacity:.85">{{ b.cond }}</span></div></sc-if>
+                <sc-if value="{{ b.isChecklist }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:2px">
+                    <sc-for list="{{ b.items }}" as="it" hint-placeholder-count="0">
+                      <div onPointerDown="{{ stop }}" onPointerUp="{{ stop }}" onClick="{{ it.toggle }}" style="display:flex;align-items:center;gap:10px;min-height:{{ tile.rowMin }}px;cursor:pointer;opacity:{{ it.op }};transition:opacity .3s">
+                        <span style="flex:none;width:24px;height:24px;border-radius:50%;border:2.5px solid currentColor;background:{{ it.bg }};display:flex;align-items:center;justify-content:center;box-sizing:border-box;transition:background .25s"><span style="font-family:'Material Symbols Rounded';font-size:16px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 700;color:{{ it.checkFg }}">check</span></span>
+                        <span style="font-size:{{ tile.bodySize }}px;text-decoration:{{ it.deco }};line-height:1.2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.text }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ b.isProgress }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:7px"><div style="height:12px;border-radius:6px;background:rgba(0,0,0,.14);overflow:hidden"><div style="height:100%;width:{{ b.pct }}%;border-radius:6px;background:currentColor;transition:width .7s {{ t.ease }}"></div></div><div style="font-size:{{ tile.bodySize }}px;opacity:.9">{{ b.label }}</div></div>
+                </sc-if>
+                <sc-if value="{{ b.isTimer }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0">
+                    <sc-if value="{{ b.creature }}" hint-placeholder-val="{{ false }}">
+                      <div onPointerDown="{{ stop }}" onPointerUp="{{ stop }}" onClick="{{ b.toggle }}" style="position:relative;flex:none;width:52px;height:48px;border-radius:50% 50% 46% 46% / 55% 55% 45% 45%;background:{{ b.creatureBg }};animation:{{ b.creatureAnim }};cursor:pointer;box-shadow:inset 0 -6px 0 rgba(0,0,0,.08)">
+                        <span style="position:absolute;left:14px;top:17px;width:7px;height:9px;border-radius:50%;background:#2A2420;animation:{{ b.eyeAnim }}"></span>
+                        <span style="position:absolute;right:14px;top:17px;width:7px;height:9px;border-radius:50%;background:#2A2420;animation:{{ b.eyeAnim }}"></span>
+                        <span style="position:absolute;left:50%;top:30px;width:{{ b.mouthW }}px;height:6px;margin-left:-{{ b.mouthHalf }}px;border-radius:0 0 8px 8px;background:#2A2420;transition:width .3s"></span>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:{{ tile.numSize }}px;font-weight:800;line-height:.95;letter-spacing:-.03em">{{ b.display }}</span><sc-if value="{{ b.showCtl }}" hint-placeholder-val="{{ false }}"><span style="font-size:{{ tile.bodySize }}px;opacity:.8">{{ b.hint }}</span></sc-if></div>
+                    <sc-if value="{{ b.showCtl }}" hint-placeholder-val="{{ false }}"><button onPointerDown="{{ stop }}" onPointerUp="{{ stop }}" onClick="{{ b.toggle }}" aria-label="Start or pause" style="appearance:none;border:0;cursor:pointer;margin-left:auto;flex:none;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.12);color:inherit;display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">{{ b.playIcon }}</span></button></sc-if>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ b.isChips }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-wrap:wrap;gap:6px"><sc-for list="{{ b.items }}" as="ch" hint-placeholder-count="0"><span style="padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.1);font-size:{{ tile.chipSize }}px;font-weight:600;line-height:1.2;white-space:nowrap">{{ ch.label }}</span></sc-for></div>
+                </sc-if>
+                <sc-if value="{{ b.isAlert }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;align-items:center;gap:8px;font-size:{{ tile.bodySize }}px;font-weight:600"><span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">warning</span>{{ b.text }}</div>
+                </sc-if>
+                <sc-if value="{{ b.isButtons }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto"><sc-for list="{{ b.items }}" as="bt" hint-placeholder-count="0"><button onPointerDown="{{ stop }}" onPointerUp="{{ stop }}" onClick="{{ bt.pick }}" style="appearance:none;border:0;cursor:pointer;font:inherit;min-height:{{ tile.btnH }}px;padding:0 {{ tile.btnPad }}px;border-radius:{{ t.rPill }};background:{{ bt.bg }};color:{{ bt.fg }};font-size:{{ tile.bodySize }}px;font-weight:700;display:flex;align-items:center;gap:6px;white-space:nowrap">{{ bt.label }}</button></sc-for></div>
+                </sc-if>
+                <sc-if value="{{ b.isApps }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px"><sc-for list="{{ b.items }}" as="ap" hint-placeholder-count="0"><span style="height:{{ tile.appH }}px;border-radius:9px;background:rgba(0,0,0,.09);display:flex;align-items:center;justify-content:center;transform:{{ ap.tf }};transition:transform .32s cubic-bezier(.4,0,.2,1) {{ ap.delay }}ms"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;text-transform:none;letter-spacing:0">{{ ap.icon }}</span></span></sc-for></div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ tile.isPending }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:6px;padding:7px 11px;border-radius:999px;background:{{ t.ink }};color:{{ t.onInk }};font-size:12px;font-weight:700;pointer-events:none;opacity:{{ tile.pendOp }};transform:{{ tile.pendTf }};transition:{{ t.fxTS }}"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">lock</span>Waiting for Mum</div>
+          </sc-if>
+          <sc-if value="{{ tile.removable }}" hint-placeholder-val="{{ false }}">
+            <button onPointerDown="{{ stop }}" onPointerUp="{{ stop }}" onClick="{{ tile.remove }}" aria-label="Remove tile" style="appearance:none;border:0;cursor:pointer;position:absolute;left:-6px;top:-6px;width:32px;height:32px;border-radius:50%;background:{{ t.ink }};color:{{ t.onInk }};display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.25);opacity:{{ fxEdit.op }};transform:{{ fxEdit.tf }};transition:{{ t.fxTS }}"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'wght' 700">close</span></button>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <button onClick="{{ openAsk }}" style="position:absolute;left:16px;right:16px;bottom:30px;height:{{ askH }}px;border-radius:{{ t.rPill }};border:0;cursor:pointer;background:{{ t.ink }};color:{{ t.onInk }};font:inherit;display:flex;align-items:center;gap:12px;padding:0 8px 0 20px;z-index:12;box-shadow:{{ t.sheetShadow }}">
+    <span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">auto_awesome</span>
+    <span style="flex:1;text-align:left;font-size:{{ askFontSize }}px;font-weight:600;opacity:.9;white-space:nowrap">Ask Tiles…</span>
+    <span style="width:44px;height:44px;border-radius:50%;background:{{ t.askMicBg }};color:{{ t.onInk }};display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">mic</span></span>
+  </button>
+
+  <sc-if value="{{ speakOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:12px;right:12px;bottom:{{ dockBottom }}px;z-index:18;background:{{ t.surface }};backdrop-filter:{{ t.blur }};color:{{ t.ink }};border-radius:{{ t.rL }};padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px;box-shadow:{{ t.sheetShadow }};opacity:{{ fxSpeak.op }};transform:{{ fxSpeak.tf }};transition:{{ t.fxT }}">
+      <div style="display:flex;align-items:center;gap:3px;height:28px;flex:none"><sc-for list="{{ waveBars }}" as="wb" hint-placeholder-count="5"><span style="width:4px;height:28px;border-radius:2px;background:{{ t.accent }};transform-origin:center;animation:{{ wb.anim }};animation-delay:{{ wb.delay }}ms"></span></sc-for></div>
+      <div style="flex:1;min-width:0;font-size:16px;line-height:1.45;display:flex;flex-wrap:wrap;gap:0 4px"><sc-for list="{{ speakWords }}" as="w" hint-placeholder-count="0"><span style="padding:0 3px;border-radius:5px;background:{{ w.bg }};color:{{ w.fg }};transition:background .15s">{{ w.text }}</span></sc-for></div>
+      <button onClick="{{ stopSpeak }}" aria-label="Stop" style="appearance:none;border:0;cursor:pointer;flex:none;width:44px;height:44px;border-radius:50%;background:{{ t.ink }};color:{{ t.onInk }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">stop</span></button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ sugOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:12px;right:12px;bottom:{{ dockBottom }}px;z-index:18;background:{{ t.surface }};backdrop-filter:{{ t.blur }};color:{{ t.ink }};border-radius:{{ t.rL }};padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:{{ t.sheetShadow }};opacity:{{ fxSug.op }};transform:{{ fxSug.tf }};transition:{{ t.fxT }}">
+      <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:{{ t.accent }}"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">auto_awesome</span>Tiles noticed<button onClick="{{ sugDismiss }}" aria-label="Dismiss" style="appearance:none;border:0;cursor:pointer;margin-left:auto;width:36px;height:36px;border-radius:50%;background:transparent;color:{{ t.muted }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;text-transform:none;letter-spacing:0">close</span></button></div>
+      <div style="font-size:20px;line-height:1.15;font-weight:{{ t.weight }};letter-spacing:-.01em;text-wrap:pretty">{{ sugTitle }}</div>
+      <div style="font-size:14px;line-height:1.4;color:{{ t.muted }};text-wrap:pretty">{{ sugBody }}</div>
+      <sc-if value="{{ sugShown }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;margin-top:2px"><button onClick="{{ sugPreviewStart }}" style="appearance:none;border:0;cursor:pointer;font:inherit;flex:1;height:48px;border-radius:{{ t.rPill }};background:{{ t.ink }};color:{{ t.onInk }};font-size:15px;font-weight:700">Preview</button><button onClick="{{ sugDismiss }}" style="appearance:none;cursor:pointer;font:inherit;flex:1;height:48px;border-radius:{{ t.rPill }};border:1.5px solid {{ t.line }};background:transparent;color:{{ t.ink }};font-size:15px;font-weight:600">Not now</button></div>
+      </sc-if>
+      <sc-if value="{{ sugPreview }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:4px;padding:4px;border-radius:{{ t.rPill }};background:{{ t.surface2 }}"><button onClick="{{ sugBefore }}" style="appearance:none;border:0;cursor:pointer;font:inherit;flex:1;height:40px;border-radius:{{ t.rPill }};background:{{ sugBeforeBg }};color:{{ sugBeforeFg }};font-size:14px;font-weight:700;transition:background .25s,color .25s">Before</button><button onClick="{{ sugAfter }}" style="appearance:none;border:0;cursor:pointer;font:inherit;flex:1;height:40px;border-radius:{{ t.rPill }};background:{{ sugAfterBg }};color:{{ sugAfterFg }};font-size:14px;font-weight:700;transition:background .25s,color .25s">After</button></div>
+        <div style="display:flex;gap:8px"><button onClick="{{ sugSend }}" style="appearance:none;border:0;cursor:pointer;font:inherit;flex:1.4;height:48px;border-radius:{{ t.rPill }};background:{{ t.ink }};color:{{ t.onInk }};font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap"><span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;text-transform:none;letter-spacing:0">send</span>Send to Kasia</button><button onClick="{{ sugBack }}" style="appearance:none;cursor:pointer;font:inherit;flex:1;height:48px;border-radius:{{ t.rPill }};border:1.5px solid {{ t.line }};background:transparent;color:{{ t.ink }};font-size:15px;font-weight:600">Back</button></div>
+      </sc-if>
+      <sc-if value="{{ sugSent }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:{{ t.rM }};background:{{ t.surface2 }}"><span style="width:40px;height:40px;border-radius:50%;background:{{ t.accent }};color:{{ t.onAccent }};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;flex:none">K</span><span style="flex:1;font-size:15px;line-height:1.3;font-weight:600">Sent to Kasia for approval</span><span style="width:10px;height:10px;border-radius:50%;background:{{ t.accent }};animation:{{ t.aPulse }};flex:none"></span></div>
+      </sc-if>
+      <sc-if value="{{ sugApproved }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:{{ t.rM }};background:{{ t.okSoft }};color:{{ t.okInk }};opacity:{{ fxSugOk.op }};transform:{{ fxSugOk.tf }};transition:{{ t.fxTS }}"><span style="font-family:'Material Symbols Rounded';font-size:26px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">check_circle</span><span style="flex:1;font-size:15px;line-height:1.3;font-weight:700">Kasia approved · applying now</span></div>
+      </sc-if>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute;left:50%;bottom:{{ toastBottom }}px;transform:translate(-50%,{{ toastY }}px);opacity:{{ toastOp }};transition:transform .45s {{ t.ease }},opacity .3s;z-index:28;background:{{ t.toastBg }};color:{{ t.toastFg }};padding:12px 18px;border-radius:999px;font-size:15px;font-weight:600;white-space:nowrap;pointer-events:none;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);max-width:340px;overflow:hidden;text-overflow:ellipsis">{{ toastText }}</div>
+
+  <div onClick="{{ closeAsk }}" style="position:absolute;inset:0;z-index:19;background:{{ t.scrim }};opacity:{{ scrimOp }};pointer-events:{{ scrimPE }};transition:opacity .35s"></div>
+  <div style="position:absolute;left:0;right:0;bottom:0;z-index:20;transform:translateY({{ askY }});transition:transform {{ t.sheetDur }}ms {{ t.ease }};background:{{ t.sheetBg }};backdrop-filter:{{ t.blur }};color:{{ t.ink }};border-radius:{{ t.rL }} {{ t.rL }} 0 0;padding:10px 16px 36px;box-sizing:border-box;box-shadow:{{ t.sheetShadow }};display:flex;flex-direction:column;gap:14px">
+    <div style="width:40px;height:5px;border-radius:3px;background:{{ t.line }};margin:0 auto"></div>
+    <div style="display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1;color:{{ t.accent }}">auto_awesome</span><span style="font-size:20px;font-weight:{{ t.weight }};letter-spacing:{{ t.ls }};text-transform:{{ t.upper }};flex:1">Ask Tiles</span><button onClick="{{ closeAsk }}" aria-label="Close" style="appearance:none;border:0;cursor:pointer;width:44px;height:44px;border-radius:50%;background:{{ t.surface2 }};color:{{ t.ink }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;text-transform:none;letter-spacing:0">close</span></button></div>
+    <sc-if value="{{ askBusy }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600;color:{{ t.muted }}"><span style="display:flex;gap:4px"><span style="width:7px;height:7px;border-radius:50%;background:{{ t.accent }};animation:{{ t.aDots }};animation-delay:0ms"></span><span style="width:7px;height:7px;border-radius:50%;background:{{ t.accent }};animation:{{ t.aDots }};animation-delay:140ms"></span><span style="width:7px;height:7px;border-radius:50%;background:{{ t.accent }};animation:{{ t.aDots }};animation-delay:280ms"></span></span>{{ askStatus }}</div>
+    </sc-if>
+    <sc-if value="{{ askListening }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:12px;font-size:16px;font-weight:600"><div style="display:flex;align-items:center;gap:3px;height:28px"><sc-for list="{{ waveBars }}" as="wb" hint-placeholder-count="5"><span style="width:4px;height:28px;border-radius:2px;background:{{ t.accent }};transform-origin:center;animation:{{ wb.anim }};animation-delay:{{ wb.delay }}ms"></span></sc-for></div>Listening…</div>
+    </sc-if>
+    <div ref="{{ previewRef }}" style="height:{{ previewH }}px;transition:height .3s {{ t.ease }}"></div>
+    <sc-if value="{{ askIdle }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ askChips }}" as="q" hint-placeholder-count="2">
+          <button onClick="{{ q.pick }}" style="appearance:none;cursor:pointer;font:inherit;text-align:left;min-height:48px;padding:10px 14px;border-radius:{{ t.rM }};border:1.5px solid {{ t.line }};background:transparent;color:{{ t.ink }};font-size:15px;line-height:1.3;display:flex;align-items:center;gap:10px"><span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;text-transform:none;letter-spacing:0;color:{{ t.muted }};flex:none">{{ q.icon }}</span><span style="min-width:0">{{ q.label }}</span></button>
+        </sc-for>
+      </div>
+    </sc-if>
+    <div style="display:flex;align-items:center;gap:8px">
+      <input value="{{ askText }}" onChange="{{ askSetText }}" onKeyDown="{{ askKey }}" placeholder="Remind me, plan, call…" style="flex:1;min-width:0;height:{{ askH }}px;padding:0 18px;border-radius:{{ t.rPill }};border:1.5px solid {{ t.line }};background:{{ t.inputBg }};color:{{ t.ink }};font:inherit;font-size:17px;outline:none;box-sizing:border-box">
+      <button onClick="{{ askMic }}" aria-label="Speak" style="appearance:none;border:0;cursor:pointer;flex:none;width:{{ askH }}px;height:{{ askH }}px;border-radius:50%;background:{{ t.surface2 }};color:{{ t.ink }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">mic</span></button>
+      <button onClick="{{ askSend }}" aria-label="Send" style="appearance:none;border:0;cursor:pointer;flex:none;width:{{ askH }}px;height:{{ askH }}px;border-radius:50%;background:{{ askSendBg }};color:{{ askSendFg }};display:flex;align-items:center;justify-content:center;transition:background .2s"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">arrow_upward</span></button>
+    </div>
+  </div>
+
+  <sc-if value="{{ callOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:25;background:{{ t.callBg }};color:{{ t.callFg }};display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:110px 24px 70px;box-sizing:border-box;opacity:{{ fxCall.op }};transform:{{ fxCall.tf }};transition:{{ t.fxT }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center">
+        <div style="width:128px;height:128px;border-radius:50%;background:{{ callAvatarBg }};color:{{ callAvatarFg }};display:flex;align-items:center;justify-content:center;font-size:56px;font-weight:800;animation:{{ callRing }}">{{ callInitial }}</div>
+        <div style="font-size:36px;font-weight:{{ t.weight }};letter-spacing:-.02em;text-transform:{{ t.upper }}">{{ callName }}</div>
+        <div style="font-size:19px;opacity:.75;white-space:nowrap">{{ callStatus }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:28px">
+        <span style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:28px;line-height:1;text-transform:none;letter-spacing:0">mic_off</span></span>
+        <button onClick="{{ endCall }}" aria-label="End call" style="appearance:none;border:0;cursor:pointer;width:84px;height:84px;border-radius:50%;background:{{ t.danger }};color:{{ t.onDanger }};display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px -10px rgba(0,0,0,.5)"><span style="font-family:'Material Symbols Rounded';font-size:38px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">call_end</span></button>
+        <span style="width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:28px;line-height:1;text-transform:none;letter-spacing:0">volume_up</span></span>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ gOn }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:26;background:{{ t.bg }};color:{{ t.ink }};display:flex;flex-direction:column;padding:62px 20px 44px;box-sizing:border-box;opacity:{{ fxG.op }};transition:{{ t.fxT }}">
+      <sc-if value="{{ gLive }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:56px;height:56px;border-radius:50%;background:{{ t.surface2 }};display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Material Symbols Rounded';font-size:30px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">person</span></div>
+          <div style="flex:1;min-width:0"><div style="font-size:21px;font-weight:{{ t.weight }};letter-spacing:{{ t.ls }};white-space:nowrap">Unknown number</div><div style="font-size:14px;color:{{ t.muted }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">+48 512 ··· 418 · mobile</div></div>
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:{{ t.okSoft }};color:{{ t.okInk }};font-size:13px;font-weight:700;flex:none;white-space:nowrap"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1;animation:{{ t.aPulse }}">shield</span>{{ gStatus }}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:22px;flex:1;min-height:0;overflow:hidden">
+          <sc-for list="{{ gLines }}" as="ln" hint-placeholder-count="0">
+            <div style="align-self:flex-start;max-width:88%;padding:12px 16px;border-radius:{{ t.rM }};background:{{ t.surface }};box-shadow:{{ t.shadow }};font-size:17px;line-height:1.35;text-wrap:pretty;opacity:{{ ln.op }};transform:{{ ln.tf }};transition:{{ t.fxT }}">{{ ln.text }}</div>
+          </sc-for>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">
+            <sc-for list="{{ gFlags }}" as="fl" hint-placeholder-count="0">
+              <span style="display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:999px;background:{{ t.dangerSoft }};color:{{ t.dangerInk }};font-size:14px;font-weight:700;opacity:{{ fl.op }};transform:{{ fl.tf }};transition:{{ t.fxTS }};white-space:nowrap"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">flag</span>{{ fl.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-size:15px;font-weight:700;color:{{ t.muted }};text-transform:uppercase;letter-spacing:.08em">Scam risk</span><span style="font-size:44px;font-weight:800;line-height:1;letter-spacing:-.03em;color:{{ gRiskColor }};transition:color .5s">{{ gRisk }}%</span></div>
+          <div style="height:12px;border-radius:6px;background:{{ t.surface2 }};overflow:hidden"><div style="height:100%;width:{{ gRisk }}%;border-radius:6px;background:{{ gRiskColor }};transition:width .9s {{ t.ease }},background .5s"></div></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:22px">
+          <button onClick="{{ hangUp }}" style="appearance:none;border:0;cursor:pointer;font:inherit;flex:1;height:64px;border-radius:{{ t.rPill }};background:{{ t.danger }};color:{{ t.onDanger }};font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">call_end</span>Hang up</button>
+          <button style="appearance:none;cursor:pointer;font:inherit;flex:1;height:64px;border-radius:{{ t.rPill }};border:1.5px solid {{ t.line }};background:transparent;color:{{ t.muted }};font-size:16px;font-weight:600;white-space:nowrap">Keep listening</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{ gScam }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px;opacity:{{ fxScam.op }};transform:{{ fxScam.tf }};transition:{{ t.fxT }}">
+          <div style="width:104px;height:104px;border-radius:50%;background:{{ t.dangerSoft }};color:{{ t.dangerInk }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:56px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">shield</span></div>
+          <div style="font-size:38px;line-height:1.08;font-weight:{{ t.weight }};letter-spacing:-.02em;text-wrap:pretty">This looks like a scam.</div>
+          <div style="font-size:24px;line-height:1.3;color:{{ t.muted }};text-wrap:pretty">Hang up. Kasia already knows.</div>
+          <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:6px">
+            <sc-for list="{{ gFlags }}" as="fl" hint-placeholder-count="0"><span style="padding:8px 12px;border-radius:999px;background:{{ t.surface }};color:{{ t.ink }};font-size:14px;font-weight:700;box-shadow:{{ t.shadow }};white-space:nowrap">{{ fl.label }}</span></sc-for>
+          </div>
+        </div>
+        <button onClick="{{ hangUp }}" style="appearance:none;border:0;cursor:pointer;font:inherit;width:100%;height:84px;border-radius:{{ t.rL }};background:{{ t.danger }};color:{{ t.onDanger }};font-size:28px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:{{ t.sheetShadow }}"><span style="font-family:'Material Symbols Rounded';font-size:34px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">call_end</span>Hang up</button>
+        <button onClick="{{ gCallKasia }}" style="appearance:none;border:0;cursor:pointer;font:inherit;margin-top:10px;height:56px;border-radius:{{ t.rPill }};background:transparent;color:{{ t.ink }};font-size:18px;font-weight:700;text-decoration:underline;text-underline-offset:4px">Call Kasia instead</button>
+      </sc-if>
+      <sc-if value="{{ gEnded }}" hint-placeholder-val="{{ false }}">
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px">
+          <div style="width:104px;height:104px;border-radius:50%;background:{{ t.okSoft }};color:{{ t.okInk }};display:flex;align-items:center;justify-content:center;opacity:{{ fxEnded.op }};transform:{{ fxEnded.tf }};transition:{{ t.fxTS }}"><span style="font-family:'Material Symbols Rounded';font-size:60px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 600">check</span></div>
+          <div style="font-size:36px;line-height:1.1;font-weight:{{ t.weight }};letter-spacing:-.02em">You hung up.</div>
+          <div style="font-size:22px;line-height:1.3;color:{{ t.muted }};text-wrap:pretty">Dobrze. Kasia will call you in a minute.</div>
+        </div>
+      </sc-if>
+    </div>
+  </sc-if>
+  </sc-if>
+
+  <sc-if value="{{ isLock }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:{{ t.wallpaper }};color:{{ t.ink }};display:flex;flex-direction:column;align-items:center;padding:92px 14px 44px;gap:6px;box-sizing:border-box;opacity:{{ fxLock.op }};transition:{{ t.fxT }}">
+      <div style="font-size:92px;font-weight:{{ t.weight }};line-height:1;letter-spacing:-.04em">{{ clock }}</div>
+      <div style="font-size:18px;color:{{ t.muted }};font-weight:600;white-space:nowrap">Monday, 5 October</div>
+      <sc-if value="{{ lockNotif }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:30px;width:100%;background:{{ t.surface }};backdrop-filter:{{ t.blur }};border-radius:{{ t.rL }};padding:16px 16px 14px;box-sizing:border-box;box-shadow:{{ t.sheetShadow }};display:flex;flex-direction:column;gap:10px;opacity:{{ fxNotif.op }};transform:{{ fxNotif.tf }};transition:{{ t.fxT }}">
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:{{ t.muted }}"><span style="width:22px;height:22px;border-radius:6px;background:{{ t.accent }};color:{{ t.onAccent }};display:flex;align-items:center;justify-content:center"><span style="font-family:'Material Symbols Rounded';font-size:15px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">grid_view</span></span>Tiles · now</div>
+          <sc-if value="{{ lockDue }}" hint-placeholder-val="{{ true }}">
+            <div style="font-size:26px;line-height:1.1;font-weight:{{ t.weight }};letter-spacing:-.01em;text-transform:{{ t.upper }}">Pills 8:00</div>
+            <div style="font-size:18px;line-height:1.35;color:{{ t.ink }};opacity:.85">Euthyrox 50 µg — tap when taken</div>
+            <div style="display:flex;gap:8px;margin-top:4px"><button onClick="{{ lockTake }}" style="appearance:none;border:0;cursor:pointer;font:inherit;flex:1.4;height:64px;border-radius:{{ t.rPill }};background:{{ t.ink }};color:{{ t.onInk }};font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 600">check</span>Taken</button><button onClick="{{ lockSnooze }}" style="appearance:none;cursor:pointer;font:inherit;flex:1;height:64px;border-radius:{{ t.rPill }};border:1.5px solid {{ t.line }};background:transparent;color:{{ t.ink }};font-size:16px;font-weight:600">10 min</button></div>
+          </sc-if>
+          <sc-if value="{{ lockTaken }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:12px;opacity:{{ fxTaken.op }};transform:{{ fxTaken.tf }};transition:{{ t.fxTS }}"><span style="width:48px;height:48px;border-radius:50%;background:{{ t.okSoft }};color:{{ t.okInk }};display:flex;align-items:center;justify-content:center;flex:none"><span style="font-family:'Material Symbols Rounded';font-size:28px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1,'wght' 600">check</span></span><span style="display:flex;flex-direction:column;gap:2px"><span style="font-size:24px;font-weight:{{ t.weight }};line-height:1.1;white-space:nowrap">Taken · 8:02</span><span style="font-size:15px;color:{{ t.muted }};white-space:nowrap">Kasia can see it</span></span></div>
+          </sc-if>
+        </div>
+      </sc-if>
+      <div style="margin-top:auto;display:flex;justify-content:space-between;width:100%;padding:0 12px;box-sizing:border-box"><span style="width:56px;height:56px;border-radius:50%;background:{{ t.surface }};display:flex;align-items:center;justify-content:center;box-shadow:{{ t.shadow }}"><span style="font-family:'Material Symbols Rounded';font-size:26px;line-height:1;text-transform:none;letter-spacing:0">flashlight_on</span></span><span style="width:56px;height:56px;border-radius:50%;background:{{ t.surface }};display:flex;align-items:center;justify-content:center;box-shadow:{{ t.shadow }}"><span style="font-family:'Material Symbols Rounded';font-size:26px;line-height:1;text-transform:none;letter-spacing:0">photo_camera</span></span></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isWidgets }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:{{ t.wallpaper }};color:{{ t.ink }};padding:60px 16px 40px;box-sizing:border-box;overflow-y:auto;scrollbar-width:none;display:flex;flex-direction:column;gap:10px;opacity:{{ fxWidgets.op }};transition:{{ t.fxT }}">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ t.muted }};margin-bottom:4px">Home-screen widgets · Form Kit</div>
+      <div style="font-size:12px;font-weight:600;color:{{ t.muted }}">2 × 2</div>
+      <div style="width:174px;height:174px;border-radius:{{ t.rL }};background:{{ wPillBg }};color:{{ wPillFg }};box-shadow:{{ t.shadow }};padding:16px;box-sizing:border-box;display:flex;flex-direction:column;gap:6px;transition:background .5s;flex:none">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">{{ wPillIcon }}</span><span style="font-size:17px;font-weight:{{ t.weight }};text-transform:{{ t.upper }};letter-spacing:{{ t.ls }};white-space:nowrap">{{ wPillLabel }}</span></div>
+        <div style="font-size:13px;opacity:.85;line-height:1.3">{{ wPillSub }}</div>
+        <button onClick="{{ lockTake }}" style="appearance:none;border:0;cursor:pointer;font:inherit;margin-top:auto;height:48px;border-radius:{{ t.rPill }};background:rgba(0,0,0,.14);color:inherit;font-size:15px;font-weight:700">{{ wPillBtn }}</button>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:{{ t.muted }};margin-top:6px">2 × 4</div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;height:120px;flex:none">
+        <sc-for list="{{ w4 }}" as="wi" hint-placeholder-count="4">
+          <div style="border-radius:{{ t.rM }};background:{{ wi.bg }};color:{{ wi.fg }};box-shadow:{{ t.shadow }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px 4px;box-sizing:border-box;text-align:center;transition:background .5s;min-width:0"><span style="font-family:'Material Symbols Rounded';font-size:30px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">{{ wi.icon }}</span><span style="font-size:12px;font-weight:700;line-height:1.15;text-transform:{{ t.upper }}">{{ wi.label }}</span></div>
+        </sc-for>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:{{ t.muted }};margin-top:6px">Senior 4 × 4 — big buttons</div>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:1fr 1fr;gap:10px;height:330px;flex:none">
+        <sc-for list="{{ w4 }}" as="wi" hint-placeholder-count="4">
+          <div style="border-radius:{{ t.rL }};background:{{ wi.bg }};color:{{ wi.fg }};box-shadow:{{ t.shadow }};display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:18px;box-sizing:border-box;transition:background .5s;min-width:0"><span style="font-family:'Material Symbols Rounded';font-size:44px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">{{ wi.icon }}</span><span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:22px;font-weight:{{ t.weight }};line-height:1.1;text-transform:{{ t.upper }};letter-spacing:{{ t.ls }};text-wrap:pretty">{{ wi.label }}</span><span style="font-size:15px;opacity:.85">{{ wi.sub }}</span></span></div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+<sc-if value="{{ cgOn }}" hint-placeholder-val="{{ false }}">
+<div data-screen-label="{{ cgLabel }}" style="position:relative;flex:none;width:393px;height:852px;border-radius:46px;overflow:hidden;background:{{ t.bg }};color:{{ t.ink }};font-family:{{ t.font }};box-shadow:0 0 0 10px {{ t.bezel }},0 0 0 11px rgba(0,0,0,.25),0 40px 80px -40px rgba(0,0,0,.55);user-select:none;-webkit-user-select:none;opacity:{{ fxCg.op }};transition:{{ t.fxT }}">
+  <div style="position:absolute;top:0;left:0;right:0;height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;font-size:15px;font-weight:600;z-index:30;pointer-events:none;color:{{ t.statusInk }}">
+    <span>{{ clock }}</span>
+    <span style="position:absolute;left:50%;top:13px;width:12px;height:12px;border-radius:50%;background:#000;transform:translateX(-50%)"></span>
+    <span style="display:flex;align-items:center;gap:5px"><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;text-transform:none;letter-spacing:0">signal_cellular_alt</span><span style="font-family:'Material Symbols Rounded';font-size:17px;line-height:1;text-transform:none;letter-spacing:0">wifi</span><span style="font-size:13px">64</span><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">battery_4_bar</span></span>
+  </div>
+  <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:{{ t.ink }};opacity:.75;z-index:30;pointer-events:none"></div>
+  <div style="position:absolute;top:44px;left:0;right:0;bottom:0;overflow-y:auto;scrollbar-width:none;padding:14px 16px 110px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="width:48px;height:48px;border-radius:50%;background:{{ cgAvatarBg }};color:{{ cgAvatarFg }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;flex:none">{{ cgInitial }}</span>
+      <span style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:0"><span style="font-size:21px;font-weight:{{ t.weight }};letter-spacing:{{ t.ls }};text-transform:{{ t.upper }};line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ cgTitle }}</span><span style="font-size:14px;color:{{ t.muted }};display:flex;align-items:center;gap:6px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:{{ t.ok }};flex:none"></span>{{ cgSub }}</span></span>
+      <span style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:{{ t.muted }};padding:6px 10px;border:1.5px solid {{ t.line }};border-radius:999px;flex:none">Kasia</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ t.muted }}">Needs you</div>
+      <sc-if value="{{ cgEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:18px;border-radius:{{ t.rL }};border:1.5px dashed {{ t.line }};color:{{ t.muted }};font-size:15px;text-align:center">Nothing right now</div></sc-if>
+      <sc-for list="{{ cgCards }}" as="c" hint-placeholder-count="0">
+        <div style="border-radius:{{ t.rL }};background:{{ c.bg }};color:{{ c.fg }};padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:{{ t.shadow }};backdrop-filter:{{ t.blur }};opacity:{{ c.op }};transform:{{ c.tf }};transition:{{ t.fxT }}">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.85"><span style="font-family:'Material Symbols Rounded';font-size:18px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">{{ c.icon }}</span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.kicker }}</span><span style="margin-left:auto;font-weight:600;letter-spacing:0;text-transform:none;flex:none">{{ c.time }}</span></div>
+          <div style="font-size:20px;line-height:1.15;font-weight:{{ t.weight }};letter-spacing:-.01em;text-wrap:pretty">{{ c.title }}</div>
+          <div style="font-size:15px;line-height:1.45;opacity:.85;text-wrap:pretty">{{ c.body }}</div>
+          <sc-if value="{{ c.pending }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;margin-top:2px"><sc-for list="{{ c.actions }}" as="a" hint-placeholder-count="0"><button onClick="{{ a.pick }}" style="appearance:none;cursor:pointer;font:inherit;flex:{{ a.flex }};min-width:0;height:52px;padding:0 10px;border-radius:{{ t.rPill }};border:1.5px solid {{ a.border }};background:{{ a.bg }};color:{{ a.fg }};font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap">{{ a.label }}</button></sc-for></div>
+          </sc-if>
+          <sc-if value="{{ c.resolved }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;opacity:{{ c.resOp }};transform:{{ c.resTf }};transition:{{ t.fxTS }}"><span style="font-family:'Material Symbols Rounded';font-size:22px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">check_circle</span>{{ c.resolvedText }}</div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:{{ t.muted }}">Today</div>
+      <div style="border-radius:{{ t.rL }};background:{{ t.surface }};box-shadow:{{ t.shadow }};padding:4px 16px;display:flex;flex-direction:column;backdrop-filter:{{ t.blur }}">
+        <sc-for list="{{ cgStatus }}" as="st" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:12px;min-height:56px;border-bottom:1px solid {{ st.border }}"><span style="width:36px;height:36px;border-radius:50%;background:{{ st.bg }};color:{{ st.fg }};display:flex;align-items:center;justify-content:center;flex:none;transition:background .4s"><span style="font-family:'Material Symbols Rounded';font-size:20px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">{{ st.icon }}</span></span><span style="flex:1;min-width:0;font-size:15px;font-weight:600;line-height:1.3">{{ st.text }}</span><span style="font-size:13px;color:{{ t.muted }};flex:none">{{ st.time }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+  <button onClick="{{ cgCall }}" style="position:absolute;left:16px;right:16px;bottom:30px;height:60px;border-radius:{{ t.rPill }};border:0;cursor:pointer;background:{{ t.ink }};color:{{ t.onInk }};font:inherit;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px;z-index:12;box-shadow:{{ t.sheetShadow }};white-space:nowrap"><span style="font-family:'Material Symbols Rounded';font-size:24px;line-height:1;text-transform:none;letter-spacing:0;font-variation-settings:'FILL' 1">call</span>{{ cgCallLabel }}</button>
+  <div style="position:absolute;left:50%;bottom:104px;transform:translate(-50%,{{ cgToastY }}px);opacity:{{ cgToastOp }};transition:transform .45s {{ t.ease }},opacity .3s;z-index:28;background:{{ t.toastBg }};color:{{ t.toastFg }};padding:12px 18px;border-radius:999px;font-size:15px;font-weight:600;white-space:nowrap;pointer-events:none">{{ cgToastText }}</div>
+</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;860px&quot;,&quot;height&quot;:&quot;880px&quot;},&quot;direction&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;A&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;A&quot;,&quot;B&quot;,&quot;C&quot;]},&quot;flow&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;onboarding&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;onboarding&quot;,&quot;ask&quot;,&quot;interact&quot;,&quot;adapt&quot;,&quot;guardian&quot;,&quot;kid&quot;,&quot;widgets&quot;]},&quot;playToken&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:0,&quot;tsType&quot;:&quot;number&quot;},&quot;reduced&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;lead&quot;:{&quot;editor&quot;:null,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;onFlowDone&quot;:{&quot;editor&quot;:null,&quot;default&quot;:null,&quot;tsType&quot;:&quot;() =&gt; void&quot;}}">
+const THEMES = {
+  A: { font: "Figtree, system-ui, sans-serif", bg: '#F3EEE4', surface: '#FFFCF7', surface2: '#E9E1D3', ink: '#2A2420', onInk: '#F7F2EA', muted: '#6B6259', line: 'rgba(42,36,32,.14)', accent: '#B5541C', onAccent: '#fff', danger: '#B3261E', onDanger: '#fff', dangerSoft: '#F6D5D0', dangerInk: '#7A1A14', ok: '#2E6B3A', okSoft: '#D5E8CF', okInk: '#1E4A26', rL: '28px', rM: '18px', rS: '14px', rPill: '999px', shadow: '0 1px 0 rgba(60,40,20,.06), 0 10px 22px -14px rgba(60,40,20,.35)', sheetShadow: '0 -8px 40px -12px rgba(60,40,20,.35)', sheetBg: '#FFFCF7', blur: 'none', weight: 700, upper: 'none', ls: '-0.01em', bezel: '#1E1A17', statusInk: '#2A2420', toastBg: '#2A2420', toastFg: '#F7F2EA', wallpaper: 'linear-gradient(180deg,#E8DCC6,#F3EEE4)', callBg: '#2A2420', callFg: '#F7F2EA', ease: 'cubic-bezier(.34,1.3,.5,1)', dur: 560, sheetDur: 480, skeleton: 'linear-gradient(100deg,#E9E1D3 35%,#F7F2EA 50%,#E9E1D3 65%)', creature: '#F7D877', enterFrom: 'scale(.72)', inputBg: '#F3EEE4', scrim: 'rgba(42,36,32,.28)', askMicBg: 'rgba(255,255,255,.16)', titleScale: 1,
+    pal: { sun: ['#F7D877', '#3A2E00'], sky: ['#BFDCF2', '#0F2E47'], leaf: ['#CDE3B2', '#1E3A12'], rose: ['#F5C4BC', '#4A1A14'], plum: ['#D9CBEE', '#2E1E4D'], sand: ['#E9DEC8', '#3A2E1E'], ink: ['#2A2420', '#F3EEE4'], mint: ['#BEE4D6', '#0F3B2E'], peach: ['#F8D4B4', '#4A2A0C'] },
+    radius: (i) => ['28px', '28px 28px 28px 10px', '10px 28px 28px 28px', '28px 10px 28px 28px'][i % 4] },
+  B: { font: "Archivo, system-ui, sans-serif", bg: '#0B0B0D', surface: '#17171A', surface2: '#242428', ink: '#FFFFFF', onInk: '#0B0B0D', muted: '#A9A9B2', line: 'rgba(255,255,255,.16)', accent: '#FFD400', onAccent: '#111', danger: '#FF3B5C', onDanger: '#1A0008', dangerSoft: 'rgba(255,59,92,.18)', dangerInk: '#FF7A91', ok: '#22D36B', okSoft: 'rgba(34,211,107,.18)', okInk: '#5BE88F', rL: '8px', rM: '6px', rS: '4px', rPill: '8px', shadow: 'none', sheetShadow: '0 -1px 0 rgba(255,255,255,.12)', sheetBg: '#17171A', blur: 'none', weight: 800, upper: 'uppercase', ls: '.03em', bezel: '#000', statusInk: '#FFFFFF', toastBg: '#FFD400', toastFg: '#111', wallpaper: '#0B0B0D', callBg: '#0B0B0D', callFg: '#fff', ease: 'cubic-bezier(.2,0,0,1)', dur: 240, sheetDur: 240, skeleton: 'linear-gradient(100deg,#242428 35%,#36363C 50%,#242428 65%)', creature: '#FFD400', enterFrom: 'translate3d(48px,0,0)', inputBg: '#242428', scrim: 'rgba(0,0,0,.55)', askMicBg: 'rgba(0,0,0,.1)', titleScale: .9,
+    pal: { sun: ['#FFD400', '#111111'], sky: ['#2962FF', '#FFFFFF'], leaf: ['#22D36B', '#06210F'], rose: ['#FF3B5C', '#1A0008'], plum: ['#7C4DFF', '#FFFFFF'], sand: ['#E8E4DC', '#111111'], ink: ['#FFFFFF', '#111111'], mint: ['#00D1C1', '#032522'], peach: ['#FF7A1A', '#1A0A00'] },
+    radius: () => '6px' },
+  C: { font: "Manrope, system-ui, sans-serif", bg: 'linear-gradient(165deg,#EDF1FC 0%,#F6F0FA 50%,#FFF3EA 100%)', surface: 'rgba(255,255,255,.8)', surface2: 'rgba(29,33,64,.07)', ink: '#1D2140', onInk: '#F3F5FF', muted: '#5B6283', line: 'rgba(29,33,64,.12)', accent: '#4F5BD5', onAccent: '#fff', danger: '#C62B4A', onDanger: '#fff', dangerSoft: 'rgba(198,43,74,.12)', dangerInk: '#8E1B33', ok: '#1F7A4D', okSoft: 'rgba(31,122,77,.12)', okInk: '#145C38', rL: '26px', rM: '18px', rS: '14px', rPill: '999px', shadow: '0 16px 34px -20px rgba(40,50,110,.45), inset 0 1px 0 rgba(255,255,255,.8)', sheetShadow: '0 -20px 60px -24px rgba(40,50,110,.4)', sheetBg: 'rgba(255,255,255,.84)', blur: 'blur(26px) saturate(1.5)', weight: 700, upper: 'none', ls: '-0.012em', bezel: '#262A45', statusInk: '#1D2140', toastBg: '#1D2140', toastFg: '#F3F5FF', wallpaper: 'linear-gradient(165deg,#C9D4FF,#F3D4EC 60%,#FFE1CC)', callBg: 'linear-gradient(165deg,#1D2140,#2E3466)', callFg: '#F3F5FF', ease: 'cubic-bezier(.22,1,.36,1)', dur: 720, sheetDur: 560, skeleton: 'linear-gradient(100deg,rgba(255,255,255,.55) 35%,rgba(255,255,255,.98) 50%,rgba(255,255,255,.55) 65%)', creature: 'linear-gradient(135deg,#E3D5FF,#C2ADFF)', enterFrom: 'scale(.92) translate3d(0,22px,0)', inputBg: 'rgba(29,33,64,.06)', scrim: 'rgba(29,33,64,.25)', askMicBg: 'rgba(255,255,255,.16)', titleScale: 1,
+    pal: { sun: ['linear-gradient(135deg,#FFE48F,#FFB870)', '#3B2500'], sky: ['linear-gradient(135deg,#D4E4FF,#A9C4FF)', '#0F2A5F'], leaf: ['linear-gradient(135deg,#D2F3D8,#9FDFB3)', '#0E3B1F'], rose: ['linear-gradient(135deg,#FFD6DE,#FFADBE)', '#5A1424'], plum: ['linear-gradient(135deg,#E6D9FF,#C2ADFF)', '#2B1A5E'], sand: ['linear-gradient(135deg,#F7F0E6,#E8DCCB)', '#3A2E1E'], ink: ['linear-gradient(135deg,#2A2E48,#1B1E33)', '#F0F2FF'], mint: ['linear-gradient(135deg,#D3F5EF,#9FE3DA)', '#0B3B35'], peach: ['linear-gradient(135deg,#FFDFC9,#FFBE98)', '#4A2208'] },
+    radius: () => '26px' },
+};
+const PROFILES = {
+  halina: { name: 'Halina', greet: 'Dzień dobry, Halino', sub: 'Monday 5 October · pills at 8:00', cols: 2, rowH: 136, gap: 12, pad: 16, fs: 1.1, askH: 64, reduced: false, call: 'Kasia' },
+  zosia: { name: 'Zosia', greet: 'Hej, Zosia!', sub: 'Monday · school at 8:30', cols: 2, rowH: 128, gap: 12, pad: 16, fs: 0.95, askH: 56, reduced: false, call: 'Mum' },
+  michal: { name: 'Michał', greet: 'Dzień dobry, Michale', sub: 'Monday 5 October · everything is spoken', cols: 2, rowH: 150, gap: 14, pad: 16, fs: 1.3, askH: 72, reduced: true, call: 'Ania' },
+  daniel: { name: 'Daniel', greet: 'Morning, Daniel', sub: 'Mon 5 Oct · 3 things today', cols: 4, rowH: 104, gap: 10, pad: 16, fs: 0.78, askH: 52, reduced: false, call: 'Ola' },
+};
+const ICPS = [
+  { id: 'halina', label: 'Senior', sub: 'Halina, 78 · big, calm, read aloud', icon: 'elderly', color: 'sun' },
+  { id: 'zosia', label: 'Kid', sub: 'Zosia, 8 · playful, parent approves', icon: 'child_care', color: 'leaf' },
+  { id: 'michal', label: 'Low vision', sub: 'Michał · voice first, huge targets', icon: 'visibility_off', color: 'ink' },
+  { id: 'daniel', label: 'Everyday', sub: 'Daniel, 29 · dense, expressive', icon: 'person', color: 'sky' },
+];
+const APP_ICONS = ['calculate', 'newspaper', 'map', 'wallet', 'mail', 'shopping_bag', 'podcasts', 'translate', 'sports_esports', 'palette', 'fitness_center', 'theaters', 'sticky_note_2', 'cloud'];
+const TILES = {
+  halina: [
+    { id: 'pills', size: '2x1', color: 'sun', icon: 'medication', title: 'Pills 8:00', blocks: [{ type: 'text', text: 'Euthyrox 50 µg · tap when taken' }], actions: ['done'], speak: 'Pills at eight. Euthyrox. Tap when taken.', live: true },
+    { id: 'call', size: '1x1', color: 'leaf', icon: 'call', title: 'Call Kasia', blocks: [{ type: 'text', text: 'Daughter' }], actions: ['call'] },
+    { id: 'guardian', size: '1x1', color: 'mint', icon: 'shield', title: 'Guardian', blocks: [{ type: 'text', text: 'On · 2 calls blocked' }] },
+    { id: 'weather', size: '2x1', color: 'sky', icon: 'rainy', title: '14° and rain', blocks: [{ type: 'text', text: 'Take the umbrella. Warmer by 3 pm.' }], speak: '14 degrees and rain. Take the umbrella. Warmer by three.' },
+    { id: 'sos', size: '1x1', color: 'rose', icon: 'emergency', title: 'SOS', blocks: [{ type: 'text', text: 'Hold 2 s' }], actions: ['sos'] },
+    { id: 'photos', size: '1x1', color: 'sand', icon: 'photo_library', title: 'Photos', blocks: [{ type: 'text', text: '3 new from Zosia' }] },
+    { id: 'apps', size: '2x1', color: 'sand', icon: 'apps', title: 'More apps', blocks: [{ type: 'apps' }] },
+  ],
+  zosia: [
+    { id: 'homework', size: '2x2', color: 'sun', icon: 'menu_book', title: 'Homework', blocks: [{ type: 'number', value: '3/5', unit: 'done', countOf: 1 }, { type: 'checklist', items: [{ text: 'Maths p. 42', done: true }, { text: 'Reading 20 min', done: true }, { text: 'Spelling list', done: true }, { text: 'Draw a leaf', done: false }, { text: 'Pack the bag', done: false }] }] },
+    { id: 'focus', size: '1x1', color: 'plum', icon: 'timer', title: 'Focus', blocks: [{ type: 'timer', seconds: 900, creature: true, hint: 'with Mo' }] },
+    { id: 'call', size: '1x1', color: 'leaf', icon: 'call', title: 'Call Mum', blocks: [{ type: 'text', text: 'Kasia' }], actions: ['call'] },
+    { id: 'energy', size: '2x1', color: 'mint', icon: 'bolt', title: 'Energy today', blocks: [{ type: 'progress', value: 70, max: 120, label: '1 h 10 min left · fair share' }] },
+    { id: 'adventure', size: '2x1', color: 'sky', icon: 'explore', title: "Today's adventure", blocks: [{ type: 'text', text: 'Find three red leaves on the way home.' }] },
+    { id: 'weather', size: '1x1', color: 'peach', icon: 'rainy', title: '14°', blocks: [{ type: 'text', text: 'Rain · boots!' }] },
+    { id: 'photos', size: '1x1', color: 'rose', icon: 'photo_camera', title: 'Send to Babcia', blocks: [{ type: 'text', text: 'a photo' }] },
+  ],
+  michal: [
+    { id: 'speak', size: '2x1', color: 'ink', icon: 'mic', title: 'Hold to speak', blocks: [{ type: 'text', text: 'Ask anything. I will read it back.' }] },
+    { id: 'call', size: '1x1', color: 'leaf', icon: 'call', title: 'Call Ania', blocks: [], actions: ['call'], speak: 'Call Ania.' },
+    { id: 'sos', size: '1x1', color: 'rose', icon: 'emergency', title: 'SOS', blocks: [], actions: ['sos'], speak: 'S O S. Hold for two seconds.' },
+    { id: 'weather', size: '2x1', color: 'sky', icon: 'rainy', title: '14°, rain', blocks: [{ type: 'text', text: 'Umbrella. Warmer by 3 pm.' }], speak: '14 degrees and rain. Take the umbrella. Warmer by three.' },
+    { id: 'messages', size: '2x1', color: 'sun', icon: 'mail', title: '2 new messages', blocks: [{ type: 'text', text: 'Tap to hear them' }], speak: 'Two new messages. Ania: dinner at seven? Clinic: appointment Thursday at ten.' },
+  ],
+  daniel: [
+    { id: 'commute', size: '2x1', color: 'sky', icon: 'tram', title: 'Tram 18 in 6 min', blocks: [{ type: 'text', text: 'Kazimierz → Rynek · leave 8:12' }] },
+    { id: 'weather', size: '1x1', color: 'sand', icon: 'rainy', title: 'Rain', blocks: [{ type: 'number', value: '14°', unit: '' }] },
+    { id: 'focus', size: '1x1', color: 'plum', icon: 'timer', title: 'Focus', blocks: [{ type: 'timer', seconds: 1500, hint: '' }] },
+    { id: 'dinner', size: '2x2', color: 'peach', icon: 'restaurant', title: 'Dinner Fri 19:30', blocks: [{ type: 'text', text: 'Veganda · Kazimierz · ~65 zł' }, { type: 'chips', items: ['Ola ✓', 'Kuba ?', 'You ✓'] }, { type: 'buttons', items: [{ label: 'Vote', action: 'vote' }, { label: 'Change', action: 'edit' }] }] },
+    { id: 'friends', size: '2x1', color: 'mint', icon: 'group', title: 'Ola, Kuba free', blocks: [{ type: 'text', text: 'Tonight · only free/busy shared' }] },
+    { id: 'calendar', size: '2x1', color: 'sun', icon: 'event', title: 'Standup 10:00', blocks: [{ type: 'text', text: '+2 more today' }] },
+    { id: 'run', size: '1x1', color: 'leaf', icon: 'directions_run', title: 'Run', blocks: [{ type: 'number', value: '12', unit: 'km' }] },
+    { id: 'call', size: '1x1', color: 'rose', icon: 'call', title: 'Call Ola', blocks: [], actions: ['call'] },
+    { id: 'music', size: '1x1', color: 'ink', icon: 'music_note', title: 'Playlist', blocks: [] },
+    { id: 'photos', size: '1x1', color: 'sky', icon: 'photo_library', title: 'Photos', blocks: [] },
+    { id: 'inbox', size: '2x1', color: 'plum', icon: 'mail', title: '3 unread', blocks: [{ type: 'text', text: 'Ola: see you Fri?' }] },
+    { id: 'steps', size: '2x1', color: 'sand', icon: 'footprint', title: '6 412 steps', blocks: [{ type: 'progress', value: 6412, max: 10000, label: '64% of 10 000' }] },
+  ],
+};
+const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const clone = (o) => JSON.parse(JSON.stringify(o));
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.pool = []; this.lastSpec = {}; this.lastPos = {}; this.timers = []; this.runId = 0; this.lastSwap = 0; this.stagger = {}; this.alive = true;
+    this.gridRef = React.createRef(); this.previewRef = React.createRef();
+    this.state = this.blank(props.flow || 'onboarding');
+  }
+  dir() { return new URLSearchParams(location.search).get('stagedir') || this.props.direction || 'A'; }
+  blank(flow) {
+    const s = { screen: 'home', profileId: 'halina', showSwitcher: false, specs: {}, order: [], entering: {}, fx: {}, adapted: false, previewAdapt: false, appsFolding: false, pressed: null, editMode: false, drag: null, flying: null, ask: { open: false, text: '', phase: 'idle', built: 0, previewH: 0 }, born: null, call: null, speak: null, sug: null, guardian: null, toast: null, focus: null, cg: { on: false, cards: [] }, lock: { notif: false, taken: false }, pillsTaken: false, blocked: 2, par: { x: 0, y: 0 }, pick: null, cgToast: null };
+    const prof = { onboarding: null, ask: 'halina', interact: 'halina', adapt: 'halina', guardian: 'halina', kid: 'zosia', widgets: 'halina' }[flow];
+    if (flow === 'onboarding') { s.screen = 'chooser'; s.profileId = null; }
+    if (flow === 'widgets') s.screen = 'lock';
+    if (prof) Object.assign(s, this.profileState(prof));
+    if (['adapt', 'guardian', 'kid'].includes(flow)) s.cg = { on: true, cards: [] };
+    return s;
+  }
+  reset(flow) { this.reveal(this.blank(flow), ['chooser', 'lock', 'cg']); }
+  profileState(id) { const specs = {}, order = []; for (const t of TILES[id]) { specs[t.id] = clone(t); order.push(t.id); } return { profileId: id, specs, order }; }
+  componentDidMount() { (window.__stage = window.__stage || {})[this.dir()] = this; this.reveal({}, ['chooser', 'lock', 'cg']); if (this.props.playToken > 0) this.after(400, () => this.play()); }
+  componentDidUpdate(prev) { if (prev.playToken !== this.props.playToken) this.play(); }
+  componentWillUnmount() { this.alive = false; this.stop(); clearTimeout(this.toastT); clearTimeout(this.cgToastT); }
+  // ---------- timing ----------
+  stop() { this.runId++; this.timers.forEach(clearTimeout); this.timers = []; cancelAnimationFrame(this.raf); clearInterval(this.speakI); clearInterval(this.focusI); clearTimeout(this.lp); this.ptr = null; }
+  after(ms, fn) { const id = this.runId; const t = setTimeout(() => { if (id === this.runId && this.alive) fn(); }, ms); this.timers.push(t); return t; }
+  seq(steps) { const total = steps[steps.length - 1][0]; steps.forEach(([t, fn]) => this.after(t, fn)); this.after(total + 400, () => { if (this.props.lead && this.props.onFlowDone) this.props.onFlowDone(); }); }
+  play() { this.stop(); const f = this.props.flow || 'onboarding'; const fn = { onboarding: this.flowOnboarding, ask: this.flowAsk, interact: this.flowInteract, adapt: this.flowAdapt, guardian: this.flowGuardian, kid: this.flowKid, widgets: this.flowWidgets }[f]; if (fn) fn.call(this); }
+  vib(ms = 12) { try { navigator.vibrate && navigator.vibrate(ms); } catch (_) {} }
+  // reveal: mount with the "from" state, then release to the natural state one tick later (state-driven, no keyframes)
+  reveal(patch, keys, ms = 40) {
+    const fx = { ...this.state.fx }; keys.forEach(k => { fx[k] = true; });
+    this.setState({ ...patch, fx });
+    setTimeout(() => { if (!this.alive) return; this.setState(s => { const f = { ...s.fx }; keys.forEach(k => delete f[k]); return { fx: f }; }); }, ms);
+  }
+  scrollHome(top) { const el = this.gridRef.current && this.gridRef.current.parentElement; if (el) el.scrollTo({ top, behavior: document.hidden ? 'auto' : 'smooth' }); }
+  // ---------- tiles ----------
+  setTiles(patch) {
+    const prevVis = new Set(this.state.order.concat(this.state.born ? [this.state.born.id] : []));
+    const entering = {}; let rank = 0;
+    for (const id of patch.order) if (!prevVis.has(id)) { entering[id] = true; this.stagger[id] = rank++ * 45; }
+    this.setState({ ...patch, entering }, () => {
+      const clear = () => { if (this.alive && Object.keys(this.state.entering).length) this.setState({ entering: {} }); };
+      requestAnimationFrame(() => requestAnimationFrame(clear));
+      setTimeout(clear, 80);
+      setTimeout(() => { for (const id in entering) delete this.stagger[id]; }, 900);
+    });
+  }
+  choose(id) { this.setTiles({ screen: 'home', showSwitcher: true, pick: null, editMode: false, drag: null, adapted: false, previewAdapt: false, ...this.profileState(id) }); }
+  layout(order, specs, cols, cellW, rowH, gap) {
+    const occ = [], pos = {};
+    const free = (r, c) => !(occ[r] && occ[r][c]);
+    for (const id of order) {
+      const s = specs[id]; if (!s) continue;
+      const [cw, ch] = s.size.split('x').map(Number);
+      let placed = false;
+      for (let r = 0; !placed && r < 60; r++) for (let c = 0; c <= cols - cw && !placed; c++) {
+        let ok = true;
+        for (let i = 0; i < ch && ok; i++) for (let j = 0; j < cw && ok; j++) if (!free(r + i, c + j)) ok = false;
+        if (ok) { for (let i = 0; i < ch; i++) { occ[r + i] = occ[r + i] || []; for (let j = 0; j < cw; j++) occ[r + i][c + j] = true; } pos[id] = { x: c * (cellW + gap), y: r * (rowH + gap), w: cw * cellW + (cw - 1) * gap, h: ch * rowH + (ch - 1) * gap }; placed = true; }
+      }
+    }
+    const rows = occ.length;
+    return { pos, height: rows * rowH + Math.max(0, rows - 1) * gap };
+  }
+  scale() { const g = this.gridRef.current; if (!g) return 1; const r = g.getBoundingClientRect(); return r.width / (g.offsetWidth || r.width) || 1; }
+  // ---------- interactions ----------
+  tapTile(id) {
+    const S = this.state, spec = S.specs[id]; if (!spec || S.editMode) return;
+    const P = PROFILES[S.profileId];
+    if (spec.pending) return this.toast('Waiting for Mum to allow it');
+    if (S.profileId === 'michal' && spec.speak && id !== 'call') return this.startSpeak(id);
+    if (spec.blocks && spec.blocks.some(b => b.type === 'timer')) return this.toggleFocus(id, spec.blocks.find(b => b.type === 'timer').seconds);
+    if (spec.actions && spec.actions.includes('done')) return this.markDone(id);
+    if (spec.actions && spec.actions.includes('call')) return this.openCall(P.call);
+    if (spec.actions && spec.actions.includes('sos')) return this.toast('Hold SOS for 2 s to call for help');
+    if (id === 'speak') return this.openAsk(true);
+    if (id === 'guardian') return this.toast(`Guardian is on · ${S.blocked} calls blocked`);
+    if (spec.speak) return this.startSpeak(id);
+    this.toast(spec.title);
+  }
+  markDone(id) {
+    const specs = clone(this.state.specs); if (!specs[id] || specs[id].done) return;
+    specs[id].done = true; specs[id].doneAt = '8:02';
+    this.vib(18);
+    this.reveal({ specs, pressed: id, pillsTaken: id === 'pills' ? true : this.state.pillsTaken, lock: { ...this.state.lock, taken: id === 'pills' ? true : this.state.lock.taken } }, ['done' + id], 260);
+    this.after(160, () => this.setState({ pressed: null }));
+    this.after(900, () => this.toast('Kasia will see it'));
+  }
+  tileButton(id, action) {
+    if (action === 'done') return this.markDone(id);
+    if (action === 'snooze') return this.toast('Okay — again in 10 minutes');
+    if (action === 'vote') return this.toast('Vote sent · Ola and Kuba notified');
+    if (action === 'edit') return this.openAsk(false, 'Change Friday dinner to ');
+  }
+  toggleCheck(id, bi, ii) {
+    const specs = clone(this.state.specs); const t = specs[id]; const list = t.blocks[bi]; list.items[ii].done = !list.items[ii].done;
+    const done = list.items.filter(i => i.done).length;
+    t.blocks.forEach(b => { if (b.type === 'number' && b.countOf != null) b.value = `${done}/${list.items.length}`; });
+    this.setState({ specs }); this.vib();
+    if (done === list.items.length) this.toast('All done! +15 min energy');
+  }
+  toggleFocus(id, seconds) {
+    const f = this.state.focus; clearInterval(this.focusI);
+    if (f && f.id === id && f.running) { this.setState({ focus: { ...f, running: false } }); return; }
+    const left = f && f.id === id ? f.left : seconds;
+    this.setState({ focus: { id, left, running: true } });
+    this.focusI = setInterval(() => { const g = this.state.focus; if (!g || !g.running) return clearInterval(this.focusI); if (g.left <= 0) { clearInterval(this.focusI); this.setState({ focus: { ...g, running: false } }); this.toast('Focus done. Mo is proud of you.'); return; } this.setState({ focus: { ...g, left: g.left - 1 } }); }, 1000);
+  }
+  openCall(name) { this.reveal({ call: { name, status: 'Calling…' } }, ['call']); this.after(2200, () => { if (this.state.call) this.setState({ call: { name, status: 'Connected · 0:01' } }); }); }
+  endCall() { this.setState({ call: null }); }
+  startSpeak(id) {
+    const spec = this.state.specs[id]; if (!spec) return;
+    const words = (spec.speak || spec.title).split(' ');
+    clearInterval(this.speakI);
+    this.reveal({ speak: { id, words, idx: 0 } }, ['speak']);
+    this.speakI = setInterval(() => { const s = this.state.speak; if (!s) return clearInterval(this.speakI); if (s.idx >= s.words.length) { clearInterval(this.speakI); this.after(700, () => this.setState({ speak: null })); return; } this.setState({ speak: { ...s, idx: s.idx + 1 } }); }, 290);
+  }
+  stopSpeak() { clearInterval(this.speakI); this.setState({ speak: null }); }
+  removeTile(id) { this.vib(); this.setTiles({ order: this.state.order.filter(x => x !== id) }); }
+  enterEdit(drag) { this.reveal({ editMode: true, drag: drag || null, pressed: null }, ['edit']); }
+  hoverReorder(id, cx, cy) {
+    const now = performance.now(); if (now - this.lastSwap < 240) return;
+    const L = this._layout; const order = this.state.order; const i = order.indexOf(id); if (i < 0) return;
+    for (const [oid, r] of Object.entries(L.pos)) {
+      if (oid === id) continue;
+      if (cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h) { const j = order.indexOf(oid); if (j < 0 || j === i) return; const o = order.slice(); o.splice(i, 1); o.splice(j, 0, id); this.lastSwap = now; this.vib(6); this.setState({ order: o }); return; }
+    }
+  }
+  simDrag(id, targetId, ms) {
+    const L = this._layout; if (!L || !L.pos[id] || !L.pos[targetId]) return;
+    const from = { ...L.pos[id] }, to = { ...L.pos[targetId] }; const t0 = performance.now();
+    this.enterEdit({ id, x: from.x, y: from.y, sim: true });
+    let last = t0;
+    const step = () => {
+      const d = this.state.drag; if (!d || d.id !== id) return;
+      const now = performance.now(); const k = Math.min(1, (now - t0) / ms); const e = k < .5 ? 2 * k * k : -1 + (4 - 2 * k) * k;
+      const x = from.x + (to.x - from.x) * e, y = from.y + (to.y - from.y) * e;
+      this.setState({ drag: { id, x, y, sim: true } });
+      this.hoverReorder(id, x + from.w / 2, y + from.h / 2);
+      if (k < 1) this.after(32, step); else this.after(200, () => this.setState({ drag: null }));
+    };
+    this.after(16, step);
+  }
+  down(id, e) {
+    if (e.button && e.button !== 0) return;
+    if (this.state.drag) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
+    this.ptr = { id, sx: e.clientX, sy: e.clientY, moved: false, long: false };
+    this.setState({ pressed: id });
+    clearTimeout(this.lp);
+    this.lp = setTimeout(() => {
+      const P = this.ptr; if (!P || P.moved || P.id !== id) return; P.long = true;
+      const p = this._layout && this._layout.pos[id]; if (!p) return;
+      this.vib(20);
+      this.enterEdit({ id, x: p.x, y: p.y, ox: p.x, oy: p.y });
+    }, 420);
+  }
+  move(id, e) {
+    const P = this.ptr; if (!P || P.id !== id) return;
+    const dx = e.clientX - P.sx, dy = e.clientY - P.sy;
+    if (!P.moved && Math.hypot(dx, dy) > 8) { P.moved = true; if (!P.long) { clearTimeout(this.lp); this.setState({ pressed: null }); } }
+    const d = this.state.drag;
+    if (d && d.id === id && !d.sim) {
+      const sc = this.scale(); const x = d.ox + dx / sc, y = d.oy + dy / sc;
+      this.setState({ drag: { ...d, x, y } });
+      const p = this._layout.pos[id]; if (p) this.hoverReorder(id, x + p.w / 2, y + p.h / 2);
+    }
+  }
+  up(id) {
+    const P = this.ptr; clearTimeout(this.lp); if (!P || P.id !== id) return; this.ptr = null;
+    const d = this.state.drag;
+    if (d && d.id === id && !d.sim) { this.setState({ drag: null, pressed: null }); return; }
+    this.setState({ pressed: null });
+    if (!P.moved && !P.long) this.tapTile(id);
+  }
+  // ---------- ask / generative UI ----------
+  openAsk(voice, prefill) {
+    const text = prefill != null ? prefill : '';
+    this.setState({ ask: { open: true, text, phase: voice ? 'listening' : 'idle', built: 0, previewH: 0 }, editMode: false, drag: null });
+    if (voice) this.after(1800, () => { if (this.state.profileId === 'michal') { this.setState({ ask: { ...this.state.ask, open: false, phase: 'idle' } }); this.after(300, () => this.startSpeak('weather')); } else { this.typeText('Remind me to take Euthyrox at 8 every morning', 28, () => this.after(400, () => this.sendAsk())); } });
+  }
+  closeAsk() { this.setState({ ask: { ...this.state.ask, open: false }, born: null }); }
+  typeText(text, msPerChar, done) {
+    let i = 0; const tick = () => { i++; this.setState({ ask: { ...this.state.ask, text: text.slice(0, i), phase: 'idle' } }); if (i < text.length) this.after(msPerChar, tick); else if (done) done(); };
+    tick();
+  }
+  specFromPrompt(text) {
+    const s = text.toLowerCase(); const id = 'new' + Date.now();
+    if (/remind|take |pill|tablet|every morning|every day/.test(s)) {
+      const m = text.match(/take ([A-Za-zÀ-ž0-9]+)/i); const name = m ? m[1] : 'Medicine';
+      const tm = text.match(/(\d{1,2})(:\d{2})?/); const time = tm ? tm[1] + (tm[2] || ':00') : '8:00';
+      return { id, size: '2x1', color: 'sun', icon: 'medication', title: `${name} ${time}`, blocks: [{ type: 'text', text: 'Every morning' }, { type: 'buttons', items: [{ label: 'Taken', action: 'done' }, { label: 'Later', action: 'snooze' }] }], actions: ['done'], speak: `${name} at ${time}. Tap when taken.`, live: true };
+    }
+    if (/dinner|lunch|eat|restaurant|food/.test(s)) {
+      const vegan = /vegan|wege/.test(s); const near = (text.match(/near ([A-Za-zÀ-ž]+)/i) || [])[1] || 'Kazimierz'; const under = (text.match(/under (\d+)/i) || [])[1];
+      return { id, size: '2x2', color: 'peach', icon: 'restaurant', title: 'Dinner Fri 19:30', blocks: [{ type: 'text', text: `${vegan ? 'Veganda · vegan' : 'Nolio · bistro'} · ${near}${under ? ' · under ' + under + ' zł' : ''}` }, { type: 'chips', items: ['Ola · asked', 'Kuba · asked', 'You ✓'] }, { type: 'text', text: 'Agents only share free/busy. Votes close Thu.' }, { type: 'buttons', items: [{ label: 'Vote', action: 'vote' }, { label: 'Change', action: 'edit' }] }] };
+    }
+    if (/call|zadzwoń/.test(s)) { const who = (text.match(/call ([A-Za-zÀ-ž]+)/i) || [])[1] || 'Kasia'; return { id, size: '1x1', color: 'leaf', icon: 'call', title: `Call ${who}`, blocks: [{ type: 'text', text: 'One tap' }], actions: ['call'] }; }
+    if (/weather|rain|umbrella/.test(s)) return { id, size: '2x1', color: 'sky', icon: 'rainy', title: '14° and rain', blocks: [{ type: 'text', text: 'Take the umbrella. Warmer by 3 pm.' }], speak: '14 degrees and rain. Take the umbrella.' };
+    const words = text.split(' '); return { id, size: '2x1', color: 'plum', icon: 'sticky_note_2', title: words.slice(0, 3).join(' '), blocks: [{ type: 'text', text: words.slice(3).join(' ') || 'Saved as a note' }] };
+  }
+  sendAsk() {
+    const text = this.state.ask.text.trim(); if (!text || this.state.ask.phase === 'thinking' || this.state.ask.phase === 'building') return;
+    const spec = this.specFromPrompt(text);
+    const P = PROFILES[this.state.profileId]; const L = this._layout;
+    const [cw, ch] = spec.size.split('x').map(Number); const w = cw * L.cellW + (cw - 1) * L.gap, h = ch * L.rowH + (ch - 1) * L.gap;
+    this.setState({ ask: { ...this.state.ask, phase: 'thinking', built: 0 } });
+    this.after(1300, () => this.setState({ ask: { ...this.state.ask, phase: 'building', previewH: h } }));
+    this.after(1700, () => {
+      const g = this.gridRef.current, p = this.previewRef.current; let x = 0, y = 0;
+      if (g && p) { const gr = g.getBoundingClientRect(), pr = p.getBoundingClientRect(); const sc = gr.width / (g.offsetWidth || gr.width) || 1; x = (pr.left - gr.left) / sc; y = (pr.top - gr.top) / sc; }
+      this.stagger[spec.id] = 0;
+      const clear = () => { if (this.alive && Object.keys(this.state.entering).length) this.setState({ entering: {} }); };
+      this.setState({ born: { id: spec.id, spec, x, y, w, h, flooded: false }, entering: { [spec.id]: true } }, () => { requestAnimationFrame(() => requestAnimationFrame(clear)); setTimeout(clear, 80); });
+    });
+    const n = spec.blocks.length + 1; const stepMs = 420;
+    for (let i = 1; i <= n; i++) this.after(2100 + i * stepMs, () => this.setState({ ask: { ...this.state.ask, built: i } }));
+    const tFlood = 2100 + n * stepMs + 500;
+    this.after(tFlood, () => { this.vib(10); this.setState({ born: { ...this.state.born, flooded: true } }); });
+    this.after(tFlood + 850, () => {
+      const b = this.state.born; if (!b) return;
+      const specs = { ...this.state.specs, [spec.id]: { ...spec, flood: spec.color } };
+      this.setState({ specs, order: [spec.id, ...this.state.order], born: null, flying: spec.id, ask: { ...this.state.ask, open: false, phase: 'idle', text: '', built: 0, previewH: 0 } });
+      this.scrollHome(0);
+    });
+    this.after(tFlood + 1700, () => { this.setState({ flying: null }); this.toast(`Added to ${P.name}'s home`); });
+  }
+  // ---------- toasts ----------
+  toast(text, ms = 2400) { clearTimeout(this.toastT); this.setState({ toast: text }); this.toastT = setTimeout(() => this.alive && this.setState({ toast: null }), ms); }
+  cgToast(text, ms = 2400) { clearTimeout(this.cgToastT); this.setState({ cgToast: text }); this.cgToastT = setTimeout(() => this.alive && this.setState({ cgToast: null }), ms); }
+  cgAdd(card) { this.reveal({ cg: { on: true, cards: [card, ...this.state.cg.cards.filter(c => c.id !== card.id)] } }, ['card' + card.id]); }
+  cgResolve(id, text) { this.reveal({ cg: { on: true, cards: this.state.cg.cards.map(c => c.id === id ? { ...c, pending: false, resolvedText: text } : c) } }, ['res' + id]); }
+  // ---------- adaptation ----------
+  sugShow() { this.reveal({ sug: { phase: 'shown' } }, ['sug']); this.after(350, () => this.scrollHome(9999)); }
+  sugPreview(after) { this.setState({ sug: { phase: 'preview' }, previewAdapt: !!after }); this.after(120, () => this.scrollHome(9999)); }
+  sugSend() {
+    this.setState({ sug: { phase: 'sent' }, previewAdapt: false });
+    this.after(500, () => this.cgAdd({ id: 'adapt', kind: 'approval', icon: 'auto_awesome', kicker: 'Approval · Mama', time: 'now', title: 'Make text 40% bigger for Mama', body: '11 missed taps today. Tiles also wants to hide 14 unused apps and read tiles aloud on tap.', pending: true, actions: [{ label: 'Approve', primary: true, fn: () => this.approveAdapt() }, { label: 'Ask Mama', fn: () => this.cgToast('Calling Mama…') }] }));
+  }
+  approveAdapt() {
+    this.cgResolve('adapt', 'Approved · 8:04'); this.reveal({ sug: { phase: 'approved' } }, ['sugok']);
+    this.after(700, () => this.applyAdapt());
+    this.after(2200, () => { this.setState({ sug: null }); this.toast('Kasia approved · bigger text, fewer apps'); this.scrollHome(0); });
+  }
+  applyAdapt() { this.setState({ appsFolding: true }); this.after(520, () => this.setTiles({ order: this.state.order.filter(id => id !== 'apps'), adapted: true, previewAdapt: false, appsFolding: false })); }
+  // ---------- guardian ----------
+  gSet(patch, keys) { this.reveal({ guardian: { ...(this.state.guardian || { phase: 'ring', lines: [], flags: [], risk: 0 }), ...patch } }, keys || []); }
+  gLine(text, flag, risk) { const g = this.state.guardian || { lines: [], flags: [] }; const keys = ['gl' + g.lines.length]; if (flag) keys.push('gf' + g.flags.length); this.gSet({ phase: 'listening', lines: [...g.lines, { text }], flags: flag ? [...g.flags, { label: flag }] : g.flags, risk }, keys); }
+  hangUp() {
+    this.gSet({ phase: 'ended' }, ['ended']);
+    this.after(1700, () => { const specs = clone(this.state.specs); if (specs.guardian) specs.guardian.blocks = [{ type: 'text', text: 'On · 3 calls blocked' }]; this.setState({ guardian: null, specs, blocked: 3 }); this.toast('Guardian blocked the call · Kasia knows'); });
+  }
+  // ---------- kid ----------
+  proposeKid() {
+    const spec = { id: 'spelling', size: '2x1', color: 'rose', icon: 'spellcheck', title: 'Spelling game', blocks: [{ type: 'text', text: '10 min a day · words from this week' }], pending: true };
+    const order = this.state.order.slice(); const i = order.indexOf('energy'); order.splice(i < 0 ? order.length : i, 0, 'spelling');
+    this.setTiles({ specs: { ...this.state.specs, spelling: spec }, order });
+    this.after(300, () => this.reveal({}, ['pendspelling']));
+    this.after(600, () => this.toast('Asked Mum — new tiles wait for a parent'));
+    this.after(900, () => this.cgAdd({ id: 'kid', kind: 'kid', icon: 'child_care', kicker: 'Zosia asks', time: 'now', title: 'New tile: Spelling game', body: '“Can I have a spelling game?” · 10 min a day · free · no ads · words from her class list.', pending: true, actions: [{ label: 'Allow', primary: true, fn: () => this.approveKid() }, { label: 'Later', fn: () => this.cgToast('Zosia will see “later”') }] }));
+  }
+  approveKid() {
+    this.cgResolve('kid', 'Allowed · 16:12');
+    this.after(500, () => { const specs = clone(this.state.specs); if (specs.spelling) { specs.spelling.pending = false; specs.spelling.flood = 'rose'; } this.setState({ specs }); this.vib(14); this.toast('Mum said yes!'); });
+  }
+  // ---------- flows ----------
+  flowOnboarding() {
+    this.seq([
+      [0, () => this.reset('onboarding')],
+      [1300, () => this.setState({ pick: 'halina' })],
+      [1650, () => this.choose('halina')],
+      [4600, () => this.choose('zosia')],
+      [7800, () => this.choose('michal')],
+      [10800, () => this.choose('daniel')],
+      [14000, () => {}],
+    ]);
+  }
+  flowAsk() {
+    this.seq([
+      [0, () => this.reset('ask')],
+      [900, () => this.openAsk(false)],
+      [1500, () => this.typeText('Remind me to take Euthyrox at 8 every morning', 30, () => this.after(450, () => this.sendAsk()))],
+      [10600, () => {}],
+    ]);
+  }
+  flowInteract() {
+    this.seq([
+      [0, () => this.reset('interact')],
+      [900, () => this.setState({ pressed: 'pills' })],
+      [1050, () => this.markDone('pills')],
+      [3000, () => this.setState({ pressed: 'call' })],
+      [3150, () => { this.setState({ pressed: null }); this.openCall('Kasia'); }],
+      [5600, () => this.endCall()],
+      [6300, () => this.startSpeak('weather')],
+      [9900, () => this.stopSpeak()],
+      [10400, () => this.setState({ pressed: 'weather' })],
+      [10900, () => { this.setState({ pressed: null }); this.simDrag('weather', 'call', 1200); }],
+      [13200, () => this.setState({ editMode: false })],
+      [14000, () => {}],
+    ]);
+  }
+  flowAdapt() {
+    this.seq([
+      [0, () => this.reset('adapt')],
+      [1100, () => this.sugShow()],
+      [2900, () => this.sugPreview(true)],
+      [4600, () => this.sugPreview(false)],
+      [5500, () => this.sugPreview(true)],
+      [6600, () => this.sugSend()],
+      [8600, () => this.approveAdapt()],
+      [12400, () => {}],
+    ]);
+  }
+  flowGuardian() {
+    this.seq([
+      [0, () => this.reset('guardian')],
+      [900, () => this.gSet({ phase: 'ring', lines: [], flags: [], risk: 0 }, ['g'])],
+      [2100, () => this.gLine('Babciu, to ja, your grandson. Can you hear me?', null, 8)],
+      [3700, () => this.gLine('I had an accident. I need 5 000 zł for the lawyer.', 'asks for money', 48)],
+      [5300, () => this.gLine('You have to send it right now, within the hour.', 'pressure: right now', 76)],
+      [6900, () => this.gLine('Please don’t tell Mum, she will only worry.', 'don’t tell Mum', 92)],
+      [8400, () => { this.gSet({ phase: 'scam' }, ['scam']); this.cgAdd({ id: 'guardian', kind: 'alert', icon: 'shield', kicker: 'Guardian alert', time: 'now', title: 'Likely scam call to Mama', body: 'Risk 92% · asks for money · pressure: right now · don’t tell Mum. Mama was told to hang up. Nothing left her phone.', pending: true, actions: [{ label: 'Call Mama', primary: true, fn: () => this.cgToast('Calling Mama…') }, { label: 'Report', fn: () => this.cgToast('Reported to CERT Polska') }] }); }],
+      [10600, () => this.hangUp()],
+      [13000, () => {}],
+    ]);
+  }
+  flowKid() {
+    this.seq([
+      [0, () => this.reset('kid')],
+      [1100, () => this.toggleCheck('homework', 1, 3)],
+      [2600, () => this.toggleFocus('focus', 900)],
+      [4900, () => this.proposeKid()],
+      [7600, () => this.approveKid()],
+      [10200, () => {}],
+    ]);
+  }
+  flowWidgets() {
+    this.seq([
+      [0, () => this.reset('widgets')],
+      [1100, () => this.reveal({ lock: { notif: true, taken: false } }, ['notif'])],
+      [3300, () => this.reveal({ lock: { notif: true, taken: true }, pillsTaken: true }, ['taken'])],
+      [5000, () => this.reveal({ screen: 'widgets' }, ['widgets'])],
+      [9400, () => {}],
+    ]);
+  }
+  // ---------- render ----------
+  renderVals() {
+    const S = this.state, dir = this.dir(), T = THEMES[dir] || THEMES.A;
+    const P = PROFILES[S.profileId || 'halina'];
+    const reduced = !!this.props.reduced || !!P.reduced;
+    const dur = reduced ? 0 : T.dur;
+    const an = (v) => reduced ? 'none' : v;
+    const pal = (name) => T.pal[name] || T.pal.sand;
+    const t = { ...T, dur, sheetDur: reduced ? 0 : T.sheetDur, aPulse: an('pulse 1.4s ease-in-out infinite'), aDots: an('dots 1s ease-in-out infinite'), fxT: reduced ? 'opacity .15s linear' : `opacity .4s ease, transform .5s ${T.ease}`, fxTS: reduced ? 'opacity .15s linear' : 'opacity .3s ease, transform .5s cubic-bezier(.34,1.4,.5,1)' };
+    const fx = (k, from) => S.fx[k] ? { op: 0, tf: from || 'translateY(24px)' } : { op: 1, tf: 'none' };
+    const big = S.adapted || S.previewAdapt;
+    const fs = P.fs * (big ? 1.3 : 1);
+    const rowH = Math.round(P.rowH * (big ? 1.3 : 1));
+    const cellW = Math.floor((393 - 2 * P.pad - (P.cols - 1) * P.gap) / P.cols);
+    const L = this.layout(S.order, S.specs, P.cols, cellW, rowH, P.gap);
+    this._layout = { ...L, cellW, rowH, gap: P.gap };
+    const visible = S.order.slice(); if (S.born) visible.push(S.born.id);
+    for (const id of visible) if (!this.pool.includes(id)) this.pool.push(id);
+    const ease = T.ease;
+    const tileTransition = reduced ? 'opacity .15s linear, visibility 0s linear .15s' : `transform ${dur}ms ${ease}, width ${dur}ms ${ease}, height ${dur}ms ${ease}, opacity ${Math.round(dur * .6)}ms ease, visibility 0s linear ${Math.round(dur * .6)}ms`;
+    const titleSize = Math.round(19 * fs * T.titleScale), bodySize = Math.round(14 * fs), numSize = Math.round(38 * fs), iconSize = Math.round(24 * fs);
+    const stop = (e) => e.stopPropagation();
+    const tiles = this.pool.map((id, slot) => {
+      const isBorn = !!(S.born && S.born.id === id);
+      const spec = isBorn ? S.born.spec : (S.specs[id] || this.lastSpec[id]); if (!spec) return null;
+      if (!isBorn && S.specs[id]) this.lastSpec[id] = S.specs[id];
+      const vis = S.order.includes(id) || isBorn;
+      let pos = isBorn ? { x: S.born.x, y: S.born.y, w: S.born.w, h: S.born.h } : (L.pos[id] || this.lastPos[id] || { x: 0, y: 0, w: cellW, h: rowH });
+      if (vis && !isBorn) this.lastPos[id] = pos;
+      const dragging = !!(S.drag && S.drag.id === id);
+      if (dragging) pos = { ...pos, x: S.drag.x, y: S.drag.y };
+      const entering = !!S.entering[id];
+      const p = pal(spec.color);
+      const pending = !!spec.pending;
+      const skeleton = isBorn && !S.born.flooded;
+      const pressed = S.pressed === id;
+      const par = (dir === 'C' && !reduced && !dragging) ? { x: S.par.x * (0.5 + (slot % 3) * 0.35), y: S.par.y * (0.5 + (slot % 3) * 0.35) } : { x: 0, y: 0 };
+      const sc = dragging ? 1.05 : pressed ? .96 : 1;
+      const transform = `translate3d(${(pos.x + par.x).toFixed(1)}px,${(pos.y + par.y).toFixed(1)}px,0) ${entering ? T.enterFrom : ''} scale(${vis ? sc : .85})`;
+      const flood = spec.done ? 'leaf' : (spec.flood || (isBorn && S.born.flooded ? spec.color : null));
+      const fp = flood ? pal(flood) : null;
+      const fg = fp ? fp[1] : (skeleton || pending) ? T.muted : p[1];
+      const headShown = !isBorn || S.ask.built >= 1;
+      const small = pos.w < 120, square = pos.w < 200;
+      const blocks = (spec.blocks || []).map((b, bi) => {
+        const shown = !isBorn || S.ask.built >= bi + 2;
+        const o = { ...b, op: shown ? 1 : 0, ty: shown ? 0 : 12, flex: b.type === 'checklist' || b.type === 'timer' || b.type === 'buttons' ? '1' : 'none', isText: b.type === 'text', isNumber: b.type === 'number', isWeather: b.type === 'weather', isChecklist: b.type === 'checklist', isProgress: b.type === 'progress', isTimer: b.type === 'timer', isChips: b.type === 'chips', isAlert: b.type === 'alert', isButtons: b.type === 'buttons', isApps: b.type === 'apps' };
+        if (b.type === 'checklist') o.items = b.items.map((it, ii) => ({ ...it, bg: it.done ? 'currentColor' : 'transparent', checkFg: it.done ? p[0].startsWith('linear') ? '#fff' : p[0] : 'transparent', deco: it.done ? 'line-through' : 'none', op: it.done ? .62 : 1, toggle: () => this.toggleCheck(id, bi, ii) }));
+        if (b.type === 'progress') o.pct = Math.max(0, Math.min(100, Math.round(100 * b.value / b.max)));
+        if (b.type === 'timer') { const f = S.focus && S.focus.id === id ? S.focus : null; const left = f ? f.left : b.seconds; o.display = fmt(left); o.running = !!(f && f.running); o.hint = o.running ? (b.creature ? 'Mo is focusing too' : 'focusing') : (b.hint || 'tap to start'); o.creatureAnim = an(o.running ? 'breathe 2.4s ease-in-out infinite' : 'none'); o.eyeAnim = an('blink 4.2s ease-in-out infinite'); o.creatureBg = T.creature; o.mouthW = o.running ? 18 : 12; o.mouthHalf = o.running ? 9 : 6; o.playIcon = o.running ? 'pause' : 'play_arrow'; o.showCtl = !square; o.toggle = () => this.toggleFocus(id, b.seconds); }
+        if (b.type === 'chips') o.items = b.items.map(c => ({ label: c }));
+        if (b.type === 'buttons') o.items = b.items.map((bt, k) => ({ ...bt, pick: () => this.tileButton(id, bt.action), bg: k === 0 ? (fp ? fp[1] : p[1]) : 'rgba(0,0,0,.1)', fg: k === 0 ? (fp ? fp[0] : p[0]).startsWith('linear') ? '#fff' : (fp ? fp[0] : p[0]) : 'inherit' }));
+        if (b.type === 'apps') o.items = APP_ICONS.map((ic, k) => ({ icon: ic, tf: S.appsFolding ? 'scale(0)' : 'none', delay: S.appsFolding ? k * 28 : 0 }));
+        return o;
+      });
+      const done = fx('done' + id, 'scale(.4)'); const pend = fx('pend' + id, 'scale(.6)');
+      return {
+        id, w: pos.w, h: pos.h, transform, opacity: vis ? 1 : 0, visibility: vis ? 'visible' : 'hidden', z: dragging ? 50 : (S.flying === id || isBorn) ? 40 : 1, pe: vis && !isBorn ? 'auto' : 'none',
+        transition: (dragging && !S.drag.sim) || entering ? 'none' : tileTransition, delay: entering ? 0 : (this.stagger[id] || 0),
+        radius: T.radius(slot), bg: skeleton ? T.skeleton : pending ? T.surface2 : p[0], bgSize: skeleton ? '250% 100%' : 'auto 100%', shadow: dragging ? '0 24px 48px -16px rgba(0,0,0,.45)' : T.shadow,
+        liveAnim: skeleton ? 'shimmer 1.4s linear infinite' : (dir === 'C' && spec.live && !spec.done && !reduced) ? 'breathe 2.8s ease-in-out infinite' : 'none', outline: pending ? T.muted : 'transparent',
+        floodBg: fp ? fp[0] : 'transparent', floodR: flood ? 150 : 0, floodFg: fp ? fp[1] : 'inherit', floodTransition: `clip-path ${reduced ? 0 : 680}ms cubic-bezier(.3,.7,.2,1)`,
+        isDone: !!spec.done, doneAt: spec.doneAt || '8:02', doneIcon: Math.min(Math.round(iconSize * 2.1), Math.round(pos.h * .45)), doneTf: done.tf, doneOp: done.op,
+        contentOp: spec.done ? 0 : 1, wiggle: S.editMode && !dragging ? an('wiggle .32s ease-in-out infinite alternate') : 'none',
+        pad: small ? 10 : Math.round(P.pad * (big ? 1.1 : 1)), gapY: small ? 3 : 8, bodyLines: pos.h < 120 ? 1 : 3, fg, icon: spec.icon, title: spec.title,
+        headDir: square ? 'column' : 'row', headAlign: square ? 'flex-start' : 'center', headGap: square ? (small ? 4 : 6) : 8, titleLs: small ? '0' : T.ls, titleUpper: small ? 'none' : T.upper,
+        titleSize: small ? Math.round(titleSize * .82) : square ? Math.round(titleSize * .94) : titleSize, bodySize: small ? Math.round(bodySize * .9) : bodySize, numSize: small ? Math.round(numSize * .78) : square && spec.blocks && spec.blocks.some(b => b.type === 'timer' && b.creature) ? Math.round(numSize * .74) : numSize, iconSize: small ? Math.round(iconSize * .85) : iconSize, chipSize: Math.max(11, Math.round(bodySize * .85)), btnH: Math.max(40, Math.round(bodySize * 2.5)), btnPad: Math.max(10, Math.round(bodySize * .9)), rowMin: Math.max(28, Math.round(bodySize * 2)),
+        headOp: headShown ? 1 : 0, headTy: headShown ? 0 : 12, appH: Math.max(24, Math.floor((pos.h - 2 * (small ? 10 : Math.round(P.pad * (big ? 1.1 : 1))) - iconSize - 8 - 6) / 2)),
+        hasSpeak: !!spec.speak && !spec.done && S.profileId !== 'michal' && !isBorn && !square, speakNow: () => this.startSpeak(id),
+        blocks, isPending: pending, pendTf: pend.tf, pendOp: pend.op, removable: S.editMode && vis && !dragging, remove: () => this.removeTile(id),
+        down: (e) => this.down(id, e), move: (e) => this.move(id, e), up: () => this.up(id),
+      };
+    }).filter(Boolean);
+    const ask = S.ask;
+    const askChips = (S.profileId === 'daniel' ? [{ icon: 'restaurant', label: 'Dinner Friday with Ola and Kuba, vegan, near Kazimierz, under 80 zł' }, { icon: 'alarm', label: 'Remind me to take Euthyrox at 8 every morning' }] : [{ icon: 'alarm', label: 'Remind me to take Euthyrox at 8 every morning' }, { icon: 'restaurant', label: 'Dinner Friday with Ola and Kuba, vegan, near Kazimierz, under 80 zł' }]).map(c => ({ ...c, pick: () => { this.setState({ ask: { ...this.state.ask, text: c.label } }); this.after(250, () => this.sendAsk()); } }));
+    const chooser = ICPS.map(c => ({ ...c, bg: pal(c.color)[0], fg: pal(c.color)[1], tf: S.pick === c.id ? 'scale(.97)' : 'none', pick: () => this.choose(c.id) }));
+    const switcher = ICPS.map(c => { const on = S.profileId === c.id; return { ...c, on, bg: on ? T.ink : 'transparent', fg: on ? T.onInk : T.ink, border: on ? T.ink : T.line, pick: () => this.choose(c.id) }; });
+    const waveBars = [0, 1, 2, 3, 4].map(i => ({ delay: i * 110, anim: an('wave .9s ease-in-out infinite') }));
+    const sp = S.speak;
+    const speakWords = sp ? sp.words.map((w, i) => ({ text: w, bg: i === sp.idx - 1 ? T.accent : 'transparent', fg: i === sp.idx - 1 ? T.onAccent : i < sp.idx ? T.ink : T.muted })) : [];
+    const sug = S.sug; const sugPhase = sug ? sug.phase : null;
+    const g = S.guardian; const gPhase = g ? g.phase : null;
+    const gRiskColor = !g ? T.ok : g.risk < 40 ? T.ok : g.risk < 75 ? T.accent : T.danger;
+    const cards = S.cg.cards.map(c => { const tone = c.kind === 'alert' ? pal('rose') : c.kind === 'kid' ? pal('sun') : null; const f = fx('card' + c.id); const r = fx('res' + c.id, 'scale(.7)'); return { ...c, op: f.op, tf: f.tf, resOp: r.op, resTf: r.tf, bg: tone ? tone[0] : T.surface, fg: tone ? tone[1] : T.ink, resolved: !c.pending && !!c.resolvedText, actions: (c.actions || []).map((a) => ({ ...a, flex: a.primary ? '1.3' : '1', pick: () => a.fn && a.fn(), bg: a.primary ? (tone ? tone[1] : T.ink) : 'transparent', fg: a.primary ? (tone ? (tone[0].startsWith('linear') ? '#FFFFFF' : tone[0]) : T.onInk) : 'inherit', border: a.primary ? (tone ? tone[1] : T.ink) : 'rgba(0,0,0,.2)' })) }; });
+    const cgStatus = [
+      { icon: 'medication', text: S.pillsTaken ? 'Took the 8:00 pills' : 'Pills 8:00 — not yet', time: S.pillsTaken ? '8:02' : 'due', ok: S.pillsTaken },
+      { icon: 'shield', text: `Guardian on · ${S.blocked} calls blocked`, time: 'this week', ok: true },
+      { icon: 'volume_up', text: 'Weather read aloud', time: '7:40', ok: true },
+    ].map((s, i, a) => ({ ...s, bg: s.ok ? T.okSoft : T.dangerSoft, fg: s.ok ? T.okInk : T.dangerInk, border: i === a.length - 1 ? 'transparent' : T.line }));
+    const kid = S.profileId === 'zosia';
+    const wTaken = S.pillsTaken || S.lock.taken;
+    const w4 = [
+      { icon: 'call', label: 'Call Kasia', sub: 'Daughter', bg: pal('leaf')[0], fg: pal('leaf')[1] },
+      { icon: wTaken ? 'check_circle' : 'medication', label: wTaken ? 'Taken ✓' : 'Pills 8:00', sub: wTaken ? '8:02' : 'Euthyrox', bg: pal(wTaken ? 'mint' : 'sun')[0], fg: pal(wTaken ? 'mint' : 'sun')[1] },
+      { icon: 'rainy', label: '14° rain', sub: 'Umbrella', bg: pal('sky')[0], fg: pal('sky')[1] },
+      { icon: 'emergency', label: 'SOS', sub: 'Hold 2 s', bg: pal('rose')[0], fg: pal('rose')[1] },
+    ];
+    const gLines = g ? g.lines.map((l, i) => ({ ...l, ...fx('gl' + i) })) : [];
+    const gFlags = g ? g.flags.map((l, i) => ({ ...l, ...fx('gf' + i, 'scale(.6)') })) : [];
+    return {
+      t, stop, dir, phoneLabel: `${dir} · ${P.name}`, cgLabel: `${dir} · Kasia (caregiver)`, clock: S.pillsTaken ? '8:02' : '8:00',
+      isChooser: S.screen === 'chooser', isHome: S.screen === 'home', isLock: S.screen === 'lock', isWidgets: S.screen === 'widgets',
+      fxChooser: fx('chooser'), fxEdit: fx('edit', 'scale(.6)'), fxSpeak: fx('speak'), fxSug: fx('sug'), fxSugOk: fx('sugok', 'scale(.8)'), fxCall: fx('call', 'translateY(40px)'), fxG: fx('g'), fxScam: fx('scam', 'scale(.96)'), fxEnded: fx('ended', 'scale(.5)'), fxLock: fx('lock'), fxNotif: fx('notif', 'translateY(-24px)'), fxTaken: fx('taken', 'scale(.7)'), fxWidgets: fx('widgets'), fxCg: fx('cg'),
+      chooser, showSwitcher: S.showSwitcher, switcher, greet: P.greet, greetSize: Math.round(24 * Math.min(fs, 1.2)), sub: P.sub,
+      gridRef: this.gridRef, gridH: L.height, tiles, editMode: S.editMode, exitEdit: () => this.setState({ editMode: false, drag: null }), homePadBottom: sug ? 330 : 120,
+      homeMove: (e) => { if (dir !== 'C' || reduced || S.screen !== 'home') return; const r = e.currentTarget.getBoundingClientRect(); const x = ((e.clientX - r.left) / r.width - .5) * 16, y = ((e.clientY - r.top) / r.height - .5) * 16; if (this._parT) return; this._parT = setTimeout(() => { this._parT = null; if (this.alive) this.setState({ par: { x, y } }); }, 40); },
+      homeLeave: () => { if (dir === 'C') this.setState({ par: { x: 0, y: 0 } }); },
+      askH: P.askH, askFontSize: Math.round(17 * Math.min(fs, 1.2)), openAsk: () => this.openAsk(false), closeAsk: () => this.closeAsk(),
+      askY: ask.open ? '0%' : '112%', scrimOp: ask.open ? 1 : 0, scrimPE: ask.open ? 'auto' : 'none',
+      askText: ask.text, askSetText: (e) => this.setState({ ask: { ...this.state.ask, text: e.target.value } }), askKey: (e) => { if (e.key === 'Enter') this.sendAsk(); }, askSend: () => this.sendAsk(), askMic: () => this.openAsk(true),
+      askIdle: ask.phase === 'idle', askBusy: ask.phase === 'thinking' || ask.phase === 'building', askListening: ask.phase === 'listening', askStatus: ask.phase === 'thinking' ? 'Tiles is thinking…' : 'Making your tile…', previewRef: this.previewRef, previewH: ask.phase === 'building' ? ask.previewH : 0, askChips,
+      askSendBg: ask.text.trim() ? T.accent : T.surface2, askSendFg: ask.text.trim() ? T.onAccent : T.muted,
+      speakOn: !!sp, speakWords, stopSpeak: () => this.stopSpeak(), waveBars, dockBottom: P.askH + 44,
+      callOpen: !!S.call, callName: S.call ? S.call.name : '', callInitial: S.call ? S.call.name[0] : '', callStatus: S.call ? S.call.status : '', endCall: () => this.endCall(), callAvatarBg: pal('sun')[0], callAvatarFg: pal('sun')[1], callRing: an('ring 1.6s ease-out infinite'),
+      sugOn: !!sug, sugShown: sugPhase === 'shown', sugPreview: sugPhase === 'preview', sugSent: sugPhase === 'sent', sugApproved: sugPhase === 'approved',
+      sugTitle: sugPhase === 'preview' ? (S.previewAdapt ? 'After: text 40% bigger, 14 apps hidden' : 'Before: how it looks now') : '11 missed taps today', sugBody: sugPhase === 'preview' ? 'Previewed on your own home. Nothing changes until Kasia agrees.' : 'Make text 40% bigger, hide 14 apps you never open, read tiles aloud on tap. Kasia approves changes.',
+      sugBefore: () => this.sugPreview(false), sugAfter: () => this.sugPreview(true), sugBeforeBg: S.previewAdapt ? 'transparent' : T.ink, sugBeforeFg: S.previewAdapt ? T.ink : T.onInk, sugAfterBg: S.previewAdapt ? T.ink : 'transparent', sugAfterFg: S.previewAdapt ? T.onInk : T.ink,
+      sugPreviewStart: () => this.sugPreview(true), sugSend: () => this.sugSend(), sugBack: () => this.setState({ sug: { phase: 'shown' }, previewAdapt: false }), sugDismiss: () => { this.setState({ sug: null, previewAdapt: false }); this.scrollHome(0); },
+      gOn: !!g, gLive: gPhase === 'ring' || gPhase === 'listening', gScam: gPhase === 'scam', gEnded: gPhase === 'ended', gLines, gFlags, gRisk: g ? g.risk : 0, gRiskColor, gStatus: gPhase === 'ring' ? 'Guardian on' : 'Listening', hangUp: () => this.hangUp(), gCallKasia: () => { this.setState({ guardian: null }); this.openCall('Kasia'); },
+      toastOn: !!S.toast, toastText: S.toast || '', toastOp: S.toast ? 1 : 0, toastY: S.toast ? 0 : 16, toastBottom: P.askH + 48,
+      cgOn: S.cg.on, cgCards: cards, cgEmpty: cards.length === 0, cgStatus, cgInitial: kid ? 'Z' : 'H', cgTitle: kid ? 'Zosia' : 'Mama · Halina', cgSub: kid ? 'Home from school · 16:10' : 'Phone active · just now', cgAvatarBg: pal(kid ? 'leaf' : 'sun')[0], cgAvatarFg: pal(kid ? 'leaf' : 'sun')[1], cgCall: () => this.cgToast(kid ? 'Calling Zosia…' : 'Calling Mama…'), cgCallLabel: kid ? 'Call Zosia' : 'Call Mama',
+      cgToastText: S.cgToast || '', cgToastOp: S.cgToast ? 1 : 0, cgToastY: S.cgToast ? 0 : 16,
+      lockNotif: S.lock.notif, lockDue: !S.lock.taken, lockTaken: S.lock.taken, lockTake: () => { this.vib(18); this.reveal({ lock: { notif: true, taken: true }, pillsTaken: true }, ['taken']); }, lockSnooze: () => this.setState({ lock: { notif: false, taken: false } }),
+      w4, wPillBg: pal(wTaken ? 'mint' : 'sun')[0], wPillFg: pal(wTaken ? 'mint' : 'sun')[1], wPillIcon: wTaken ? 'check_circle' : 'medication', wPillLabel: wTaken ? 'Taken' : 'Pills 8:00', wPillSub: wTaken ? '8:02 · Kasia can see it' : 'Euthyrox 50 µg', wPillBtn: wTaken ? 'Done ✓' : 'Taken',
+    };
+  }
+}
+</script>
+</body>
+</html>

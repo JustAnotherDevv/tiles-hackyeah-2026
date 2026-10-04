@@ -11,6 +11,8 @@ import pytest
 from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 os.environ.setdefault("AEGIS_TEST_MODE", "1")
 os.environ.setdefault("AEGIS_SEMANTIC", "off")
 
@@ -43,7 +45,7 @@ class Stack:
     ) -> McpHttpClient:
         h = dict(headers)
         if agent:
-            h["X-Aegis-Agent"] = agent
+            h.update(agent_headers(agent))  # ASI03: claim + key
         return McpHttpClient(GW_BASE, server, headers=h, client=self.gw, era=era)
 
     async def flip(self) -> None:

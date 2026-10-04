@@ -6,6 +6,7 @@ import type { ApprovalRequest } from '@/api/types';
 import { EmptyState } from '@/components/shell';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Directory } from '../hooks';
+import { requesterKey } from '../lib/approval-review';
 import { ApprovalListItem } from './ApprovalListItem';
 import type { VoteState } from './util';
 
@@ -18,6 +19,7 @@ export function ApprovalList({
   loading,
   empty,
   onSelect,
+  flooded,
 }: {
   items: ApprovalRequest[];
   votes: Map<string, VoteState>;
@@ -27,6 +29,8 @@ export function ApprovalList({
   loading: boolean;
   empty: ReactNode;
   onSelect: (id: string) => void;
+  /** requesterKey()s currently flooding the inbox (ASI09). */
+  flooded?: Set<string>;
 }) {
   if (loading && items.length === 0) {
     return (
@@ -55,6 +59,7 @@ export function ApprovalList({
             fresh={freshIds.has(req.id)}
             dir={dir}
             onSelect={onSelect}
+            flooded={flooded?.has(requesterKey(req)) ?? false}
           />
         ))}
       </AnimatePresence>

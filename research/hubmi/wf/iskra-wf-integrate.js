@@ -56,19 +56,25 @@ function fixerPrompt(id, items, kind) {
   return `${rulesText}\n- EXCEPTION: next dev is stopped. Do not run next build; the integrator runs it.\n\n# Fix ${kind} for ${id}\n${scope}\n\n## Problems\n${items.map((e) => `- ${e.file || e.route}: ${e.message || e.rule + ' (' + e.impact + ') ' + (e.detail || '')}`).join('\n')}\n\nFix them with minimal changes in your owned files, re-run your unit tests, and return the structured result.`
 }
 
-phase('Build-fix')
-let build = null
-for (let round = 1; round <= 3; round++) {
-  build = await agent(`In ${args.repo} run \`pnpm build 2>&1 | tail -200\` (allowed for you). Return pass plus a list of {file, message} for every TypeScript/ESLint/Next build error (repo-relative file paths). Do not fix anything.`, { label: `build round ${round}`, phase: 'Build-fix', schema: BUILD })
-  if (!build || build.pass) break
-  const groups = {}
-  for (const e of build.errors) (groups[ownerOf(e.file)] = groups[ownerOf(e.file)] || []).push(e)
-  log(`round ${round}: ${build.errors.length} errors across ${Object.keys(groups).join(', ')}`)
-  await parallel(Object.entries(groups).map(([id, items]) => () => agent(fixerPrompt(id, items, 'build errors'), { label: `fix ${id} (r${round})`, phase: 'Build-fix', schema: RESULT })))
+// Build-fix (≤ args.rounds, default 2) runs CONCURRENTLY with seed + eval: those use tsx scripts and do not need next build.
+async function buildFix() {
+  let build = null
+  const rounds = args.rounds || 2
+  for (let round = 1; round <= rounds; round++) {
+    build = await agent(`In ${args.repo} run \`pnpm build 2>&1 | tail -200\` (allowed for you). Return pass plus a list of {file, message} for every TypeScript/Next build error (repo-relative file paths). Do not fix anything.`, { label: `build round ${round}`, phase: 'Build-fix', schema: BUILD })
+    if (!build || build.pass) break
+    const groups = {}
+    for (const e of build.errors) (groups[ownerOf(e.file)] = groups[ownerOf(e.file)] || []).push(e)
+    log(`round ${round}: ${build.errors.length} errors across ${Object.keys(groups).join(', ')}`)
+    await parallel(Object.entries(groups).map(([id, items]) => () => agent(fixerPrompt(id, items, 'build errors'), { label: `fix ${id} (r${round})`, phase: 'Build-fix', schema: RESULT })))
+  }
+  return build
 }
+const dataEval = (id) => () => agent(`${rulesText}\n- EXCEPTION: next dev is stopped; your scripts run with tsx and need no server.\n\n# ${id} — ${byId[id].title}\nOwned: ${byId[id].owns.join(', ')}\n## Spec\n${fill(byId[id].spec)}\n## Verify\n${fill(byId[id].verify)}`, { label: id, phase: 'Data+Eval', schema: RESULT })
 
-phase('Data+Eval')
-const seedEval = await parallel(['X4', 'E2'].map((id) => () => agent(`${rulesText}\n- EXCEPTION: you may start \`pnpm start\` on port 3001 if you need a server, and must stop it when done.\n\n# ${id} — ${byId[id].title}\nOwned: ${byId[id].owns.join(', ')}\n## Spec\n${fill(byId[id].spec)}\n## Verify\n${fill(byId[id].verify)}`, { label: id, phase: 'Data+Eval', schema: RESULT })))
+phase('Build-fix')
+const [build, seed, evalRes] = await parallel([buildFix, dataEval('X4'), dataEval('E2')])
+const seedEval = [seed, evalRes]
 
 phase('A11y')
 const scan = await agent(`${rulesText}\n- EXCEPTION: run \`pnpm build && pnpm start\` (port 3000) yourself for this scan, and stop the server at the end.\n\n# Q1 — ${byId.Q1.title}\nOwned: ${byId.Q1.owns.join(', ')}\n## Spec\n${fill(byId.Q1.spec)}\nReturn every serious/critical axe issue with the route, rule, impact and (best guess) the source file that renders it.`, { label: 'Q1 a11y scan', phase: 'A11y', schema: A11Y })

@@ -32,6 +32,6 @@ controls:
   INJ-01: {params: {untrusted_action: redact}}
   INJ-02: {threshold: 0.80, params: {untrusted_threshold: 0.75}}
   INJ-03: {threshold: 0.80, adherence_pct: 50, params: {off_topic_action: log}}
-  INJ-05: {mode: monitor}
+  INJ-05: {mode: enforce}           # ASI01 goal-drift: require_approval only (never hard-blocks)
   EXE-03: {action: require_approval}
   MCP-04: {mode: monitor}

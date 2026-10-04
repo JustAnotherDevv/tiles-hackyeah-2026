@@ -1,5 +1,19 @@
 import { TileAction, TileBlock } from '../../model/Tile';
+import { curves } from '@kit.ArkUI';
 import { BlockStyle } from './BlockStyle';
+
+/** True when a #RRGGBB / #AARRGGBB color is dark (used to pick the check glyph color). */
+function isDarkColor(c: string): boolean {
+  const h: string = c.startsWith('#') ? c.substring(1) : c;
+  const rgb: string = h.length === 8 ? h.substring(2) : h;
+  if (rgb.length !== 6) {
+    return true;
+  }
+  const r: number = parseInt(rgb.substring(0, 2), 16);
+  const g: number = parseInt(rgb.substring(2, 4), 16);
+  const b: number = parseInt(rgb.substring(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 150;
+}
 
 class CheckRow {
   key: string = '';
@@ -37,10 +51,15 @@ export struct ChecklistBlock {
       r.index = i;
       r.text = this.block.items[i];
       r.done = i < this.done.length ? this.done[i] : false;
-      r.key = i + ':' + r.text + ':' + (r.done ? '1' : '0');
+      r.key = i + ':' + r.text;
       out.push(r);
     }
     return out;
+  }
+
+  /** Read through @State so a toggle re-renders the (stably keyed) row and its transitions animate. */
+  private isDone(i: number): boolean {
+    return i < this.done.length ? this.done[i] : false;
   }
 
   private doneCount(): number {
@@ -67,30 +86,40 @@ export struct ChecklistBlock {
     this.onAction(a);
   }
 
+  /** Check glyph on the filled circle: white on dark ink (Living Light gradients), tile color on light ink. */
+  private checkColor(): string {
+    return this.bs.highContrast ? (isDarkColor(this.bs.fg) ? '#FFFFFF' : this.bs.bg) : this.bs.onSolid;
+  }
+
+  private checkSize(): number {
+    return this.bs.highContrast ? Math.max(28, this.bs.checkSize) : this.bs.checkSize;
+  }
+
   @Builder
   summary() {
     // Compact tiles: the checklist collapses to one key value ("2 of 6 done" + meter); tap the tile to tick items.
-    Column({ space: 6 }) {
+    Column({ space: 7 }) {
       Text(this.doneCount() + ' of ' + this.block.items.length + ' done')
-        .fontSize(this.bs.fs(16))
+        .fontSize(Math.round(this.bs.bodySize * 1.15))
+        .fontFamily(this.bs.font)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.bs.fg)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
       Stack({ alignContent: Alignment.Start }) {
         Row()
-          .width('100%')
-          .height(this.bs.highContrast ? 14 : 10)
-          .borderRadius(8)
-          .backgroundColor(this.bs.well)
-          .border({ width: this.bs.highContrast ? 2 : 0, color: this.bs.fg })
-        Row()
           .width(this.block.items.length > 0 ? Math.round(this.doneCount() * 100 / this.block.items.length) + '%' : '0%')
-          .height(this.bs.highContrast ? 14 : 10)
-          .borderRadius(8)
+          .height('100%')
+          .borderRadius(6)
           .backgroundColor(this.bs.fg)
+          .animation({ duration: this.bs.reduceMotion ? 0 : 700, curve: curves.cubicBezierCurve(0.22, 1, 0.36, 1) })
       }
       .width('100%')
+      .height(this.bs.highContrast ? 16 : this.bs.barH)
+      .borderRadius(this.bs.highContrast ? 8 : this.bs.barH / 2)
+      .backgroundColor(this.bs.highContrast ? this.bs.well : this.bs.track)
+      .border({ width: this.bs.highContrast ? 2 : 0, color: this.bs.fg })
+      .clip(true)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -109,46 +138,52 @@ export struct ChecklistBlock {
 
   @Builder
   fullList() {
-    Column({ space: 4 }) {
+    Column({ space: 2 }) {
       if (this.block.text.length > 0 && !this.bs.compact) {
         Text(this.block.text + '  ·  ' + this.doneCount() + '/' + this.block.items.length)
-          .fontSize(this.bs.fs(13))
+          .fontSize(Math.round(this.bs.bodySize * 0.93))
+          .fontFamily(this.bs.font)
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.bs.fgDim)
+          .fontColor(this.bs.fg)
+          .opacity(0.8)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .margin({ bottom: 2 })
       }
       ForEach(this.rows(), (r: CheckRow) => {
-        Row({ space: 12 }) {
+        Row({ space: 10 }) {
+          // Living Light check circle: 24 vp ring in the tile ink, filled + white check when done.
           Stack() {
-            if (r.done) {
-              SymbolGlyph($r('sys.symbol.checkmark'))
-                .fontSize(this.bs.fs(16))
-                .fontWeight(FontWeight.Bold)
-                .fontColor([this.bs.bg])
-            }
+            SymbolGlyph($r('sys.symbol.checkmark'))
+              .fontSize(Math.round(this.checkSize() * 0.64))
+              .fontWeight(FontWeight.Bold)
+              .fontColor([this.checkColor()])
+              .opacity(this.isDone(r.index) ? 1 : 0)
           }
-          .width(28)
-          .height(28)
-          .borderRadius(9)
-          .backgroundColor(r.done ? this.bs.fg : Color.Transparent)
-          .border({ width: 2.5, color: this.bs.fg })
-          .animation({ duration: this.bs.reduceMotion ? 0 : 180, curve: Curve.EaseOut })
+          .width(this.checkSize())
+          .height(this.checkSize())
+          .borderRadius(999)
+          .backgroundColor(this.isDone(r.index) ? this.bs.fg : Color.Transparent)
+          .border({ width: this.bs.highContrast ? 3 : this.bs.checkStroke, color: this.bs.fg })
+          .animation({ duration: this.bs.reduceMotion ? 0 : 250, curve: Curve.EaseOut })
 
           Text(r.text)
-            .fontSize(this.bs.fs(this.bs.narrow && !this.bs.detail ? 15 : 16))
-            .fontWeight(r.done ? FontWeight.Normal : FontWeight.Medium)
-            .fontColor(r.done ? this.bs.fgDim : this.bs.fg)
-            .decoration({ type: r.done ? TextDecorationType.LineThrough : TextDecorationType.None, color: this.bs.fgDim })
-            .maxLines(this.bs.narrow && !this.bs.detail ? 1 : 2)
+            .fontSize(this.bs.bodySize)
+            .fontFamily(this.bs.font)
+            .fontColor(this.bs.fg)
+            .fontWeight(FontWeight.Medium)
+            .decoration({ type: this.isDone(r.index) ? TextDecorationType.LineThrough : TextDecorationType.None, color: this.bs.fg })
+            .maxLines(this.bs.detail ? 2 : 1)
             .wordBreak(WordBreak.NORMAL)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
         }
         .width('100%')
-        .constraintSize({ minHeight: this.bs.compact ? 36 : this.bs.minTap })
+        .constraintSize({ minHeight: this.bs.rowMin })
+        .opacity(this.isDone(r.index) && !this.bs.highContrast ? 0.62 : 1)
+        .animation({ duration: this.bs.reduceMotion ? 0 : 300, curve: Curve.EaseOut })
         .accessibilityGroup(true)
-        .accessibilityText(r.text + (r.done ? ', done' : ', not done'))
+        .accessibilityText(r.text + (this.isDone(r.index) ? ', done' : ', not done'))
         .accessibilityDescription('Double tap to toggle')
         .onClick(() => {
           this.toggle(r.index);

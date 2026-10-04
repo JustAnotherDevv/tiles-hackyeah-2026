@@ -1,16 +1,48 @@
-import { Profile, Suggestion, TileAction, TileSpec } from '../model/Tile';
+import { Profile, Suggestion, TileAction, TileBlock, TileSpec } from '../model/Tile';
 import { TileStore } from '../data/TileStore';
 import { Adaptation, PreviewState } from '../ai/Adaptation';
-import { TilesTheme, ThemePalette, TypeScale } from '../theme/TilesTheme';
+import { LL_FONT_FAMILY, TileColors, TilesTheme, ThemePalette } from '../theme/TilesTheme';
 import { TileView } from '../components/TileView';
 import { MiniHome } from './OnboardingView';
 import { Haptics } from '../../platform/Haptics';
+import { window } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
+
+/** One row of the caregiver's "Today" activity list (tone: ok | danger | neutral). */
+class ActivityRow {
+  key: string = '';
+  icon: Resource = $r('sys.symbol.checkmark');
+  text: string = '';
+  time: string = '';
+  tone: string = 'ok';
+}
+
+/** Living Light text defaults (Manrope, prototype letter-spacing -0.012em). */
+@Extend(Text)
+function llText(size: number, weight: FontWeight, color: ResourceColor) {
+  .fontFamily(LL_FONT_FAMILY)
+  .fontSize(size)
+  .fontWeight(weight)
+  .fontColor(color)
+  .letterSpacing(TilesTheme.letterSpacing(size))
+}
+
+/** Small uppercase kicker / section label (12 px, 700, tracking .1em). */
+@Extend(Text)
+function llKicker(color: ResourceColor) {
+  .fontFamily(LL_FONT_FAMILY)
+  .fontSize(12)
+  .fontWeight(FontWeight.Bold)
+  .letterSpacing(1.4)
+  .fontColor(color)
+}
 
 /**
  * Caregiver view (route 'caregiver'): a SIMULATION of the caregiver's own phone ("Kasia's phone"), shown on the
- * same device for the demo. Lists assistant proposals waiting for approval and adaptation suggestions with
- * before/after previews; Approve / Decline applies them through TileStore (Adaptation.decide for suggestions).
- * Uses the caregiver's own (standard) text size and colors, not the profile's.
+ * same device for the demo. Living Light (design direction C): wallpaper gradient, frosted-glass cards,
+ * "Needs you" approvals (assistant tiles + adaptation suggestions with before/after previews; Approve / Decline go
+ * through TileStore / Adaptation.decide) and a "Today" activity list derived from the person's tiles.
+ * Uses the caregiver's own (standard) text size, not the profile's.
  */
 @Component
 export struct CaregiverView {
@@ -24,13 +56,30 @@ export struct CaregiverView {
   @StorageProp('tiles.hideApps') appsHidden: boolean = false;
   @State simResult: string = '';
   @State simulating: boolean = false;
+  /** Status-bar height (vp) and where our root starts: the window is full-screen (immersive). */
+  @State sysTop: number = 0;
+  @State rootY: number = 0;
+
+  aboutToAppear(): void {
+    try {
+      const ctx: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      window.getLastWindow(ctx).then((win: window.Window) => {
+        const area: window.AvoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+        this.sysTop = this.getUIContext().px2vp(area.topRect.height);
+      }).catch(() => {
+      });
+    } catch (e) {
+      // no window (preview)
+    }
+  }
+
+  /** Extra top padding only when the page really lays out under the status bar. */
+  private topPad(): number {
+    return Math.max(0, this.sysTop - this.rootY);
+  }
 
   private pal(): ThemePalette {
     return TilesTheme.palette(this.dark, false);
-  }
-
-  private ty(): TypeScale {
-    return TilesTheme.type(1.0);
   }
 
   private caregiver(): string {
@@ -41,12 +90,112 @@ export struct CaregiverView {
     return this.profile.name.length > 0 ? this.profile.name : 'this phone';
   }
 
+  /** What the caregiver calls the person ("Mama" for a daughter / son), else the name. */
+  private callName(): string {
+    const r: string = this.profile.caregiverRole;
+    return r === 'daughter' || r === 'son' ? 'Mama' : this.person();
+  }
+
+  private headerTitle(): string {
+    const n: string = this.callName();
+    return n === this.person() ? n : n + ' · ' + this.person();
+  }
+
+  private avatarColors(): TileColors {
+    return TilesTheme.tile(this.profile.id === 'kid' ? 'leaf' : 'sun', false, this.dark);
+  }
+
   private pendingSuggs(): Suggestion[] {
     return this.suggs.filter((s: Suggestion) => s.status === 'pending');
   }
 
-  private decided(): Suggestion[] {
-    return this.suggs.filter((s: Suggestion) => s.status !== 'pending').reverse().slice(0, 6);
+  private needsCount(): number {
+    return this.pending.length + this.pendingSuggs().length;
+  }
+
+  private declineBorder(): string {
+    return this.dark ? this.pal().line : '#33000000';
+  }
+
+  private slotOf(t: TileSpec): string {
+    const m: RegExpMatchArray | null = t.title.match(new RegExp('\\d{1,2}:\\d{2}'));
+    return m !== null ? m[0] : '';
+  }
+
+  private hasDangerAlert(t: TileSpec): boolean {
+    return t.blocks.some((b: TileBlock) => b.kind === 'alert' && b.value === 'danger');
+  }
+
+  /** Activity rows derived from the person's tiles and decided suggestions (no extra state). */
+  private activity(): ActivityRow[] {
+    const out: ActivityRow[] = [];
+    for (const t of this.tiles) {
+      if (t.type === 'pills') {
+        const taken: boolean = t.subtitle.startsWith('Taken at ');
+        const slot: string = this.slotOf(t);
+        const r: ActivityRow = new ActivityRow();
+        r.key = 'a-' + t.id + (taken ? '-t' : '-d');
+        r.icon = taken ? $r('sys.symbol.checkmark') : $r('sys.symbol.cross_case_fill');
+        r.text = taken ? 'Took the ' + (slot.length > 0 ? slot + ' ' : '') + 'pills' :
+          (slot.length > 0 ? 'Pills ' + slot : t.title) + ' — not yet';
+        r.time = taken ? t.subtitle.substring(9) : 'due';
+        r.tone = taken ? 'ok' : 'danger';
+        out.push(r);
+      } else if (t.type === 'guardian') {
+        const r: ActivityRow = new ActivityRow();
+        if (this.hasDangerAlert(t)) {
+          r.key = 'a-' + t.id + '-alert';
+          r.icon = $r('sys.symbol.exclamationmark_shield_fill');
+          r.text = 'Guardian alert · likely scam call. ' + this.callName() + ' was told to hang up';
+          r.time = 'today';
+          r.tone = 'danger';
+        } else {
+          r.key = 'a-' + t.id + '-on';
+          r.icon = $r('sys.symbol.checkmark_shield_fill');
+          r.text = 'Guardian on' + (t.subtitle.length > 0 ? ' · ' + t.subtitle.toLowerCase() : '');
+          r.time = 'this week';
+          r.tone = 'ok';
+        }
+        out.push(r);
+      } else if (t.subtitle.startsWith('Done at ')) {
+        const r: ActivityRow = new ActivityRow();
+        r.key = 'a-' + t.id + '-done';
+        r.icon = $r('sys.symbol.checkmark');
+        r.text = 'Finished: ' + t.title;
+        r.time = t.subtitle.substring(8);
+        r.tone = 'ok';
+        out.push(r);
+      }
+    }
+    const decided: Suggestion[] = this.suggs.filter((s: Suggestion) => s.status !== 'pending').reverse().slice(0, 4);
+    for (const s of decided) {
+      const ok: boolean = s.status === 'approved';
+      const r: ActivityRow = new ActivityRow();
+      r.key = 'a-s-' + s.id + s.status;
+      r.icon = ok ? $r('sys.symbol.wand_and_stars_fill') : $r('sys.symbol.xmark');
+      r.text = (ok ? 'Approved: ' : 'Declined: ') + s.title;
+      r.time = 'today';
+      r.tone = ok ? 'ok' : 'neutral';
+      out.push(r);
+    }
+    if (this.profile.readAloud) {
+      const r: ActivityRow = new ActivityRow();
+      r.key = 'a-readaloud';
+      r.icon = $r('sys.symbol.speaker_wave_2_fill');
+      r.text = 'Tiles read aloud on tap';
+      r.time = 'on';
+      r.tone = 'ok';
+      out.push(r);
+    }
+    return out;
+  }
+
+  private toneBg(tone: string): string {
+    return tone === 'ok' ? this.pal().okSoft : tone === 'danger' ? this.pal().dangerSoft : this.pal().surface2;
+  }
+
+  private toneFg(tone: string): string {
+    return tone === 'ok' ? this.pal().okInk : tone === 'danger' ? this.pal().dangerInk : this.pal().muted;
   }
 
   private toast(msg: string): void {
@@ -58,7 +207,7 @@ export struct CaregiverView {
   }
 
   private decideTile(id: string, approve: boolean): void {
-    this.getUIContext().animateTo({ duration: 300, curve: TilesTheme.springReflow() }, () => {
+    this.getUIContext().animateTo({ duration: TilesTheme.LL_DUR, curve: TilesTheme.ease() }, () => {
       if (approve) {
         TileStore.get().approvePending(id);
       } else {
@@ -74,7 +223,7 @@ export struct CaregiverView {
   }
 
   private decideSugg(s: Suggestion, approve: boolean): void {
-    this.getUIContext().animateTo({ duration: 300, curve: TilesTheme.springReflow() }, () => {
+    this.getUIContext().animateTo({ duration: TilesTheme.LL_DUR, curve: TilesTheme.ease() }, () => {
       Adaptation.decide(s.id, approve);
     });
     if (approve) {
@@ -88,113 +237,119 @@ export struct CaregiverView {
   private simulate(): void {
     this.simulating = true;
     setTimeout(() => {
-      this.getUIContext().animateTo({ duration: 350, curve: TilesTheme.springReflow() }, () => {
+      this.getUIContext().animateTo({ duration: TilesTheme.LL_DUR, curve: TilesTheme.ease() }, () => {
         this.simResult = Adaptation.simulateDay();
         this.simulating = false;
       });
     }, 600);
   }
 
+  private enter(): TransitionEffect {
+    return TransitionEffect.OPACITY
+      .combine(TransitionEffect.scale({ x: TilesTheme.LL_ENTER_SCALE, y: TilesTheme.LL_ENTER_SCALE }))
+      .combine(TransitionEffect.translate({ y: TilesTheme.LL_ENTER_TY }));
+  }
+
   build() {
     NavDestination() {
-      Scroll() {
-        Column({ space: TilesTheme.SPACE_L }) {
-          this.topBar()
-          this.deviceHeader()
+      Stack({ alignContent: Alignment.Bottom }) {
+        Scroll() {
+          Column({ space: 14 }) {
+            this.topBar()
+            this.deviceHeader()
 
-          // ----- assistant proposals -----
-          if (this.pending.length > 0) {
-            this.sectionTitle('New tiles to approve', this.pending.length)
-            if (this.pendingReply.length > 0) {
-              Text('Tiles assistant: "' + this.pendingReply + '"')
-                .fontSize(this.ty().label)
-                .fontColor(this.pal().textMuted)
-                .width('100%')
-            }
-            ForEach(this.pending, (t: TileSpec) => {
-              this.proposalCard(t)
-            }, (t: TileSpec) => 'p-' + t.id)
-            if (this.pending.length > 1) {
-              this.pillButton('Approve all ' + this.pending.length.toString(), true, () => {
-                this.getUIContext().animateTo({ duration: 300, curve: TilesTheme.springReflow() }, () => {
-                  TileStore.get().approveAllPending();
-                });
-                Haptics.success();
-                this.toast('All new tiles approved');
-              })
-            }
-          }
-
-          // ----- adaptation suggestions -----
-          this.sectionTitle('Suggested changes', this.pendingSuggs().length)
-          if (this.pendingSuggs().length === 0) {
-            Column({ space: 6 }) {
-              SymbolGlyph($r('sys.symbol.checkmark_circle_fill'))
-                .fontSize(36)
-                .fontColor([this.pal().success])
-              Text('All caught up')
-                .fontSize(this.ty().title)
-                .fontWeight(FontWeight.Bold)
-                .fontColor(this.pal().text)
-              Text('Tiles watches how ' + this.person() + ' uses the phone and suggests changes here.')
-                .fontSize(this.ty().label)
-                .fontColor(this.pal().textMuted)
-                .textAlign(TextAlign.Center)
+            // ----- Needs you -----
+            Column({ space: 8 }) {
+              this.sectionLabel('Needs you', this.needsCount())
+              if (this.needsCount() === 0) {
+                Text('Nothing right now')
+                  .llText(15, FontWeight.Medium, this.pal().muted)
+                  .textAlign(TextAlign.Center)
+                  .width('100%')
+                  .padding(18)
+                  .borderRadius(TilesTheme.LL_RADIUS_L)
+                  .border({ width: 1.5, color: this.pal().line, style: BorderStyle.Dashed })
+              }
+              if (this.pending.length > 0 && this.pendingReply.length > 0) {
+                Text('Tiles assistant: “' + this.pendingReply + '”')
+                  .llText(14, FontWeight.Medium, this.pal().muted)
+                  .lineHeight(20)
+                  .width('100%')
+              }
+              ForEach(this.pending, (t: TileSpec) => {
+                this.proposalCard(t)
+              }, (t: TileSpec) => 'p-' + t.id)
+              if (this.pending.length > 1) {
+                this.inkPill('Approve all ' + this.pending.length.toString(), () => {
+                  this.getUIContext().animateTo({ duration: TilesTheme.LL_DUR, curve: TilesTheme.ease() }, () => {
+                    TileStore.get().approveAllPending();
+                  });
+                  Haptics.success();
+                  this.toast('All new tiles approved');
+                })
+              }
+              ForEach(this.pendingSuggs(), (s: Suggestion) => {
+                this.suggestionCard(s)
+              }, (s: Suggestion) => 's-' + s.id + '-' + this.tiles.length.toString() + '-' +
+                this.profile.textScale.toString())
             }
             .width('100%')
-            .padding(TilesTheme.SPACE_XL)
-            .borderRadius(TilesTheme.RADIUS_TILE)
-            .backgroundColor(this.pal().surface)
-          }
-          ForEach(this.pendingSuggs(), (s: Suggestion) => {
-            this.suggestionCard(s)
-          }, (s: Suggestion) => 's-' + s.id + '-' + this.tiles.length.toString() + '-' +
-            this.profile.textScale.toString())
 
-          this.simulateCard()
-
-          if (this.decided().length > 0) {
-            this.sectionTitle('Decided', -1)
-            Column() {
-              ForEach(this.decided(), (s: Suggestion) => {
-                Row({ space: 10 }) {
-                  SymbolGlyph(s.status === 'approved' ? $r('sys.symbol.checkmark') : $r('sys.symbol.xmark'))
-                    .fontSize(18)
-                    .fontColor([s.status === 'approved' ? this.pal().success : this.pal().textMuted])
-                  Text(s.title)
-                    .fontSize(this.ty().label)
-                    .fontColor(this.pal().text)
-                    .layoutWeight(1)
-                    .maxLines(1)
-                    .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  Text(s.status === 'approved' ? 'Approved' : 'Declined')
-                    .fontSize(this.ty().caption)
-                    .fontColor(s.status === 'approved' ? this.pal().success : this.pal().textMuted)
+            // ----- Today -----
+            Column({ space: 8 }) {
+              this.sectionLabel('Today', -1)
+              if (this.activity().length === 0) {
+                Text('No activity yet today')
+                  .llText(15, FontWeight.Medium, this.pal().muted)
+                  .textAlign(TextAlign.Center)
+                  .width('100%')
+                  .padding(18)
+                  .borderRadius(TilesTheme.LL_RADIUS_L)
+                  .border({ width: 1.5, color: this.pal().line, style: BorderStyle.Dashed })
+              } else {
+                Column() {
+                  ForEach(this.activity(), (r: ActivityRow, i: number) => {
+                    this.activityRow(r, i === this.activity().length - 1)
+                  }, (r: ActivityRow) => r.key)
                 }
                 .width('100%')
-                .height(44)
-              }, (s: Suggestion) => 'd-' + s.id + s.status)
+                .padding({ left: 16, right: 16, top: 4, bottom: 4 })
+                .borderRadius(TilesTheme.LL_RADIUS_L)
+                .backgroundColor(this.pal().surface)
+                .backdropBlur(TilesTheme.LL_BLUR)
+                .shadow(TilesTheme.LL_SHADOW_TILE)
+              }
             }
-            .padding({ left: TilesTheme.SPACE_L, right: TilesTheme.SPACE_L })
-            .borderRadius(TilesTheme.RADIUS_INNER)
-            .backgroundColor(this.pal().surface)
-          }
-
-          Text('Simulation: on a real deployment this screen runs on ' +
-            (this.caregiver().length > 0 ? this.caregiver() + '\'s' : 'the caregiver\'s') +
-            ' own phone. Suggestions come from on-device rules over usage signals; nothing is sent anywhere.')
-            .fontSize(this.ty().caption)
-            .fontColor(this.pal().textMuted)
             .width('100%')
-            .margin({ bottom: 24 })
+
+            this.simulateCard()
+
+            Text('Simulation: on a real deployment this screen runs on ' +
+              (this.caregiver().length > 0 ? this.caregiver() + '\'s' : 'the caregiver\'s') +
+              ' own phone. Suggestions come from on-device rules over usage signals; nothing is sent anywhere.')
+              .llText(13, FontWeight.Regular, this.pal().muted)
+              .lineHeight(18)
+              .width('100%')
+          }
+          .padding({ left: 16, right: 16, top: 14 + this.topPad(), bottom: 110 })
         }
-        .padding({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER, top: 12, bottom: 24 })
+        .scrollBar(BarState.Off)
+        .align(Alignment.Top)
+        .width('100%')
+        .height('100%')
+
+        this.callButton()
       }
-      .scrollBar(BarState.Off)
-      .align(Alignment.Top)
       .width('100%')
       .height('100%')
-      .backgroundColor(this.pal().bg)
+      .onAreaChange((o: Area, n: Area) => {
+        const y: number = Number(n.globalPosition.y);
+        if (!isNaN(y) && Math.abs(y - this.rootY) > 0.5) {
+          this.rootY = y;
+        }
+      })
+      // Prototype caregiver phone uses the page bg gradient (t.bg), not the launcher wallpaper.
+      .linearGradient({ angle: this.pal().bgGradient.angle, colors: this.pal().bgGradient.colors })
     }
     .hideTitleBar(true)
   }
@@ -205,97 +360,120 @@ export struct CaregiverView {
       Row() {
         SymbolGlyph($r('sys.symbol.chevron_left'))
           .fontSize(24)
-          .fontColor([this.pal().text])
+          .fontColor([this.pal().ink])
       }
       .width(48)
       .height(48)
       .justifyContent(FlexAlign.Center)
       .borderRadius(24)
       .backgroundColor(this.pal().surface)
+      .backdropBlur(TilesTheme.LL_BLUR)
+      .shadow(TilesTheme.LL_SHADOW_SOFT)
       .onClick(() => this.nav.pop())
       .accessibilityText('Back')
 
       Blank()
-      Text('SIMULATED SECOND DEVICE')
-        .fontSize(12)
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#3D2C00')
-        .padding({ left: 10, right: 10, top: 5, bottom: 5 })
-        .borderRadius(999)
-        .backgroundColor('#FFC83D')
+      Text('SIMULATED SECOND PHONE')
+        .llKicker(this.pal().muted)
+        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+        .borderRadius(TilesTheme.LL_RADIUS_PILL)
+        .border({ width: 1.5, color: this.pal().line })
     }
     .width('100%')
   }
 
   @Builder
   deviceHeader() {
-    Row({ space: 14 }) {
-      Text(this.caregiver().length > 0 ? this.caregiver().substring(0, 1).toUpperCase() :
-        this.person().substring(0, 1).toUpperCase())
-        .fontSize(26)
-        .fontWeight(FontWeight.Bolder)
-        .fontColor('#06243F')
+    Row({ space: 12 }) {
+      Text(this.person().substring(0, 1).toUpperCase())
+        .llText(20, FontWeight.Bolder, this.avatarColors().on)
         .textAlign(TextAlign.Center)
-        .width(56)
-        .height(56)
-        .borderRadius(28)
-        .backgroundColor('#3DA5FF')
-      Column({ space: 4 }) {
-        Text(this.caregiver().length > 0 ? this.caregiver() + '\'s phone' : this.person() + '\'s approvals')
-          .fontSize(26)
-          .fontWeight(FontWeight.Bolder)
-          .fontColor('#FFFFFF')
-        Text(this.caregiver().length > 0 ?
-          'Approves changes to ' + this.person() + '\'s Tiles' +
-            (this.profile.caregiverRole.length > 0 ? ' · ' + this.profile.caregiverRole : '') :
-          'No caregiver set: changes are approved on this phone')
-          .fontSize(this.ty().label)
-          .fontColor('#C8CEDB')
+        .width(48)
+        .height(48)
+        .borderRadius(24)
+        .linearGradient({ angle: this.avatarColors().gradient.angle, colors: this.avatarColors().gradient.colors })
+      Column({ space: 2 }) {
+        Text(this.headerTitle())
+          .llText(21, TilesTheme.LL_WEIGHT, this.pal().ink)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Row({ space: 6 }) {
+          Circle()
+            .width(8)
+            .height(8)
+            .fill(this.pal().ok)
+          Text(this.caregiver().length > 0 ? 'Phone active · just now' :
+            'No caregiver set: changes are approved here')
+            .llText(14, FontWeight.Medium, this.pal().muted)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
+
+      if (this.caregiver().length > 0) {
+        Text(this.caregiver().toUpperCase())
+          .llKicker(this.pal().muted)
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          .borderRadius(TilesTheme.LL_RADIUS_PILL)
+          .border({ width: 1.5, color: this.pal().line })
+      }
     }
     .width('100%')
-    .padding(TilesTheme.SPACE_L)
-    .borderRadius(TilesTheme.RADIUS_TILE_LG)
-    .backgroundColor('#1C2230')
     .accessibilityGroup(true)
   }
 
   @Builder
-  sectionTitle(title: string, count: number) {
+  sectionLabel(title: string, count: number) {
     Row({ space: 8 }) {
-      Text(title)
-        .fontSize(this.ty().title)
-        .fontWeight(FontWeight.Bolder)
-        .fontColor(this.pal().text)
+      Text(title.toUpperCase())
+        .llKicker(this.pal().muted)
       if (count > 0) {
         Text(count.toString())
-          .fontSize(this.ty().caption)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#FFFFFF')
-          .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-          .borderRadius(999)
-          .backgroundColor('#FF6B5A')
+          .llText(12, FontWeight.Bold, this.pal().onAccent)
+          .padding({ left: 7, right: 7, top: 1, bottom: 1 })
+          .borderRadius(TilesTheme.LL_RADIUS_PILL)
+          .backgroundColor(this.pal().accent)
       }
     }
     .width('100%')
-    .margin({ top: TilesTheme.SPACE_S })
+  }
+
+  @Builder
+  kicker(icon: Resource, label: string, time: string, color: ResourceColor) {
+    Row({ space: 8 }) {
+      SymbolGlyph(icon)
+        .fontSize(18)
+        .fontColor([color])
+      Text(label.toUpperCase())
+        .llKicker(color)
+        .letterSpacing(1)
+        .layoutWeight(1)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Text(time)
+        .llText(12, FontWeight.Medium, color)
+    }
+    .width('100%')
+    .opacity(0.85)
   }
 
   @Builder
   proposalCard(t: TileSpec) {
-    Column({ space: TilesTheme.SPACE_M }) {
-      Row({ space: 6 }) {
-        SymbolGlyph($r('sys.symbol.wand_and_stars_fill'))
-          .fontSize(18)
-          .fontColor([this.pal().accent])
-        Text(t.source === 'assistant' ? 'Made by the Tiles assistant for ' + this.person() :
-          'New tile for ' + this.person())
-          .fontSize(this.ty().caption)
-          .fontColor(this.pal().textMuted)
-      }
-      .width('100%')
+    Column({ space: 10 }) {
+      this.kicker($r('sys.symbol.wand_and_stars_fill'),
+        (t.source === 'assistant' ? 'New tile · ' : 'Approval · ') + this.callName(), 'now', this.pal().ink)
+      Text('Add “' + t.title + '” to ' + this.callName() + '’s home')
+        .llText(20, TilesTheme.LL_WEIGHT, this.pal().ink)
+        .lineHeight(23)
+        .width('100%')
+      Text(t.source === 'assistant' ? 'Made by the Tiles assistant. It appears only after you approve.' :
+        'Nothing changes on ' + this.callName() + '’s phone until you approve.')
+        .llText(15, FontWeight.Regular, this.pal().ink)
+        .lineHeight(22)
+        .opacity(0.85)
+        .width('100%')
 
       // Preview only: actions are ignored until the tile is approved.
       TileView({
@@ -306,62 +484,51 @@ export struct CaregiverView {
         }
       })
 
-      this.decisionRow(() => this.decideTile(t.id, true), () => this.decideTile(t.id, false))
+      this.decisionRow('Approve', () => this.decideTile(t.id, true), () => this.decideTile(t.id, false))
     }
-    .padding(TilesTheme.SPACE_L)
-    .borderRadius(TilesTheme.RADIUS_TILE)
+    .padding(16)
+    .borderRadius(TilesTheme.LL_RADIUS_L)
     .backgroundColor(this.pal().surface)
-    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ x: 80 })))
+    .backdropBlur(TilesTheme.LL_BLUR)
+    .shadow(TilesTheme.LL_SHADOW_TILE)
+    .transition(this.enter())
   }
 
   @Builder
   suggestionCard(s: Suggestion) {
-    Column({ space: TilesTheme.SPACE_M }) {
+    Column({ space: 10 }) {
+      this.kicker($r('sys.symbol.wand_and_stars_fill'), 'Approval · ' + this.callName(), 'now', this.pal().ink)
       Text(s.title)
-        .fontSize(this.ty().title)
-        .fontWeight(FontWeight.Bolder)
-        .fontColor(this.pal().text)
+        .llText(20, TilesTheme.LL_WEIGHT, this.pal().ink)
+        .lineHeight(23)
         .width('100%')
-      if (s.reason.length > 0) {
-        Row({ space: 8 }) {
-          SymbolGlyph($r('sys.symbol.wand_and_stars_fill'))
-            .fontSize(16)
-            .fontColor([this.pal().accent])
-          Text('Why: ' + s.reason)
-            .fontSize(this.ty().label)
-            .fontColor(this.pal().text)
-            .layoutWeight(1)
-        }
-        .width('100%')
-        .padding(10)
-        .borderRadius(TilesTheme.RADIUS_INNER)
-        .backgroundColor(this.pal().surfaceAlt)
-      }
-      if (s.detail.length > 0) {
-        Text(s.detail)
-          .fontSize(this.ty().label)
-          .fontColor(this.pal().textMuted)
+      if (s.reason.length > 0 || s.detail.length > 0) {
+        Text(s.reason.length > 0 && s.detail.length > 0 ? s.reason + '. ' + s.detail :
+          (s.reason.length > 0 ? s.reason : s.detail))
+          .llText(15, FontWeight.Regular, this.pal().ink)
+          .lineHeight(22)
+          .opacity(0.85)
           .width('100%')
       }
 
       this.beforeAfter(s, Adaptation.preview(s.change, this.profile, this.tiles, this.appsHidden))
 
-      this.decisionRow(() => this.decideSugg(s, true), () => this.decideSugg(s, false))
+      this.decisionRow('Approve', () => this.decideSugg(s, true), () => this.decideSugg(s, false))
     }
-    .padding(TilesTheme.SPACE_L)
-    .borderRadius(TilesTheme.RADIUS_TILE)
+    .padding(16)
+    .borderRadius(TilesTheme.LL_RADIUS_L)
     .backgroundColor(this.pal().surface)
-    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ x: 80 })))
+    .backdropBlur(TilesTheme.LL_BLUR)
+    .shadow(TilesTheme.LL_SHADOW_TILE)
+    .transition(this.enter())
   }
 
   @Builder
   beforeAfter(s: Suggestion, after: PreviewState) {
-    Row({ space: 4 }) {
+    Row({ space: 6 }) {
       Column({ space: 6 }) {
-        Text('Now')
-          .fontSize(this.ty().caption)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().textMuted)
+        Text('NOW')
+          .llKicker(this.pal().muted)
         MiniHome({
           tiles: this.tiles,
           profile: this.profile,
@@ -369,20 +536,20 @@ export struct CaregiverView {
           appsHidden: this.appsHidden,
           highlight: Adaptation.focusTile(s.change),
           maxTiles: 6,
-          frameWidth: 140
+          frameWidth: 132
         })
       }
       .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
 
       SymbolGlyph($r('sys.symbol.arrow_right'))
-        .fontSize(20)
-        .fontColor([this.pal().textMuted])
+        .fontSize(18)
+        .fontColor([this.pal().muted])
+        .margin({ top: 22 })
 
       Column({ space: 6 }) {
-        Text('After')
-          .fontSize(this.ty().caption)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().success)
+        Text('AFTER')
+          .llKicker(this.pal().okInk)
         MiniHome({
           tiles: after.tiles,
           profile: after.profile,
@@ -390,101 +557,126 @@ export struct CaregiverView {
           appsHidden: after.appsHidden,
           highlight: s.change.startsWith('remove:') ? '' : Adaptation.focusTile(s.change),
           maxTiles: 6,
-          frameWidth: 140
+          frameWidth: 132
         })
       }
       .layoutWeight(1)
+      .alignItems(HorizontalAlign.Start)
     }
     .width('100%')
     .alignItems(VerticalAlign.Top)
+    .padding(10)
+    .borderRadius(TilesTheme.LL_RADIUS_M)
+    .backgroundColor(this.pal().surface2)
   }
 
   @Builder
-  decisionRow(onApprove: () => void, onDecline: () => void) {
-    Row({ space: TilesTheme.SPACE_M }) {
-      Row({ space: 6 }) {
-        SymbolGlyph($r('sys.symbol.xmark'))
-          .fontSize(18)
-          .fontColor([this.pal().text])
-        Text('Decline')
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().text)
-      }
-      .justifyContent(FlexAlign.Center)
-      .layoutWeight(1)
-      .height(56)
-      .borderRadius(28)
-      .border({ width: 2, color: this.pal().border })
-      .onClick(onDecline)
-      .accessibilityText('Decline')
-
+  decisionRow(approveLabel: string, onApprove: () => void, onDecline: () => void) {
+    Row({ space: 8 }) {
       Row({ space: 6 }) {
         SymbolGlyph($r('sys.symbol.checkmark'))
           .fontSize(18)
-          .fontColor([this.pal().onSuccess])
-        Text('Approve')
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().onSuccess)
+          .fontColor([this.pal().onAccent])
+        Text(approveLabel)
+          .llText(15, FontWeight.Bold, this.pal().onAccent)
       }
       .justifyContent(FlexAlign.Center)
-      .layoutWeight(1)
-      .height(56)
-      .borderRadius(28)
-      .backgroundColor(this.pal().success)
+      .layoutWeight(1.3)
+      .height(52)
+      .borderRadius(TilesTheme.LL_RADIUS_PILL)
+      .backgroundColor(this.pal().accent)
+      .border({ width: 1.5, color: this.pal().accent })
       .onClick(onApprove)
-      .accessibilityText('Approve')
+      .accessibilityText(approveLabel)
+
+      Text('Decline')
+        .llText(15, FontWeight.Bold, this.pal().ink)
+        .textAlign(TextAlign.Center)
+        .layoutWeight(1)
+        .height(52)
+        .borderRadius(TilesTheme.LL_RADIUS_PILL)
+        .border({ width: 1.5, color: this.declineBorder() })
+        .onClick(onDecline)
+        .accessibilityText('Decline')
     }
     .width('100%')
+    .margin({ top: 2 })
   }
 
   @Builder
-  pillButton(label: string, primary: boolean, onTap: () => void) {
+  inkPill(label: string, onTap: () => void) {
     Text(label)
-      .fontSize(17)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(primary ? this.pal().onSuccess : this.pal().text)
+      .llText(15, FontWeight.Bold, this.pal().onInk)
       .textAlign(TextAlign.Center)
       .width('100%')
-      .height(56)
-      .borderRadius(28)
-      .backgroundColor(primary ? this.pal().success : this.pal().surface)
+      .height(52)
+      .borderRadius(TilesTheme.LL_RADIUS_PILL)
+      .backgroundColor(this.pal().ink)
       .onClick(onTap)
   }
 
   @Builder
+  activityRow(r: ActivityRow, last: boolean) {
+    Row({ space: 12 }) {
+      Row() {
+        SymbolGlyph(r.icon)
+          .fontSize(20)
+          .fontColor([this.toneFg(r.tone)])
+      }
+      .width(36)
+      .height(36)
+      .justifyContent(FlexAlign.Center)
+      .borderRadius(18)
+      .backgroundColor(this.toneBg(r.tone))
+
+      Text(r.text)
+        .llText(15, FontWeight.Medium, r.tone === 'danger' ? this.pal().dangerInk : this.pal().ink)
+        .fontWeight(600)
+        .lineHeight(20)
+        .layoutWeight(1)
+        .maxLines(2)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Text(r.time)
+        .llText(13, FontWeight.Regular, this.pal().muted)
+    }
+    .width('100%')
+    .constraintSize({ minHeight: 56 })
+    .padding({ top: 8, bottom: 8 })
+    .border({ width: { bottom: last ? 0 : 1 }, color: this.pal().line })
+    .accessibilityGroup(true)
+  }
+
+  @Builder
   simulateCard() {
-    Column({ space: TilesTheme.SPACE_M }) {
+    Column({ space: 10 }) {
       Row({ space: 8 }) {
         Text('DEMO')
-          .fontSize(11)
-          .fontWeight(FontWeight.Bolder)
-          .fontColor('#3D2C00')
+          .llKicker(TilesTheme.tile('sun', false, this.dark).on)
+          .letterSpacing(1)
           .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-          .borderRadius(999)
-          .backgroundColor('#FFC83D')
+          .borderRadius(TilesTheme.LL_RADIUS_PILL)
+          .linearGradient({
+            angle: TilesTheme.tile('sun', false, this.dark).gradient.angle,
+            colors: TilesTheme.tile('sun', false, this.dark).gradient.colors
+          })
         Text('Simulate a day of use')
-          .fontSize(this.ty().body)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().text)
+          .llText(17, TilesTheme.LL_WEIGHT, this.pal().ink)
           .layoutWeight(1)
       }
       .width('100%')
       Text('Feeds simulated usage into the adaptation engine: 11 missed taps on small targets, the morning tile ' +
         'opened first, some tiles never opened. Real taps on the home are counted the same way.')
-        .fontSize(this.ty().caption)
-        .fontColor(this.pal().textMuted)
+        .llText(13, FontWeight.Regular, this.pal().muted)
+        .lineHeight(18)
         .width('100%')
       if (this.simResult.length > 0) {
         Text(this.simResult)
-          .fontSize(this.ty().label)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.pal().text)
+          .llText(15, FontWeight.Medium, this.pal().okInk)
+          .lineHeight(21)
           .width('100%')
-          .padding(10)
-          .borderRadius(TilesTheme.RADIUS_INNER)
-          .backgroundColor(this.pal().surfaceAlt)
+          .padding(12)
+          .borderRadius(TilesTheme.LL_RADIUS_S)
+          .backgroundColor(this.pal().okSoft)
           .transition(TransitionEffect.OPACITY)
       }
       Row({ space: 8 }) {
@@ -492,28 +684,51 @@ export struct CaregiverView {
           LoadingProgress()
             .width(24)
             .height(24)
-            .color(this.pal().text)
+            .color(this.pal().ink)
         } else {
           SymbolGlyph($r('sys.symbol.play_fill'))
             .fontSize(18)
-            .fontColor([this.pal().text])
+            .fontColor([this.pal().ink])
         }
         Text(this.simulating ? 'Simulating a day…' : 'Simulate a day of use')
-          .fontSize(17)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().text)
+          .llText(15, FontWeight.Bold, this.pal().ink)
       }
       .justifyContent(FlexAlign.Center)
       .width('100%')
-      .height(56)
-      .borderRadius(28)
-      .border({ width: 2, color: this.pal().text, style: BorderStyle.Dashed })
+      .height(52)
+      .borderRadius(TilesTheme.LL_RADIUS_PILL)
+      .border({ width: 1.5, color: this.pal().line, style: BorderStyle.Dashed })
       .enabled(!this.simulating)
       .onClick(() => this.simulate())
       .accessibilityText('Demo: simulate a day of use')
     }
-    .padding(TilesTheme.SPACE_L)
-    .borderRadius(TilesTheme.RADIUS_TILE)
+    .padding(16)
+    .borderRadius(TilesTheme.LL_RADIUS_L)
     .backgroundColor(this.pal().surface)
+    .backdropBlur(TilesTheme.LL_BLUR)
+    .shadow(TilesTheme.LL_SHADOW_TILE)
+  }
+
+  @Builder
+  callButton() {
+    Row() {
+      Row({ space: 10 }) {
+        SymbolGlyph($r('sys.symbol.phone_fill'))
+          .fontSize(22)
+          .fontColor([this.pal().onInk])
+        Text('Call ' + this.callName())
+          .llText(17, FontWeight.Bold, this.pal().onInk)
+      }
+      .justifyContent(FlexAlign.Center)
+      .height(60)
+      .layoutWeight(1)
+      .borderRadius(TilesTheme.LL_RADIUS_PILL)
+      .backgroundColor(this.pal().ink)
+      .shadow(TilesTheme.LL_SHADOW_SHEET)
+      .onClick(() => this.toast('Simulated: calling ' + this.callName() + '…'))
+      .accessibilityText('Call ' + this.callName() + ' (simulated)')
+    }
+    .width('100%')
+    .padding({ left: 16, right: 16, bottom: 24 })
   }
 }

@@ -3,7 +3,7 @@
 // Owner: B18-dashboard-gov-approvals.
 import { displayTitle } from '@/components/governance/lib/format-gov';
 import { motion } from 'framer-motion';
-import { Check, Copy, ExternalLink, Hash, Inbox, Lock, LockOpen, Undo2, Users, X } from '@/components/icons';
+import { Bot, Check, Copy, ExternalLink, Hash, Inbox, Lock, LockOpen, TriangleAlert, Undo2, Users, X } from '@/components/icons';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -15,6 +15,7 @@ import { ApproverBadge } from '../ApproverBadge';
 import { ExpiryCountdown } from '../ExpiryCountdown';
 import { assertApplied, errorTitle, govApi, isStaleApproval, parseApiError } from '../gov-api';
 import type { Directory } from '../hooks';
+import { floodText, reviewOf, type FloodSignal } from '../lib/approval-review';
 import { approveLabel, roleSatisfies, type Viewer } from '../lib/eligibility';
 import { kindLabel, statusMeta } from '../lib/format-gov';
 import { LockedAction } from '../LockedAction';
@@ -54,9 +55,11 @@ export interface ApprovalDetailProps {
   /** Called with the server answer, or without one when the request turned out stale (404/409). */
   onChanged: (res?: ApprovalRequest) => void;
   emptyHint?: ReactNode;
+  /** ASI09 anti-fatigue: set when this request's requester is flooding the inbox. */
+  flood?: FloodSignal | null;
 }
 
-export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDecide, onChanged, emptyHint }: ApprovalDetailProps) {
+export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDecide, onChanged, emptyHint, flood }: ApprovalDetailProps) {
   const [cancelling, setCancelling] = useState(false);
   if (!req || !vote) {
     return (
@@ -72,6 +75,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
   const canCancel = pending && (isRequester || roleSatisfies(viewer.role, 'admin'));
   const labels = Object.entries(req.labels ?? {}).filter(([k]) => ['sensitivity', 'env', 'data_class', 'control_severity', 'recurring', 'scope', 'dest', 'loosening'].includes(k));
   const decidedNoButtons = req.required_role === 'deny' || req.required_role === 'auto';
+  const review = reviewOf(req);
 
   async function cancel() {
     if (!req) return;
@@ -125,11 +129,25 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
         </div>
         <h2 className="mb-1 mt-2.5 break-words text-[16px] font-semibold leading-6 tracking-[-0.01em] text-text-1">{displayTitle(req.title)}</h2>
         {req.summary ? <p className="mb-2 text-[12.5px] text-text-3">{displayTitle(req.summary)}</p> : null}
+        {review.title_agent_fields.length ? (
+          <div className="mb-1.5 inline-flex items-center gap-1 rounded-sm border border-dashed border-redact/50 px-1.5 py-0.5 text-2xs text-redact" title="Parts of this title come from the agent's own arguments; check the bound action below.">
+            <Bot className="size-3" /> title includes agent-supplied values: <span className="font-mono">{review.title_agent_fields.join(', ')}</span>
+          </div>
+        ) : null}
         <RequesterLine req={req} dir={dir} />
+        {flood && pending ? (
+          <div data-testid="flood-notice" role="alert" className="mt-3 flex items-start gap-2 rounded-md border border-block/40 bg-block/10 px-3 py-2 text-[12.5px]">
+            <TriangleAlert className="mt-0.5 size-4 shrink-0 text-block" />
+            <div>
+              <span className="font-medium text-block">{flood.label}: {floodText(flood)}.</span>{' '}
+              <span className="text-text-2">Review each request on its own bound action; approving needs a typed confirmation while the burst lasts. Consider pausing this agent.</span>
+            </div>
+          </div>
+        ) : null}
       </div>
 
-      <Section title="Bound parameters">
-        <PayloadView req={req} hideActionLabel />
+      <Section title="What you are approving">
+        <PayloadView req={req} />
       </Section>
 
       <Section title="Why this role?">

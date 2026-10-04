@@ -1,15 +1,27 @@
-"""GOV-01 Caller identity & attribution (plan 08 section 2.8, Addendum A-17 semantics).
+"""GOV-01 Caller identity & attribution (plan 08 section 2.8, Addendum A-17 semantics; ASI03).
 
-Anonymous callers are allowed (attribution only); unregistered agent ids are logged;
-invalid / revoked / expired Aegis keys, principal spoofing (key != X-Aegis-Agent) and disabled
-principals are blocked; `require_auth` blocks unauthenticated data-plane calls. Key material
-never appears in reasons or findings.
+* invalid / revoked / expired Aegis keys, principal spoofing (key != X-Aegis-Agent) and disabled
+  principals are blocked; `require_auth` blocks every unauthenticated data-plane call;
+* ASI03 - **an identity claim is not a credential**: `X-Aegis-Agent` naming a *registered*
+  agent without that agent's key is blocked on data-plane sources ("agent identity not proven",
+  `unproven_agent_action`); identity hints count only on `unproven_hint_sources` (default none).
+  A request with NO claim is never blocked for that alone (anonymous least privilege below). With a non-blocking action the
+  caller is downgraded to the anonymous least-privilege tool allowlist instead;
+* anonymous callers and unregistered agent ids get the restrictive `anonymous_allowed_tools`
+  allowlist on tool / MCP calls (never "skip the allowlist");
+* per-session credential scope: an explicit session id is bound to the first credential that
+  used it; another principal, or a credential-less call, in that session is blocked
+  (`session_binding_action`) - no session hijack / credential relay.
+Key material never appears in reasons or findings.
 """
 
 from __future__ import annotations
 
+from collections import OrderedDict
+from threading import Lock
 from typing import Any, ClassVar
 
+from aegis.actions.classify import normalize_tool_name, tool_matches
 from aegis.controls.governance._common import Params, get_rt, parse_params, peek_agent, peek_member
 from aegis.core.protocols import BaseControl
 from aegis.core.types import AppliesTo, Decision, Finding
@@ -18,6 +30,23 @@ _ACTIONS = {"allow", "log", "redact", "require_approval", "block"}
 _DEFAULT_SOURCES = ["proxy", "mcp", "hook", "egress", "guard"]
 _SCOPE_BY_SOURCE = {"hook": ["hooks"], "mcp": ["mcp"], "egress": ["egress"], "guard": ["guard"]}
 _MODEL_SCOPES = ["anthropic.messages", "openai.chat", "ollama.chat", "ollama.embed"]
+_TOOL_SURFACES = frozenset({"tool.input", "mcp.call"})
+#: least-privilege tool set of an unauthenticated caller: read-only discovery, nothing that
+#: spends, sends, writes, executes or reads customer data.
+ANONYMOUS_TOOLS = [
+    "Read",
+    "Glob",
+    "Grep",
+    "LS",
+    "TodoWrite",
+    "*.list_*",
+    "*.get_*",
+    "*.search_*",
+    "*.describe_*",
+]
+_NO_SESSION = frozenset({"", "default", "none", "null"})
+_MAX_BINDINGS = 20_000
+_KEY_HINT = "send the agent's key (Authorization: Bearer aegis_... or X-Aegis-Agent-Key)"
 
 
 class Gov01Params(Params):
@@ -34,6 +63,14 @@ class Gov01Params(Params):
     principal_mismatch_action: str | None = None
     enforce_key_scopes: bool | str = False  # False | True(=log) | "log" | "block"
     exempt_agents: list[str] = ["selftest"]
+    # ASI03 (identity & privilege abuse)
+    unproven_agent_action: str = "block"  # registered agent claimed without its key
+    # Sources where an identity *hint* (demo-mode guard body `identity`, Claude Code UA detection)
+    # counts as a claim. Default none: hints are attribution only; X-Aegis-Agent is the claim.
+    unproven_hint_sources: list[str] = []
+    anonymous_allowed_tools: list[str] | None = list(ANONYMOUS_TOOLS)  # None = legacy (no list)
+    anonymous_tool_action: str = "block"
+    session_binding_action: str = "block"  # allow = off
 
 
 def _act(explicit: str | None, flag: bool) -> str:
@@ -52,6 +89,9 @@ class CallerIdentity(BaseControl):
     priority: ClassVar[int] = 1
 
     _params_cache: ClassVar[dict[int, tuple[Any, Gov01Params]]] = {}
+    #: (runtime id, session id) -> (principal, key id) of the first credential seen (LRU)
+    _bindings: ClassVar[OrderedDict[tuple[int, str], tuple[str, str | None]]] = OrderedDict()
+    _bind_lock: ClassVar[Lock] = Lock()
 
     def params(self, cfg: Any) -> Gov01Params:
         hit = self._params_cache.get(id(cfg))
@@ -87,6 +127,76 @@ class CallerIdentity(BaseControl):
         if action == "block" and status is not None:
             kw = {"http_status": status, "error_type": error_type}
         return self.decide(cfg, action=action, reason=reason, findings=[finding], **kw)
+
+    # ------------------------------------------------------------------ ASI03 helpers
+    def _anonymous_tool_denied(
+        self,
+        cfg: Any,
+        interaction: Any,
+        p: Gov01Params,
+        agent_id: str | None,
+        anonymous: bool,
+        unproven: bool,
+    ) -> Decision | None:
+        allowed = p.anonymous_allowed_tools
+        if allowed is None or getattr(interaction, "surface", None) not in _TOOL_SURFACES:
+            return None
+        tool = normalize_tool_name(getattr(interaction, "tool_name", None))
+        if not tool or any(tool_matches(a, interaction) for a in allowed):
+            return None
+        who = (
+            "anonymous caller"
+            if anonymous
+            else f"{'unproven' if unproven else 'unregistered'} agent '{agent_id}'"
+        )
+        return self._verdict(
+            cfg,
+            p.anonymous_tool_action,
+            f"{who} may not call {tool}: not on the anonymous least-privilege tool allowlist "
+            f"({_KEY_HINT})",
+            self._finding("gov.anonymous_tool", "high", tool=tool, claimed=agent_id),
+            403,
+            "forbidden",
+        )
+
+    def _session_binding(
+        self, rt: Any, ctx: Any, ident: Any, cfg: Any, p: Gov01Params
+    ) -> Decision | None:
+        action = p.session_binding_action
+        sid = str(getattr(ctx, "session_id", "") or "").strip()
+        if action not in _ACTIONS or action == "allow" or sid.lower() in _NO_SESSION:
+            return None
+        slot = (id(rt), sid)
+        authed = bool(getattr(ident, "authenticated", False))
+        principal = getattr(ident, "principal", None) or ""
+        with self._bind_lock:
+            bound = self._bindings.get(slot)
+            if bound is None:
+                if authed and principal:
+                    self._bindings[slot] = (principal, getattr(ident, "key_id", None))
+                    if len(self._bindings) > _MAX_BINDINGS:
+                        self._bindings.popitem(last=False)
+                return None
+            self._bindings.move_to_end(slot)
+        bound_principal, bound_key = bound
+        if authed and principal == bound_principal:
+            return None
+        presented = f"'{principal}'" if authed else "no credential"
+        return self._verdict(
+            cfg,
+            action,
+            f"session '{sid[:64]}' is bound to the credential of '{bound_principal}' "
+            f"(key {bound_key or '?'}); request presents {presented}",
+            self._finding(
+                "gov.session_binding",
+                "critical",
+                session=sid[:64],
+                bound_principal=bound_principal,
+                presented=principal if authed else None,
+            ),
+            401,
+            "unauthenticated",
+        )
 
     async def evaluate(self, ctx: Any, interaction: Any, cfg: Any) -> Decision | None:
         p = self.params(cfg)
@@ -182,9 +292,64 @@ class CallerIdentity(BaseControl):
                 "unauthenticated",
             )
 
-        # 5. unregistered agent id (header-asserted)
+        data_plane = ctx.source in p.require_auth_sources
+        method = getattr(ident, "auth_method", None)
+
+        # 4b. per-session credential scope (ASI03): a session is bound to its first credential
+        bound = self._session_binding(rt, ctx, ident, cfg, p) if data_plane else None
+        if bound is not None:
+            return bound
+
+        # 5a. unproven claim (ASI03): a registered agent named without that agent's key
+        unproven = bool(
+            data_plane
+            and agent_id
+            and agent_id != "anonymous"
+            and known
+            and not ident.authenticated
+            and (method == "header" or (method == "hint" and ctx.source in p.unproven_hint_sources))
+        )
+        if unproven and p.unproven_agent_action == "block":
+            via = "X-Aegis-Agent" if method == "header" else "an identity hint"
+            return self._verdict(
+                cfg,
+                "block",
+                f"agent identity not proven: '{agent_id}' claimed via {via} without that "
+                f"agent's key ({_KEY_HINT})",
+                self._finding(
+                    "gov.identity_unproven",
+                    "high",
+                    claimed=agent_id,
+                    auth_method=method,
+                    source=ctx.source,
+                ),
+                401,
+                "unauthenticated",
+            )
+
         anonymous = agent_id == "anonymous" or (not agent_id and not ident.member_id)
-        if agent_id and not anonymous and agent is None and not known:
+        unregistered = bool(agent_id and not anonymous and agent is None and not known)
+
+        # 5b. least privilege (ASI03): anonymous, unregistered and (non-blocked) unproven callers
+        #     only get the anonymous tool allowlist on tool / MCP calls
+        if (anonymous or unregistered or unproven) and data_plane:
+            denied = self._anonymous_tool_denied(cfg, interaction, p, agent_id, anonymous, unproven)
+            if denied is not None:
+                return denied
+
+        if unproven:
+            return self._verdict(
+                cfg,
+                p.unproven_agent_action,
+                f"agent identity not proven: '{agent_id}' (downgraded to anonymous least "
+                "privilege)",
+                self._finding(
+                    "gov.identity_unproven", "high", claimed=agent_id, auth_method=method
+                ),
+            )
+
+        # 5. unregistered agent id (header-asserted)
+        if unregistered:
             action = p.unknown_agent_action or cfg.action
             return self._verdict(
                 cfg,

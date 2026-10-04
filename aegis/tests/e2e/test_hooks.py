@@ -28,6 +28,8 @@ from typing import Any
 
 import pytest
 
+from aegis.sdk.cast import agent_headers  # ASI03: X-Aegis-Agent + its key
+
 httpx = pytest.importorskip("httpx")
 yaml = pytest.importorskip("yaml")
 
@@ -188,7 +190,7 @@ def _hook(
     r = s.http.post(
         "/v1/hooks/claude-code",
         json=payload,
-        headers={"X-Aegis-Agent": agent, "X-Aegis-Hook-Event": payload["hook_event_name"]},
+        headers={**agent_headers(agent), "X-Aegis-Hook-Event": payload["hook_event_name"]},
     )
     if r.status_code in (404, 405, 501):
         pytest.fail(f"/v1/hooks/claude-code not available ({r.status_code})", pytrace=False)
@@ -413,8 +415,9 @@ def _run_hook(event: str, payload: dict, url: str) -> subprocess.CompletedProces
         "AEGIS_HOOK_TIMEOUT": "10",
         "AEGIS_HOOK_TIMEOUT_FAST": "5",
         "AEGIS_AGENT_KEY_FILE": "/nonexistent",
+        # ASI03: the hook sends the agent key (the demo profile reads demo/claude/.agent_key)
+        "AEGIS_AGENT_KEY": agent_headers("claude-code@platform")["X-Aegis-Agent-Key"],
     }
-    env.pop("AEGIS_AGENT_KEY", None)
     return subprocess.run(
         ["bash", str(HOOK_SCRIPT), event],
         input=json.dumps(payload),

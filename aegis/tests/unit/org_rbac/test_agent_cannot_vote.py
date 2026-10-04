@@ -49,7 +49,11 @@ async def live(tmp_path, monkeypatch):
 
 
 async def _pending_purchase(client) -> str:
-    r = await client.post("/v1/guard", json=PURCHASE, headers={"X-Aegis-Agent": AGENT})
+    r = await client.post(  # ASI03: an agent claim needs the agent's key
+        "/v1/guard",
+        json=PURCHASE,
+        headers={"X-Aegis-Agent": AGENT, "Authorization": f"Bearer {agent_key(AGENT)}"},
+    )
     if r.status_code == 404:
         pytest.skip("/v1/guard not mounted")
     assert r.status_code == 200, r.text

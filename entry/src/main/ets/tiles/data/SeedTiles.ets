@@ -154,7 +154,7 @@ export function profileFor(id: string): Profile {
       p.textScale = 1.15;
       p.highContrast = false;
       p.readAloud = false;
-      p.columns = 4;
+      p.columns = 2;
       p.caregiver = 'Mum';
       p.caregiverRole = 'parent';
       break;
@@ -165,8 +165,8 @@ export function profileFor(id: string): Profile {
       p.highContrast = true;
       p.readAloud = true;
       p.columns = 2;
-      p.caregiver = 'Tomek';
-      p.caregiverRole = 'brother';
+      p.caregiver = 'Ania';
+      p.caregiverRole = 'daughter';
       break;
     default:
       p.id = 'everyday';
@@ -186,145 +186,134 @@ export function profileFor(id: string): Profile {
 export function profileBlurb(id: string): string {
   switch (id) {
     case 'senior':
-      return 'Halina, 78 · big tiles, read aloud, scam shield. Kasia approves changes.';
+      return 'Halina, 78 · big, calm, read aloud';
     case 'kid':
-      return 'Zosia, 8 · homework, focus timer, screen time. Mum approves new tiles.';
+      return 'Zosia, 8 · playful, parent approves';
     case 'lowvision':
-      return 'Michał · voice first, extra-large targets, high contrast.';
+      return 'Michał · voice first, huge targets';
     default:
-      return 'Daniel, 29 · plans with friends, focus, commute.';
+      return 'Daniel, 29 · dense, expressive';
   }
 }
 
 // ---------- seed homes ----------
 
+// Seed homes mirror the Living Light prototype (design/tiles-motion/source/Tiles_Stage.dc.html, const TILES): same
+// tiles, order, sizes, palette and copy. Material Symbols are mapped to the closest SymbolGlyph (BlockStyle aliasOf /
+// SymbolTable). Where the prototype makes a tap on the tile act (call / sos / done), the tile carries the same action
+// as a button so the behaviour stays reachable from the home grid and the detail view.
+
 function seniorTiles(): TileSpec[] {
   return [
-    tile('sr-pills', 'pills', 'Pills 8:00', 'Polpril 5 mg + Vitamin D', 'pill', 'mint', '2x1', [
-      bigBlock('8:00', 'Morning pills'),
-      checklistBlock('', ['Polpril 5 mg', 'Vitamin D 2000'], [false, false]),
-      buttonsBlock([act('Taken', 'done', 'pills-morning'), act('Remind in 15 min', 'remind', '15')])
-    ], 'Time for your morning pills: Polpril and vitamin D. Tap Taken when you have taken them.'),
-    tile('sr-call-kasia', 'call', 'Call Kasia', 'Your daughter', 'phone', 'sky', '2x1', [
-      textBlock('Usually free after 17:00'),
+    tile('sr-pills', 'pills', 'Pills 8:00', '', 'pill', 'sun', '2x1', [
+      textBlock('Euthyrox 50 µg · tap when taken'),
+      buttonsBlock([act('Taken', 'done', 'pills-morning'), act('Later', 'remind', '15')])
+    ], 'Pills at eight. Euthyrox. Tap when taken.'),
+    tile('sr-call-kasia', 'call', 'Call Kasia', 'Daughter', 'phone', 'leaf', '1x1', [
       buttonsBlock([act('Call', 'call', 'Kasia')])
     ], 'Call Kasia, your daughter.'),
-    tile('sr-weather', 'weather', '14° and rain', 'Kraków, Nowa Huta', 'rain', 'peach', '2x1', [
-      weatherBlock('14°', 'Rain until 15:00, 9-16°', ['Take the umbrella', 'Warm coat', 'Waterproof shoes'])
-    ], 'It is 14 degrees and raining until 3 PM. Take the umbrella and the warm coat.'),
-    tile('sr-guardian', 'guardian', 'Guardian', 'Scam shield is on', 'shield', 'coral', '2x2', [
-      alertBlock('Demo call: "Grandma, it\'s me. I need money right now, don\'t tell anyone."', 'danger',
-        ['asks for money', 'pressure: right now', 'keep it secret']),
-      textBlock('This looks like a scam. Hang up. Kasia already knows.'),
-      buttonsBlock([act('Hang up', 'dismiss', 'guardian-demo'), act('Call Kasia', 'call', 'Kasia')])
-    ], 'Warning. This looks like a scam. Hang up. Kasia already knows.'),
-    tile('sr-doctor', 'reminder', 'Doctor Wed 10:30', 'Dr Nowak · Przychodnia Bieńczyce', 'calendar', 'grape',
-      '2x1', [
-        textBlock('Bring the blood test results and your ID card.'),
-        buttonsBlock([act('Remind me Tuesday', 'remind', 'tue-18:00'), act('Read aloud', 'speak', '')])
-      ], 'Doctor appointment on Wednesday at 10:30 with doctor Nowak. Bring the blood test results.'),
-    tile('sr-walk', 'reminder', 'Walk at 17:00', 'Park Lotników · 20 min', 'walk', 'leaf', '1x1', [
-      textBlock('Dry after 15:00')
-    ], 'Evening walk at 5 PM in Park Lotników, about 20 minutes.'),
-    tile('sr-sos', 'sos', 'SOS', 'Hold to call for help', 'sos', 'ink', '1x1', [
-      buttonsBlock([act('Hold for help', 'sos', 'Kasia')])
-    ], 'S O S. Hold the button to call Kasia and send your location.'),
-    tile('sr-visit', 'note', 'Kasia visits Sunday', 'Lunch at 13:00', 'house', 'sun', '2x1', [
-      listBlock('Remember', ['Photo album for Ola', 'Pierogi from the freezer'])
-    ], 'Kasia visits on Sunday for lunch at 1 PM.')
+    tile('sr-guardian', 'guardian', 'Guardian', '', 'shield', 'mint', '1x1', [
+      textBlock('On · 2 calls blocked')
+    ], 'Guardian is on. 2 calls blocked.'),
+    tile('sr-weather', 'weather', '14° and rain', '', 'rain', 'sky', '2x1', [
+      textBlock('Take the umbrella. Warmer by 3 pm.')
+    ], '14 degrees and rain. Take the umbrella. Warmer by three.'),
+    tile('sr-sos', 'sos', 'SOS', '', 'sos', 'rose', '1x1', [
+      buttonsBlock([act('Hold 2 s', 'sos', 'Kasia')])
+    ], 'S O S. Hold for two seconds to call Kasia and send your location.'),
+    tile('sr-photos', 'custom', 'Photos', '', 'heart_square_stack', 'sand', '1x1', [
+      textBlock('3 new from Zosia')
+    ], 'Photos. 3 new from Zosia.'),
+    tile('sr-apps', 'apps', 'More apps', '', 'star_folder_fill', 'sand', '2x1', [
+      textBlock('Calculator · News · Maps · Wallet · Mail +9')
+    ], 'More apps.')
   ];
 }
 
 function kidTiles(): TileSpec[] {
   return [
-    tile('kd-homework', 'homework', 'Homework', '3 of 5 done', 'book', 'sun', '2x2', [
-      progressBlock('Almost there!', '3 of 5', 0.6),
-      checklistBlock('', ['Maths p. 42', 'Read 10 pages', 'English words', 'Draw an autumn leaf', 'Pack school bag'],
+    // Count lives in the subtitle: TileStore.toggleCheck keeps a homework tile's subtitle in sync ('4 of 5 done').
+    tile('kd-homework', 'homework', 'Homework', '3 of 5 done', 'book_open_fill', 'sun', '2x2', [
+      checklistBlock('', ['Maths p. 42', 'Reading 20 min', 'Spelling list', 'Draw a leaf', 'Pack the bag'],
         [true, true, true, false, false])
-    ], 'Homework: 3 of 5 done. Next: draw an autumn leaf.'),
-    tile('kd-focus', 'timer', 'Focus timer', 'Reading time', 'timer', 'grape', '2x1', [
-      timerBlock('Read your book, then a break', '15')
-    ], 'Focus timer, 15 minutes of reading.'),
-    tile('kd-call-mum', 'call', 'Call Mum', 'Mum', 'phone', 'coral', '1x1', [
+    ], 'Homework: 3 of 5 done. Next: draw a leaf.'),
+    tile('kd-focus', 'timer', 'Focus', '', 'timer', 'plum', '1x1', [
+      timerBlock('with Mo', '15')
+    ], 'Focus timer with Mo, 15 minutes.'),
+    tile('kd-call-mum', 'call', 'Call Mum', 'Kasia', 'phone', 'leaf', '1x1', [
       buttonsBlock([act('Call', 'call', 'Mum')])
     ], 'Call Mum.'),
-    tile('kd-grandma', 'call', 'Call Grandma', 'Babcia Halina', 'heart', 'peach', '1x1', [
-      buttonsBlock([act('Call', 'call', 'Babcia Halina')])
-    ], 'Call Grandma Halina.'),
-    tile('kd-screen', 'screentime', 'Screen time', '45 of 60 min left', 'game', 'mint', '2x1', [
-      progressBlock('Plenty left for today', '45 min', 0.75)
-    ], 'You have 45 of 60 minutes of screen time left today.'),
-    tile('kd-adventure', 'adventure', "Today's adventure", 'Planty park after school', 'leaf', 'leaf', '2x1', [
-      checklistBlock('Find 3 things', ['A red leaf', 'A chestnut', 'A pigeon feather'], [false, false, false])
-    ], "Today's adventure: find a red leaf, a chestnut and a pigeon feather in the park."),
-    tile('kd-swim', 'reminder', 'Swimming 16:30', 'Pack goggles + towel', 'bell', 'sky', '2x1', [
-      checklistBlock('', ['Goggles', 'Towel', 'Swim cap'], [false, false, false])
-    ], 'Swimming at 4:30. Pack goggles, towel and swim cap.'),
-    tile('kd-pickup', 'note', 'Tata picks you up', '15:00 at the school gate', 'people', 'ink', '2x1', [
-      textBlock('Wait inside if it rains.')
-    ], 'Dad picks you up at 3 PM at the school gate.')
+    tile('kd-screen', 'screentime', 'Energy today', '', 'bolt_fill', 'mint', '2x1', [
+      progressBlock('', '1 h 10 min left · fair share', 70 / 120)
+    ], 'Energy today: 1 hour 10 minutes left.'),
+    tile('kd-adventure', 'adventure', 'Today\'s adventure', '', 'flag_fill', 'sky', '2x1', [
+      textBlock('Find three red leaves on the way home.')
+    ], 'Today\'s adventure: find three red leaves on the way home.'),
+    tile('kd-weather', 'weather', '14°', '', 'rain', 'peach', '1x1', [
+      textBlock('Rain · boots!')
+    ], '14 degrees and rain. Wear your boots!'),
+    tile('kd-photo', 'custom', 'Send to Babcia', '', 'camera_fill', 'rose', '1x1', [
+      textBlock('a photo')
+    ], 'Send a photo to Babcia.')
   ];
 }
 
 function lowVisionTiles(): TileSpec[] {
   return [
-    tile('lv-call-tomek', 'call', 'Call Tomek', 'Your brother', 'phone', 'sky', '2x1', [
-      buttonsBlock([act('Call', 'call', 'Tomek')])
-    ], 'Call Tomek, your brother.'),
-    tile('lv-drops', 'pills', 'Eye drops 9:00', 'Both eyes, 1 drop', 'pill', 'mint', '2x1', [
-      bigBlock('9:00', 'Next dose'),
-      buttonsBlock([act('Done', 'done', 'drops'), act('Read aloud', 'speak', '')])
-    ], 'Eye drops at 9 o clock, one drop in each eye.'),
-    tile('lv-bus', 'commute', 'Bus 179 in 6 min', 'Stop: Rondo Mogilskie', 'bus', 'sun', '2x1', [
-      bigBlock('6 min', 'to Rondo Mogilskie'),
-      buttonsBlock([act('Guide me to the stop', 'navigate', 'Rondo Mogilskie')])
-    ], 'Bus 179 leaves in 6 minutes from Rondo Mogilskie.'),
-    tile('lv-weather', 'weather', '11° cloudy', 'Kraków', 'weather', 'peach', '2x1', [
-      weatherBlock('11°', 'Cloudy, dry, 8-12°', ['A light jacket is enough'])
-    ], 'It is 11 degrees and cloudy. A light jacket is enough.'),
-    tile('lv-messages', 'note', 'Read my messages', '2 new from Tomek', 'speaker', 'grape', '2x1', [
-      buttonsBlock([act('Read aloud', 'speak', 'messages')])
-    ], 'You have 2 new messages from Tomek. Tap to hear them.'),
-    tile('lv-sos', 'sos', 'SOS', 'Hold to call for help', 'sos', 'ink', '2x1', [
-      buttonsBlock([act('Hold for help', 'sos', 'Tomek')])
-    ], 'S O S. Hold to call Tomek and share your location.')
+    tile('lv-speak', 'custom', 'Hold to speak', '', 'mic', 'ink', '2x1', [
+      textBlock('Ask anything. I will read it back.')
+    ], 'Hold to speak. Ask anything. I will read it back.'),
+    tile('lv-call-ania', 'call', 'Call Ania', '', 'phone', 'leaf', '1x1', [
+      buttonsBlock([act('Call', 'call', 'Ania')])
+    ], 'Call Ania.'),
+    tile('lv-sos', 'sos', 'SOS', '', 'sos', 'rose', '1x1', [
+      buttonsBlock([act('Hold 2 s', 'sos', 'Ania')])
+    ], 'S O S. Hold for two seconds.'),
+    tile('lv-weather', 'weather', '14°, rain', '', 'rain', 'sky', '2x1', [
+      textBlock('Umbrella. Warmer by 3 pm.')
+    ], '14 degrees and rain. Take the umbrella. Warmer by three.'),
+    tile('lv-messages', 'note', '2 new messages', '', 'mail', 'sun', '2x1', [
+      textBlock('Tap to hear them')
+    ], 'Two new messages. Ania: dinner at seven? Clinic: appointment Thursday at ten.')
   ];
 }
 
 function everydayTiles(): TileSpec[] {
   return [
-    tile('ev-dinner', 'plan', 'Dinner Fri 19:30', 'Kazimierz · Ola, Kuba + you', 'food', 'grape', '2x2', [
-      chipsBlock(['vegan', 'Kazimierz', 'under 80 zł']),
-      listBlock('Options', ['Veganda · ~62 zł · 2 votes', 'Krowarzywa · ~45 zł · 1 vote', 'Glonojad · ~55 zł']),
-      actionChipsBlock([act('Veganda', 'vote', 'Veganda'), act('Krowarzywa', 'vote', 'Krowarzywa'),
-        act('Glonojad', 'vote', 'Glonojad')])
-    ], 'Dinner on Friday at 7:30 PM in Kazimierz with Ola and Kuba. Veganda leads with 2 votes.'),
-    tile('ev-focus', 'timer', 'Focus 25:00', 'Deep work: pitch deck', 'timer', 'sky', '2x1', [
-      timerBlock('Phone on silent while it runs', '25')
-    ], 'Focus timer, 25 minutes for the pitch deck.'),
-    tile('ev-tram', 'commute', 'Tram 52 in 4 min', 'Rondo Grzegórzeckie → Rynek', 'tram', 'sun', '2x1', [
-      bigBlock('4 min', 'then 12 min ride'),
-      buttonsBlock([act('Directions', 'navigate', 'Rondo Grzegórzeckie')])
-    ], 'Tram 52 in 4 minutes from Rondo Grzegórzeckie.'),
-    tile('ev-weather', 'weather', '14° rain', 'Kraków', 'rain', 'peach', '1x1', [
-      weatherBlock('14°', 'Rain, 9-16°', ['Umbrella'])
-    ], '14 degrees, rain until 3 PM.'),
-    tile('ev-gym', 'reminder', 'Gym 7:30', 'Legs day', 'walk', 'mint', '1x1', [
-      textBlock('Tomorrow')
-    ], 'Gym tomorrow at 7:30.'),
-    tile('ev-mum', 'call', 'Call Mum', 'Sunday ritual', 'phone', 'coral', '1x1', [
-      buttonsBlock([act('Call', 'call', 'Mum')])
-    ], 'Call Mum.'),
-    tile('ev-guardian', 'guardian', 'Guardian', '2 spam calls blocked', 'shield', 'ink', '1x1', [
-      textBlock('Demo data')
-    ], 'Guardian blocked 2 spam calls today. Demo data.'),
-    tile('ev-groceries', 'note', 'Groceries', 'Biedronka on the way home', 'check', 'leaf', '2x1', [
-      checklistBlock('', ['Oat milk', 'Tofu', 'Sourdough bread', 'Apples'], [false, true, false, false])
-    ], 'Groceries: oat milk, tofu, sourdough bread, apples.'),
-    tile('ev-demo', 'reminder', 'HackYeah demo 09:00', 'Tauron Arena · stage B', 'flag', 'coral', '2x1', [
-      progressBlock('Slides ready', '4 of 5', 0.8),
-      buttonsBlock([act('Remind 30 min before', 'remind', '08:30')])
-    ], 'HackYeah demo at 9 AM. Slides 4 of 5 ready.')
+    tile('ev-tram', 'commute', 'Tram 18 in 6 min', '', 'tram', 'sky', '2x1', [
+      textBlock('Kazimierz → Rynek · leave 8:12')
+    ], 'Tram 18 in 6 minutes, Kazimierz to Rynek. Leave at 8:12.'),
+    tile('ev-weather', 'weather', 'Rain', '', 'rain', 'sand', '1x1', [
+      bigBlock('14°', '')
+    ], '14 degrees and rain.'),
+    tile('ev-focus', 'timer', 'Focus', '', 'timer', 'plum', '1x1', [
+      timerBlock('', '25')
+    ], 'Focus timer, 25 minutes.'),
+    tile('ev-dinner', 'plan', 'Dinner Fri 19:30', '', 'food', 'peach', '2x2', [
+      textBlock('Veganda · Kazimierz · ~65 zł'),
+      chipsBlock(['Ola ✓', 'Kuba ?', 'You ✓']),
+      buttonsBlock([act('Vote', 'vote', 'Veganda'), act('Change', 'open', '')])
+    ], 'Dinner on Friday at 7:30 PM at Veganda in Kazimierz, about 65 zloty. Ola is in, Kuba maybe.'),
+    tile('ev-friends', 'plan', 'Ola, Kuba free', '', 'people', 'mint', '2x1', [
+      textBlock('Tonight · only free/busy shared')
+    ], 'Ola and Kuba are free tonight. Only free or busy is shared.'),
+    tile('ev-calendar', 'reminder', 'Standup 10:00', '', 'calendar', 'sun', '2x1', [
+      textBlock('+2 more today')
+    ], 'Standup at 10, and 2 more today.'),
+    tile('ev-run', 'custom', 'Run', '', 'figure_run', 'leaf', '1x1', [
+      bigBlock('12 km', '')
+    ], 'Run, 12 kilometres.'),
+    tile('ev-call-ola', 'call', 'Call Ola', '', 'phone', 'rose', '1x1', [
+      buttonsBlock([act('Call', 'call', 'Ola')])
+    ], 'Call Ola.'),
+    tile('ev-music', 'custom', 'Playlist', '', 'music', 'ink', '1x1', [], 'Playlist.'),
+    tile('ev-photos', 'custom', 'Photos', '', 'heart_square_stack', 'sky', '1x1', [], 'Photos.'),
+    tile('ev-inbox', 'note', '3 unread', '', 'mail', 'plum', '2x1', [
+      textBlock('Ola: see you Fri?')
+    ], '3 unread messages. Ola: see you Friday?'),
+    tile('ev-steps', 'custom', '6 412 steps', '', 'figure_walk', 'sand', '2x1', [
+      progressBlock('', '64% of 10 000', 0.6412)
+    ], '6412 steps, 64 percent of 10 thousand.')
   ];
 }
 

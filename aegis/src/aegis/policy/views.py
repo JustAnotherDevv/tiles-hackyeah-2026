@@ -174,8 +174,113 @@ def control_views(rt: Any, snap: PolicySnapshot, stats: DecisionStats | None = N
     return out
 
 
+#: per-control test evidence from the last self-test report, cached by (path, mtime)
+_EVIDENCE_CACHE: dict[str, Any] = {"key": None, "value": None}
+
+
+def _case_controls(case: dict[str, Any]) -> list[str]:
+    """Controls a passing case is credited to: the deciding control when it is one of the expected
+    ones (a list = any of), else every expected control."""
+    exp = case.get("control")
+    exp_l = [str(x) for x in exp] if isinstance(exp, list) else ([str(exp)] if exp else [])
+    got = case.get("got_control")
+    if got and str(got) in exp_l:
+        return [str(got)]
+    return exp_l
+
+
+def test_evidence(rt: Any) -> dict[str, Any] | None:
+    """Per-control core-test evidence from `<reports_dir>/results.json` (schema aegis.selftest/1).
+
+    Returns `{"generated_at", "git_sha", "mode", "controls": {cid: {attack_pass, benign_pass, fail}}}`
+    or None when no report exists / it is unreadable. Only `tier: core` cases count; an attack case
+    counts for a control only when it passed with the right action AND that control decided it.
+    """
+    try:
+        from aegis.metrics.perf import reports_dir
+
+        path = reports_dir(rt) / "results.json"
+        st = path.stat()
+    except Exception:
+        return None
+    key = (str(path), st.st_mtime_ns, st.st_size)
+    if _EVIDENCE_CACHE["key"] == key:
+        return _EVIDENCE_CACHE["value"]
+    try:
+        import json
+
+        data = json.loads(path.read_text(encoding="utf-8"))
+        cases = list(data.get("cases") or [])
+    except Exception:
+        log.warning("coverage: self-test report unreadable at %s", path)
+        return None
+    per: dict[str, dict[str, int]] = {}
+    for c in cases:
+        if not isinstance(c, dict) or (c.get("tier") or "core") != "core":
+            continue
+        outcome, pol = str(c.get("outcome") or ""), str(c.get("polarity") or "")
+        if outcome == "fail":
+            for cid in _case_controls(c):
+                per.setdefault(cid, {"attack_pass": 0, "benign_pass": 0, "fail": 0})["fail"] += 1
+            continue
+        if pol == "attack" and outcome == "pass":
+            for cid in _case_controls(c):
+                per.setdefault(cid, {"attack_pass": 0, "benign_pass": 0, "fail": 0})["attack_pass"] += 1
+        elif pol == "benign" and outcome in ("pass", "pass_other"):
+            exp = c.get("control")
+            for cid in [str(x) for x in exp] if isinstance(exp, list) else ([str(exp)] if exp else []):
+                per.setdefault(cid, {"attack_pass": 0, "benign_pass": 0, "fail": 0})["benign_pass"] += 1
+    value = {
+        "generated_at": data.get("generated_at"),
+        "git_sha": data.get("git_sha"),
+        "mode": data.get("mode"),
+        "controls": per,
+    }
+    _EVIDENCE_CACHE.update(key=key, value=value)
+    return value
+
+
+#: control states, best first (an item takes the best state among its mapped controls)
+_STATE_ORDER = ("covered", "enforced_failing", "enforced_untested", "monitor", "not_implemented", "disabled")
+_STATE_TEXT = {
+    "covered": "enforced and tested (passing core attack case)",
+    "enforced_failing": "enforced, but a core test case is failing",
+    "enforced_untested": "enforced, untested (no passing core attack case in the last self-test)",
+    "monitor": "monitor only (would-decide, never enforces)",
+    "not_implemented": "configured but not implemented",
+    "disabled": "disabled",
+}
+
+
+def control_state(rt: Any, snap: PolicySnapshot, cid: str, evidence: dict[str, Any] | None) -> str:
+    """Honest per-control state for coverage: covered requires enabled + enforce + implemented +
+    >=1 passing core attack case attributed to the control + no failing core case."""
+    cfg = snap.controls.get(cid)
+    if cfg is None or not cfg.enabled or cfg.mode == "off":
+        return "disabled"
+    if _registry(rt).get(cid) is None:
+        return "not_implemented"
+    if cfg.mode == "monitor":
+        return "monitor"
+    ev = ((evidence or {}).get("controls") or {}).get(cid) or {}
+    if ev.get("fail"):
+        return "enforced_failing"
+    if ev.get("attack_pass", 0) >= 1:
+        return "covered"
+    return "enforced_untested"
+
+
 def coverage(rt: Any, snap: PolicySnapshot) -> dict[str, Any]:
+    """`/api/coverage`. An item is **covered** only when at least one control mapped to it (policy
+    `owasp:` tags) is enabled, enforcing, implemented AND has a passing core attack test case in the
+    latest self-test report (`reports/results.json`) with no failing core case. Enforced controls
+    without that evidence make the item **partial** (`detail: enforced_untested`), monitor-only
+    controls make it **partial** (`detail: monitor`), disabled-only items are **disabled**, items
+    without any mapped control are **uncovered**. `status` keeps the 4-value contract enum; the
+    additive keys `detail`, `reason`, `enforcing`, `tested` and per-control `control_states` say why.
+    """
     reg = _registry(rt)
+    evidence = test_evidence(rt)
     by_item: dict[str, list[str]] = {}
     for cid in set(catalog.CATALOG) | set(reg) | set(snap.controls):
         cfg = snap.controls.get(cid)
@@ -187,13 +292,12 @@ def coverage(rt: Any, snap: PolicySnapshot) -> dict[str, Any]:
         for item in owasp:
             by_item.setdefault(str(item), []).append(cid)
 
+    states: dict[str, str] = {}
+
     def state(cid: str) -> str:
-        cfg = snap.controls.get(cid)
-        if cfg is None or not cfg.enabled or cfg.mode == "off":
-            return "disabled"
-        if reg.get(cid) is None or cfg.mode == "monitor":
-            return "partial"
-        return "covered"
+        if cid not in states:
+            states[cid] = control_state(rt, snap, cid, evidence)
+        return states[cid]
 
     fws: list[dict[str, Any]] = []
     for fw in frameworks():
@@ -202,13 +306,40 @@ def coverage(rt: Any, snap: PolicySnapshot) -> dict[str, Any]:
             iid = str(it.get("id"))
             ctls = sorted(set(by_item.get(iid, [])), key=catalog.sort_key)
             platform = PLATFORM_COVERAGE.get(iid, [])
+            cstates = {c: state(c) for c in ctls}
             if platform and not ctls:
-                status = "covered"
+                status, detail = "covered", "platform"
             elif not ctls:
-                status = "uncovered"
+                status, detail = "uncovered", "no_control"
             else:
-                states = {state(c) for c in ctls}
-                status = "covered" if "covered" in states else "partial" if "partial" in states else "disabled"
-            items.append({"id": iid, "name": it.get("name") or iid, "status": status, "controls": ctls + platform})
+                best = min(cstates.values(), key=_STATE_ORDER.index)
+                detail = best
+                status = ("covered" if best == "covered" else
+                          "disabled" if best == "disabled" else "partial")
+            enforcing = [c for c, s in cstates.items() if s in ("covered", "enforced_failing", "enforced_untested")]
+            tested = [c for c, s in cstates.items() if s == "covered"]
+            if detail == "platform":
+                reason = "covered by platform features: " + ", ".join(platform)
+            elif detail == "no_control":
+                reason = "no control is mapped to this item"
+            elif status == "covered":
+                reason = "enforced and tested by " + ", ".join(tested)
+            else:
+                reason = _STATE_TEXT.get(detail, detail) + (": " + ", ".join(
+                    c for c, s in cstates.items() if s == detail) if cstates else "")
+                if detail in ("enforced_untested",) and evidence is None:
+                    reason += " (no self-test report found; run `make test`)"
+            items.append({"id": iid, "name": it.get("name") or iid, "status": status, "controls": ctls + platform,
+                          "detail": detail, "reason": reason, "enforcing": enforcing, "tested": tested,
+                          "control_states": cstates})
         fws.append({"id": fw.get("id"), "name": fw.get("name"), "items": items})
-    return {"frameworks": fws}
+    return {
+        "frameworks": fws,
+        "evidence": {
+            "source": "reports/results.json" if evidence is not None else None,
+            "generated_at": (evidence or {}).get("generated_at"),
+            "git_sha": (evidence or {}).get("git_sha"),
+            "rule": "covered = mapped control enabled + enforce + implemented + >=1 passing core attack case"
+                    " (attributed to it) + no failing core case in the latest self-test",
+        },
+    }

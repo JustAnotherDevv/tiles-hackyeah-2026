@@ -170,7 +170,7 @@ the build-status table: [docs/architecture.md](docs/architecture.md).
 - **curl** against the data plane (always answers 200 with a verdict):
 
 ```bash
-curl -s localhost:8787/v1/guard -H 'content-type: application/json' -H 'X-Aegis-Agent: trading-copilot@trading' \
+curl -s localhost:8787/v1/guard -H 'content-type: application/json' -H 'X-Aegis-Agent: trading-copilot@trading' -H 'X-Aegis-Agent-Key: aegis_demo_trading_copilot_0000000000000003_NOT_A_SECRET' \
   -d '{"interaction":{"surface":"prompt.user","destination":"remote","text":"PESEL 44051401359, IBAN PL61 1090 1014 0000 0712 1981 2874"}}'
 ```
 

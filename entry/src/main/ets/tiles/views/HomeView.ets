@@ -1,56 +1,27 @@
-import { LengthMetrics } from '@kit.ArkUI';
+import { window } from '@kit.ArkUI';
+import { common } from '@kit.AbilityKit';
 import { Profile, Suggestion, TileAction, TileSpec } from '../model/Tile';
 import { K_LIST, K_PENDING, K_PROFILE, K_SUGGESTIONS, TileStore } from '../data/TileStore';
 import { PROFILE_IDS, profileBlurb, profileFor } from '../data/SeedTiles';
-import { ThemePalette, TilesTheme, TypeScale, withAlpha } from '../theme/TilesTheme';
+import { LL_FONT_FAMILY, ProfileLayout, ThemePalette, TilesTheme, TypeScale, withAlpha } from '../theme/TilesTheme';
 import { TileView } from '../components/TileView';
 import { AssistantSheet } from './AssistantSheet';
+import { AskDock, LLWaveBars } from './AskDock';
 import { Adaptation } from '../ai/Adaptation';
 import { PlatformKeys } from '../platform/TilesPlatform';
 import { Speech } from '../platform/Speech';
 import { TileHaptics } from '../platform/TileHaptics';
-import { K_ASSISTANT_SEED, K_DARK, K_REDUCE_MOTION, openTileDetail, platformAction, profileAccent } from './ShellKeys';
+import { K_ASSISTANT_SEED, K_DARK, K_REDUCE_MOTION, openTileDetail, platformAction } from './ShellKeys';
 
 const DAYS: string[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS: string[] = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September',
   'October', 'November', 'December'];
-
-/** Time-of-day header wash: two palette hues blended softly into the warm page background. */
-class DayMood {
-  greeting: string = 'Hello';
-  a: string = '#FFC83D';
-  b: string = '#FF9F6B';
-}
-
-function moodNow(): DayMood {
-  const h: number = new Date().getHours();
-  const m: DayMood = new DayMood();
-  if (h >= 5 && h < 12) {
-    m.greeting = 'Good morning';
-    m.a = '#FFC83D';
-    m.b = '#FF9F6B';
-  } else if (h >= 12 && h < 18) {
-    m.greeting = 'Good afternoon';
-    m.a = '#3DA5FF';
-    m.b = '#2ED3A0';
-  } else if (h >= 18 && h < 23) {
-    m.greeting = 'Good evening';
-    m.a = '#9B7BFF';
-    m.b = '#FF6B5A';
-  } else {
-    m.greeting = 'Good night';
-    m.a = '#9B7BFF';
-    m.b = '#3DA5FF';
-  }
-  return m;
-}
+/** Tile types that count as "things today" in the everyday sub line. */
+const AGENDA_TYPES: string[] = ['plan', 'reminder', 'pills', 'commute', 'timer', 'homework'];
+/** Profile chooser chips (prototype ICPS labels), in PROFILE_IDS order. */
+const CHIP_LABELS: string[] = ['Senior', 'Kid', 'Low vision', 'Everyday'];
 
 /** @Builder args are passed as ONE object literal so ArkUI passes them by reference (reactive). */
-class ChipArgs {
-  text: string = '';
-  color: string = 'sky';
-}
-
 class IconBtnArgs {
   icon: Resource = $r('sys.symbol.gearshape');
   label: string = '';
@@ -58,15 +29,37 @@ class IconBtnArgs {
   route: string = '';
 }
 
-function dateLine(): string {
-  const d: Date = new Date();
-  return DAYS[d.getDay()] + ', ' + d.getDate().toString() + ' ' + MONTHS[d.getMonth()];
+class ChipArgs {
+  id: string = '';
+  label: string = '';
+}
+
+/** Polish vocative for the seeded people (Halina -> Halino, Michał -> Michale). */
+function vocative(name: string): string {
+  if (name === 'Halina') {
+    return 'Halino';
+  }
+  if (name === 'Michał') {
+    return 'Michale';
+  }
+  return name;
+}
+
+/** "Pills 8:00" -> "pills at 8:00" (empty if the title has no time). */
+function atTime(title: string): string {
+  const m: RegExpMatchArray | null = title.match(/^(.*?)\s*(\d{1,2}:\d{2})/);
+  if (m === null || m.length < 3) {
+    return '';
+  }
+  const what: string = m[1].trim();
+  return (what.length > 0 ? what.substring(0, 1).toLowerCase() + what.substring(1) + ' at ' : 'at ') + m[2];
 }
 
 /**
- * Tiles home: warm time-of-day header, profile chip (profile switcher), caregiver badge, adaptation chips,
- * suggestion / approval banners, the adaptive tile grid (columns per profile, 2x1 / 2x2 spans, long-press to
- * edit: drag to reorder, remove) and the pinned "Ask Tiles…" assistant bar that opens the Assistant sheet.
+ * Tiles home in Living Light (design direction C): full-screen soft gradient, "Who is this phone for?" chooser
+ * chips, big Manrope greeting + sub line, the adaptive tile grid (per-profile cols / row height / gap from
+ * TilesTheme.layoutFor; long-press to edit: wiggle, drag to reorder, remove), glass suggestion / approval cards,
+ * and the pinned Ask dock (AskDock) that opens the Assistant sheet.
  */
 @Component
 export struct HomeView {
@@ -81,16 +74,29 @@ export struct HomeView {
   @StorageProp(K_ASSISTANT_SEED) @Watch('onAssistantSeed') assistantSeed: string = '';
   @State editing: boolean = false;
   @State showAssistant: boolean = false;
-  @State showProfiles: boolean = false;
   @State seed: string = '';
   @State gridW: number = 0;
-  @State mood: DayMood = moodNow();
-  @State today: string = dateLine();
   @State dragIndex: number = -1;
+  @State wig: number = 0; // edit-mode wiggle phase 0..1 (looping)
+  @State staggering: boolean = false; // stagger tile entrances while a profile's home is rebuilt
+  /** Immersive window: status-bar / gesture-bar heights (vp) and where our root starts on screen. */
+  @State sysTop: number = 0;
+  @State sysBottom: number = 0;
+  @State rootY: number = 0;
 
   aboutToAppear(): void {
-    this.mood = moodNow();
-    this.today = dateLine();
+    try {
+      const ctx: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      window.getLastWindow(ctx).then((win: window.Window) => {
+        const sys: window.AvoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+        const nav: window.AvoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+        this.sysTop = this.getUIContext().px2vp(sys.topRect.height);
+        this.sysBottom = this.getUIContext().px2vp(nav.bottomRect.height);
+      }).catch(() => {
+      });
+    } catch (e) {
+      // no window (preview)
+    }
     if (this.assistantSeed.length > 0) {
       this.onAssistantSeed();
     }
@@ -107,6 +113,16 @@ export struct HomeView {
 
   // ---------- derived ----------
 
+  /** Extra top padding only when the page really lays out under the status bar. */
+  topPad(): number {
+    return Math.max(0, this.sysTop - this.rootY);
+  }
+
+  /** Dock distance from the bottom edge: clear of the gesture bar when laid out under it. */
+  bottomPad(): number {
+    return this.rootY < 1 && this.sysTop > 0 ? Math.max(16, this.sysBottom + 10) : 16;
+  }
+
   pal(): ThemePalette {
     return TilesTheme.palette(this.dark, this.profile.highContrast);
   }
@@ -115,9 +131,35 @@ export struct HomeView {
     return TilesTheme.type(this.profile.textScale);
   }
 
+  lay(): ProfileLayout {
+    return TilesTheme.layoutFor(this.profile);
+  }
+
+  /** Card text scale: the profile's fs, never below 1 and capped at 1.3. */
+  cfs(): number {
+    return Math.min(1.3, Math.max(1, this.lay().fs));
+  }
+
+  /** Reduced motion: system/app setting, or a profile that asks for it (low vision). */
+  rm(): boolean {
+    return this.reduceMotion || this.lay().reducedMotion;
+  }
+
+  dur(ms: number): number {
+    return TilesTheme.dur(ms, this.rm());
+  }
+
   cols(): number {
-    const c: number = Math.floor(this.profile.columns);
+    const c: number = Math.floor(this.lay().cols);
     return c >= 1 && c <= 6 ? c : 4;
+  }
+
+  gap(): number {
+    return this.lay().gap;
+  }
+
+  pad(): number {
+    return this.lay().pad;
   }
 
   columnsTemplate(): string {
@@ -128,34 +170,20 @@ export struct HomeView {
     return parts.join(' ');
   }
 
-  /** Height of one grid row (vp): wide enough for the profile's type scale, never squashed. */
   rowH(): number {
-    const gap: number = TilesTheme.GRID_GAP;
-    const w: number = this.gridW > 0 ? this.gridW : 360;
-    const cell: number = (w - gap * (this.cols() - 1)) / this.cols();
-    const s: number = Math.max(1, Math.min(1.8, this.profile.textScale));
-    const byWidth: number = this.cols() <= 2 ? cell * 0.62 : cell * 1.25;
-    return Math.round(Math.max(this.cols() <= 2 ? 128 * s : 136 * s, byWidth));
-  }
-
-  /** Big-type 2-column homes (senior / low vision): tiles size to their content instead of fixed rows. */
-  autoRows(): boolean {
-    return this.cols() <= 2;
-  }
-
-  rowSpanOf(t: TileSpec): number {
-    return this.autoRows() ? 1 : TilesTheme.rowSpan(t.size);
+    return this.lay().rowH;
   }
 
   itemH(t: TileSpec): number {
-    return t.size === '2x2' ? this.rowH() * 2 + TilesTheme.GRID_GAP : this.rowH();
+    const span: number = TilesTheme.rowSpan(t.size);
+    return this.rowH() * span + this.gap() * (span - 1);
   }
 
   layoutOptions(): GridLayoutOptions {
     const irregular: number[] = [];
     for (let i = 0; i < this.tiles.length; i++) {
       const t: TileSpec = this.tiles[i];
-      if (TilesTheme.colSpan(t.size, this.cols()) > 1 || this.rowSpanOf(t) > 1) {
+      if (TilesTheme.colSpan(t.size, this.cols()) > 1 || TilesTheme.rowSpan(t.size) > 1) {
         irregular.push(i);
       }
     }
@@ -167,7 +195,7 @@ export struct HomeView {
         if (t === undefined) {
           return [1, 1];
         }
-        return [this.rowSpanOf(t), TilesTheme.colSpan(t.size, this.cols())];
+        return [TilesTheme.rowSpan(t.size), TilesTheme.colSpan(t.size, this.cols())];
       }
     };
     return opts;
@@ -201,8 +229,71 @@ export struct HomeView {
     return this.profile.caregiver.length > 0 ? this.profile.caregiver : 'your family';
   }
 
-  dur(ms: number): number {
-    return TilesTheme.dur(ms, this.reduceMotion);
+  /** Prototype greetings ("Dzień dobry, Halino", "Hej, Zosia!", "Morning, Daniel"), aware of the time of day. */
+  greeting(): string {
+    const h: number = new Date().getHours();
+    const name: string = this.profile.name.length > 0 ? this.profile.name : 'friend';
+    if (this.profile.id === 'kid') {
+      return 'Hej, ' + name + '!';
+    }
+    if (this.profile.id === 'senior' || this.profile.id === 'lowvision') {
+      return (h >= 18 || h < 4 ? 'Dobry wieczór, ' : 'Dzień dobry, ') + vocative(name);
+    }
+    const part: string = h >= 4 && h < 12 ? 'Morning' : (h >= 12 && h < 18 ? 'Afternoon' : 'Evening');
+    return part + ', ' + name;
+  }
+
+  firstTimed(types: string[]): string {
+    for (const t of this.tiles) {
+      if (types.indexOf(t.type) >= 0) {
+        const s: string = atTime(t.title);
+        if (s.length > 0) {
+          return s;
+        }
+      }
+    }
+    return '';
+  }
+
+  /** Sub line under the greeting: date + the one thing that matters for this person. */
+  subLine(): string {
+    const d: Date = new Date();
+    const id: string = this.profile.id;
+    const longDate: string = DAYS[d.getDay()] + ' ' + d.getDate().toString() + ' ' + MONTHS[d.getMonth()];
+    if (id === 'senior') {
+      const p: string = this.firstTimed(['pills', 'reminder']);
+      return p.length > 0 ? longDate + ' · ' + p : longDate;
+    }
+    if (id === 'kid') {
+      const p: string = this.firstTimed(['reminder', 'plan', 'homework']);
+      return DAYS[d.getDay()] + ' · ' + (p.length > 0 ? p : this.thingsToday());
+    }
+    if (id === 'lowvision') {
+      return longDate + (this.profile.readAloud ? ' · everything is spoken' : '');
+    }
+    return DAYS[d.getDay()].substring(0, 3) + ' ' + d.getDate().toString() + ' ' +
+      MONTHS[d.getMonth()].substring(0, 3) + ' · ' + this.thingsToday();
+  }
+
+  thingsToday(): string {
+    let n: number = 0;
+    for (const t of this.tiles) {
+      if (AGENDA_TYPES.indexOf(t.type) >= 0) {
+        n++;
+      }
+    }
+    return n.toString() + (n === 1 ? ' thing today' : ' things today');
+  }
+
+  /** Prototype greetSize = round(24 * min(fs, 1.2)), floored at 22 so the dense profile still reads as a title. */
+  greetSize(): number {
+    return Math.max(22, Math.round(24 * Math.min(this.lay().fs, 1.2)));
+  }
+
+  /** Bottom color of the page gradient (fades tiles under the dock). */
+  pageEnd(): string {
+    const c: Array<[ResourceColor, number]> = this.pal().bgGradient.colors;
+    return c.length > 0 ? String(c[c.length - 1][0]) : this.pal().bg;
   }
 
   toast(msg: string): void {
@@ -217,7 +308,9 @@ export struct HomeView {
 
   openAssistant(seed: string): void {
     this.seed = seed;
-    this.editing = false;
+    if (this.editing) {
+      this.exitEdit();
+    }
     this.showAssistant = true;
   }
 
@@ -234,8 +327,8 @@ export struct HomeView {
       return;
     }
     if (a.kind === 'dismiss' || a.kind === 'toggle') {
-      // Removing / checking reflows the grid: animate the store change.
-      this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_SLOW) }, () => {
+      // Removing / checking reflows the grid: animate the store change with the Living Light curve.
+      this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR) }, () => {
         platformAction(a, t);
       });
       return;
@@ -243,22 +336,45 @@ export struct HomeView {
     platformAction(a, t);
   }
 
-  enterEdit(): void {
-    TileHaptics.tap();
-    this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_MED) }, () => {
-      this.editing = true;
+  startWiggle(): void {
+    if (this.rm()) {
+      return;
+    }
+    this.wig = 0;
+    this.getUIContext().animateTo({
+      duration: 320,
+      curve: Curve.EaseInOut,
+      iterations: -1,
+      playMode: PlayMode.Alternate
+    }, () => {
+      this.wig = 1;
     });
   }
 
+  stopWiggle(): void {
+    this.getUIContext().animateTo({ duration: 0 }, () => {
+      this.wig = 0.5;
+    });
+  }
+
+  enterEdit(): void {
+    TileHaptics.tap();
+    this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.DUR_SLOW) }, () => {
+      this.editing = true;
+    });
+    this.startWiggle();
+  }
+
   exitEdit(): void {
-    this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_MED) }, () => {
+    this.stopWiggle();
+    this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.DUR_SLOW) }, () => {
       this.editing = false;
     });
   }
 
   removeTile(t: TileSpec): void {
     TileHaptics.tap();
-    this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_SLOW) }, () => {
+    this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR) }, () => {
       TileStore.get().removeTile(t.id);
     });
     this.toast('Removed "' + t.title + '"');
@@ -268,21 +384,26 @@ export struct HomeView {
     if (from === to || from < 0 || to < 0) {
       return;
     }
-    this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_SLOW) }, () => {
+    this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR) }, () => {
       TileStore.get().moveTile(from, Math.min(to, this.tiles.length - 1));
     });
   }
 
   switchProfile(id: string): void {
-    this.showProfiles = false;
     if (id === this.profile.id) {
       return;
     }
     TileHaptics.success();
-    this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_SLOW) }, () => {
+    if (this.editing) {
+      this.exitEdit();
+    }
+    this.staggering = true;
+    this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR) }, () => {
       TileStore.get().switchProfile(id);
     });
-    this.toast('Tiles rebuilt the home for ' + profileFor(id).name);
+    setTimeout(() => {
+      this.staggering = false;
+    }, 1600);
   }
 
   decide(s: Suggestion, approve: boolean): void {
@@ -290,7 +411,7 @@ export struct HomeView {
       this.nav.pushPathByName('caregiver', '', true);
       return;
     }
-    this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_MED) }, () => {
+    this.getUIContext().animateTo({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR) }, () => {
       Adaptation.decide(s.id, approve);
     });
     this.toast(approve ? 'Done: ' + s.title : 'Okay, maybe later');
@@ -299,60 +420,37 @@ export struct HomeView {
   // ---------- header ----------
 
   @Builder
-  avatar(p: Profile, size: number) {
-    Text(p.name.length > 0 ? p.name.substring(0, 1) : '?')
-      .width(size)
-      .height(size)
-      .borderRadius(size / 2)
-      .textAlign(TextAlign.Center)
-      .fontSize(Math.round(size * 0.46))
-      .fontWeight(FontWeight.Bold)
-      .fontColor(TilesTheme.tile(profileAccent(p.id), p.highContrast, this.dark).on)
-      .backgroundColor(TilesTheme.tile(profileAccent(p.id), p.highContrast, this.dark).bg)
-  }
-
-  @Builder
-  headerAvatar() {
-    Text(this.profile.name.length > 0 ? this.profile.name.substring(0, 1) : '?')
-      .width(36)
-      .height(36)
-      .borderRadius(18)
-      .textAlign(TextAlign.Center)
-      .fontSize(17)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(TilesTheme.tile(profileAccent(this.profile.id), this.profile.highContrast, this.dark).on)
-      .backgroundColor(TilesTheme.tile(profileAccent(this.profile.id), this.profile.highContrast, this.dark).bg)
-  }
-
-  @Builder
   roundIconButton(a: IconBtnArgs) {
     Stack({ alignContent: Alignment.TopEnd }) {
       Button({ type: ButtonType.Circle, stateEffect: true }) {
         SymbolGlyph(a.icon)
-          .fontSize(22)
-          .fontColor([this.pal().text])
+          .fontSize(20)
+          .fontColor([this.pal().ink])
       }
-      .width(TilesTheme.TAP_MIN)
-      .height(TilesTheme.TAP_MIN)
+      .width(40)
+      .height(40)
       .backgroundColor(this.pal().surface)
-      .border({ width: this.profile.highContrast ? 2 : 1, color: this.pal().border })
+      .backdropBlur(TilesTheme.LL_BLUR)
+      .border({ width: this.profile.highContrast ? 1.5 : 0, color: this.pal().line })
+      .shadow(TilesTheme.LL_SHADOW_SOFT)
       .onClick(() => {
         this.nav.pushPathByName(a.route, '', true);
       })
 
       if (a.badge > 0) {
         Text(a.badge > 9 ? '9+' : a.badge.toString())
+          .fontFamily(LL_FONT_FAMILY)
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFFFFF')
-          .backgroundColor('#E5484D')
-          .borderRadius(10)
-          .height(20)
-          .constraintSize({ minWidth: 20 })
+          .backgroundColor(this.pal().danger)
+          .borderRadius(9)
+          .height(18)
+          .constraintSize({ minWidth: 18 })
           .padding({ left: 5, right: 5 })
           .textAlign(TextAlign.Center)
-          .border({ width: 2, color: this.pal().bg })
-          .transition(TransitionEffect.scale({ x: 0, y: 0 }).animation({ curve: TilesTheme.springIn() }))
+          .margin({ top: -4, right: -4 })
+          .transition(TransitionEffect.scale({ x: 0, y: 0 }).animation({ curve: TilesTheme.ease(), duration: 400 }))
       }
     }
     .accessibilityGroup(true)
@@ -360,48 +458,39 @@ export struct HomeView {
   }
 
   @Builder
-  chip(a: ChipArgs) {
-    Row({ space: 6 }) {
-      Circle().width(8).height(8).fill(TilesTheme.tile(a.color, this.profile.highContrast, this.dark).bg)
-      Text(a.text)
-        .fontSize(Math.round(12 * Math.min(1.4, this.profile.textScale)))
-        .fontColor(this.pal().text)
-        .fontWeight(FontWeight.Medium)
-    }
-    .padding({ left: 10, right: 12, top: 6, bottom: 6 })
-    .borderRadius(TilesTheme.RADIUS_CHIP)
-    .backgroundColor(withAlpha(this.pal().surface, this.dark ? 0.9 : 0.85))
-    .border({ width: this.profile.highContrast ? 1.5 : 0, color: this.pal().border })
+  profileChip(a: ChipArgs) {
+    Text(a.label)
+      .fontFamily(LL_FONT_FAMILY)
+      .fontSize(12.5)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(a.id === this.profile.id ? this.pal().onInk : this.pal().ink)
+      .maxLines(1)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
+      .textAlign(TextAlign.Center)
+      .layoutWeight(1)
+      .height(44)
+      .padding({ left: 4, right: 4 })
+      .borderRadius(TilesTheme.LL_RADIUS_PILL)
+      .backgroundColor(a.id === this.profile.id ? this.pal().ink : (this.dark ? Color.Transparent : '#66FFFFFF'))
+      .border({ width: 1.5, color: a.id === this.profile.id ? this.pal().ink : this.pal().line })
+      .animation({ curve: TilesTheme.ease(), duration: this.dur(300) })
+      .onClick(() => this.switchProfile(a.id))
+      .accessibilityText(profileBlurb(a.id) + (a.id === this.profile.id ? ', current' : ''))
   }
 
   @Builder
   header() {
-    Column({ space: TilesTheme.SPACE_M }) {
-      Row({ space: TilesTheme.SPACE_S }) {
-        Row({ space: TilesTheme.SPACE_S }) {
-          this.headerAvatar()
-          Text(this.profile.name)
-            .fontSize(Math.round(16 * Math.min(1.4, this.profile.textScale)))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.pal().text)
-            .maxLines(1)
-          SymbolGlyph($r('sys.symbol.chevron_down'))
-            .fontSize(16)
-            .fontColor([this.pal().textMuted])
-        }
-        .height(TilesTheme.TAP_MIN)
-        .padding({ left: 6, right: 14 })
-        .borderRadius(TilesTheme.RADIUS_CHIP)
-        .backgroundColor(this.pal().surface)
-        .border({ width: this.profile.highContrast ? 2 : 1, color: this.pal().border })
-        .onClick(() => {
-          this.showProfiles = true;
-        })
-        .accessibilityGroup(true)
-        .accessibilityText('Profile ' + this.profile.name + '. Switch person')
-
-        Blank()
-
+    Column({ space: 8 }) {
+      // "Who is this phone for?" eyebrow + caregiver / settings shortcuts
+      Row({ space: 8 }) {
+        Text('WHO IS THIS PHONE FOR?')
+          .fontFamily(LL_FONT_FAMILY)
+          .fontSize(12)
+          .fontWeight(FontWeight.Bold)
+          .letterSpacing(1.44)
+          .fontColor(this.pal().muted)
+          .layoutWeight(1)
+          .maxLines(1)
         this.roundIconButton({
           icon: $r('sys.symbol.person_2'),
           label: this.profile.caregiver.length > 0 ? this.profile.caregiver + '\'s approvals' : 'Approvals',
@@ -412,199 +501,247 @@ export struct HomeView {
       }
       .width('100%')
 
-      Column({ space: 2 }) {
-        Text(this.mood.greeting + ',')
-          .fontSize(Math.min(this.ty().title, 26))
-          .fontColor(this.pal().textMuted)
-          .fontWeight(FontWeight.Medium)
-        Text(this.profile.name.length > 0 ? this.profile.name : 'friend')
-          .fontSize(Math.min(Math.round(this.ty().headline * 1.35), 46))
-          .fontWeight(FontWeight.Bolder)
-          .fontColor(this.pal().text)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(dateLine())
-          .fontSize(Math.min(this.ty().label, 20))
-          .fontColor(this.pal().textMuted)
+      Row({ space: 6 }) {
+        ForEach(PROFILE_IDS, (id: string, i: number) => {
+          this.profileChip({ id: id, label: i < CHIP_LABELS.length ? CHIP_LABELS[i] : profileFor(id).name })
+        }, (id: string) => id)
       }
-      .alignItems(HorizontalAlign.Start)
       .width('100%')
-      .accessibilityGroup(true)
-      .accessibilityText(this.mood.greeting + ', ' + this.profile.name + '. ' + this.today)
+      .margin({ bottom: 6 })
 
-      Scroll() {
-        Row({ space: TilesTheme.SPACE_S }) {
-          if (this.profile.textScale > 1.05) {
-            this.chip({ text: 'Text ' + Math.round(this.profile.textScale * 100).toString() + '%', color: 'sun' })
-          }
-          if (this.profile.readAloud) {
-            this.chip({ text: 'Reads aloud', color: 'mint' })
-          }
-          if (this.profile.highContrast) {
-            this.chip({ text: 'High contrast', color: 'ink' })
-          }
-          if (this.profile.caregiver.length > 0) {
-            this.chip({ text: this.profile.caregiver + ' approves changes', color: 'grape' })
-          }
-          this.chip({ text: this.tiles.length.toString() + ' tiles', color: 'sky' })
-        }
-      }
-      .scrollable(ScrollDirection.Horizontal)
-      .scrollBar(BarState.Off)
-      .edgeEffect(EdgeEffect.Spring)
-      .width('100%')
-      .align(Alignment.Start)
-    }
-    .width('100%')
-    .padding({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER, top: TilesTheme.SPACE_M, bottom: TilesTheme.SPACE_L })
-  }
-
-  @Builder
-  editBar() {
-    Row({ space: TilesTheme.SPACE_M }) {
-      Column({ space: 2 }) {
-        Text('Arrange your home')
-          .fontSize(this.ty().title)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().text)
-        Text('Drag a tile to move it. Tap the red button to remove.')
-          .fontSize(this.ty().caption)
-          .fontColor(this.pal().textMuted)
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
-
-      Button('Done')
-        .fontSize(this.ty().label)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal().onAccent)
-        .backgroundColor(this.pal().accent)
-        .height(TilesTheme.TAP_MIN)
-        .padding({ left: 22, right: 22 })
-        .onClick(() => this.exitEdit())
-    }
-    .width('100%')
-    .padding({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER, top: TilesTheme.SPACE_L, bottom: TilesTheme.SPACE_L })
-    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.move(TransitionEdge.TOP)))
-  }
-
-  // ---------- banners ----------
-
-  @Builder
-  suggestionBanner() {
-    Column({ space: TilesTheme.SPACE_M }) {
-      Row({ space: TilesTheme.SPACE_M }) {
-        Stack() {
-          SymbolGlyph($r('sys.symbol.lightbulb_fill'))
-            .fontSize(22)
-            .fontColor([TilesTheme.tile('sun', this.profile.highContrast, this.dark).on])
-        }
-        .width(44)
-        .height(44)
-        .borderRadius(22)
-        .backgroundColor(TilesTheme.tile('sun', this.profile.highContrast, this.dark).bg)
-
-        Column({ space: 2 }) {
-          Text('Tiles noticed something')
-            .fontSize(this.ty().caption)
-            .fontColor(this.pal().textMuted)
-            .fontWeight(FontWeight.Medium)
-          Text(this.sugg().title)
-            .fontSize(this.ty().body)
+      Row({ space: 10 }) {
+        Column({ space: 3 }) {
+          Text(this.greeting())
+            .fontFamily(LL_FONT_FAMILY)
+            .fontSize(this.greetSize())
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.pal().text)
-          if (this.sugg().reason.length > 0 || this.sugg().detail.length > 0) {
-            Text(this.sugg().reason.length > 0 ? this.sugg().reason : this.sugg().detail)
-              .fontSize(this.ty().caption)
-              .fontColor(this.pal().textMuted)
-              .maxLines(2)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
+            .letterSpacing(Math.round(this.greetSize() * -0.02 * 100) / 100)
+            .lineHeight(Math.round(this.greetSize() * 1.1))
+            .fontColor(this.pal().ink)
+            .maxLines(2)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text(this.editing ? 'Drag a tile to move it · tap × to remove' : this.subLine())
+            .fontFamily(LL_FONT_FAMILY)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.pal().muted)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
-      }
-      .width('100%')
-      .alignItems(VerticalAlign.Top)
+        .accessibilityGroup(true)
+        .accessibilityText(this.greeting() + '. ' + this.subLine())
 
-      Flex({ direction: this.profile.textScale >= 1.3 ? FlexDirection.Column : FlexDirection.Row,
-        space: { main: LengthMetrics.vp(TilesTheme.SPACE_S) } }) {
-        Button(this.profile.caregiver.length > 0 ? 'Ask ' + this.profile.caregiver : 'Yes, do it')
-          .fontSize(this.ty().label)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().onAccent)
-          .backgroundColor(this.pal().accent)
-          .height(TilesTheme.tapTarget(this.profile))
-          .flexGrow(1)
-          .flexBasis(this.profile.textScale >= 1.3 ? 'auto' : 0)
-          .width('100%')
-          .onClick(() => this.decide(this.sugg(), true))
-        Button('Not now')
-          .fontSize(this.ty().label)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.pal().text)
-          .backgroundColor(this.pal().surfaceAlt)
-          .height(TilesTheme.tapTarget(this.profile))
-          .flexGrow(1)
-          .flexBasis(this.profile.textScale >= 1.3 ? 'auto' : 0)
-          .width('100%')
-          .onClick(() => this.decide(this.sugg(), false))
+        if (this.editing) {
+          Button('Done')
+            .fontFamily(LL_FONT_FAMILY)
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.pal().onInk)
+            .backgroundColor(this.pal().ink)
+            .height(44)
+            .padding({ left: 18, right: 18 })
+            .onClick(() => this.exitEdit())
+            .transition(TransitionEffect.OPACITY.combine(TransitionEffect.scale({ x: 0.8, y: 0.8 }))
+              .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.DUR_SLOW) }))
+        }
       }
       .width('100%')
+      .alignItems(VerticalAlign.Bottom)
+      .margin({ top: 4, bottom: 16 })
     }
-    .padding(TilesTheme.SPACE_L)
-    .borderRadius(TilesTheme.RADIUS_TILE)
-    .backgroundColor(this.pal().surface)
-    .border({ width: this.profile.highContrast ? 2 : 1, color: this.profile.highContrast ? this.pal().border :
-      withAlpha('#FFC83D', 0.6) })
-    .shadow({ radius: 16, color: this.pal().shadow, offsetY: 4 })
-    .margin({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER, bottom: TilesTheme.SPACE_M })
-    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: -16 }))
-      .animation({ curve: TilesTheme.springIn() }))
+    .width('100%')
+    .padding({ left: this.pad(), right: this.pad(), top: 10 + this.topPad() })
+  }
+
+  // ---------- glass cards ----------
+
+  @Builder
+  sugYes(inRow: boolean) {
+    Button(this.profile.caregiver.length > 0 ? 'Ask ' + this.profile.caregiver : 'Yes, do it')
+      .fontFamily(LL_FONT_FAMILY)
+      .fontSize(Math.round(15 * this.cfs()))
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.pal().onInk)
+      .backgroundColor(this.pal().ink)
+      .height(Math.max(48, TilesTheme.tapTarget(this.profile)))
+      .width(inRow ? 'auto' : '100%')
+      .layoutWeight(inRow ? 1.4 : 0)
+      .onClick(() => this.decide(this.sugg(), true))
   }
 
   @Builder
-  pendingBanner() {
-    Row({ space: TilesTheme.SPACE_M }) {
+  sugNo(inRow: boolean) {
+    Button('Not now')
+      .fontFamily(LL_FONT_FAMILY)
+      .fontSize(Math.round(15 * this.cfs()))
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.pal().ink)
+      .backgroundColor(Color.Transparent)
+      .border({ width: 1.5, color: this.pal().line })
+      .height(Math.max(48, TilesTheme.tapTarget(this.profile)))
+      .width(inRow ? 'auto' : '100%')
+      .layoutWeight(inRow ? 1 : 0)
+      .onClick(() => this.decide(this.sugg(), false))
+  }
+
+  @Builder
+  suggestionCard() {
+    Column({ space: 10 }) {
+      Row({ space: 8 }) {
+        SymbolGlyph($r('sys.symbol.wand_and_stars_fill'))
+          .fontSize(18)
+          .fontColor([this.pal().accent])
+        Text('TILES NOTICED')
+          .fontFamily(LL_FONT_FAMILY)
+          .fontSize(12)
+          .fontWeight(FontWeight.Bold)
+          .letterSpacing(0.96)
+          .fontColor(this.pal().accent)
+          .layoutWeight(1)
+        Button({ type: ButtonType.Circle, stateEffect: true }) {
+          SymbolGlyph($r('sys.symbol.xmark'))
+            .fontSize(18)
+            .fontColor([this.pal().muted])
+        }
+        .width(36)
+        .height(36)
+        .backgroundColor(Color.Transparent)
+        .accessibilityText('Dismiss')
+        .onClick(() => this.decide(this.sugg(), false))
+      }
+      .width('100%')
+      .height(36)
+
+      Text(this.sugg().title)
+        .fontFamily(LL_FONT_FAMILY)
+        .fontSize(Math.round(20 * this.cfs()))
+        .fontWeight(FontWeight.Bold)
+        .letterSpacing(-0.2)
+        .lineHeight(Math.round(23 * this.cfs()))
+        .fontColor(this.pal().ink)
+        .width('100%')
+      if (this.sugg().reason.length > 0 || this.sugg().detail.length > 0) {
+        Text(this.sugg().reason.length > 0 ? this.sugg().reason : this.sugg().detail)
+          .fontFamily(LL_FONT_FAMILY)
+          .fontSize(Math.round(14 * this.cfs()))
+          .lineHeight(Math.round(20 * this.cfs()))
+          .fontColor(this.pal().muted)
+          .maxLines(3)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .width('100%')
+      }
+
+      if (this.profile.textScale >= 1.7) {
+        Column({ space: 8 }) {
+          this.sugYes(false)
+          this.sugNo(false)
+        }
+        .width('100%')
+        .margin({ top: 2 })
+      } else {
+        Row({ space: 8 }) {
+          this.sugYes(true)
+          this.sugNo(true)
+        }
+        .width('100%')
+        .margin({ top: 2 })
+      }
+    }
+    .width('100%')
+    .padding({ left: 16, right: 12, top: 12, bottom: 16 })
+    .margin({ left: -4, right: -4 }) // glass cards sit 12 vp in; the dock sits 16 vp in
+    .borderRadius(TilesTheme.LL_RADIUS_L)
+    .backgroundColor(this.pal().surface)
+    .backdropBlur(TilesTheme.LL_BLUR)
+    .border({ width: this.profile.highContrast ? 1.5 : 0, color: this.pal().line })
+    .shadow(TilesTheme.LL_SHADOW_SHEET)
+    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 24 }))
+      .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) }))
+  }
+
+  @Builder
+  pendingCard() {
+    Row({ space: 12 }) {
       Stack() {
         SymbolGlyph($r('sys.symbol.clock_fill'))
           .fontSize(20)
-          .fontColor([TilesTheme.tile('grape', this.profile.highContrast, this.dark).on])
+          .fontColor([this.pal().onAccent])
       }
       .width(40)
       .height(40)
       .borderRadius(20)
-      .backgroundColor(TilesTheme.tile('grape', this.profile.highContrast, this.dark).bg)
+      .backgroundColor(this.pal().accent)
 
       Column({ space: 2 }) {
         Text(this.pending.length.toString() + (this.pending.length === 1 ? ' new tile is' : ' new tiles are') +
           ' waiting for ' + this.caregiverName())
-          .fontSize(this.ty().label)
+          .fontFamily(LL_FONT_FAMILY)
+          .fontSize(Math.round(15 * this.cfs()))
           .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal().text)
+          .fontColor(this.pal().ink)
         Text('They appear here as soon as they are approved.')
-          .fontSize(this.ty().caption)
-          .fontColor(this.pal().textMuted)
+          .fontFamily(LL_FONT_FAMILY)
+          .fontSize(Math.round(13 * this.cfs()))
+          .fontColor(this.pal().muted)
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
-      SymbolGlyph($r('sys.symbol.chevron_right'))
-        .fontSize(18)
-        .fontColor([this.pal().textMuted])
+      Circle()
+        .width(10)
+        .height(10)
+        .fill(this.pal().accent)
     }
     .width('100%')
     .constraintSize({ minHeight: TilesTheme.tapTarget(this.profile) })
-    .padding(TilesTheme.SPACE_M)
-    .borderRadius(TilesTheme.RADIUS_TILE)
-    .backgroundColor(withAlpha(TilesTheme.tile('grape', false, this.dark).bg, this.dark ? 0.22 : 0.14))
-    .border({ width: this.profile.highContrast ? 2 : 0, color: this.pal().border })
-    .margin({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER, bottom: TilesTheme.SPACE_M })
+    .padding({ left: 12, right: 16, top: 10, bottom: 10 })
+    .borderRadius(TilesTheme.LL_RADIUS_M)
+    .backgroundColor(this.pal().surface)
+    .backdropBlur(TilesTheme.LL_BLUR)
+    .border({ width: this.profile.highContrast ? 1.5 : 0, color: this.pal().line })
+    .shadow(TilesTheme.LL_SHADOW_TILE)
+    .margin({ bottom: 14 })
     .onClick(() => {
       this.nav.pushPathByName('caregiver', '', true);
     })
     .accessibilityGroup(true)
-    .transition(TransitionEffect.OPACITY.animation({ duration: this.dur(TilesTheme.DUR_MED) }))
+    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: -12 }))
+      .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR) }))
+  }
+
+  @Builder
+  speakingCard() {
+    Row({ space: 12 }) {
+      LLWaveBars({ color: this.pal().accent, reduced: this.rm() })
+      Text('Reading aloud…')
+        .fontFamily(LL_FONT_FAMILY)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal().ink)
+        .layoutWeight(1)
+        .maxLines(1)
+      Button({ type: ButtonType.Circle, stateEffect: true }) {
+        SymbolGlyph($r('sys.symbol.pause_fill'))
+          .fontSize(20)
+          .fontColor([this.pal().onInk])
+      }
+      .width(44)
+      .height(44)
+      .backgroundColor(this.pal().ink)
+      .accessibilityText('Stop reading')
+      .onClick(() => Speech.stop())
+    }
+    .width('100%')
+    .padding({ left: 16, right: 14, top: 12, bottom: 12 })
+    .margin({ left: -4, right: -4 })
+    .borderRadius(TilesTheme.LL_RADIUS_L)
+    .backgroundColor(this.pal().surface)
+    .backdropBlur(TilesTheme.LL_BLUR)
+    .shadow(TilesTheme.LL_SHADOW_SHEET)
+    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 16 }))
+      .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) }))
   }
 
   // ---------- grid ----------
@@ -614,39 +751,59 @@ export struct HomeView {
     Column() {
       TileView({ tile: t, profile: this.profile, dark: this.dark, fillHeight: true, reduceMotion: true })
     }
-    .width(this.gridW > 0 ? (this.gridW - TilesTheme.GRID_GAP * (this.cols() - 1)) / this.cols() *
-      TilesTheme.colSpan(t.size, this.cols()) + TilesTheme.GRID_GAP * (TilesTheme.colSpan(t.size, this.cols()) - 1) :
+    .width(this.gridW > 0 ? (this.gridW - this.gap() * (this.cols() - 1)) / this.cols() *
+      TilesTheme.colSpan(t.size, this.cols()) + this.gap() * (TilesTheme.colSpan(t.size, this.cols()) - 1) :
       160)
     .height(this.itemH(t))
-    .opacity(0.92)
-    .scale({ x: 1.04, y: 1.04 })
+    .opacity(0.95)
+    .scale({ x: 1.05, y: 1.05 })
+    .shadow(TilesTheme.LL_SHADOW_SHEET)
   }
 
   @Builder
   emptyState() {
-    Column({ space: TilesTheme.SPACE_M }) {
+    Column({ space: 12 }) {
       SymbolGlyph($r('sys.symbol.square_grid_2x2'))
         .fontSize(48)
         .fontColor([this.pal().accent])
       Text('Your home is empty')
+        .fontFamily(LL_FONT_FAMILY)
         .fontSize(this.ty().title)
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal().text)
+        .fontColor(this.pal().ink)
       Text('Ask Tiles for anything: "remind me about pills at 8", "call my daughter", "plan dinner on Friday".')
+        .fontFamily(LL_FONT_FAMILY)
         .fontSize(this.ty().body)
-        .fontColor(this.pal().textMuted)
+        .fontColor(this.pal().muted)
         .textAlign(TextAlign.Center)
       Button('Ask Tiles')
+        .fontFamily(LL_FONT_FAMILY)
         .fontSize(this.ty().label)
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal().onAccent)
-        .backgroundColor(this.pal().accent)
+        .fontColor(this.pal().onInk)
+        .backgroundColor(this.pal().ink)
         .height(TilesTheme.tapTarget(this.profile))
         .padding({ left: 28, right: 28 })
         .onClick(() => this.openAssistant(''))
     }
     .width('100%')
-    .padding(TilesTheme.SPACE_XXL)
+    .padding(32)
+    .borderRadius(TilesTheme.LL_RADIUS_L)
+    .backgroundColor(this.pal().surface)
+    .margin({ left: this.pad(), right: this.pad() })
+  }
+
+  /** Edit-mode wiggle: ±1.1° alternating per tile (prototype keyframes `wiggle`). */
+  wiggleAngle(i: number): number {
+    if (!this.editing || this.dragIndex === i || this.rm()) {
+      return 0;
+    }
+    const a: number = -1.1 + 2.2 * this.wig;
+    return i % 2 === 0 ? a : -a;
+  }
+
+  enterDelay(i: number): number {
+    return this.staggering && !this.rm() ? Math.min(i, 9) * TilesTheme.STAGGER : 0;
   }
 
   @Builder
@@ -655,60 +812,66 @@ export struct HomeView {
       ForEach(this.tiles, (t: TileSpec, i: number) => {
         GridItem() {
           Stack({ alignContent: Alignment.TopStart }) {
-            TileView({
-              tile: t,
-              profile: this.profile,
-              dark: this.dark,
-              fillHeight: !this.autoRows(),
-              reduceMotion: this.reduceMotion,
-              onAction: (a: TileAction, tt: TileSpec) => this.onTileAction(a, tt),
-              onLongPress: (tt: TileSpec) => {
-                if (!this.editing) {
-                  this.enterEdit();
+            Stack() {
+              TileView({
+                tile: t,
+                profile: this.profile,
+                dark: this.dark,
+                fillHeight: true,
+                reduceMotion: this.rm(),
+                onAction: (a: TileAction, tt: TileSpec) => this.onTileAction(a, tt),
+                onLongPress: (tt: TileSpec) => {
+                  if (!this.editing) {
+                    this.enterEdit();
+                  }
                 }
-              }
-            })
+              })
+            }
+            .width('100%')
+            .height('100%')
+            .rotate({ angle: this.wiggleAngle(i) })
 
             if (this.editing) {
               // Catches taps while arranging so tiles do not open; the grid itself still handles the drag.
               Column()
                 .width('100%')
                 .height('100%')
-                .borderRadius(TilesTheme.radiusFor(t.size))
-                .border({ width: 2, color: withAlpha(this.pal().text, 0.25), style: BorderStyle.Dashed })
-                .backgroundColor(withAlpha(this.pal().bg, 0.08))
                 .onClick(() => {
                   this.toast('Hold and drag to move "' + t.title + '"');
                 })
 
               Button({ type: ButtonType.Circle, stateEffect: true }) {
-                SymbolGlyph($r('sys.symbol.minus'))
-                  .fontSize(20)
-                  .fontColor(['#FFFFFF'])
+                SymbolGlyph($r('sys.symbol.xmark'))
+                  .fontSize(16)
+                  .fontWeight(FontWeight.Bold)
+                  .fontColor([this.pal().onInk])
               }
-              .width(TilesTheme.TAP_MIN - 8)
-              .height(TilesTheme.TAP_MIN - 8)
-              .backgroundColor('#E5484D')
-              .border({ width: 3, color: this.pal().bg })
+              .width(32)
+              .height(32)
+              .backgroundColor(this.pal().ink)
+              .shadow({ radius: 8, color: '#40000000', offsetY: 2 })
               .margin({ left: -6, top: -6 })
+              .responseRegion({ x: -8, y: -8, width: 48, height: 48 })
               .accessibilityText('Remove ' + t.title)
               .onClick(() => this.removeTile(t))
-              .transition(TransitionEffect.scale({ x: 0, y: 0 }).animation({ curve: TilesTheme.springIn() }))
+              .transition(TransitionEffect.OPACITY.combine(TransitionEffect.scale({ x: 0.4, y: 0.4 }))
+                .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.DUR_SLOW) }))
             }
           }
           .width('100%')
-          .height(this.autoRows() ? 'auto' : '100%')
-          .scale({ x: this.editing ? 0.95 : 1, y: this.editing ? 0.95 : 1 })
+          .height('100%')
           .opacity(this.dragIndex === i ? 0.35 : 1)
         }
-        .height(this.autoRows() ? 'auto' : this.itemH(t))
-        .transition(TransitionEffect.OPACITY.combine(TransitionEffect.scale({ x: 0.7, y: 0.7 }))
-          .animation({ curve: TilesTheme.springIn(), duration: this.dur(TilesTheme.DUR_SLOW) }))
+        .height(this.itemH(t))
+        .transition(TransitionEffect.OPACITY
+          .combine(TransitionEffect.scale({ x: TilesTheme.LL_ENTER_SCALE, y: TilesTheme.LL_ENTER_SCALE }))
+          .combine(TransitionEffect.translate({ y: TilesTheme.LL_ENTER_TY }))
+          .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_DUR), delay: this.enterDelay(i) }))
       }, (t: TileSpec) => t.id + '|' + t.size + '|' + t.subtitle + '|' + JSON.stringify(t.blocks))
     }
     .columnsTemplate(this.columnsTemplate())
-    .columnsGap(TilesTheme.GRID_GAP)
-    .rowsGap(TilesTheme.GRID_GAP)
+    .columnsGap(this.gap())
+    .rowsGap(this.gap())
     .editMode(this.editing)
     .onItemDragStart((event: ItemDragInfo, itemIndex: number) => {
       this.dragIndex = itemIndex;
@@ -724,60 +887,18 @@ export struct HomeView {
     .scrollBar(BarState.Off)
     .edgeEffect(EdgeEffect.None)
     .nestedScroll({ scrollForward: NestedScrollMode.PARENT_FIRST, scrollBackward: NestedScrollMode.SELF_FIRST })
+    .clip(false)
     .width('100%')
-    .padding({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER })
+    .padding({ left: this.pad(), right: this.pad() })
     .onAreaChange((o: Area, n: Area) => {
-      const w: number = Number(n.width) - TilesTheme.GUTTER * 2;
+      const w: number = Number(n.width) - this.pad() * 2;
       if (!isNaN(w) && Math.abs(w - this.gridW) > 1) {
         this.gridW = w;
       }
     })
   }
 
-  // ---------- assistant bar + sheets ----------
-
-  @Builder
-  assistantBar() {
-    Column() {
-      Row({ space: TilesTheme.SPACE_M }) {
-        SymbolGlyph($r('sys.symbol.wand_and_stars'))
-          .fontSize(24)
-          .fontColor([this.profile.highContrast ? this.pal().text : '#9B7BFF'])
-          .margin({ left: 6 })
-        Text('Ask Tiles…')
-          .fontSize(this.ty().body)
-          .fontColor(this.pal().textMuted)
-          .layoutWeight(1)
-          .maxLines(1)
-        Button({ type: ButtonType.Circle, stateEffect: true }) {
-          SymbolGlyph($r('sys.symbol.mic_fill'))
-            .fontSize(24)
-            .fontColor([this.pal().onAccent])
-        }
-        .width(TilesTheme.tapTarget(this.profile) - 4)
-        .height(TilesTheme.tapTarget(this.profile) - 4)
-        .backgroundColor(this.pal().accent)
-        .accessibilityText('Speak to Tiles')
-        .onClick(() => this.openAssistant('mic'))
-      }
-      .width('100%')
-      .height(TilesTheme.tapTarget(this.profile) + 8)
-      .padding({ left: 14, right: 6 })
-      .borderRadius(TilesTheme.RADIUS_CHIP)
-      .backgroundColor(this.pal().surface)
-    }
-    .padding(2.5)
-    .borderRadius(TilesTheme.RADIUS_CHIP)
-    .linearGradient({
-      angle: 90,
-      colors: this.profile.highContrast ? [[this.pal().border, 0], [this.pal().border, 1]] :
-        [['#FFC83D', 0], ['#FF6B5A', 0.33], ['#9B7BFF', 0.66], ['#3DA5FF', 1]]
-    })
-    .shadow({ radius: 24, color: this.pal().shadow, offsetY: 8 })
-    .onClick(() => this.openAssistant(''))
-    .accessibilityGroup(true)
-    .accessibilityText('Ask Tiles. Type or speak to make a new tile')
-  }
+  // ---------- sheets ----------
 
   @Builder
   assistantSheet() {
@@ -793,96 +914,30 @@ export struct HomeView {
     .height('100%')
   }
 
-  @Builder
-  profileSheet() {
-    Column({ space: TilesTheme.SPACE_M }) {
-      Text('Who is using this phone?')
-        .fontSize(22)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal().text)
-        .width('100%')
-      Text('Tiles rebuilds the whole home for each person.')
-        .fontSize(14)
-        .fontColor(this.pal().textMuted)
-        .width('100%')
-      ForEach(PROFILE_IDS, (id: string) => {
-        Row({ space: TilesTheme.SPACE_M }) {
-          this.avatar(profileFor(id), 48)
-          Column({ space: 2 }) {
-            Text(profileFor(id).name)
-              .fontSize(18)
-              .fontWeight(FontWeight.Bold)
-              .fontColor(this.pal().text)
-            Text(profileBlurb(id))
-              .fontSize(13)
-              .fontColor(this.pal().textMuted)
-              .maxLines(2)
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
-          if (id === this.profile.id) {
-            SymbolGlyph($r('sys.symbol.checkmark_circle_fill'))
-              .fontSize(26)
-              .fontColor([this.pal().accent])
-          }
-        }
-        .width('100%')
-        .constraintSize({ minHeight: 64 })
-        .padding(TilesTheme.SPACE_M)
-        .borderRadius(TilesTheme.RADIUS_TILE)
-        .backgroundColor(id === this.profile.id ?
-          withAlpha(TilesTheme.tile(profileAccent(id), false, this.dark).bg, 0.18) : this.pal().surfaceAlt)
-        .onClick(() => this.switchProfile(id))
-        .accessibilityGroup(true)
-        .accessibilityText(profileBlurb(id) + (id === this.profile.id ? ', current' : ''))
-      }, (id: string) => id)
-    }
-    .width('100%')
-    .padding({ left: 20, right: 20, top: 8, bottom: 24 })
-  }
-
-  @Builder
-  speakingPill() {
-    Row({ space: TilesTheme.SPACE_S }) {
-      SymbolGlyph($r('sys.symbol.speaker_wave_2_fill'))
-        .fontSize(18)
-        .fontColor([TilesTheme.tile('mint', this.profile.highContrast, this.dark).on])
-      Text('Reading aloud')
-        .fontSize(this.ty().caption)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(TilesTheme.tile('mint', this.profile.highContrast, this.dark).on)
-      Text('Stop')
-        .fontSize(this.ty().caption)
-        .fontColor(TilesTheme.tile('mint', this.profile.highContrast, this.dark).on)
-        .decoration({ type: TextDecorationType.Underline })
-        .padding({ left: 6 })
-    }
-    .padding({ left: 14, right: 14, top: 8, bottom: 8 })
-    .borderRadius(TilesTheme.RADIUS_CHIP)
-    .backgroundColor(TilesTheme.tile('mint', this.profile.highContrast, this.dark).bg)
-    .shadow({ radius: 12, color: this.pal().shadow, offsetY: 4 })
-    .onClick(() => Speech.stop())
-    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 12 }))
-      .animation({ curve: TilesTheme.springIn() }))
+  /** Space kept free under the grid so the last tiles can scroll above the dock (+ floating cards). */
+  bottomSpace(): number {
+    const dock: number = this.lay().askH + 28 + this.bottomPad();
+    return dock + (this.pendingSuggestion() !== null && !this.editing ? 240 : 0) + (this.speaking.length > 0 ? 84 : 0);
   }
 
   build() {
     Stack({ alignContent: Alignment.Bottom }) {
+      // Full-screen Living Light page gradient (drawn under the status / navigation bars too).
+      Column()
+        .width('100%')
+        .height('100%')
+        .linearGradient({ angle: this.pal().bgGradient.angle, colors: this.pal().bgGradient.colors })
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+
       Scroll() {
         Column() {
-          if (this.editing) {
-            this.editBar()
-          } else {
-            this.header()
-          }
+          this.header()
 
-          if (!this.editing) {
-            if (this.pendingSuggestion() !== null) {
-              this.suggestionBanner()
+          if (!this.editing && this.pending.length > 0) {
+            Column() {
+              this.pendingCard()
             }
-            if (this.pending.length > 0) {
-              this.pendingBanner()
-            }
+            .padding({ left: this.pad(), right: this.pad() })
           }
 
           if (this.tiles.length === 0) {
@@ -891,7 +946,7 @@ export struct HomeView {
             this.tileGrid()
           }
 
-          Blank().height(132)
+          Blank().height(this.bottomSpace())
         }
         .width('100%')
       }
@@ -900,41 +955,38 @@ export struct HomeView {
       .width('100%')
       .height('100%')
       .align(Alignment.Top)
-      .bindSheet(this.showProfiles, this.profileSheet(), {
-        height: SheetSize.FIT_CONTENT,
-        dragBar: true,
-        backgroundColor: this.pal().surface,
-        onDisappear: () => {
-          this.showProfiles = false;
-        }
-      })
-      .linearGradient({
-        angle: 180,
-        colors: [[withAlpha(this.mood.a, this.dark ? 0.22 : 0.30), 0],
-          [withAlpha(this.mood.b, this.dark ? 0.10 : 0.14), 0.22], [this.pal().bg, 0.42], [this.pal().bg, 1]]
-      })
 
-      // Soft fade so tiles slide under the assistant bar.
+      // Soft fade so tiles slide under the dock.
       Column()
         .width('100%')
-        .height(120)
-        .linearGradient({ angle: 180, colors: [[withAlpha(this.pal().bg, 0), 0], [this.pal().bg, 0.7]] })
+        .height(this.lay().askH + 64)
+        .linearGradient({ angle: 180, colors: [[withAlpha(this.pageEnd(), 0), 0], [this.pageEnd(), 0.8]] })
         .hitTestBehavior(HitTestMode.Transparent)
 
-      Column({ space: TilesTheme.SPACE_S }) {
+      Column({ space: 10 }) {
         if (this.speaking.length > 0) {
-          this.speakingPill()
+          this.speakingCard()
+        }
+        if (!this.editing && this.pendingSuggestion() !== null) {
+          this.suggestionCard()
         }
         if (!this.editing) {
-          this.assistantBar()
+          AskDock({ onOpen: (seed: string) => this.openAssistant(seed) })
+            .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 40 }))
+              .animation({ curve: TilesTheme.ease(), duration: this.dur(TilesTheme.LL_SHEET_DUR) }))
         }
       }
       .width('100%')
-      .padding({ left: TilesTheme.GUTTER, right: TilesTheme.GUTTER, bottom: TilesTheme.SPACE_L })
+      .padding({ left: this.pad(), right: this.pad(), bottom: this.bottomPad() })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor(this.pal().bg)
+    .onAreaChange((o: Area, n: Area) => {
+      const y: number = Number(n.globalPosition.y);
+      if (!isNaN(y) && Math.abs(y - this.rootY) > 0.5) {
+        this.rootY = y;
+      }
+    })
     .bindSheet(this.showAssistant, this.assistantSheet(), {
       height: SheetSize.LARGE,
       dragBar: true,

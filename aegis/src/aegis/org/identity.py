@@ -197,7 +197,11 @@ def resolve(
     now: datetime,
     hmac_fn: Callable[..., str],
 ) -> ResolvedIdentity:
-    """Data-plane identity: aegis key > X-Aegis-Agent > X-Aegis-Member > hints > anonymous."""
+    """Data-plane identity: aegis key > X-Aegis-Agent > X-Aegis-Member > hints > anonymous.
+
+    Only the key path sets `authenticated=True`. A header / hint identity is a *claim*
+    (`auth_method` "header" / "hint"): it is kept for attribution, and GOV-01 refuses it on the
+    data plane when it names a registered agent (ASI03 "agent identity not proven")."""
     try:
         return _resolve(cache, lower_headers(headers), hints or {}, now, hmac_fn)
     except Exception:

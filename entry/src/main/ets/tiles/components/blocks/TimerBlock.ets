@@ -1,5 +1,15 @@
-import { TileAction, TileBlock } from '../../model/Tile';
+import { TileAction, TileBlock, Profile } from '../../model/Tile';
 import { BlockStyle } from './BlockStyle';
+
+/** Living Light "creature" (Mo, the kid profile's focus buddy): gradient blob #E3D5FF -> #C2ADFF. */
+const CREATURE_FROM: string = '#E3D5FF';
+const CREATURE_TO: string = '#C2ADFF';
+const CREATURE_INK: string = '#2A2420';
+/** rgba(0,0,0,.08) inset belly shade. */
+const LL_BELLY: string = '#14000000';
+/** Prototype: blink 4.2 s (eyes squash to scaleY .08 at 95%), breathe 2.4 s while focusing. */
+const BLINK_EVERY_MS: number = 4200;
+const BREATHE_HALF_MS: number = 1200;
 
 function pad2(n: number): string {
   return n < 10 ? '0' + n : '' + n;
@@ -50,21 +60,26 @@ export function nextAt(hhmm: string, nowMs: number): number {
 }
 
 /**
- * `timer`: live countdown.
+ * `timer` (Living Light): live countdown.
  *  - value "at:08:00" -> counts down to the next 08:00 (pills, departures); updates every second.
- *  - value "25" / "25m" / "25:00" -> focus timer with start / pause / reset (local), emits
- *    TileAction{ kind: 'timer', arg: 'start' | 'pause' | 'done' }.
- * `text` = label.
+ *  - value "25" / "25m" / "25:00" -> focus timer: big tabular number + hint + round play/pause control.
+ *    In the kid profile the focus timer is joined by Mo (gradient blob that blinks; breathes while running).
+ *    Emits TileAction{ kind: 'timer', arg: 'start' | 'pause' | 'done' }.
+ * `text` = label. Reduced motion: no blink / breathe.
  */
 @Component
 export struct TimerBlock {
   @Prop block: TileBlock = new TileBlock();
   @Prop bs: BlockStyle = new BlockStyle();
+  @StorageProp('tiles.profile') profile: Profile = new Profile();
   @State nowMs: number = Date.now();
   @State remaining: number = 0;
   @State running: boolean = false;
+  @State eyeScale: number = 1;
+  @State moScale: number = 1;
   private total: number = 0;
   private handle: number = -1;
+  private blinkHandle: number = -1;
   onAction: (a: TileAction) => void = (a: TileAction) => {
   };
 
@@ -76,15 +91,59 @@ export struct TimerBlock {
     } else {
       this.total = durationOf(this.block.value);
       this.remaining = this.total;
+      if (this.withMo() && !this.bs.reduceMotion) {
+        this.blinkHandle = setInterval(() => {
+          this.blink();
+        }, BLINK_EVERY_MS);
+      }
     }
   }
 
   aboutToDisappear(): void {
     this.stopTick();
+    if (this.blinkHandle >= 0) {
+      clearInterval(this.blinkHandle);
+      this.blinkHandle = -1;
+    }
   }
 
   private isClock(): boolean {
     return this.block.value.startsWith('at:');
+  }
+
+  /** Mo joins focus timers in the kid profile. */
+  private withMo(): boolean {
+    return !this.isClock() && this.profile !== undefined && this.profile.id === 'kid';
+  }
+
+  private blink(): void {
+    if (this.bs.reduceMotion) {
+      return;
+    }
+    animateTo({
+      duration: 170, curve: Curve.EaseIn, onFinish: () => {
+        animateTo({ duration: 170, curve: Curve.EaseOut }, () => {
+          this.eyeScale = 1;
+        });
+      }
+    }, () => {
+      this.eyeScale = 0.08;
+    });
+  }
+
+  private breathe(on: boolean): void {
+    if (!this.withMo()) {
+      return;
+    }
+    if (on && !this.bs.reduceMotion) {
+      animateTo({ duration: BREATHE_HALF_MS, curve: Curve.EaseInOut, iterations: -1, playMode: PlayMode.Alternate }, () => {
+        this.moScale = 1.05;
+      });
+    } else {
+      animateTo({ duration: this.bs.reduceMotion ? 0 : 240, curve: Curve.EaseOut }, () => {
+        this.moScale = 1;
+      });
+    }
   }
 
   private stopTick(): void {
@@ -107,12 +166,14 @@ export struct TimerBlock {
       this.remaining = this.total;
     }
     this.running = true;
+    this.breathe(true);
     this.stopTick();
     this.handle = setInterval(() => {
       this.remaining = this.remaining - 1;
       if (this.remaining <= 0) {
         this.remaining = 0;
         this.running = false;
+        this.breathe(false);
         this.stopTick();
         this.emit('done');
       }
@@ -122,12 +183,22 @@ export struct TimerBlock {
 
   private pause(): void {
     this.running = false;
+    this.breathe(false);
     this.stopTick();
     this.emit('pause');
   }
 
+  private toggle(): void {
+    if (this.running) {
+      this.pause();
+    } else {
+      this.start();
+    }
+  }
+
   private reset(): void {
     this.running = false;
+    this.breathe(false);
     this.stopTick();
     this.remaining = this.total;
   }
@@ -150,36 +221,102 @@ export struct TimerBlock {
     return 'in ' + clockOf(sec);
   }
 
-  private fraction(): number {
-    return this.total > 0 ? (this.total - this.remaining) / this.total : 0;
+  /** Controls (hint + play button) only when the tile is wide enough; square tiles toggle on tap. */
+  private showCtl(): boolean {
+    return this.bs.detail || !this.bs.square;
   }
 
-  /** Round control size: full tap target, smaller in compact / narrow tiles (but never below 40 vp). */
+  /** Prototype numSize = 38 * fs; x.78 in tiny tiles, x.74 next to Mo in square tiles. */
+  private numSize(): number {
+    const base: number = this.bs.numSize;
+    if (!this.bs.small && this.bs.square && this.withMo()) {
+      return Math.round(base * 0.74);
+    }
+    return base;
+  }
+
+  private hint(): string {
+    if (this.running) {
+      return this.withMo() ? 'Mo is focusing too' : 'focusing';
+    }
+    if (this.withMo()) {
+      return 'with Mo';
+    }
+    return this.block.text.length > 0 ? this.block.text : 'tap to start';
+  }
+
   private btnSize(): number {
-    if (this.bs.compact || this.bs.narrow) {
-      return this.bs.minTap > 48 ? 52 : 40;
-    }
-    return this.bs.minTap;
+    return this.bs.minTap > 48 ? Math.max(this.bs.roundSize, 56) : this.bs.roundSize;
   }
 
-  private ringSize(): number {
-    if (this.bs.compact) {
-      return this.bs.tiny ? 48 : 56;
+  private moW(): number {
+    return this.bs.detail ? 68 : 52;
+  }
+
+  private moH(): number {
+    return this.bs.detail ? 63 : 48;
+  }
+
+  /** Mo: rounded blob, two blinking eyes, a mouth that widens into a smile while focusing. */
+  @Builder
+  creature() {
+    Stack({ alignContent: Alignment.TopStart }) {
+      // inset 0 -6px 0 rgba(0,0,0,.08): the darker "belly" band, clipped by the blob shape.
+      Row()
+        .width('100%')
+        .height(6)
+        .backgroundColor(LL_BELLY)
+        .position({ x: 0, y: this.moH() - 6 })
+      Row()
+        .width(7)
+        .height(9)
+        .borderRadius(4.5)
+        .backgroundColor(CREATURE_INK)
+        .scale({ x: 1, y: this.eyeScale })
+        .position({ x: Math.round(this.moW() * 0.27), y: Math.round(this.moH() * 0.35) })
+      Row()
+        .width(7)
+        .height(9)
+        .borderRadius(4.5)
+        .backgroundColor(CREATURE_INK)
+        .scale({ x: 1, y: this.eyeScale })
+        .position({ x: this.moW() - Math.round(this.moW() * 0.27) - 7, y: Math.round(this.moH() * 0.35) })
+      Row()
+        .width(this.running ? 18 : 12)
+        .height(6)
+        .borderRadius({ topLeft: 0, topRight: 0, bottomLeft: 8, bottomRight: 8 })
+        .backgroundColor(CREATURE_INK)
+        .position({ x: Math.round(this.moW() / 2) - (this.running ? 9 : 6), y: Math.round(this.moH() * 0.625) })
+        .animation({ duration: this.bs.reduceMotion ? 0 : 300, curve: Curve.EaseOut })
     }
-    return this.bs.narrow ? 64 : 84;
+    .width(this.moW())
+    .height(this.moH())
+    .borderRadius({
+      topLeft: Math.round(this.moW() / 2), topRight: Math.round(this.moW() / 2),
+      bottomLeft: Math.round(this.moW() * 0.44), bottomRight: Math.round(this.moW() * 0.44)
+    })
+    .linearGradient({ angle: 135, colors: [[CREATURE_FROM, 0], [CREATURE_TO, 1]] })
+    .clip(true)
+    .scale({ x: this.moScale, y: this.moScale })
+    .accessibilityText(this.running ? 'Mo, focusing with you. Pause timer' : 'Mo. Start timer')
+    .accessibilityRole(AccessibilityRoleType.BUTTON)
+    .onClick(() => {
+      this.toggle();
+    })
   }
 
   @Builder
-  roundBtn(icon: Resource, label: string, primary: boolean, act: () => void) {
+  roundBtn(icon: Resource, label: string, act: () => void) {
     Stack() {
       SymbolGlyph(icon)
-        .fontSize(this.bs.fs(22))
-        .fontColor([primary ? this.bs.onSolid : this.bs.fg])
+        .fontSize(24)
+        .fontColor([this.bs.fg])
     }
     .width(this.btnSize())
     .height(this.btnSize())
     .borderRadius(999)
-    .backgroundColor(primary ? this.bs.solid : this.bs.well)
+    .backgroundColor(this.bs.highContrast ? this.bs.well : this.bs.roundFill)
+    .border({ width: this.bs.highContrast ? 2 : 0, color: this.bs.fg })
     .accessibilityText(label)
     .accessibilityRole(AccessibilityRoleType.BUTTON)
     .onClick(() => {
@@ -191,18 +328,21 @@ export struct TimerBlock {
     if (this.isClock()) {
       Column({ space: 2 }) {
         Text(this.clockLeft())
-          .fontSize(this.bs.fs(this.bs.compact ? 22 : 34))
-          .fontWeight(FontWeight.Bolder)
+          .fontSize(Math.round(this.numSize() * 0.74))
+          .fontWeight(this.bs.numWeight)
+            .fontFamily(this.bs.font)
           .fontColor(this.bs.fg)
+          .letterSpacing(-0.03 * Math.round(this.numSize() * 0.74))
           .fontFeature('"tnum" on')
           .maxLines(1)
           .minFontSize(12)
-          .maxFontSize(this.bs.fs(this.bs.compact ? 22 : 34))
+          .maxFontSize(Math.round(this.numSize() * 0.74))
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Text((this.block.text.length > 0 ? this.block.text + ' · ' : '') + this.clockTarget())
-          .fontSize(this.bs.fs(14))
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.bs.fgDim)
+          .fontSize(this.bs.bodySize)
+          .fontFamily(this.bs.font)
+          .fontColor(this.bs.fg)
+          .opacity(0.8)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
@@ -212,72 +352,56 @@ export struct TimerBlock {
       .accessibilityText((this.block.text.length > 0 ? this.block.text + ', ' : '') + 'at ' + this.clockTarget() + ', ' +
       this.clockLeft())
     } else {
-      Row({ space: this.bs.compact || this.bs.narrow ? 10 : 14 }) {
-        Stack() {
-          Progress({ value: Math.round(this.fraction() * 1000), total: 1000, type: ProgressType.Ring })
-            .width(this.ringSize())
-            .height(this.ringSize())
-            .color(this.bs.fg)
-            .backgroundColor(this.bs.well)
-            .style({ strokeWidth: this.bs.compact ? 6 : 9 })
-          Text(clockOf(this.remaining))
-            .fontSize(Math.min(this.bs.fs(this.bs.compact || this.bs.narrow ? 14 : 19), Math.round(this.ringSize() * 0.27)))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.bs.fg)
-            .fontFeature('"tnum" on')
+      Row({ space: 10 }) {
+        if (this.withMo()) {
+          this.creature()
         }
+        Column({ space: 2 }) {
+          Text(clockOf(this.remaining))
+            .fontSize(this.numSize())
+            .fontWeight(this.bs.numWeight)
+            .fontFamily(this.bs.font)
+            .fontColor(this.bs.fg)
+            .letterSpacing(-0.03 * this.numSize())
+            .lineHeight(Math.round(this.numSize() * 1.0))
+            .fontFeature('"tnum" on')
+            .maxLines(1)
+            .minFontSize(14)
+            .maxFontSize(this.numSize())
+            .textOverflow({ overflow: TextOverflow.Clip })
+          if (this.showCtl()) {
+            Text(this.hint())
+              .fontSize(this.bs.bodySize)
+          .fontFamily(this.bs.font)
+              .fontColor(this.bs.fg)
+              .opacity(0.8)
+              .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+          }
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
 
-        if (this.bs.compact && !this.bs.tiny) {
-          // Compact: the one primary control next to the ring.
-          if (this.running) {
-            this.roundBtn($r('sys.symbol.pause_fill'), 'Pause timer', true, () => {
-              this.pause();
-            })
-          } else {
-            this.roundBtn($r('sys.symbol.play_fill'), 'Start timer', true, () => {
-              this.start();
+        if (this.showCtl()) {
+          if (this.bs.detail) {
+            this.roundBtn($r('sys.symbol.arrow_counterclockwise'), 'Reset timer', () => {
+              this.reset();
             })
           }
-        } else if (!this.bs.compact) {
-          Column({ space: 8 }) {
-            if (this.block.text.length > 0 && !this.bs.narrow) {
-              Text(this.block.text)
-                .fontSize(this.bs.fs(15))
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.bs.fgDim)
-                .maxLines(2)
-                .wordBreak(WordBreak.NORMAL)
-                .textOverflow({ overflow: TextOverflow.Ellipsis })
-            }
-            Row({ space: 8 }) {
-              if (this.running) {
-                this.roundBtn($r('sys.symbol.pause_fill'), 'Pause timer', true, () => {
-                  this.pause();
-                })
-              } else {
-                this.roundBtn($r('sys.symbol.play_fill'), 'Start timer', true, () => {
-                  this.start();
-                })
-              }
-              this.roundBtn($r('sys.symbol.arrow_counterclockwise'), 'Reset timer', false, () => {
-                this.reset();
-              })
-            }
-          }
-          .alignItems(HorizontalAlign.Start)
-          .layoutWeight(1)
+          this.roundBtn(this.running ? $r('sys.symbol.pause_fill') : $r('sys.symbol.play_fill'),
+            this.running ? 'Pause timer' : 'Start timer', () => {
+              this.toggle();
+            })
         }
       }
       .width('100%')
-      .accessibilityText((this.block.text.length > 0 ? this.block.text + '. ' : '') + 'Timer ' + clockOf(this.remaining) + (this.running ? ', running' : ', paused'))
+      .alignItems(VerticalAlign.Center)
+      .accessibilityText((this.block.text.length > 0 ? this.block.text + '. ' : '') + 'Timer ' + clockOf(this.remaining) +
+        (this.running ? ', running' : ', paused'))
       .onClick(() => {
-        // Compact (1x1) tiles have no room for buttons: tapping the ring starts / pauses.
-        if (this.bs.compact) {
-          if (this.running) {
-            this.pause();
-          } else {
-            this.start();
-          }
+        // Square tiles have no room for the control: tapping the timer starts / pauses (prototype behaviour).
+        if (!this.showCtl()) {
+          this.toggle();
         }
       })
     }

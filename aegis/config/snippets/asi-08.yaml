@@ -1,0 +1,45 @@
+# =============================================================================
+#  asi-08 snippet (ASI08 Cascading Failures) - owner ASI-FAILCLOSED; merged by ASI-POLICY.
+# =============================================================================
+#  RES-01 cascading-failure breaker (src/aegis/controls/resilience/res01_cascade.py):
+#   * agent quarantine: 3 enforce blocks by other controls in 5 min (per agent+session)
+#     -> the agent's next side-effecting calls need a human (require_approval) for 15 min;
+#   * downstream circuit: an MCP server / egress host failing 5x in 60 s (any agent) is
+#     paused for 60 s (block, 503 circuit_open + Retry-After), then one half-open probe;
+#   * cascade taint: a result produced by a quarantined agent (label/meta peer_agent,
+#     header x-aegis-peer-agent) is dropped and its consumer is tainted (transitively),
+#     so its own side-effecting calls need a human too.
+#  Fail-closed fix (same item): INJ-01/02/04/05, SIG-01, SIG-03, INJ-03, DLP-07 now honour
+#  fail_mode on internal errors (closed -> degraded block / approval) - no policy change needed.
+# =============================================================================
+controls:
+  - id: RES-01
+    name: Cascading-failure breaker (quarantine + circuit + taint)
+    enabled: true
+    mode: enforce
+    action: require_approval     # quarantined agent: a human may release each further action
+    severity: high
+    fail_mode: closed
+    timeout_ms: 50
+    owasp: [ASI08, ASI10, ASI07]
+    params:
+      scope: session             # session | agent (agent: one quarantine across all sessions)
+      window_s: 300
+      block_threshold: 3
+      quarantine_ttl_s: 900
+      ignore_controls: [EXE-04, BUD-01, BUD-02, RES-01]   # those already are breakers
+      circuit_targets: ["mcp:*", "host:*"]                 # built-in tools (Bash, Read) never
+      tool_failure_threshold: 5
+      tool_window_s: 60
+      tool_cooldown_s: 60
+      tool_action: block
+      failure_status_min: 500
+      agent_wide_after_sessions: 3   # its outputs are dropped everywhere once quarantined in 3 sessions
+      taint_ttl_s: 900
+      taint_scope: session       # session | agent (gate the consumer in every session)
+      taint_action: require_approval
+      quarantined_output_action: block
+      peer_keys: [peer_agent, source_agent, from_agent]
+    tests:
+      - {name: healthy-agent-tool-call-allowed, kind: tool_call, surface: tool.input,
+         tool_name: Read, tool_args: {file_path: "/tmp/aegis-demo/README.md"}, expect: allow}

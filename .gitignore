@@ -113,3 +113,9 @@ scratch/
 Thumbs.db
 *.log
 
+
+# Design prototype: keep source + refs, not the 9 MB bundle or vendored fonts/CSS/JS
+design/tiles-motion/Tiles_Motion_bundle.html
+design/tiles-motion/source/*.woff2
+design/tiles-motion/source/https___*
+design/tiles-motion/source/_template.html

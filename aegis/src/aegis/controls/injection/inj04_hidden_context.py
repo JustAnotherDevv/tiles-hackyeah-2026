@@ -10,7 +10,8 @@ Response side (``model.response``):
   * canary (plain / squashed / decoded layers / inside URLs) -> block;
   * system-prompt shingle overlap >= overlap_threshold -> block;
   * URLs whose decoded query/path carries >= 3 system shingles -> block (hidden-context exfil).
-Never raises (``fail_mode: closed`` would turn a bug into an outage).
+Never raises: an internal error becomes a decision that honours ``fail_mode`` (ASI08 - balanced
+is ``closed``, so a fault blocks with a degraded, explained decision instead of a silent allow).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from typing import Any
 
 from aegis.controls.injection import _common as _c
 from aegis.controls.injection._common import Inj04Params, mask, parse_params, session_data
+from aegis.controls.resilience._failsafe import internal_error_decision
 from aegis.core.policy_schema import ControlConfig
 from aegis.core.protocols import BaseControl
 from aegis.core.types import AppliesTo, Decision, Finding, Interaction, RequestContext
@@ -68,14 +70,10 @@ class HiddenContextGuard(BaseControl):
             if interaction.surface == "model.response":
                 return self._response(ctx, interaction, cfg, p, rt)
             return await self._request(ctx, interaction, cfg, p, rt)
-        except Exception:
-            log.exception("INJ-04 internal error (degraded allow)")
-            return Decision(
-                action="allow",
-                control_id=self.id,
-                reason="INJ-04 internal error (degraded)",
-                degraded=True,
-            )
+        except Exception as exc:
+            # ASI08: honour fail_mode (closed -> degraded block) instead of a silent allow.
+            log.exception("INJ-04 internal error (fail_mode=%s)", getattr(cfg, "fail_mode", None))
+            return internal_error_decision(self.id, cfg, exc)
 
     # ------------------------------------------------------------------ request side
     async def _request(
