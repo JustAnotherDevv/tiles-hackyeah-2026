@@ -74,5 +74,3 @@ secrets.*
 Thumbs.db
 *.log
 
-# Standalone Goldman Sachs project (own git repo)
-aegis/
