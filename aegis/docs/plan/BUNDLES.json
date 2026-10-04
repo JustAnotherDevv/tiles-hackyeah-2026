@@ -1,0 +1,2304 @@
+[
+  {
+    "id": "B01-gateway-core",
+    "title": "Core gateway A: runtime, pipeline, discovery, app, guard/playground, events",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "core-gateway"
+    ],
+    "plan_files": [
+      "docs/plan/01-core-gateway.md"
+    ],
+    "owned_paths": [
+      "src/aegis/__main__.py",
+      "src/aegis/app.py",
+      "src/aegis/settings.py",
+      "src/aegis/log.py",
+      "src/aegis/core/runtime.py",
+      "src/aegis/core/nulls.py",
+      "src/aegis/core/bus.py",
+      "src/aegis/core/db.py",
+      "src/aegis/core/sessions.py",
+      "src/aegis/core/discovery.py",
+      "src/aegis/core/pipeline.py",
+      "src/aegis/core/deps.py",
+      "src/aegis/core/errors.py",
+      "src/aegis/core/crypto.py",
+      "src/aegis/core/paths.py",
+      "src/aegis/api/routes/health.py",
+      "src/aegis/api/routes/events.py",
+      "src/aegis/api/routes/guard.py",
+      "src/aegis/api/routes/playground.py",
+      "src/aegis/api/routes/ui.py",
+      "tests/unit/core_gateway/",
+      "docs/status/B01-gateway-core.md"
+    ],
+    "task_ids": [
+      "GW-01",
+      "GW-02",
+      "GW-03",
+      "GW-04",
+      "GW-05",
+      "GW-06",
+      "GW-07",
+      "GW-11"
+    ],
+    "verification_ids": [
+      "GW-V01",
+      "GW-V02",
+      "GW-V03",
+      "GW-V04",
+      "GW-V05",
+      "GW-V10",
+      "GW-V11",
+      "GW-V15"
+    ],
+    "priority_order": [
+      "GW-01",
+      "GW-02",
+      "GW-03",
+      "GW-04",
+      "GW-05",
+      "GW-06",
+      "GW-07",
+      "GW-11"
+    ],
+    "must_ids": [
+      "GW-01",
+      "GW-02",
+      "GW-03",
+      "GW-04",
+      "GW-05",
+      "GW-06",
+      "GW-07",
+      "GW-11"
+    ],
+    "est_minutes": {
+      "must": 86,
+      "total": 86
+    },
+    "depends_on": [],
+    "status_file": "docs/status/B01-gateway-core.md",
+    "brief": "THE BACKBONE - every other bundle imports from you, so GW-01 public surfaces must exist within ~15 min: settings.py (Settings from env per CONTRACTS 6.5, get_settings), log.py (setup_logging, SecretScrubFilter), core/crypto.py (hmac_hex with persistent data/keys/hmac.key), core/paths.py (get/set/remove_path, glob_match), core/errors.py (api_error, AegisHTTPError, wire_error), core/deps.py (get_rt, viewer, require_role), core/runtime.py get_runtime() and app.py create_app() stub. Then: GW-02 EventBus (ring buffer 1000, replay, Last-Event-ID), db.connect (WAL) + sessions table/SessionStore; GW-03 Runtime with the CONTRACTS 3.3 SERVICE_TABLE, start/stop order and Null fallbacks for metrics/audit/policy/org/ledger/redactor/semantic/feed/approvals (approvals Null = fail-closed deny); GW-04 discovery of routers (ORDER, on_startup), CONTROLS (walk_packages, duplicate ids, errors -> /healthz plugins degraded) and adapters; GW-05 Pipeline implementing CONTRACTS 3.5 steps 1-11 exactly (snapshot pinning, scope selection, enrich, deterministic then concurrent semantic phase with fail_mode, monitor mode, precedence combine, approvals find_preapproved/request/wait, transform via rt.redactor.apply + mutations, record: WireView LRU + audit + metrics + bus 'decision'), complete() exactly once; GW-06 app factory (lifespan, middleware, envelope vs wire error format) + CLI serve|selftest|reset|verify-audit|seed|routes; GW-07 /healthz, HEAD|GET /api/hello, /api/events SSE (no gzip/buffering), ui.py ORDER 900 static web/dist + SPA fallback (deep links /ui/security/decisions/dec_...); GW-11 /v1/guard (+/complete, always 200) and /api/playground (uses aegis.proxy.flow.ModelCall owned by B02 - import lazily, degrade to evaluate-only until it lands). Contract points other bundles rely on: Decision.http_status/response_headers honoured; one RequestContext reused for request+response hops; ResolvedIdentity placed in ctx unchanged and resolved once; x-aegis-key/X-Aegis-* never forwarded upstream (shared with B02); /healthz exposes components (policy, org, semantic, ollama, plugins). Reuse: staging/spikes/claude-code/proxy.py summarize_body + session-id logic, FINDINGS.md (/api/hello probe). Verify: GW-V01 create_app route list boots with only frozen files + your code, GW-V02..V05 unit suites (fake controls/services), GW-V10 guard/playground/events, GW-V11 live smoke on --port 0 --port-file, GW-V15 ruff. NOTE: the scaffold (commit d02636d) already placed seed versions of some files in your owned paths - they are safe to replace/extend; keep their public names working. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B02-gateway-proxy",
+    "title": "Core gateway B: provider adapters, router, upstream, streaming, model proxies",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "core-gateway"
+    ],
+    "plan_files": [
+      "docs/plan/01-core-gateway.md"
+    ],
+    "owned_paths": [
+      "src/aegis/proxy/",
+      "src/aegis/core/timing.py",
+      "src/aegis/api/routes/proxy_anthropic.py",
+      "src/aegis/api/routes/proxy_openai.py",
+      "src/aegis/api/routes/proxy_ollama.py",
+      "config/snippets/core-gateway.yaml",
+      "tests/unit/core_gateway_proxy/",
+      "docs/status/B02-gateway-proxy.md"
+    ],
+    "task_ids": [
+      "GW-08",
+      "GW-09",
+      "GW-10",
+      "GW-12",
+      "GW-13",
+      "GW-14",
+      "GW-15",
+      "GW-16",
+      "GW-17"
+    ],
+    "verification_ids": [
+      "GW-V06",
+      "GW-V07",
+      "GW-V08",
+      "GW-V09",
+      "GW-V12",
+      "GW-V13",
+      "GW-V14"
+    ],
+    "priority_order": [
+      "GW-08",
+      "GW-09",
+      "GW-10",
+      "GW-12",
+      "GW-13",
+      "GW-14",
+      "GW-15",
+      "GW-16",
+      "GW-17"
+    ],
+    "must_ids": [
+      "GW-08",
+      "GW-09",
+      "GW-10"
+    ],
+    "est_minutes": {
+      "must": 38,
+      "total": 112
+    },
+    "depends_on": [
+      "B01-gateway-core"
+    ],
+    "status_file": "docs/status/B02-gateway-proxy.md",
+    "brief": "The model data plane (Claude Code, scripted agents, playground all go through it). Start as soon as B01's GW-01 surfaces exist (code against frozen types + RuntimeProto/PipelineProto; tests use fakes + httpx.MockTransport). Create core/timing.py first (Stopwatch, add_timing, server_timing_header) - B01 imports it. GW-08 proxy/router.py (resolve_route, wire filter, enabled_if_env, ':cloud' => remote, built-in fallback providers: mock-echo/mock-sonnet -> mock_llm :8791, aegis-judge/qwen* -> Ollama 11434), proxy/upstream.py (shared AsyncClient, set_transport for tests, header policy: pass Claude Code OAuth Authorization + anthropic-beta/version, accept-encoding identity, strip X-Aegis-* and aegis_ keys, 502 mapping), adapters/anthropic.py (parse/apply_segments byte-identical when unchanged, thinking/system untouched for Claude Code UA, parse_usage with cache fields, blocked_response JSON+SSE). GW-09 proxy/sse.py (port staging/spikes/streaming/aegis_stream/sse.py verbatim), proxy/streaming.py (buffered accumulate -> synthesize for 3 wires, early message_start/ping keep-alives), proxy/flow.py ModelCall (ingress -> evaluate -> block => synthetic 200 assistant message '[Aegis] Blocked by ...' for Claude Code, approval-pending message, 402 budget_exceeded, 429 + retry-after + x-should-retry:false for budget/kill switch - NEVER 403 toward Claude Code; apply segments + mutations, route re-resolve, upstream, model.response evaluation, DLP-08 rehydration of assistant text only, attach wire view, complete() in finally, X-Aegis-* + Server-Timing headers), routes POST /v1/messages (?beta=true ok) + count_tokens (local estimate); GW-10 OpenAI adapter (prepare_openai_request from staging) + /v1/chat/completions and /openai/v1/chat/completions; GW-15 config/snippets/core-gateway.yaml (providers, models.routes, defaults incl. deterministic timeout_ms >= 50). Should: GW-12 Ollama native /ollama/{path} + GET /v1/models, GW-13 telemetry polish (per-control Server-Timing, X-Aegis-Budget-Remaining from ctx.state['bud.remaining']), GW-14 passthrough stream mode. Could: GW-16 holdback streaming, GW-17. Reuse: staging/spikes/claude-code/proxy.py (HOP_BY_HOP, RESP_DROP, synthetic_sse, anthropic_error) + FINDINGS.md, staging/spikes/streaming tests/helpers + data fixtures -> tests/unit/core_gateway_proxy/fixtures. Note: unit tests live in tests/unit/core_gateway_proxy/ (B01 owns tests/unit/core_gateway/). Verify GW-V06..V09, V12 (p50<5 ms overhead), V13/V14 in the integration window. NOTE: the scaffold (commit d02636d) already placed seed versions of some files in your owned paths - they are safe to replace/extend; keep their public names working. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B03-policy-engine",
+    "title": "Policy engine: config/policy.yaml + profiles, validate, self-test gate, hot reload, governed apply",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "policy-engine"
+    ],
+    "plan_files": [
+      "docs/plan/02-policy-engine.md"
+    ],
+    "owned_paths": [
+      "src/aegis/policy/",
+      "config/policy.yaml",
+      "config/policy.golden.yaml",
+      "config/profiles/",
+      "config/schema/",
+      "scripts/export_schema.py",
+      "src/aegis/api/routes/policy.py",
+      "config/snippets/policy-engine.yaml",
+      "tests/unit/policy_engine/",
+      "docs/status/B03-policy-engine.md"
+    ],
+    "task_ids": [
+      "POL-01",
+      "POL-02",
+      "POL-03",
+      "POL-04",
+      "POL-05",
+      "POL-06",
+      "POL-07",
+      "POL-08",
+      "POL-09",
+      "POL-10",
+      "POL-11",
+      "POL-12",
+      "POL-13",
+      "POL-14",
+      "POL-15",
+      "POL-16",
+      "POL-17",
+      "POL-18",
+      "POL-19",
+      "POL-20",
+      "POL-21",
+      "POL-22"
+    ],
+    "verification_ids": [
+      "POL-V01",
+      "POL-V02",
+      "POL-V03",
+      "POL-V04",
+      "POL-V05",
+      "POL-V06",
+      "POL-V07",
+      "POL-V08",
+      "POL-V09",
+      "POL-V10",
+      "POL-V11",
+      "POL-V12"
+    ],
+    "priority_order": [
+      "POL-01",
+      "POL-02",
+      "POL-03",
+      "POL-04",
+      "POL-05",
+      "POL-06",
+      "POL-07",
+      "POL-08",
+      "POL-09",
+      "POL-10",
+      "POL-11",
+      "POL-12",
+      "POL-13",
+      "POL-14",
+      "POL-15",
+      "POL-16",
+      "POL-17",
+      "POL-18",
+      "POL-19",
+      "POL-20",
+      "POL-21",
+      "POL-22"
+    ],
+    "must_ids": [
+      "POL-01",
+      "POL-02",
+      "POL-03",
+      "POL-04",
+      "POL-05",
+      "POL-06",
+      "POL-07",
+      "POL-08",
+      "POL-09",
+      "POL-10",
+      "POL-11"
+    ],
+    "est_minutes": {
+      "must": 120,
+      "total": 216
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B10-approvals-engine",
+      "B15-audit-metrics"
+    ],
+    "status_file": "docs/status/B03-policy-engine.md",
+    "brief": "The single live policy source judges edit during the demo (F5, F7). POL-01 skeleton first (aegis.policy.store:create returning a store with snapshot()/control_config()/on_change(), route stubs). POL-02 EARLY (others' snippets and self-tests depend on it): write config/policy.yaml + config/policy.golden.yaml + config/profiles/{permissive,balanced,strict,paranoid}.yaml from synth-A's corrected seeds: docs/seed-fixes/policy.yaml when present (else port staging/seed/policy.yaml - 37 controls, comments, examples -> tests - via the CONTRACTS 1.4 translation table, 4.3 shape and 4.4 catalog ids/defaults) and docs/seed-fixes/approvals.yaml pasted byte-identical as the approvals: section (first match wins, rule ids binding); the seed-fixes + Addendum A supersede staging/seed. Then POL-03 loader/validator with line/col errors, POL-04 profiles/effective config, POL-05 store apply pipeline (parse -> validate -> RE2 compile -> self-test gate -> atomic swap -> data/policy/last_good.yaml -> policy_versions table -> audit + bus policy.applied/policy.rejected + metrics), POL-06 watchfiles watcher (<1 s, off in AEGIS_TEST_MODE) + POST /api/policy/reload, POL-07 /api/policy*, /api/controls, POL-08 diff, POL-09 ruamel patch applier (PatchOp grammar), POL-10 governed propose -> config.change interaction -> GOV-05 -> register config_change/budget_raise executors with rt.approvals, POL-11 self-test runner + gate, POL-12 /api/coverage. Should: POL-16 snippet check/merge tool (integrator merges config/snippets/*.yaml into config/policy.yaml in the integration window - make it a one-command script), POL-14 JSON schema export, POL-13/15/17. Known issues to honour: the self-test gate must ignore live budget counters and the kill switch (evaluate tests in a sandbox ledger/kill-switch-off context) or every edit is rejected; skip tests of disabled controls; support 'assert: control' attribution and extra PolicyTest keys (model); treat approvals extras (profiles, labels_in, grant_ttl_s, tests...) as known; deterministic control timeout_ms default >= 50 ms. Verify POL-V01..V12 (edit -> applied < 1 s with diff toast data; broken YAML -> rejected with line/col, still on vN). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B04-redaction-engine",
+    "title": "Redaction engine: validators, scanner, vault/rehydration, DLP-01/02/05/07/08",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "redaction-engine"
+    ],
+    "plan_files": [
+      "docs/plan/03-redaction-engine.md"
+    ],
+    "owned_paths": [
+      "src/aegis/redaction/",
+      "src/aegis/controls/dlp/",
+      "src/aegis/api/routes/redaction.py",
+      "config/snippets/redaction-engine.yaml",
+      "tests/unit/redaction_engine/",
+      "docs/status/B04-redaction-engine.md"
+    ],
+    "task_ids": [
+      "RED-01",
+      "RED-02",
+      "RED-03",
+      "RED-04",
+      "RED-05",
+      "RED-06",
+      "RED-07",
+      "RED-08",
+      "RED-09",
+      "RED-10",
+      "RED-11",
+      "RED-12",
+      "RED-13",
+      "RED-14",
+      "RED-15",
+      "RED-16",
+      "RED-17",
+      "RED-18"
+    ],
+    "verification_ids": [
+      "RED-V01",
+      "RED-V02",
+      "RED-V03",
+      "RED-V04",
+      "RED-V05",
+      "RED-V06",
+      "RED-V07",
+      "RED-V08",
+      "RED-V09",
+      "RED-V10",
+      "RED-V11",
+      "RED-V12",
+      "RED-V13",
+      "RED-V14",
+      "RED-V15",
+      "RED-V16"
+    ],
+    "priority_order": [
+      "RED-01",
+      "RED-02",
+      "RED-03",
+      "RED-04",
+      "RED-05",
+      "RED-06",
+      "RED-07",
+      "RED-08",
+      "RED-09",
+      "RED-10",
+      "RED-11",
+      "RED-12",
+      "RED-13",
+      "RED-14",
+      "RED-15",
+      "RED-16",
+      "RED-17",
+      "RED-18"
+    ],
+    "must_ids": [
+      "RED-01",
+      "RED-02",
+      "RED-03",
+      "RED-04",
+      "RED-05",
+      "RED-06",
+      "RED-07",
+      "RED-08",
+      "RED-09",
+      "RED-10"
+    ],
+    "est_minutes": {
+      "must": 116,
+      "total": 187
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B07-semantic-models",
+      "B03-policy-engine"
+    ],
+    "status_file": "docs/status/B04-redaction-engine.md",
+    "brief": "The headline (F1): PII, cards, Polish IDs and secrets are tokenized locally before anything leaves; placeholders restored only for the local user. RED-01 skeleton with safe stubs (aegis.redaction.engine:create -> rt.redactor with detect/apply/rehydrate/mask_for_log; DETECTORS plug-ins; control modules with CONTROLS). RED-02 port staging/pii/validators.py + normalize.py verbatim (public surfaces). RED-03 port staging/pii/detectors.py -> redaction/scan.py + detectors/*.py (pci, pl_ids, banking, contact, personal, crypto, secrets, network, metadata). RED-04 placeholders/vault/StreamRehydrator from staging/pii/placeholders.py + staging/spikes/streaming placeholders ([PESEL_1]-style, per-session vault keyed by ctx.session_id). RED-05 engine service. RED-06 shared DLP decision logic (destinations matrix remote/local/third_party, params.matrix_overrides). RED-07 controls DLP-01 (tokenize PII/PCI/PL IDs; CVV/track data DROPPED never vaulted; PAN display first6/last4; local destination may keep PESEL), DLP-02 secrets block (and tokenize in tool results), DLP-05 tool/MCP output redaction + canary block, DLP-08 vault/rehydrate meta (meta.rehydrate for assistant text and PreToolUse updatedInput). RED-08 DLP-07 NER control with deterministic heuristic fallback. RED-09 snippet with inline tests; RED-10 unit tests incl. the 626-fixture precision/recall/leak eval (copy staging/pii/fixtures into redaction/data/fixtures). Known issues: single NER instance - semantic-models (B07) hosts eu-pii-ner and exposes it via rt.semantic; RED-12 only borrows it (fallback to own ONNX load only if rt.semantic lacks it AND psutil shows >900 MB free; never load twice, +673 MB). DLP-01 must not block ACT-03 external-email routing (exempt recipient args / follow the Addendum). INTERNAL entities (IP, USERNAME, MAC) belong to DLP-03 (B05); honour Finding.replacement. phonenumbers is a guarded import (regex fallback). Audit stores only spans, masked previews and HMAC fingerprints (hmac_hex purpose='redaction'). Verify RED-V01..V16. Cut first: RED-15..18. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B05-metadata-egress",
+    "title": "Metadata & egress: DLP-03/04/06 and the governed /egress proxy",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "metadata-egress"
+    ],
+    "plan_files": [
+      "docs/plan/04-metadata-egress.md"
+    ],
+    "owned_paths": [
+      "src/aegis/egress/",
+      "src/aegis/controls/egress/",
+      "src/aegis/api/routes/egress.py",
+      "config/snippets/metadata-egress.yaml",
+      "tests/unit/metadata_egress/",
+      "docs/status/B05-metadata-egress.md"
+    ],
+    "task_ids": [
+      "META-01",
+      "META-02",
+      "META-03",
+      "META-04",
+      "META-05",
+      "META-06",
+      "META-07",
+      "META-08",
+      "META-09",
+      "META-10",
+      "META-11",
+      "META-12",
+      "META-13",
+      "META-14",
+      "META-15",
+      "META-16"
+    ],
+    "verification_ids": [
+      "META-V01",
+      "META-V02",
+      "META-V03",
+      "META-V04",
+      "META-V05",
+      "META-V06",
+      "META-V07",
+      "META-V08",
+      "META-V09",
+      "META-V10",
+      "META-V11",
+      "META-V12",
+      "META-V13"
+    ],
+    "priority_order": [
+      "META-01",
+      "META-02",
+      "META-03",
+      "META-04",
+      "META-05",
+      "META-06",
+      "META-07",
+      "META-08",
+      "META-09",
+      "META-10",
+      "META-11",
+      "META-12",
+      "META-13",
+      "META-14",
+      "META-15",
+      "META-16"
+    ],
+    "must_ids": [
+      "META-01",
+      "META-02",
+      "META-03",
+      "META-04",
+      "META-05",
+      "META-06",
+      "META-07",
+      "META-08"
+    ],
+    "est_minutes": {
+      "must": 115,
+      "total": 210
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B04-redaction-engine"
+    ],
+    "status_file": "docs/status/B05-metadata-egress.md",
+    "brief": "F1 metadata minimization + F2 exfil blocking (exfil_sink hit counter must stay 0). META-01 skeleton/params/stubs/snippet; META-02 text metadata detectors (paths with usernames, hostnames, private IPs, git user/email, Claude Code env text); META-03 DLP-03 control (matrix gate, header stripping, body-field pseudonyms e.g. Claude Code metadata.user_id, text findings with explicit replacement); META-04 DLP-04 exfil scanner (decode-and-rescan base64/hex in URLs and query, DNS labels, OAST hosts, allow-list); META-05 DLP-06 channel neutralizer (strip markdown/HTML images and suspicious links in model.response, e.g. mock_llm [[EMIT_MD_EXFIL]]); META-06 POST /egress governed forward proxy (AEGIS_HOST_MAP: exfil.test -> exfil_sink :8793, pay/crm.saas.test + paste.test -> mock_saas :8794; verdict -> 403/402/429 envelopes; approval envelope when ctl ACT-03/ACT-01 ask; hold_s 15); META-07 Claude Code showcase; META-08 JPEG/PNG stdlib sanitizers + blob walker. Should: META-09 demo fixtures/CLIs, 11-13. Could: PDF/Office (10/14), semantic leg (15), credential injection (16). Reuse: staging/pii/detectors.py (PATH_USER, VERSION_TAIL, IP rules) -> egress/textmeta.py; staging/spikes/claude-code FINDINGS + proxy.py (headers/body fields); staging/spikes/streaming/aegis_stream/detectors.py (_MD_IMG/_HTML_IMG) -> channels.py; staging/spikes/mcp/aegis_mcp/http_router.py header filter; staging/corpora/handwritten/agentic_tools.jsonl AGT-EXF cases. Overlaps: you own INTERNAL entities (IP_ADDRESS, USERNAME, MAC_ADDRESS); DLP-01 ignores them. DLP-04 is hybrid, skipped after a deterministic block. Verify META-V01..V13 (V11 needs make up). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B06-injection-defense",
+    "title": "Injection defense: normalizer, RE2 signatures, INJ-01/02/04/05",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "injection-defense"
+    ],
+    "plan_files": [
+      "docs/plan/05-injection-defense.md"
+    ],
+    "owned_paths": [
+      "src/aegis/injection/",
+      "src/aegis/controls/injection/",
+      "config/snippets/injection-defense.yaml",
+      "tests/unit/injection_defense/",
+      "docs/status/B06-injection-defense.md"
+    ],
+    "task_ids": [
+      "INJ-01",
+      "INJ-02",
+      "INJ-03",
+      "INJ-04",
+      "INJ-05",
+      "INJ-06",
+      "INJ-07",
+      "INJ-08",
+      "INJ-09",
+      "INJ-10",
+      "INJ-11",
+      "INJ-12",
+      "INJ-13",
+      "INJ-14",
+      "INJ-15"
+    ],
+    "verification_ids": [
+      "INJ-V01",
+      "INJ-V02",
+      "INJ-V03",
+      "INJ-V04",
+      "INJ-V05",
+      "INJ-V06",
+      "INJ-V07",
+      "INJ-V08",
+      "INJ-V09",
+      "INJ-V10",
+      "INJ-V11",
+      "INJ-V12",
+      "INJ-V13"
+    ],
+    "priority_order": [
+      "INJ-01",
+      "INJ-02",
+      "INJ-03",
+      "INJ-04",
+      "INJ-05",
+      "INJ-06",
+      "INJ-07",
+      "INJ-08",
+      "INJ-09",
+      "INJ-10",
+      "INJ-11",
+      "INJ-12",
+      "INJ-13",
+      "INJ-14",
+      "INJ-15"
+    ],
+    "must_ids": [
+      "INJ-01",
+      "INJ-02",
+      "INJ-03",
+      "INJ-04",
+      "INJ-05",
+      "INJ-06",
+      "INJ-07"
+    ],
+    "est_minutes": {
+      "must": 112,
+      "total": 237
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B07-semantic-models",
+      "B04-redaction-engine"
+    ],
+    "status_file": "docs/status/B06-injection-defense.md",
+    "brief": "Task IDs INJ-01..15 are plan tasks - NOT control ids (controls are written 'control INJ-0x'). Drives demo scene 2 (hidden SETUP.md injection) and scene 4 (judge lowers the INJ-02 threshold and the borderline prompt flips allow -> block). INJ-01 skeleton: public aegis.injection.normalize (others import it: mcp-proxy, action-guards, semantic) + control stubs. INJ-02 offset-preserving normalizer (NFKC, zero-width + tag chars - tag chars block on presence, homoglyph skeleton, de-leet, PL diacritic folding, base64/hex decode depth 2) ported from staging/pii/normalize.py + staging/corpora/obfuscate.py. INJ-03 RE2 signature catalog EN/PL/DE/UK/RU (data/signatures.yaml from staging/seed/policy.yaml INJ entries). INJ-04 control INJ-01 (prio 40; block on prompt.user/model.request, quarantine-by-redact on tool.output/mcp.result). INJ-05 control INJ-02 classifier cascade on rt.semantic.injection_score with live-editable params.threshold; when rt.semantic is degraded use the heuristic score and set degraded=True (the threshold demo must still work); review band -> rt.semantic.moderate (Qwen3Guard). INJ-06 control INJ-04 deterministic legs (extraction attempts + canary AEGIS-CANARY-7f3a91 on model.response). INJ-07 snippet with inline tests (decide INJ-02 threshold per Addendum; staging/models/RESULTS.md says block >= 0.80). Should: INJ-08 evasion views, INJ-09 exemplars via rt.semantic.embed, INJ-10, INJ-11 corpus + metamorphic regression with false-positive wall (finance, meta-security, PL benign). Could: INJ-12..15 (INJ-05 goal drift monitor). Explain score vs threshold in Decision.meta (dashboard renders meta.inj). Claude Code harness traffic (system reminders) must pass untouched. Tests: FakeRuntime, no models. Verify INJ-V01..V13. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B07-semantic-models",
+    "title": "Semantic models runtime: ONNX + Ollama guard/judge, heuristic fallback, INJ-03, CUS-01",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "semantic-models"
+    ],
+    "plan_files": [
+      "docs/plan/06-semantic-models.md"
+    ],
+    "owned_paths": [
+      "src/aegis/semantic/",
+      "src/aegis/controls/semantic/",
+      "src/aegis/api/routes/semantic.py",
+      "scripts/fetch_models.sh",
+      "models/",
+      "config/snippets/semantic-models.yaml",
+      "tests/unit/semantic_models/",
+      "docs/status/B07-semantic-models.md"
+    ],
+    "task_ids": [
+      "SEM-01",
+      "SEM-02",
+      "SEM-03",
+      "SEM-04",
+      "SEM-05",
+      "SEM-06",
+      "SEM-07",
+      "SEM-08",
+      "SEM-09",
+      "SEM-10",
+      "SEM-11",
+      "SEM-12",
+      "SEM-13",
+      "SEM-14",
+      "SEM-15",
+      "SEM-16",
+      "SEM-17"
+    ],
+    "verification_ids": [
+      "SEM-V01",
+      "SEM-V02",
+      "SEM-V03",
+      "SEM-V04",
+      "SEM-V05",
+      "SEM-V06",
+      "SEM-V07",
+      "SEM-V08",
+      "SEM-V09",
+      "SEM-V10",
+      "SEM-V11",
+      "SEM-V12"
+    ],
+    "priority_order": [
+      "SEM-01",
+      "SEM-02",
+      "SEM-03",
+      "SEM-04",
+      "SEM-05",
+      "SEM-06",
+      "SEM-07",
+      "SEM-08",
+      "SEM-09",
+      "SEM-10",
+      "SEM-11",
+      "SEM-12",
+      "SEM-13",
+      "SEM-14",
+      "SEM-15",
+      "SEM-16",
+      "SEM-17"
+    ],
+    "must_ids": [
+      "SEM-01",
+      "SEM-02",
+      "SEM-03",
+      "SEM-04",
+      "SEM-05",
+      "SEM-06",
+      "SEM-07",
+      "SEM-08",
+      "SEM-09",
+      "SEM-10"
+    ],
+    "est_minutes": {
+      "must": 120,
+      "total": 203
+    },
+    "depends_on": [
+      "B01-gateway-core"
+    ],
+    "status_file": "docs/status/B07-semantic-models.md",
+    "brief": "You are the ONLY bundle allowed to load models (8 GB RAM machine). Provide rt.semantic (aegis.semantic.engine:create). SEM-01 public surface + safe stubs (injection_score, moderate, embed, similarity, ner, status; every call returns ScoreResult with degraded flag, never raises to callers). SEM-02 heuristic scorer + heuristic-backed engine (used when AEGIS_SEMANTIC=off and as fallback). SEM-03 CUS-01 keyword leg (judges add terms live). SEM-04 INJ-03 control (Qwen3Guard safety + topic adherence with live adherence_pct). SEM-05 snippet + profile hints. SEM-06 resilience primitives (breakers, timeouts, queue). SEM-07 ONNX backends from staging/models/{pi_classifier,embedder,ner_pii}.py: Horizon PI-small injection classifier, MiniLM embeddings, EU-PII NER with ONE shared XLM-R tokenizer. SEM-08 async Ollama client + Qwen3Guard (alias aegis-guard) with the corrected prompt from staging/models/ollama_guard.py. SEM-09 model manager & engine wiring (lazy loads off the event loop). SEM-10 startup warm-up, static RAM plan, GET /api/semantic/status (+ /healthz components). Should: SEM-11 judge (aegis-judge) + CUS-01 NL leg, SEM-12 RAM governor, SEM-13 scripts/fetch_models.sh (from staging/models/download_models.sh), SEM-14 integrity check. Could: SEM-15..17. Known issue: SINGLE NER instance - expose rt.semantic.ner(text)/shared tokenizer so redaction-engine (B04 DLP-07) borrows it; never load eu-pii-ner twice (+673 MB). Never restart the user's Ollama; never pull large models; models already exist in models/ and as Ollama tags aegis-guard/aegis-judge. Thresholds/latencies from staging/models/RESULTS.md + bench_results. Tests hermetic with AEGIS_SEMANTIC=off; live-model tests marked 'semantic'. Verify SEM-V01..V12 incl. degraded drill (Ollama down -> degraded flag, no crash). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B08-budgets-ledger",
+    "title": "Budgets ledger: pricing, reserve/settle, BUD-01/02, EXE-04 loops, kill switch, /api/budgets",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "budgets-ledger"
+    ],
+    "plan_files": [
+      "docs/plan/07-budgets-ledger.md"
+    ],
+    "owned_paths": [
+      "src/aegis/budgets/",
+      "src/aegis/controls/budget/",
+      "config/pricing.yaml",
+      "src/aegis/api/routes/budgets.py",
+      "config/snippets/budgets-ledger.yaml",
+      "tests/unit/budgets_ledger/",
+      "docs/status/B08-budgets-ledger.md"
+    ],
+    "task_ids": [
+      "BUD-01",
+      "BUD-02",
+      "BUD-03",
+      "BUD-04",
+      "BUD-05",
+      "BUD-06",
+      "BUD-07",
+      "BUD-08",
+      "BUD-09",
+      "BUD-10",
+      "BUD-11",
+      "BUD-12",
+      "BUD-13",
+      "BUD-14",
+      "BUD-15",
+      "BUD-16",
+      "BUD-17",
+      "BUD-18"
+    ],
+    "verification_ids": [
+      "BUD-V01",
+      "BUD-V02",
+      "BUD-V03",
+      "BUD-V04",
+      "BUD-V05",
+      "BUD-V06",
+      "BUD-V07",
+      "BUD-V08",
+      "BUD-V09",
+      "BUD-V10",
+      "BUD-V11",
+      "BUD-V12",
+      "BUD-V13"
+    ],
+    "priority_order": [
+      "BUD-01",
+      "BUD-02",
+      "BUD-03",
+      "BUD-04",
+      "BUD-05",
+      "BUD-06",
+      "BUD-07",
+      "BUD-08",
+      "BUD-09",
+      "BUD-10",
+      "BUD-11",
+      "BUD-12",
+      "BUD-13",
+      "BUD-14",
+      "BUD-15",
+      "BUD-16",
+      "BUD-17",
+      "BUD-18"
+    ],
+    "must_ids": [
+      "BUD-01",
+      "BUD-02",
+      "BUD-03",
+      "BUD-04",
+      "BUD-05",
+      "BUD-06",
+      "BUD-07",
+      "BUD-08",
+      "BUD-09",
+      "BUD-10"
+    ],
+    "est_minutes": {
+      "must": 116,
+      "total": 188
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B03-policy-engine",
+      "B09-org-rbac",
+      "B10-approvals-engine"
+    ],
+    "status_file": "docs/status/B08-budgets-ledger.md",
+    "brief": "Task IDs BUD-01..18 are plan tasks (control BUD-01 = task BUD-06; control BUD-02 = task BUD-12). Drives F5 (governed budget raise) and F6 (runaway agent). BUD-01 skeleton (aegis.budgets.ledger:create -> rt.ledger; controls; router). BUD-02 config/pricing.yaml per CONTRACTS 4.6 + token estimates + windows (daily/monthly, Europe/Warsaw fallback UTC). BUD-03 limit index + scope chain org -> team -> agent -> session (AND semantics; denial names the tripped scope). BUD-04 ledger core: atomic reserve/settle/release (in-memory reservations). BUD-05 SQLite write-behind (budget_usage, budget_samples) + demo state seeded from config/org.seed.yaml demo_state. BUD-06 control BUD-01: reserve on model.request, clamp max_tokens via Mutation, downgrade route at soft threshold (models.downgrade), hard limit -> Decision(block, http_status=402, error_type=budget_exceeded) or require_approval with ApprovalDraft(kind=budget_raise, payload={'patch': [PatchOp...]}, labels.scope/scope_type); write ctx.state['bud.remaining']; read interaction.amount_usd for spend.* actions. BUD-07 kill switch (policy budgets.kill_switch + POST /api/killswitch, SSE killswitch). BUD-08 control EXE-04 loop ladder (tool_error -> block -> kill) for repeated web.fetch_url/model calls. BUD-09 /api/budgets, /raise, /raise/preview, /enforcement, /pricing. BUD-10 snippet with limits ported from staging/seed/org.seed.yaml budgets (chaos-agent $0.50/day wall) + inline tests. Should: BUD-11 history/forecast, BUD-12 control BUD-02 local compute, BUD-13..15. Stop codes toward Claude Code: 429 + retry-after + x-should-retry:false (never 403); policy blocks are synthetic 200 (B02 renders them). Known issue: the policy self-test must not see live counters / kill switch - support a sandbox/ignore mode when ctx.source == 'selftest'. Reuse staging/seed/{org.seed.yaml,policy.yaml}, staging/spikes/claude-code/FINDINGS.md budget modes, research 04 formulas. Verify BUD-V01..V13 incl. the F6 curl script BUD-V10. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B09-org-rbac",
+    "title": "Org & RBAC: Acme Capital seed, identity, view-as, permissions, GOV-01/02",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "org-rbac"
+    ],
+    "plan_files": [
+      "docs/plan/08-org-rbac.md"
+    ],
+    "owned_paths": [
+      "src/aegis/org/",
+      "src/aegis/controls/governance/",
+      "config/org.seed.yaml",
+      "src/aegis/api/routes/org.py",
+      "config/snippets/org-rbac.yaml",
+      "tests/unit/org_rbac/",
+      "docs/status/B09-org-rbac.md"
+    ],
+    "task_ids": [
+      "ORG-01",
+      "ORG-02",
+      "ORG-03",
+      "ORG-04",
+      "ORG-05",
+      "ORG-06",
+      "ORG-07",
+      "ORG-08",
+      "ORG-09",
+      "ORG-10",
+      "ORG-11",
+      "ORG-12",
+      "ORG-13",
+      "ORG-14",
+      "ORG-15"
+    ],
+    "verification_ids": [
+      "ORG-V01",
+      "ORG-V02",
+      "ORG-V03",
+      "ORG-V04",
+      "ORG-V05",
+      "ORG-V06",
+      "ORG-V07",
+      "ORG-V08",
+      "ORG-V09",
+      "ORG-V10",
+      "ORG-V11",
+      "ORG-V12",
+      "ORG-V13",
+      "ORG-V14",
+      "ORG-V15"
+    ],
+    "priority_order": [
+      "ORG-01",
+      "ORG-02",
+      "ORG-03",
+      "ORG-04",
+      "ORG-05",
+      "ORG-06",
+      "ORG-07",
+      "ORG-08",
+      "ORG-09",
+      "ORG-10",
+      "ORG-11",
+      "ORG-12",
+      "ORG-13",
+      "ORG-14",
+      "ORG-15"
+    ],
+    "must_ids": [
+      "ORG-01",
+      "ORG-02",
+      "ORG-03",
+      "ORG-04",
+      "ORG-05",
+      "ORG-06",
+      "ORG-07",
+      "ORG-08",
+      "ORG-09",
+      "ORG-10"
+    ],
+    "est_minutes": {
+      "must": 118,
+      "total": 175
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B03-policy-engine",
+      "B10-approvals-engine"
+    ],
+    "status_file": "docs/status/B09-org-rbac.md",
+    "brief": "Who is who - every decision row, approval card and view-as switch depends on it. ORG-01 skeleton (aegis.org.service:create -> rt.org; aegis.org.seed:main for 'python -m aegis seed'). ORG-02 copy synth-A's corrected docs/seed-fixes/org.seed.yaml -> config/org.seed.yaml (supersedes staging/seed/org.seed.yaml; Addendum A seed fixes SF-01/02/03/12/13/14/15/25 already applied) keeping the CONTRACTS 4.5 ids (acme-capital; u_katarzyna owner, u_marek/u_emily admins, u_piotr/u_olivia/u_agnieszka/u_james/u_tomasz members; agents claude-code@platform, research-agent@research, trading-copilot@trading, chaos-agent@platform; fake aegis_demo_* keys + revoked key) (fixes in it: tool allowlists let research-agent call payments.create_charge and claude-code call MCP tools so GOV-03 does not pre-empt the $12/$480 flows; one owner on purpose, two-person = owner + admin; wire-glob model names; <server>.<tool> tool ids; keys valid to 2027-10-31 + expired/revoked examples + disabled legacy-bot@platform; Claude Code's agent key arrives in X-Aegis-Agent-Key while Authorization stays its OAuth token; control_plane.view_as_aliases + default_viewer). ORG-03 SQLite store + seeding + read side; ORG-04 identity resolution O(1) (aegis_ keys via HMAC, X-Aegis-Agent/Member/Team headers in demo mode, agent alias claude-code -> claude-code@platform) and resolve_viewer (X-Aegis-View-As member id or role alias owner/admin/member, default u_katarzyna); ORG-05 policy-driven permission matrix + /api/whoami capabilities; ORG-06 GET /api/org, /api/members, /api/agents (spend_today_usd from rt.ledger.status); ORG-07 governed mutations via rt.approvals (admin promotion -> owner approval), org.changed audit + org.updated SSE; ORG-08 control GOV-01 (identity & attribution; revoked keys/disabled agents blocked); ORG-09 control GOV-02 (model allowlist + destination tier ceiling: research-agent local only); ORG-10 snippet. Should: ORG-11/12. Provide members_with_role, get_agent (owner_member_id = sponsor = 'self' approver), resources() (databases/tables with sensitivity, vendors) for approvals/action-guards. Verify ORG-V01..V15. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B10-approvals-engine",
+    "title": "Approvals engine: routing by role/amount, two-person, grants, executors, GOV-05, /api/approvals",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "approvals-engine"
+    ],
+    "plan_files": [
+      "docs/plan/09-approvals-engine.md"
+    ],
+    "owned_paths": [
+      "src/aegis/approvals/",
+      "src/aegis/controls/config/",
+      "src/aegis/api/routes/approvals.py",
+      "config/snippets/approvals-engine.yaml",
+      "tests/unit/approvals_engine/",
+      "docs/status/B10-approvals-engine.md"
+    ],
+    "task_ids": [
+      "APR-01",
+      "APR-02",
+      "APR-03",
+      "APR-04",
+      "APR-05",
+      "APR-06",
+      "APR-07",
+      "APR-08",
+      "APR-09",
+      "APR-10",
+      "APR-11",
+      "APR-12",
+      "APR-13",
+      "APR-14",
+      "APR-15",
+      "APR-16",
+      "APR-17"
+    ],
+    "verification_ids": [
+      "APR-V01",
+      "APR-V02",
+      "APR-V03",
+      "APR-V04",
+      "APR-V05",
+      "APR-V06",
+      "APR-V07",
+      "APR-V08",
+      "APR-V09",
+      "APR-V10",
+      "APR-V11",
+      "APR-V12"
+    ],
+    "priority_order": [
+      "APR-01",
+      "APR-02",
+      "APR-03",
+      "APR-04",
+      "APR-05",
+      "APR-06",
+      "APR-07",
+      "APR-08",
+      "APR-09",
+      "APR-10",
+      "APR-11",
+      "APR-12",
+      "APR-13",
+      "APR-14",
+      "APR-15",
+      "APR-16",
+      "APR-17"
+    ],
+    "must_ids": [
+      "APR-01",
+      "APR-02",
+      "APR-03",
+      "APR-04",
+      "APR-05",
+      "APR-06",
+      "APR-07",
+      "APR-08",
+      "APR-09"
+    ],
+    "est_minutes": {
+      "must": 117,
+      "total": 217
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B03-policy-engine",
+      "B09-org-rbac"
+    ],
+    "status_file": "docs/status/B10-approvals-engine.md",
+    "brief": "Org governance core (F4, F5, F6 raise, F9 re-pin). APR-01 skeleton (aegis.approvals.service:create -> rt.approvals with route/request/vote/cancel/get/list/wait/find_preapproved/register_executor/create_manual; Null is fail-closed). APR-02 routing engine: first match over policy approvals.rules (kinds action/budget_raise/mcp_pin) and approvals.config_rules (config_change; multi-change -> highest level), fact builders (amount_usd, action_type, resource sensitivity, env, labels from action-guards). APR-03 config/snippets/approvals-engine.yaml: mirror synth-A's corrected docs/seed-fixes/approvals.yaml (contract-format approvals: block, FIRST MATCH WINS, binding rule ids, routing tests at the bottom; amount_usd missing -> fail closed to spend-owner-2p; extras profiles/labels_in/signals_any) + GOV-05 entry; staging/seed/approvals.yaml is superseded. APR-04 SQLite store + HMAC fingerprint (canonical json minus volatile keys; pending duplicate reuse from hook + MCP proxy). APR-05 lifecycle: request/vote/two-person/cancel/get/list/wait; levels auto < self < admin < owner < deny; self = requester member or agent sponsor (owner_member_id) or any admin/owner; agents never vote; separation of duties for admin/owner levels; two_person = two distinct eligible approvers, at least one satisfying the level and the other role >= admin (Acme has one owner, so owner + admin; a human proposer who already satisfies the level co-signs as the first vote) per Addendum A SF-01. APR-06 find_preapproved (parameter-bound, single-use, ttl 900 s, replay protection). APR-07 executors (fallback layer; policy-engine registers config_change/budget_raise, mcp-proxy registers mcp_pin; missing -> execution={'status':'no_executor'}). APR-08 control GOV-05 on config.change (proposer already authorized -> allow 'authorized: admin >= admin'). APR-09 /api/approvals*, approve/deny/cancel/simulate/rules with can_vote + why_not texts. Should: APR-10 sweeper, APR-11 routing self-test, APR-12 demo history seed, APR-13 long-poll wait. F4 matrix to prove: $12 research-agent -> self (u_agnieszka); $50 trading-copilot -> admin (u_piotr cannot, u_emily can); $480 claude-code -> owner; $1500 -> owner + two-person; $5000.01 -> blocked by ctl ACT-01; customers SELECT -> admin; payment_cards -> deny; prod DELETE -> owner. SSE approval.created/updated + audit approval.*. Verify APR-V01..V12. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B11-action-guards",
+    "title": "Action guards: spend, data access, dangerous commands, fs/net scope (ctl ACT-01..04, EXE-01..03, GOV-03/04)",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "action-guards"
+    ],
+    "plan_files": [
+      "docs/plan/10-action-guards.md"
+    ],
+    "owned_paths": [
+      "src/aegis/actions/",
+      "src/aegis/controls/actions/",
+      "config/snippets/action-guards.yaml",
+      "tests/unit/action_guards/",
+      "docs/status/B11-action-guards.md"
+    ],
+    "task_ids": [
+      "ACT-01",
+      "ACT-02",
+      "ACT-03",
+      "ACT-04",
+      "ACT-05",
+      "ACT-06",
+      "ACT-07",
+      "ACT-08",
+      "ACT-09",
+      "ACT-10",
+      "ACT-11",
+      "ACT-12",
+      "ACT-13",
+      "ACT-14",
+      "ACT-15",
+      "ACT-16",
+      "ACT-17",
+      "ACT-18",
+      "ACT-19",
+      "ACT-20",
+      "ACT-21"
+    ],
+    "verification_ids": [
+      "ACT-V01",
+      "ACT-V02",
+      "ACT-V03",
+      "ACT-V04",
+      "ACT-V05",
+      "ACT-V06",
+      "ACT-V07",
+      "ACT-V08",
+      "ACT-V09",
+      "ACT-V10",
+      "ACT-V11"
+    ],
+    "priority_order": [
+      "ACT-01",
+      "ACT-02",
+      "ACT-03",
+      "ACT-04",
+      "ACT-05",
+      "ACT-06",
+      "ACT-07",
+      "ACT-08",
+      "ACT-09",
+      "ACT-10",
+      "ACT-11",
+      "ACT-12",
+      "ACT-13",
+      "ACT-14",
+      "ACT-15",
+      "ACT-16",
+      "ACT-17",
+      "ACT-18",
+      "ACT-19",
+      "ACT-20",
+      "ACT-21"
+    ],
+    "must_ids": [
+      "ACT-01",
+      "ACT-02",
+      "ACT-03",
+      "ACT-04",
+      "ACT-05",
+      "ACT-06",
+      "ACT-07",
+      "ACT-08",
+      "ACT-09"
+    ],
+    "est_minutes": {
+      "must": 135,
+      "total": 265
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B09-org-rbac",
+      "B10-approvals-engine"
+    ],
+    "status_file": "docs/status/B11-action-guards.md",
+    "brief": "Task IDs ACT-01..21 are plan tasks; controls are written 'ctl ACT-01' etc. Deterministic guards on every tool/MCP/egress call (F3 Claude Code denies, F4 spend/data approvals). ACT-01 public surfaces (actions/base, params, runtime current_rt, controls package with CONTROLS stubs). ACT-02 classification engine (capability + action_type from tool name/args, <server>.<tool> ids, Claude Code built-ins). ACT-03 catalog (rt.org.resources() with FALLBACK from staging/seed/org.seed.yaml resources), explain + ApprovalDraft helpers with facts. ACT-04 ctl ACT-01 spend guard (enrich sets action_type spend.*, amount_usd, vendor labels; catalog price check: an understated $5 for the $4,800 plan routes as $4,800; $12 self / $50 admin / $480 owner / $1500 owner+2p via approvals; > $5000 block). ACT-05 SQL analyzer + ctl ACT-02 (customers -> admin draft with sensitivity/env/rows facts; payment_cards -> block; DELETE FROM trades env prod -> owner; DROP/schema changes blocked). ACT-06 shell analyzer + ctl EXE-01 (curl|sh, wget|bash, reverse shells, rm -rf ~, base64-to-shell, AI-CLI bypass; benign twins pass) - deny wording reused from staging/spikes/claude-code/proxy.py. ACT-07 ctl EXE-02 fs/net scope (.env, ~/.ssh, cloud metadata incl. encoded IPs, SSRF; .env.example and repo files allowed). ACT-08 snippet; ACT-09 headline-flow unit tests with a mini-pipeline harness. Should: ACT-10 GOV-03 tool authz, ACT-11 ctl ACT-03 external send, ACT-12 ctl ACT-04 code/deploy, ACT-13 ctl EXE-03 taint, ACT-14 GOV-04 + anti-flood, ACT-15/16. Could: ACT-17..21. Known issues: GOV-03 must not pre-empt the $12/$480 flows (org seed fix in B09); DLP-01 vs ctl ACT-03 external-email ordering per Addendum (ACT-03 tests use assert: control). Same enrichment on the hook path and the MCP proxy path so approval fingerprints match. Reuse staging/seed/policy.yaml entries + SCENARIOS.md 2-6, 9 + staging/corpora/handwritten/agentic_tools.jsonl. Verify ACT-V01..V11. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B12-mcp-proxy",
+    "title": "MCP proxy + mock MCP servers: pinning, poisoning, rug pull, re-pin approvals",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "mcp-proxy"
+    ],
+    "plan_files": [
+      "docs/plan/11-mcp-proxy.md"
+    ],
+    "owned_paths": [
+      "src/aegis/mcp/",
+      "src/aegis/controls/mcp/",
+      "mocks/mock_mcp/",
+      "src/aegis/api/routes/mcp.py",
+      "src/aegis/api/routes/mcp_admin.py",
+      "config/snippets/mcp-proxy.yaml",
+      "tests/unit/mcp_proxy/",
+      "docs/status/B12-mcp-proxy.md"
+    ],
+    "task_ids": [
+      "MCP-01",
+      "MCP-02",
+      "MCP-03",
+      "MCP-04",
+      "MCP-05",
+      "MCP-06",
+      "MCP-07",
+      "MCP-08",
+      "MCP-09",
+      "MCP-10",
+      "MCP-11",
+      "MCP-12",
+      "MCP-13",
+      "MCP-14",
+      "MCP-15",
+      "MCP-16",
+      "MCP-17",
+      "MCP-18",
+      "MCP-19"
+    ],
+    "verification_ids": [
+      "MCP-V01",
+      "MCP-V02",
+      "MCP-V03",
+      "MCP-V04",
+      "MCP-V05",
+      "MCP-V06",
+      "MCP-V07",
+      "MCP-V08",
+      "MCP-V09",
+      "MCP-V10",
+      "MCP-V11",
+      "MCP-V12"
+    ],
+    "priority_order": [
+      "MCP-01",
+      "MCP-02",
+      "MCP-03",
+      "MCP-04",
+      "MCP-05",
+      "MCP-06",
+      "MCP-07",
+      "MCP-08",
+      "MCP-09",
+      "MCP-10",
+      "MCP-11",
+      "MCP-12",
+      "MCP-13",
+      "MCP-14",
+      "MCP-15",
+      "MCP-16",
+      "MCP-17",
+      "MCP-18",
+      "MCP-19"
+    ],
+    "must_ids": [
+      "MCP-01",
+      "MCP-02",
+      "MCP-03",
+      "MCP-04",
+      "MCP-05",
+      "MCP-06",
+      "MCP-07",
+      "MCP-08",
+      "MCP-09"
+    ],
+    "est_minutes": {
+      "must": 127,
+      "total": 226
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B10-approvals-engine",
+      "B11-action-guards"
+    ],
+    "status_file": "docs/status/B12-mcp-proxy.md",
+    "brief": "Task IDs MCP-01..19 are plan tasks; controls are 'control MCP-0x'. F4 (the $50 marketpulse.purchase_subscription call is held here) and F9 (poisoned tool, rug pull). MCP-01 stubs for every public surface; MCP-02 port staging/spikes/mcp/aegis_mcp/protocol.py -> mcp/jsonrpc.py and detectors.py -> mcp/detect.py (tool-definition scan); MCP-03 PinStore on SQLite (mcp_tools table; tool_hash/diff_tools from spike pins.py); MCP-04 interaction builders (mcp.init, mcp.list, mcp.call, mcp.result) + verdict write-back; MCP-05 governor + POST|GET|DELETE /mcp/{server} (Streamable HTTP, legacy + 2026 eras) + service, holding calls for approval (hold_s 30) and resuming when approved; MCP-06 controls MCP-01 registry (unknown servers blocked), MCP-02 poisoning (drop poisoned 'add' from tools/list), MCP-03 pinning (rug pull -> hide/block + mcp_pin ApprovalDraft); MCP-07 register mcp_pin executor + /api/mcp/* admin + SSE mcp.tool; MCP-08 mocks/mock_mcp (:8792, python -m mocks.mock_mcp) with 9 servers: acme-db (list_tables, query over seeded data/mocks/acme_db.sqlite with customers incl. fake PESEL/IBAN, payment_cards, trades, positions, research_notes, market_prices), acme-crm, marketpulse (list_plans, get_quote, purchase_subscription; mp-pro-monthly = $50), payments (create_charge), mailer, web (fetch_url pages with hidden injection), weather, poisoned (<IMPORTANT> add + tag-char payload, send_email shadowing), rugpull (benign until POST /_mock/rugpull/flip), POST /_mock/reset - BUILD MCP-08 RIGHT AFTER MCP-05, the demo needs it; MCP-09 unit tests (FakeRuntime). Should: MCP-10..12, 15 SDK e2e (port spike run_demo); MCP-13 stdio wrapper, MCP-14 control MCP-04. mcp==2.3.0 SDK (guarded imports). Claude Code tool names mcp__server__tool <-> server.tool so hook and proxy fingerprints match. Verify MCP-V01..V12 (V08/V10 integration). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B13-claude-code",
+    "title": "Claude Code integration: fail-closed hook, hook endpoint, demo profile & workspace, replay",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "claude-code-integration"
+    ],
+    "plan_files": [
+      "docs/plan/12-claude-code-integration.md"
+    ],
+    "owned_paths": [
+      "src/aegis/integrations/claude_code/",
+      "scripts/aegis-hook",
+      "demo/claude/",
+      "src/aegis/api/routes/hooks_claude_code.py",
+      "config/snippets/claude-code-integration.yaml",
+      "tests/unit/claude_code_integration/",
+      "docs/status/B13-claude-code.md"
+    ],
+    "task_ids": [
+      "CC-01",
+      "CC-02",
+      "CC-03",
+      "CC-04",
+      "CC-05",
+      "CC-06",
+      "CC-07",
+      "CC-08",
+      "CC-09",
+      "CC-10",
+      "CC-11",
+      "CC-12",
+      "CC-13",
+      "CC-14",
+      "CC-15",
+      "CC-16",
+      "CC-17",
+      "CC-18"
+    ],
+    "verification_ids": [
+      "CC-V01",
+      "CC-V02",
+      "CC-V03",
+      "CC-V04",
+      "CC-V05",
+      "CC-V06",
+      "CC-V07",
+      "CC-V08",
+      "CC-V09",
+      "CC-V10",
+      "CC-V11",
+      "CC-V12",
+      "CC-V13",
+      "CC-V14"
+    ],
+    "priority_order": [
+      "CC-01",
+      "CC-02",
+      "CC-03",
+      "CC-04",
+      "CC-05",
+      "CC-06",
+      "CC-07",
+      "CC-08",
+      "CC-09",
+      "CC-10",
+      "CC-11",
+      "CC-12",
+      "CC-13",
+      "CC-14",
+      "CC-15",
+      "CC-16",
+      "CC-17",
+      "CC-18"
+    ],
+    "must_ids": [
+      "CC-01",
+      "CC-02",
+      "CC-03",
+      "CC-04",
+      "CC-05",
+      "CC-06",
+      "CC-07",
+      "CC-08",
+      "CC-09"
+    ],
+    "est_minutes": {
+      "must": 113,
+      "total": 228
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B02-gateway-proxy",
+      "B11-action-guards",
+      "B04-redaction-engine"
+    ],
+    "status_file": "docs/status/B13-claude-code.md",
+    "brief": "F3: a real, unmodified Claude Code session governed on three layers - model traffic via ANTHROPIC_BASE_URL=http://127.0.0.1:8787, every tool call via a fail-closed PreToolUse hook, MCP via /mcp/<name>. CC-01 skeleton (route POST /v1/hooks/claude-code, package). CC-02 scripts/aegis-hook in bash+curl (stdin JSON -> gateway; exit 2 with reason when the gateway is unreachable or errors = FAIL CLOSED; AEGIS_HOOK_TIMEOUT 110 s; agent key header). Model traffic carries the agent key in X-Aegis-Agent-Key via ANTHROPIC_CUSTOM_HEADERS (Authorization stays the OAuth token; Addendum SF-15). CC-03 event -> Interaction mapping (UserPromptSubmit -> prompt.user, PreToolUse -> tool.input with mcp__s__t -> s.t, PostToolUse -> tool.output, ConfigChange -> config.change; session_id shared with model rows). CC-04 verdict -> hook output (deny + reason, updatedInput via DLP-08 rehydrate_obj, PostToolUse updatedToolOutput, 'ask' for pending). CC-05 handler + pending/complete (hold for approval up to hold_s 60). CC-06 SessionStart self-check banner. CC-07 profile generator + demo/claude/{settings.json, settings.failclosed.json, mcp.json, run.sh (claude --settings ... --mcp-config ... --strict-mcp-config --setting-sources project; never machine-wide settings)}. CC-08 demo workspace demo/claude/project (README, CLAUDE.md, docs/SETUP.md with HTML-comment + Unicode tag-char hidden instruction GENERATED AT RUNTIME by reset.sh, .env generated at runtime, src/payments/refunds.py). CC-09 deterministic replay.py over fixtures/*.json (pipe_to_shell, read_dotenv, setup_md_post, gpu_480, prompt_pii...) = the fallback when OAuth/network fails. Should: CC-10 live scripted demo + PROMPTS.md, CC-11 budget-exhaustion semantics on the hook path (429 no-retry), CC-12 ConfigChange tamper guard, CC-13 local rehydration via updatedInput, CC-14 snippet. Could: CC-15..18 (GOV-06 as a real control only if the Addendum grants src/aegis/controls/claude_code/). Reuse staging/spikes/claude-code/{hook.py, proxy.py /hook + deny(), settings/*.json, run.sh, logs (shapes only), FINDINGS.md}. Never commit secret-shaped strings. Verify CC-V01..V14 (hook fail-closed matrix; live demo.sh in the integration window; costs ~$0.01 subscription quota). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B14-threat-feed",
+    "title": "Threat feed: signed feed service :8790 + gateway FeedManager + SIG-01/02/03",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "threat-feed"
+    ],
+    "plan_files": [
+      "docs/plan/13-threat-feed.md"
+    ],
+    "owned_paths": [
+      "src/aegis/feed/",
+      "src/aegis/controls/signatures/",
+      "feed_service/",
+      "config/feeds/",
+      "src/aegis/api/routes/feed.py",
+      "config/snippets/threat-feed.yaml",
+      "tests/unit/threat_feed/",
+      "docs/status/B14-threat-feed.md"
+    ],
+    "task_ids": [
+      "TI-01",
+      "TI-02",
+      "TI-03",
+      "TI-04",
+      "TI-05",
+      "TI-06",
+      "TI-07",
+      "TI-08",
+      "TI-09",
+      "TI-10",
+      "TI-11",
+      "TI-12",
+      "TI-13",
+      "TI-14",
+      "TI-15",
+      "TI-16",
+      "TI-17",
+      "TI-18"
+    ],
+    "verification_ids": [
+      "TI-V01",
+      "TI-V02",
+      "TI-V03",
+      "TI-V04",
+      "TI-V05",
+      "TI-V06",
+      "TI-V07",
+      "TI-V08",
+      "TI-V09",
+      "TI-V10",
+      "TI-V11",
+      "TI-V12",
+      "TI-V13",
+      "TI-V14",
+      "TI-V15"
+    ],
+    "priority_order": [
+      "TI-01",
+      "TI-02",
+      "TI-03",
+      "TI-04",
+      "TI-05",
+      "TI-06",
+      "TI-07",
+      "TI-08",
+      "TI-09",
+      "TI-10",
+      "TI-11",
+      "TI-12",
+      "TI-13",
+      "TI-14",
+      "TI-15",
+      "TI-16",
+      "TI-17",
+      "TI-18"
+    ],
+    "must_ids": [
+      "TI-01",
+      "TI-02",
+      "TI-03",
+      "TI-04",
+      "TI-05",
+      "TI-06",
+      "TI-07",
+      "TI-08",
+      "TI-09",
+      "TI-10",
+      "TI-11",
+      "TI-12"
+    ],
+    "est_minutes": {
+      "must": 142,
+      "total": 210
+    },
+    "depends_on": [
+      "B01-gateway-core"
+    ],
+    "status_file": "docs/status/B14-threat-feed.md",
+    "brief": "Requirement 4 + F8: signatures from an externally managed system. Signature ids are AEGIS-TI-0xx (not task ids). TI-01 stubs (aegis.feed.manager:create -> rt.feed disabled; controls SIG-01/02/03 returning None; route /api/feed/*). TI-02 port staging/feed-seed/feedlib.py -> src/aegis/feed/matchers/{core,text,structured,artifact}.py (MATCHERS, canonical leaf names, span evidence, event_from_interaction, run_tests). TI-03 schema.py (Signature, Bundle, FeedPointer, alias normalization) + feed_service/port_staging.py converting the 20 staged signatures + pending into feed_service/signatures/*.yaml (AEGIS-TI-022 EchoLeak enabled:false initially; demo host assets.acme-capital.example). TI-04 feed_service/signing.py + src/aegis/feed/verify.py (ed25519 via PyNaCl) + 'python -m feed_service keygen --if-missing' writing config/feeds/feed_pubkey.b64 + seed_bundle.json(.sig); private key only in feed_service/state (gitignored). TI-05 feed service core (build.py validate -> vectors -> sign -> bump serial with high-water; app.py distribution + authoring endpoints, SSE 'published', POST /api/publish, /api/tamper, /api/reset). TI-06 gateway FeedManager (SSE + poll, verify signature, anti-rollback, run vectors / quarantine, atomic swap, feed.updated / feed.rejected events + audit, last-good kept). TI-07 control SIG-01 signature engine (block EchoLeak after publish; canary AEGIS-TEST-SIGNATURE-7F3A). TI-08 route. TI-09 SIG-02 model-artifact gate. TI-10 feed editor UI (feed_service/ui: edit/enable/withdraw -> Validate -> Publish; Tamper button). TI-11 unit tests; TI-12 snippet. Should: TI-13 SIG-03 package guard, TI-14 'python -m aegis.feed.demo echoleak' CLI (ALLOW -> publish -> BLOCK with activation ms), TI-15..17. Could: TI-18. If time is short build the gateway side (TI-01/02/03/04/06/07/08/12) first - it works on the seed bundle - then the service (TI-05/10). Demo scene 5 uses AEGIS-TI-022 (not TI-017). Reset between judges: make reset + python -m feed_service reset --hard. Verify TI-V01..V15 (V14/V15 integration). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B15-audit-metrics",
+    "title": "Audit & metrics: hash-chained log, decisions API, exports, /metrics, /api/stats, /api/perf",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "audit-metrics"
+    ],
+    "plan_files": [
+      "docs/plan/14-audit-metrics.md"
+    ],
+    "owned_paths": [
+      "src/aegis/audit/",
+      "src/aegis/metrics/",
+      "src/aegis/api/routes/audit.py",
+      "src/aegis/api/routes/decisions.py",
+      "src/aegis/api/routes/stats.py",
+      "src/aegis/api/routes/metrics.py",
+      "config/snippets/audit-metrics.yaml",
+      "tests/unit/audit_metrics/",
+      "docs/status/B15-audit-metrics.md"
+    ],
+    "task_ids": [
+      "AUD-01",
+      "AUD-02",
+      "AUD-03",
+      "AUD-04",
+      "AUD-05",
+      "AUD-06",
+      "AUD-07",
+      "AUD-08",
+      "AUD-09",
+      "AUD-10",
+      "AUD-11",
+      "AUD-12",
+      "AUD-13",
+      "AUD-14",
+      "AUD-15",
+      "AUD-16",
+      "AUD-17",
+      "AUD-18",
+      "AUD-19",
+      "AUD-20"
+    ],
+    "verification_ids": [
+      "AUD-V01",
+      "AUD-V02",
+      "AUD-V03",
+      "AUD-V03b",
+      "AUD-V04",
+      "AUD-V04b",
+      "AUD-V05",
+      "AUD-V06",
+      "AUD-V07",
+      "AUD-V08",
+      "AUD-V09",
+      "AUD-V10",
+      "AUD-V11",
+      "AUD-V12",
+      "AUD-V13"
+    ],
+    "priority_order": [
+      "AUD-01",
+      "AUD-02",
+      "AUD-03",
+      "AUD-04",
+      "AUD-05",
+      "AUD-06",
+      "AUD-07",
+      "AUD-08",
+      "AUD-09",
+      "AUD-10",
+      "AUD-11",
+      "AUD-12",
+      "AUD-13",
+      "AUD-14",
+      "AUD-15",
+      "AUD-16",
+      "AUD-17",
+      "AUD-18",
+      "AUD-19",
+      "AUD-20"
+    ],
+    "must_ids": [
+      "AUD-01",
+      "AUD-02",
+      "AUD-03",
+      "AUD-04",
+      "AUD-05",
+      "AUD-06",
+      "AUD-07",
+      "AUD-08",
+      "AUD-09",
+      "AUD-10"
+    ],
+    "est_minutes": {
+      "must": 120,
+      "total": 205
+    },
+    "depends_on": [
+      "B01-gateway-core"
+    ],
+    "status_file": "docs/status/B15-audit-metrics.md",
+    "brief": "Security reporting (20 % of the score) and the data behind the dashboard. AUD-01 skeleton (aegis.audit.log:create -> rt.audit, aegis.metrics.prom:create -> rt.metrics, aegis.audit.verify:main, 4 routers). AUD-02 hash-chained JSONL writer exactly per CONTRACTS 6.2 (canonical_json, genesis '0'*64, data/audit/audit-YYYYMMDD.jsonl + HEAD.json, fcntl lock). AUD-03 write-time privacy guard (never raw prompt/response/tool args/secrets; spans + masked previews + HMAC fingerprints only). AUD-04 SQLite audit_index + decisions projection (DecisionSummary/Detail from pipeline record data). AUD-05 verify: function, 'python -m aegis verify-audit' ('chain OK (N records)'), GET /api/audit/verify, --tamper-demo. AUD-06 GET /api/audit, /api/decisions (newest first), /api/decisions/{id}. AUD-07 Prometheus registry with the CONTRACTS 6.4 aegis_* names + /metrics + perf tracker + GET /api/perf (overhead p50/p95, per-control latency; merge reports/bench.json when present). AUD-08 /api/stats KPIs + timeseries + SSE 'stats' every 2 s (incl. cost_avoided_usd). AUD-09 demo warm-up synthetic history (backfill rows OUTSIDE the chain, req_demo_/ses_demo_ prefixes). AUD-10 exports JSONL / CSV / OCSF (Detection Finding 2004 for non-allow, API Activity 6003 otherwise), admin-gated. Should: AUD-11 redaction spans with HMAC fingerprints, AUD-12 cost-avoided, AUD-14 posture score, AUD-15 live primer, AUD-16 tamper demo/audited export/startup verify. Could: AUD-17..20. Counters derived from audit events only (no double counting with other owners). Reuse staging/pii/placeholders.py span schema, research 04 OCSF/metrics, staging/design/prototype data.js for warm-up shapes. Verify AUD-V01..V13 (byte scan: no raw PII in data/audit). RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B16-dashboard-shell",
+    "title": "Dashboard shell: design system, API/SSE client, router, view-as, overview, perf/health",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "dashboard-shell"
+    ],
+    "plan_files": [
+      "docs/plan/15-dashboard-shell.md"
+    ],
+    "owned_paths": [
+      "web/public/",
+      "web/src/main.tsx",
+      "web/src/App.tsx",
+      "web/src/router.tsx",
+      "web/src/vite-env.d.ts",
+      "web/src/styles/",
+      "web/src/lib/",
+      "web/src/api/client.ts",
+      "web/src/api/sse.ts",
+      "web/src/api/hooks.ts",
+      "web/src/components/ui/",
+      "web/src/components/shell/",
+      "web/src/components/charts/",
+      "web/src/mocks/shell/",
+      "web/src/pages/overview.page.tsx",
+      "web/src/pages/system/",
+      "tests/unit/dashboard_shell/",
+      "docs/status/B16-dashboard-shell.md"
+    ],
+    "task_ids": [
+      "UIS-01",
+      "UIS-02",
+      "UIS-03",
+      "UIS-04",
+      "UIS-05",
+      "UIS-06",
+      "UIS-07",
+      "UIS-08",
+      "UIS-09",
+      "UIS-10",
+      "UIS-11",
+      "UIS-12",
+      "UIS-13",
+      "UIS-14",
+      "UIS-15",
+      "UIS-16",
+      "UIS-17",
+      "UIS-18",
+      "UIS-19",
+      "UIS-20",
+      "UIS-21"
+    ],
+    "verification_ids": [
+      "UIS-V01",
+      "UIS-V02",
+      "UIS-V03",
+      "UIS-V04",
+      "UIS-V05",
+      "UIS-V06",
+      "UIS-V07",
+      "UIS-V08",
+      "UIS-V09",
+      "UIS-V10",
+      "UIS-V11"
+    ],
+    "priority_order": [
+      "UIS-01",
+      "UIS-02",
+      "UIS-03",
+      "UIS-04",
+      "UIS-05",
+      "UIS-06",
+      "UIS-07",
+      "UIS-08",
+      "UIS-09",
+      "UIS-10",
+      "UIS-11",
+      "UIS-12",
+      "UIS-13",
+      "UIS-14",
+      "UIS-15",
+      "UIS-16",
+      "UIS-17",
+      "UIS-18",
+      "UIS-19",
+      "UIS-20",
+      "UIS-21"
+    ],
+    "must_ids": [
+      "UIS-01",
+      "UIS-02",
+      "UIS-03",
+      "UIS-04",
+      "UIS-05",
+      "UIS-06",
+      "UIS-07",
+      "UIS-08",
+      "UIS-09",
+      "UIS-10",
+      "UIS-11"
+    ],
+    "est_minutes": {
+      "must": 119,
+      "total": 210
+    },
+    "depends_on": [],
+    "status_file": "docs/status/B16-dashboard-shell.md",
+    "brief": "Frontend foundation; B17/B18/B19 import from you, so UIS-01 + UIS-02 (~25 min) come first and their exported names/props are frozen once landed. UIS-01 foundations (web/src/lib utils/format/colors/icons/registry/viewer/mockMode/storage/motion; tokens.css + globals.css + effects.css ported from staging/design/prototype/assets + DESIGN_TOKENS.md). UIS-02 shadcn primitives in components/ui. UIS-03 typed api/client.ts (X-Aegis-View-As header on every call, mock fallback with MockBadge, download helper). UIS-04 SSE hub api/sse.ts + api/hooks.ts (useApi, useEvents, useLiveDecisions with backfill). UIS-05 shell kit (PageHeader, Panel, KpiTile, RoleGate, LockedAction, ActionBadge, IdentityChip, MockBadge...). UIS-06 Recharts wrappers (AreaTimeseries, BarList, Sparkline, Gauge). UIS-07 app frame: page registry via import.meta.glob('./pages/**/*.page.tsx') per frozen page.ts, sidebar sections Overview/Security/Governance/System with locked (not hidden) pages above the view-as role, view-as switcher (persisted, ?view_as=, SSE reconnect). UIS-08 shell mocks + forced-mock pump (VITE_AEGIS_MOCK=1). UIS-09 global toasts/banners (policy.applied with latency + diff summary, policy.rejected, feed.updated/rejected red banner, approval.*, budget.threshold, killswitch, system) - siblings must not toast these. UIS-10 Overview command center (rows A-C). UIS-11 build & integration gate: you are the ONLY bundle that runs 'npm run build' (others run typecheck/lint); if tsc fails in others' files use 'npx vite build' and report owners. Should: UIS-12 overview full, UIS-13 /system/perf (from /api/perf + reports/bench.json), UIS-14 /system/health, UIS-15 command palette, UIS-16 motion & video polish. Never edit frozen web/src/lib/page.ts, web/src/api/types.ts, package.json, vite/tsconfig. Offline build (no CDN; bundled fonts). Dark, modern, animated - this is what judges see. Verify UIS-V01..V11. NOTE: the scaffold (commit d02636d) already placed seed versions of some files in your owned paths - they are safe to replace/extend; keep their public names working. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B17-dashboard-security",
+    "title": "Dashboard Security pages: live feed, decision trace + Wire diff, playground, threats, audit, coverage, MCP",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "dashboard-security"
+    ],
+    "plan_files": [
+      "docs/plan/16-dashboard-security.md"
+    ],
+    "owned_paths": [
+      "web/src/components/security/",
+      "web/src/mocks/security/",
+      "web/src/pages/security/",
+      "config/snippets/dashboard-security.yaml",
+      "tests/unit/dashboard_security/",
+      "docs/status/B17-dashboard-security.md"
+    ],
+    "task_ids": [
+      "UIX-01",
+      "UIX-02",
+      "UIX-03",
+      "UIX-04",
+      "UIX-05",
+      "UIX-06",
+      "UIX-07",
+      "UIX-08",
+      "UIX-09",
+      "UIX-10",
+      "UIX-11",
+      "UIX-12",
+      "UIX-13",
+      "UIX-14",
+      "UIX-15",
+      "UIX-16",
+      "UIX-17",
+      "UIX-18"
+    ],
+    "verification_ids": [
+      "UIX-V01",
+      "UIX-V02",
+      "UIX-V03",
+      "UIX-V04",
+      "UIX-V05",
+      "UIX-V06",
+      "UIX-V07",
+      "UIX-V08",
+      "UIX-V09",
+      "UIX-V10",
+      "UIX-V11",
+      "UIX-V12",
+      "UIX-V13",
+      "UIX-V14"
+    ],
+    "priority_order": [
+      "UIX-01",
+      "UIX-02",
+      "UIX-03",
+      "UIX-04",
+      "UIX-05",
+      "UIX-06",
+      "UIX-07",
+      "UIX-08",
+      "UIX-09",
+      "UIX-10",
+      "UIX-11",
+      "UIX-12",
+      "UIX-13",
+      "UIX-14",
+      "UIX-15",
+      "UIX-16",
+      "UIX-17",
+      "UIX-18"
+    ],
+    "must_ids": [
+      "UIX-01",
+      "UIX-02",
+      "UIX-03",
+      "UIX-04",
+      "UIX-05",
+      "UIX-06",
+      "UIX-07",
+      "UIX-08",
+      "UIX-09",
+      "UIX-10"
+    ],
+    "est_minutes": {
+      "must": 106,
+      "total": 163
+    },
+    "depends_on": [
+      "B16-dashboard-shell",
+      "B15-audit-metrics",
+      "B01-gateway-core"
+    ],
+    "status_file": "docs/status/B17-dashboard-security.md",
+    "brief": "The pages narrated in demo scenes 1, 2, 4, 5 and 6. UIX-01 foundations (page-local types, pure libs: catalog fallback, placeholders, redactionDiff, trace, filters, lineDiff; common atoms SurfaceTag, ControlChip, VersionStamp, ScoreBar...). UIX-02 typed mock factories (contract ids only: DLP-01, model.request, AEGIS-TI-0xx, require_approval). UIX-03 decision trace component + drawer + /security/decisions/:id page (decisions[], scores vs thresholds, per-control latencies, policy version + feed serial). UIX-04 redaction diff = the Wire tab (original vs outbound with linked placeholders, CVV gone, response rehydrated - the F1 headline shot). UIX-05 live feed /security/live over SSE (filters, row -> drawer). UIX-06 Playground /security/playground with animated pipeline, destination toggle local/remote/third_party, presets (Borderline 0.62, AWS example key, EchoLeak TI-022, curl|sh tool call) on POST /api/playground. UIX-07 Threat feed page (serial, signatures, hits; reacts to feed.updated/feed.rejected). UIX-08 Audit page (verify chain, export JSONL/CSV/OCSF admin-gated via api.download, table). UIX-09 Coverage & controls (OWASP matrix; disabled controls greyed live). UIX-10 MCP tools inventory. Should: UIX-11 pin diff + approval link, UIX-12 perf tab, UIX-13 playground power features, UIX-14, UIX-15 node lib tests. Could: UIX-16..18. Import shell surfaces (@/api/client, @/api/hooks, @/components/shell|ui|charts) - read their real exports first; if absent, isolate via a local adapter. Toasts for policy/feed/approval/system events are shell-owned. Reuse staging/design/prototype assets (view-live.js, app.js openTrace, view-redaction.js, view-feed.js). Verify with 'npm run typecheck' + 'npm run lint' (not build) and UIX-V01..V14. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B18-dashboard-gov-approvals",
+    "title": "Dashboard Governance A: foundation, approvals inbox, org, approval rules",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "dashboard-governance"
+    ],
+    "plan_files": [
+      "docs/plan/17-dashboard-governance.md"
+    ],
+    "owned_paths": [
+      "web/src/pages/governance/approvals.page.tsx",
+      "web/src/pages/governance/org.page.tsx",
+      "web/src/pages/governance/rules.page.tsx",
+      "web/src/components/governance/lib/eligibility.ts",
+      "web/src/components/governance/lib/line-diff.ts",
+      "web/src/components/governance/lib/format-gov.ts",
+      "web/src/components/governance/gov-api.ts",
+      "web/src/components/governance/hooks.ts",
+      "web/src/components/governance/ApproverBadge.tsx",
+      "web/src/components/governance/LockedAction.tsx",
+      "web/src/components/governance/TwoPersonProgress.tsx",
+      "web/src/components/governance/ExpiryCountdown.tsx",
+      "web/src/components/governance/RequesterLine.tsx",
+      "web/src/components/governance/MemberAvatar.tsx",
+      "web/src/components/governance/PersonaSwitcher.tsx",
+      "web/src/components/governance/approvals/",
+      "web/src/components/governance/org/",
+      "web/src/components/governance/rules/",
+      "web/src/mocks/governance/fixtures.ts",
+      "web/src/mocks/governance/approvals.ts",
+      "web/src/mocks/governance/org.ts",
+      "web/src/mocks/governance/rules.ts",
+      "web/src/mocks/governance/store.ts",
+      "tests/unit/dashboard_governance/",
+      "docs/status/B18-dashboard-gov-approvals.md"
+    ],
+    "task_ids": [
+      "UIG-01",
+      "UIG-02",
+      "UIG-06",
+      "UIG-07",
+      "UIG-10",
+      "UIG-11",
+      "UIG-13",
+      "UIG-16"
+    ],
+    "verification_ids": [
+      "UIG-V01",
+      "UIG-V02",
+      "UIG-V04",
+      "UIG-V06",
+      "UIG-V07",
+      "UIG-V10"
+    ],
+    "priority_order": [
+      "UIG-01",
+      "UIG-02",
+      "UIG-06",
+      "UIG-07",
+      "UIG-10",
+      "UIG-11",
+      "UIG-13",
+      "UIG-16"
+    ],
+    "must_ids": [
+      "UIG-01",
+      "UIG-02",
+      "UIG-06"
+    ],
+    "est_minutes": {
+      "must": 55,
+      "total": 120
+    },
+    "depends_on": [
+      "B16-dashboard-shell",
+      "B10-approvals-engine",
+      "B09-org-rbac"
+    ],
+    "status_file": "docs/status/B18-dashboard-gov-approvals.md",
+    "brief": "Half A of plan 17 (half B = B19). UIG-01 FIRST (~20 min; B19 imports it): components/governance/lib/{eligibility,line-diff,format-gov}.ts, gov-api.ts (typed calls to /api/approvals*, /api/org, /api/members, /api/agents, /api/whoami), hooks.ts (do NOT put useProbeRunner here - B19 owns it in policy/), shared components ApproverBadge, LockedAction, TwoPersonProgress, ExpiryCountdown, RequesterLine, MemberAvatar, PersonaSwitcher, mocks fixtures.ts, and page stubs for your 3 pages. UIG-02 Approvals inbox /governance/approvals (badge 'approvals'; role-filtered list; detail with routing steps, payload view, 'why this role'; Approve/Deny with reason; server can_vote/why_not drive LockedAction - as u_piotr the $50 card shows 'needs admin', switch view-as to u_emily and approve; two-person progress 1/2 -> 2/2; ?id=apr_... opens one; live via SSE approval.created/updated). UIG-06 Org page (teams, members, agents read-only) + Rules page tables ('who can approve what'). Should: UIG-07 route simulator (POST /api/approvals/simulate), UIG-10 org mutations (RoleChangeMenu, member active, agent deactivate; gate on whoami.capabilities['members.manage']; 403 approval_required -> toast + pending chip) - the KillSwitchControl part of UIG-10 is built by B19 under budgets/, UIG-11 mock store (store.ts exposes a state API B19's budgets.ts/policy.ts mocks call). Could: UIG-13 persona switcher polish, UIG-16 Python in-process API contract smoke test (tests/unit/dashboard_governance). Reuse staging/design/prototype/assets/view-approvals.js, view-org.js, app.css tokens. Verify: npm run typecheck + lint, page-discovery check, Node pure-logic asserts (eligibility matrix), mock-mode persona walkthrough. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B19-dashboard-gov-policy",
+    "title": "Dashboard Governance B: budgets + kill switch, Monaco policy editor, verdict-flip probes",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "dashboard-governance"
+    ],
+    "plan_files": [
+      "docs/plan/17-dashboard-governance.md"
+    ],
+    "owned_paths": [
+      "web/src/pages/governance/budgets.page.tsx",
+      "web/src/pages/governance/policy.page.tsx",
+      "web/src/components/governance/GovernanceToaster.tsx",
+      "web/src/components/governance/lib/yaml-text.ts",
+      "web/src/components/governance/lib/probe-defs.ts",
+      "web/src/components/governance/budgets/",
+      "web/src/components/governance/policy/",
+      "web/src/mocks/governance/budgets.ts",
+      "web/src/mocks/governance/policy.ts",
+      "web/src/mocks/governance/probes.ts",
+      "docs/status/B19-dashboard-gov-policy.md"
+    ],
+    "task_ids": [
+      "UIG-03",
+      "UIG-04",
+      "UIG-05",
+      "UIG-08",
+      "UIG-09",
+      "UIG-12",
+      "UIG-14",
+      "UIG-15"
+    ],
+    "verification_ids": [
+      "UIG-V03",
+      "UIG-V05",
+      "UIG-V08",
+      "UIG-V09"
+    ],
+    "priority_order": [
+      "UIG-03",
+      "UIG-04",
+      "UIG-05",
+      "UIG-08",
+      "UIG-09",
+      "UIG-12",
+      "UIG-14",
+      "UIG-15"
+    ],
+    "must_ids": [
+      "UIG-03",
+      "UIG-04",
+      "UIG-05"
+    ],
+    "est_minutes": {
+      "must": 60,
+      "total": 120
+    },
+    "depends_on": [
+      "B16-dashboard-shell",
+      "B18-dashboard-gov-approvals",
+      "B03-policy-engine",
+      "B08-budgets-ledger"
+    ],
+    "status_file": "docs/status/B19-dashboard-gov-policy.md",
+    "brief": "Half B of plan 17 (half A = B18; import its lib/hooks/shared components read-only, stub locally until they land). Demo scenes 3b/4 and flows F5-F7. UIG-03 Budgets page /governance/budgets: hierarchy org -> team -> agent, usage bars with soft/hard marks, live via SSE budget.updated/threshold, 'Request increase' RaiseDialog -> POST /api/budgets/raise (preview via /raise/preview or /api/approvals/simulate) -> ApplyResult pending_approval (toast with link) or applied; KillSwitchControl (budgets/KillSwitchControl.tsx; POST /api/killswitch; this is the kill-switch half of UIG-10). UIG-04 Policy editor /governance/policy (tabs editor | diff | history): Monaco bundled offline (monaco-editor ESM + ?worker, no CDN; PlainYamlEditor textarea fallback), live server validation markers (POST /api/policy/validate, line/col), diff view, role-aware apply (owner applies directly; admin/member -> routed to approval with link), reload on file edits (policy.applied toast is shell-owned; you update the editor). UIG-05 GovernanceToaster + verdict probes: dry-run POST /v1/guard (or /api/playground send:false) before/after an apply and show which verdicts flipped (e.g. Borderline 0.62 allow -> block). Should: UIG-08 history/version view/rollback, UIG-09 quick edits = judge levers (INJ-02 threshold slider, enable/disable control, monitor mode, profile switch), UIG-12 pre-apply impact preview (self-test diff). Could: UIG-14 schema completions, UIG-15 burn-down chart with forecast. Optional npm packages monaco-yaml/yaml must NOT be imported unless the scaffold added them. Reuse staging/design/prototype/assets/view-budgets.js, view-policy.js. Verify npm run typecheck + lint and the live F5/F7 walkthrough in the integration window. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B20-demo-stack",
+    "title": "Demo stack: mock LLM / exfil sink / mock SaaS, aegis.sdk, run_stack, preflight & reset",
+    "wave": 1,
+    "demo_critical": true,
+    "workstreams": [
+      "demo-mocks-docs"
+    ],
+    "plan_files": [
+      "docs/plan/20-demo-mocks-docs.md"
+    ],
+    "owned_paths": [
+      "mocks/__init__.py",
+      "mocks/mock_llm/",
+      "mocks/exfil_sink/",
+      "mocks/mock_saas/",
+      "src/aegis/sdk/",
+      "scripts/run_stack.py",
+      "demo/preflight.py",
+      "demo/scenarios/reset.py",
+      "config/snippets/demo-mocks-docs.yaml",
+      "tests/unit/demo_mocks_docs/",
+      "docs/status/B20-demo-stack.md"
+    ],
+    "task_ids": [
+      "DEMO-01",
+      "DEMO-02",
+      "DEMO-03",
+      "DEMO-04",
+      "DEMO-05",
+      "DEMO-07",
+      "DEMO-19"
+    ],
+    "verification_ids": [
+      "DEMO-V01",
+      "DEMO-V02",
+      "DEMO-V03",
+      "DEMO-V04",
+      "DEMO-V05",
+      "DEMO-V06",
+      "DEMO-V07",
+      "DEMO-V16"
+    ],
+    "priority_order": [
+      "DEMO-01",
+      "DEMO-02",
+      "DEMO-03",
+      "DEMO-04",
+      "DEMO-05",
+      "DEMO-07",
+      "DEMO-19"
+    ],
+    "must_ids": [
+      "DEMO-01",
+      "DEMO-02",
+      "DEMO-03",
+      "DEMO-04",
+      "DEMO-05",
+      "DEMO-07"
+    ],
+    "est_minutes": {
+      "must": 92,
+      "total": 107
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B02-gateway-proxy",
+      "B12-mcp-proxy",
+      "B14-threat-feed"
+    ],
+    "status_file": "docs/status/B20-demo-stack.md",
+    "brief": "Everything the live demo and the test suite talk to. DEMO-01 interfaces first: mocks/__init__.py (PORTS, mock_data_dir, RequestLog, run_cli --port/--port-file/--host/--data-dir), create_app() + /_mock/health for each mock, src/aegis/sdk signatures (B23 and others import them), run_stack --check/--dry-run skeleton, snippet, tests conftest. DEMO-02 mock_llm :8791 (python -m mocks.mock_llm): Anthropic POST /v1/messages + OpenAI POST /v1/chat/completions, JSON + SSE, GET /v1/models (mock-echo, mock-sonnet); default reply ECHOES the received text ('Mock model received: ...') so placeholders and rehydration are visible; triggers [[EMIT_SECRET]] (fake AWS key split over 3 SSE chunks, generated at runtime), [[EMIT_PII]], [[EMIT_MD_EXFIL]], [[EMIT_CANARY]], [[TOOL_USE:name:json]], [[LONG:n]], [[SLOW:ms]]; usage chars/4; GET/DELETE /_mock/requests = what actually left the gateway. DEMO-03 exfil_sink :8793 (records anything; GET/DELETE /_mock/hits; 'nothing reached the attacker' counter) + mock_saas :8794 (POST /payments/subscriptions, /payments/charges, GET /crm/contacts, POST /paste, GET /_mock/requests). DEMO-04 aegis.sdk (AegisClient: guard, messages, chat, mcp_call via aegis.mcp.client when present, egress; approval wait/retry with X-Aegis-Approval; AegisAdmin: approvals, budgets, killswitch, policy, reset; results; cast ids from CONTRACTS 4.5). DEMO-05 scripts/run_stack.py = 'make up': feed keygen --if-missing -> feed service :8790 -> mocks (incl. python -m mocks.mock_mcp :8792) -> gateway :8787; readiness waits, prefixed logs, port-conflict UX, clean reverse shutdown; recommended OLLAMA_* env. DEMO-07 demo/preflight.py (READY/DEGRADED/NOT READY with fix hints, Ollama warm-up keep_alive, --json/--quick) + demo/scenarios/reset.py (reset between judges via AegisAdmin + mock endpoints). Could: DEMO-19 policy URL patch for remapped ports. Reuse staging/spikes/streaming/demo/fake_upstream.py (SSE builders), staging/spikes/mcp/run_demo.sh (wait_http, cleanup). Do not port staging/spikes/mcp/fake_servers.py (mock_mcp is B12's). Verify DEMO-V01..V06 now, V07/V16 in the integration window. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B21-test-suite-harness",
+    "title": "Test suite A: hermetic harness, case runner, per-control matrix & reports",
+    "wave": 2,
+    "demo_critical": true,
+    "workstreams": [
+      "test-suite"
+    ],
+    "plan_files": [
+      "docs/plan/18-test-suite.md"
+    ],
+    "owned_paths": [
+      "tests/__init__.py",
+      "tests/conftest.py",
+      "tests/test_coverage.py",
+      "tests/test_cases_schema.py",
+      "tests/test_no_committed_secrets.py",
+      "tests/lib/__init__.py",
+      "tests/lib/catalog.py",
+      "tests/lib/identities.py",
+      "tests/lib/servers.py",
+      "tests/lib/stack.py",
+      "tests/lib/policy_sandbox.py",
+      "tests/lib/client.py",
+      "tests/lib/mcp_client.py",
+      "tests/lib/sse.py",
+      "tests/lib/macros.py",
+      "tests/lib/cases.py",
+      "tests/lib/runner.py",
+      "tests/lib/expect.py",
+      "tests/lib/matrix.py",
+      "tests/lib/report.py",
+      "tests/lib/plugin.py",
+      "tests/lib/privacy.py",
+      "tests/lib/transforms.py",
+      "tests/lib/seed_import.py",
+      "tests/lib/fakes/__init__.py",
+      "tests/lib/fakes/llm.py",
+      "tests/lib/fakes/sink.py",
+      "tests/lib/fakes/feed.py",
+      "tests/cases/README.md",
+      "tests/cases/_harness.yaml",
+      "tests/cases/gov.yaml",
+      "tests/cases/act.yaml",
+      "tests/cases/dlp.yaml",
+      "tests/cases/inj.yaml",
+      "tests/cases/exe.yaml",
+      "tests/cases/mcp.yaml",
+      "tests/cases/bud.yaml",
+      "tests/cases/sig.yaml",
+      "tests/cases/cus.yaml",
+      "tests/cases/hooks.yaml",
+      "tests/cases/approvals_routing.yaml",
+      "tests/e2e/__init__.py",
+      "tests/e2e/test_cases.py",
+      "tests/e2e/test_feed.py",
+      "tests/e2e/test_inline_tests.py",
+      "tests/e2e/test_corpora.py",
+      "tests/fixtures/policy_overrides.yaml",
+      "tests/fixtures/hooks/",
+      "tests/fixtures/pii/",
+      "tests/fixtures/corpora/finance_benign.jsonl",
+      "tests/fixtures/corpora/polish_multilingual.jsonl",
+      "tests/fixtures/corpora/agentic_tools.jsonl",
+      "tests/fixtures/corpora/obfuscation_matrix.jsonl",
+      "tests/fixtures/corpora/LICENSES.md",
+      "tests/unit/test_suite/",
+      "config/snippets/test-suite.yaml",
+      "docs/status/B21-test-suite-harness.md"
+    ],
+    "task_ids": [
+      "TEST-01",
+      "TEST-02",
+      "TEST-03",
+      "TEST-04",
+      "TEST-05",
+      "TEST-06",
+      "TEST-07",
+      "TEST-08",
+      "TEST-13",
+      "TEST-17",
+      "TEST-18",
+      "TEST-20",
+      "TEST-21"
+    ],
+    "verification_ids": [
+      "TEST-V01",
+      "TEST-V02",
+      "TEST-V03",
+      "TEST-V04",
+      "TEST-V05",
+      "TEST-V06",
+      "TEST-V07",
+      "TEST-V08",
+      "TEST-V12",
+      "TEST-V16",
+      "TEST-V18"
+    ],
+    "priority_order": [
+      "TEST-01",
+      "TEST-02",
+      "TEST-03",
+      "TEST-04",
+      "TEST-05",
+      "TEST-06",
+      "TEST-07",
+      "TEST-08",
+      "TEST-13",
+      "TEST-17",
+      "TEST-18",
+      "TEST-20",
+      "TEST-21"
+    ],
+    "must_ids": [
+      "TEST-01",
+      "TEST-02",
+      "TEST-03",
+      "TEST-04",
+      "TEST-05",
+      "TEST-06",
+      "TEST-07",
+      "TEST-08"
+    ],
+    "est_minutes": {
+      "must": 85,
+      "total": 127
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B03-policy-engine",
+      "B20-demo-stack"
+    ],
+    "status_file": "docs/status/B21-test-suite-harness.md",
+    "brief": "Self-testing suite (15-20 % of the score; judges run it). 'make test' boots a hermetic gateway (in-process or port 0) with fakes and emits a per-control matrix. Order: TEST-01 tests/conftest.py with the CONTRACTS 7.3 binding fixtures (aegis_env: temp AEGIS_DATA_DIR + temp copy of config/policy.golden.yaml, AEGIS_SEMANTIC=off, AEGIS_FEED_URL=disabled, AEGIS_TEST_MODE=1; app; client; rt; mock_llm_url; policy_patch) + tests/lib/stack.py; TEST-02 fakes (LLM echo with triggers, exfil sink, signed fake feed); TEST-03 gateway client lib; TEST-04 case schema (research 05 2.4: id, control, polarity, expect, surface, mode, dest_zone, input, assert{upstream_must_not_contain, response_must_contain, audit_must_not_contain}, tags) + loader + macros + expectation engine; TEST-05 seed tests/cases/*.yaml from staging/seed/policy.yaml examples (157) + staging/seed/approvals.yaml routing_tests (33) translated to contract names - every catalog control needs >= 1 must-block and >= 1 must-allow; TEST-06 data-driven runner; TEST-07 matrix plugin + reports (reports/junit.xml, results.json, matrix.md, offline selftest.html); TEST-08 coverage gate (UNTESTED/DISABLED statuses) + no-committed-secrets check. Should: TEST-13 feed update + tamper suite, TEST-17 auto-collected inline tests (policy + feed signatures), TEST-18 live mode (make test-live against AEGIS_LIVE_URL), TEST-20 harness unit tests. Could: TEST-21 corpora/PII/obfuscation rate suites with heatmap. You also own tests/lib/policy_sandbox.py and tests/lib/privacy.py that B22's suites import - land TEST-01..04 quickly. Wave 2: controls already exist, so run cases against the real build; mark genuine gaps xfail with a reason (never fake green). Harmless stand-ins only, never working exploit payloads; generate secret-shaped strings at runtime. Target ~60 s deterministic run. Verify TEST-V* assigned to you. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B22-test-suite-functional",
+    "title": "Test suite B: functional e2e suites (approvals/RBAC, budgets, hot reload, hooks, MCP, audit, errors)",
+    "wave": 2,
+    "demo_critical": false,
+    "workstreams": [
+      "test-suite"
+    ],
+    "plan_files": [
+      "docs/plan/18-test-suite.md"
+    ],
+    "owned_paths": [
+      "tests/e2e/test_approvals_rbac.py",
+      "tests/e2e/test_budgets_loops.py",
+      "tests/e2e/test_hot_reload.py",
+      "tests/e2e/test_hooks.py",
+      "tests/e2e/test_mcp.py",
+      "tests/e2e/test_audit_privacy.py",
+      "tests/e2e/test_errors.py",
+      "tests/e2e/test_streaming_egress.py",
+      "tests/e2e/test_semantic.py",
+      "tests/e2e/test_reload_watch.py",
+      "tests/lib/fakes/mcp.py",
+      "tests/cases/errors.yaml",
+      "tests/fixtures/corpora/semantic_gate.jsonl",
+      "docs/status/B22-test-suite-functional.md"
+    ],
+    "task_ids": [
+      "TEST-09",
+      "TEST-10",
+      "TEST-11",
+      "TEST-12",
+      "TEST-14",
+      "TEST-15",
+      "TEST-16",
+      "TEST-19",
+      "TEST-22",
+      "TEST-23",
+      "TEST-24"
+    ],
+    "verification_ids": [
+      "TEST-V09",
+      "TEST-V10",
+      "TEST-V11",
+      "TEST-V13",
+      "TEST-V14",
+      "TEST-V15",
+      "TEST-V17"
+    ],
+    "priority_order": [
+      "TEST-09",
+      "TEST-10",
+      "TEST-11",
+      "TEST-12",
+      "TEST-14",
+      "TEST-15",
+      "TEST-16",
+      "TEST-19",
+      "TEST-22",
+      "TEST-23",
+      "TEST-24"
+    ],
+    "must_ids": [
+      "TEST-09",
+      "TEST-10",
+      "TEST-11",
+      "TEST-12"
+    ],
+    "est_minutes": {
+      "must": 36,
+      "total": 90
+    },
+    "depends_on": [
+      "B21-test-suite-harness"
+    ],
+    "status_file": "docs/status/B22-test-suite-functional.md",
+    "brief": "Half B of plan 18; starts once B21 has TEST-01..04 (import tests/lib + conftest fixtures read-only; keep B-only helpers inside your own test modules). Must: TEST-09 approvals & RBAC suite (member cannot approve owner-level, sponsor self-approval of $12, $50 -> admin, $480 -> owner, $1500 two-person = owner + admin, separation of duties, agents never vote, grant bound to exact params/single use), TEST-10 budgets / loop breaker / rate limit / kill switch (exact accounting, 402 budget_exceeded, 429 + x-should-retry:false, downgrade at soft limit), TEST-11 hot-reload verdict flips + invalid YAML rejected with line/col (policy sandbox from B21), TEST-12 Claude Code hook endpoint (deny curl|sh / .env, allow benign, fail-closed hook script when gateway down). Should: TEST-14 MCP integrity (poisoned add dropped, rug pull -> block + mcp_pin; you own the fake MCP server tests/lib/fakes/mcp.py - B21's stack.py imports it lazily), TEST-15 audit & privacy (chain verify, tamper detection, no raw PII/secrets anywhere in data/), TEST-16 error paths (CONTRACTS 5.3 envelopes, tests/cases/errors.yaml), TEST-19 streaming + egress (SSE validity, exfil sink 0 hits). Could: TEST-22 semantic mode (marked semantic; tests/fixtures/corpora/semantic_gate.jsonl), TEST-23 real file-watch reload (tests/e2e/test_reload_watch.py), TEST-24 dashboard self-test route ONLY if the Addendum grants src/aegis/api/routes/selftest.py (otherwise skip). Each test carries @pytest.mark.aegis(suite=..., control=..., polarity=...) so it counts in the matrix. Mark real product gaps xfail with reason. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B23-demo-agents",
+    "title": "Demo agents & scenes: trading copilot, runaway/chaos, research agent, warm-up, scene scripts",
+    "wave": 2,
+    "demo_critical": true,
+    "workstreams": [
+      "demo-mocks-docs"
+    ],
+    "plan_files": [
+      "docs/plan/20-demo-mocks-docs.md"
+    ],
+    "owned_paths": [
+      "demo/agents/",
+      "demo/scenarios/__init__.py",
+      "demo/scenarios/run.py",
+      "demo/scenarios/s1_redaction.py",
+      "demo/scenarios/s2_injection.py",
+      "demo/scenarios/s3_approvals.py",
+      "demo/scenarios/s4_policy.py",
+      "demo/scenarios/s5_feed.py",
+      "demo/scenarios/s6_proof.py",
+      "demo/scenarios/s7_mcp.py",
+      "demo/scenarios/s8_config_gov.py",
+      "demo/scenarios/warmup.py",
+      "demo/scenarios/tail.py",
+      "demo/scenarios/PROMPTS.md",
+      "demo/scenarios/payloads/",
+      "tests/unit/demo_agents/",
+      "docs/status/B23-demo-agents.md"
+    ],
+    "task_ids": [
+      "DEMO-06",
+      "DEMO-10",
+      "DEMO-11",
+      "DEMO-12",
+      "DEMO-13",
+      "DEMO-17"
+    ],
+    "verification_ids": [
+      "DEMO-V08",
+      "DEMO-V09",
+      "DEMO-V10",
+      "DEMO-V11",
+      "DEMO-V12",
+      "DEMO-V13"
+    ],
+    "priority_order": [
+      "DEMO-06",
+      "DEMO-10",
+      "DEMO-11",
+      "DEMO-12",
+      "DEMO-13",
+      "DEMO-17"
+    ],
+    "must_ids": [
+      "DEMO-06"
+    ],
+    "est_minutes": {
+      "must": 15,
+      "total": 94
+    },
+    "depends_on": [
+      "B20-demo-stack",
+      "B12-mcp-proxy",
+      "B10-approvals-engine",
+      "B08-budgets-ledger"
+    ],
+    "status_file": "docs/status/B23-demo-agents.md",
+    "brief": "Scripted agents and scene scripts on top of aegis.sdk (B20). Must: DEMO-06 demo/agents/trading_copilot.py as trading-copilot@trading (F1: client-reply draft with PESEL/IBAN/card/CVV via the OpenAI wire to mock-echo -> placeholders upstream, rehydrated locally; F4: marketpulse.purchase_subscription(plan=mp-pro-monthly, amount_usd=50) via /mcp/marketpulse -> prints 'pending approval apr_... (routed to: admin)' -> waits -> 'approved by u_emily - executing') and demo/agents/runaway.py as chaos-agent@platform (F6: web.fetch_url/model loop -> EXE-04 ladder tool_error -> block -> BUD-01 $0.50/day 402 or budget_raise approval -> admin approves -> continues -> kill switch stops it instantly). Use a fixed X-Aegis-Session per run and vary prompts with the step index (avoid false model_repeat loops); mock-echo max_tokens 4096 + [[LONG:20000]] to burn budget. Should: DEMO-10 chaos catalog (demo/agents/catalog.py) + chaos_agent sweep with graded expectations, DEMO-11 warm-up (demo/scenarios/warmup.py: resolved approvals history, per-team usage, MCP inventory, leaves 0 pending) + demo/agents/ambient.py benign-heavy background traffic, DEMO-12 scene scripts s1..s8 + run.py + tail.py (CLI live feed fallback) + PROMPTS.md + payloads/{pii,aws_key,setup_md,ti022,curl_sh}.json - contract names everywhere (config/policy.yaml, trading-copilot@trading, AEGIS-TI-022, make up), DEMO-13 research agent on local Ollama (aegis-judge via OpenAI wire). Could: DEMO-17 mock_llm planner mode. Scenes map to flows: s1 F1, s2 F2/F3, s3 F4, s4 F7, s5 F8, s6 F10, s7 F9, s8 F5 + runaway F6. Verify DEMO-V08..V13 against the integrated stack (make up) - stop servers you start. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B24-redteam-eval-perf",
+    "title": "Red-team eval & performance: corpora, eval harness with CIs, heatmap, load bench -> reports",
+    "wave": 2,
+    "demo_critical": true,
+    "workstreams": [
+      "redteam-eval-perf"
+    ],
+    "plan_files": [
+      "docs/plan/19-redteam-eval-perf.md"
+    ],
+    "owned_paths": [
+      "tests/eval/",
+      "tests/bench/",
+      "tests/corpora/",
+      "tests/redteam/",
+      "scripts/bench.py",
+      "config/snippets/redteam-eval-perf.yaml",
+      "tests/unit/redteam_eval_perf/",
+      "docs/status/B24-redteam-eval-perf.md"
+    ],
+    "task_ids": [
+      "EVAL-01",
+      "EVAL-02",
+      "EVAL-03",
+      "EVAL-04",
+      "EVAL-05",
+      "EVAL-06",
+      "EVAL-07",
+      "EVAL-08",
+      "EVAL-09",
+      "EVAL-10",
+      "EVAL-11",
+      "EVAL-12",
+      "EVAL-13",
+      "EVAL-14",
+      "EVAL-15",
+      "EVAL-16"
+    ],
+    "verification_ids": [
+      "EVAL-V01",
+      "EVAL-V02",
+      "EVAL-V03",
+      "EVAL-V04",
+      "EVAL-V05",
+      "EVAL-V06",
+      "EVAL-V07",
+      "EVAL-V08",
+      "EVAL-V09",
+      "EVAL-V10",
+      "EVAL-V11",
+      "EVAL-V12"
+    ],
+    "priority_order": [
+      "EVAL-01",
+      "EVAL-02",
+      "EVAL-03",
+      "EVAL-04",
+      "EVAL-05",
+      "EVAL-06",
+      "EVAL-07",
+      "EVAL-08",
+      "EVAL-09",
+      "EVAL-10",
+      "EVAL-11",
+      "EVAL-12",
+      "EVAL-13",
+      "EVAL-14",
+      "EVAL-15",
+      "EVAL-16"
+    ],
+    "must_ids": [
+      "EVAL-01",
+      "EVAL-02",
+      "EVAL-03",
+      "EVAL-04",
+      "EVAL-05",
+      "EVAL-06",
+      "EVAL-07"
+    ],
+    "est_minutes": {
+      "must": 83,
+      "total": 153
+    },
+    "depends_on": [
+      "B01-gateway-core",
+      "B03-policy-engine",
+      "B02-gateway-proxy"
+    ],
+    "status_file": "docs/status/B24-redteam-eval-perf.md",
+    "brief": "Numbers for the judges, the Perf page and the deck - never fabricated. Must: EVAL-01 port staging/corpora (1,194 labelled rows: public subsets, handwritten EN/PL, finance benign, agentic tools, generated obfuscation matrix, PII sets) + LICENSES/MANIFEST + loader + obfuscate.py into tests/corpora; EVAL-02 case adapter + invocation overlays (surface, destination, identity per row); EVAL-03 hermetic in-process harness (create_app, policy overlay from config/policy.golden.yaml + config/profiles/*); EVAL-04 eval runner: detection rate / FPR with Wilson CIs per profile, mode (det vs semantic), language, control; EVAL-05 obfuscation heatmap + reports/eval.json, heatmap.json; EVAL-06 load bench core (spawned gateway on port 0 + echo upstream, guard profiles det + sem, overhead p50/p95/p99 from Server-Timing); EVAL-07 entry points ('make eval' quick ~15 s, 'make bench', scripts/bench.py) + core unit tests. Should: EVAL-08 proxy-path overhead vs direct and share of an 800 ms upstream, EVAL-09 sampled semantic eval (time-boxed), EVAL-10 end-to-end DLP leak leg, EVAL-11 per-control micro-bench + policy reload latency, EVAL-12 HTML reports + reports/deck_numbers.md + samples + output schemas (reports/bench.json is read by /api/perf), EVAL-13 live HTTP target. Could: EVAL-14..16 (streaming/payload-size profiles, 'make redteam' composite fuzzer, threshold sweep). 8 GB RAM: one gateway at a time, kill what you start, psutil memory preflight. Final 'make bench' + 'make eval' runs happen Sun ~06:00-07:00 on the integrated build (integrator). Verify EVAL-V01..V12. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  },
+  {
+    "id": "B25-docs-submission",
+    "title": "Docs & submission: README, JUDGES, architecture, sample policy docs, runbook, deck PDF, video kit",
+    "wave": 2,
+    "demo_critical": true,
+    "workstreams": [
+      "demo-mocks-docs"
+    ],
+    "plan_files": [
+      "docs/plan/20-demo-mocks-docs.md"
+    ],
+    "owned_paths": [
+      "README.md",
+      "docs/JUDGES.md",
+      "docs/architecture.md",
+      "docs/assets/",
+      "docs/policy-reference.md",
+      "docs/samples/",
+      "docs/api.md",
+      "docs/demo-script.md",
+      "docs/submission/",
+      "tests/unit/docs_submission/",
+      "docs/status/B25-docs-submission.md"
+    ],
+    "task_ids": [
+      "DEMO-08",
+      "DEMO-09",
+      "DEMO-14",
+      "DEMO-15",
+      "DEMO-16",
+      "DEMO-18"
+    ],
+    "verification_ids": [
+      "DEMO-V14",
+      "DEMO-V15"
+    ],
+    "priority_order": [
+      "DEMO-08",
+      "DEMO-09",
+      "DEMO-16",
+      "DEMO-14",
+      "DEMO-15",
+      "DEMO-18"
+    ],
+    "must_ids": [
+      "DEMO-08",
+      "DEMO-09",
+      "DEMO-16"
+    ],
+    "est_minutes": {
+      "must": 45,
+      "total": 115
+    },
+    "depends_on": [
+      "B20-demo-stack",
+      "B23-demo-agents",
+      "B21-test-suite-harness",
+      "B24-redteam-eval-perf"
+    ],
+    "status_file": "docs/status/B25-docs-submission.md",
+    "brief": "Judge-facing material and the HackTribe submission (title <= 5 words, description <= 500 words + every member's name/email, >= 1 image, <= 10-slide English PDF, <= 60 s video, repo link, judge instructions). Must: DEMO-08 README.md (judge front page: what/why in 5 lines, architecture image, quick start 'make setup && make up', judge path: open /ui, try the playground, edit config/policy.yaml live, publish a feed signature, run 'make test') + docs/JUDGES.md; DEMO-09 submission text kit: docs/submission/{README.md, HACKTRIBE.md, VIDEO_60S.md} + docs/demo-script.md = the 4:30 runbook adapted from staging/submission/DEMO_RUNBOOK.md with contract names (config/policy.yaml not policies/catalog.yaml; trading-copilot@trading $50 marketpulse not procurement-bot; AEGIS-TI-022 EchoLeak flip not AICL-TI-017; make up not make run; demo/claude/run.sh; chaos-agent@platform runaway) and a scene <-> command map. Should: DEMO-14 docs/architecture.md (+ docs/assets/architecture.svg from staging/submission/ARCHITECTURE_DIAGRAM.md), docs/policy-reference.md + docs/samples/policy-{strict-bank,budgets,approvals,local-only}.yaml (the GS 'documented sample policy file' deliverable: strictness levels, budget rules), docs/api.md; DEMO-15 docs/submission/DECK.md + deck/deck.html (10 slides, design tokens, {{placeholders}}) + build.py collect|render|--pdf|--check (headless Chrome print, page-count check, numbers.json from reports/*); DEMO-16 final pass Sun 06:00-09:00 with real numbers (make test / bench / eval) - fill placeholders, tick claims-to-verify, enforce limits. Could: DEMO-18 screenshots + video cards. Reuse staging/submission/{HACKTRIBE_DRAFT.md, PITCH_DECK.md, VIDEO_60S.md, DEMO_RUNBOOK.md, ARCHITECTURE_DIAGRAM.md}. Never state a number that is not in reports/. Not yours: docs/MASTER_PLAN.md, docs/TASKS.md, docs/status/*, docs/plan/*. RULES: read docs/plan/_IMPLEMENTER_INSTRUCTIONS.md, docs/CONTRACTS.md (incl. the Addendum, binding) and docs/MASTER_PLAN.md first; edit ONLY owned_paths; interfaces-first (public modules, create(rt) factories, routers, CONTROLS lists with safe stub behaviour within ~15 min so others can import); no git, no manifest edits, no installs (list deps_needed in your status file), no fixed ports (in-process ASGI or port 0), tests with AEGIS_TEST_MODE=1 AEGIS_SEMANTIC=off; code against CONTRACTS interfaces and stub missing deps locally with `# TODO(integration)`; staging/ is read-only (port, never import); tick nothing in docs/TASKS.md (integrator does); finish with docs/status/<bundle-id>.md + a HANDOFF.md shell-append line."
+  }
+]

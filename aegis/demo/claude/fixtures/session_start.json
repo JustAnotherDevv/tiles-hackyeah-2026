@@ -1,0 +1,22 @@
+{
+  "name": "session_start",
+  "title": "SessionStart self-check banner",
+  "steps": [
+    {
+      "event": "SessionStart",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "SessionStart",
+        "source": "startup",
+        "model": "claude-haiku-4-5"
+      },
+      "expect": {
+        "result": "banner",
+        "contains": "governed"
+      }
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+# =============================================================================
+# org-rbac policy entries (GOV-01, GOV-02 + org.* approval rules).
+# policy-engine merges these into config/policy.yaml (docs/seed-fixes/policy.yaml already
+# carries equivalent entries - keep them in sync).
+# NOTE: the approvals.rules below go at the TOP of approvals.rules (first match wins).
+# =============================================================================
+controls:
+  - id: GOV-01
+    name: Caller identity & attribution
+    action: log                       # applied to UNREGISTERED agent ids; the blocks below are explicit
+    severity: high
+    fail_mode: closed
+    timeout_ms: 50
+    owasp: [ASI03, ASI07, MCP07:2025, LLM03:2026]
+    params:
+      require_auth: null              # null = defaults.require_auth; true => unauthenticated data-plane calls -> 401
+      require_auth_sources: [proxy, mcp, hook, egress, guard]
+      anonymous_action: allow         # allow (attribution only) | log | block
+      unknown_agent_action: log       # null = control action
+      invalid_key_action: block       # revoked / expired / unknown aegis_ keys (401 unauthenticated)
+      disabled_principal_action: block  # disabled agents (legacy-bot@platform) / deactivated members
+      principal_mismatch_action: block  # key principal != X-Aegis-Agent (spoofing)
+      enforce_key_scopes: false       # could: log | block when a key is used outside its scopes
+      exempt_agents: [selftest]
+      # Boolean spellings are accepted too: block_invalid_keys / block_inactive / block_principal_mismatch
+    tests:
+      - {name: disabled-agent-blocked, agent: legacy-bot@platform, destination: remote, text: "hello", expect: block, control: GOV-01}
+      # Kept out of the gate on purpose (any other control flagging it would reject every edit):
+      # - {name: registered-agent-allowed, agent: research-agent@research, destination: local, text: "Summarise today's research notes.", expect: allow}
+
+  - id: GOV-02
+    name: Model allowlist & destination tiering
+    action: block
+    severity: high
+    fail_mode: closed
+    timeout_ms: 50
+    owasp: [LLM03:2026, LLM06:2026, LLM02:2026, ASI10]
+    params:
+      enforce_policy_allowlist: true  # models.allowed / models.denied
+      enforce_agent_allowlist: true   # Agent.allowed_models (config/org.seed.yaml)
+      enforce_tier_ceiling: true      # Agent.max_destination (research-agent is local-only)
+      on_tier_violation: block        # block | reroute (route mutation to reroute_model)
+      reroute_on_class: {}            # e.g. {RESTRICTED: local}; strict profile suggestion
+      reroute_model: null             # null = models.default_local (aegis-judge)
+    tests:
+      - {name: local-agent-to-remote, agent: research-agent@research, destination: remote, text: "hi", expect: block, control: GOV-02}
+      # Need PolicyTest extra key `model` honoured by the self-test runner (plan 08 gap G9):
+      # - {name: copilot-model-not-in-allowlist, agent: trading-copilot@trading, model: gpt-4.1-mini, text: "hi", expect: block, control: GOV-02}
+      # - {name: claude-code-sonnet-allowed, agent: claude-code@platform, model: claude-sonnet-4-5, text: "hi", expect: allow}
+
+approvals:
+  rules:                              # org governance; kind=action, action_type=org.* (created by org-rbac via create_manual)
+    - id: org-owner-grants
+      description: "Granting or revoking the owner role always needs an owner (hard floor in code too)"
+      when: {kind: [action], action: ["org.role.promote_owner", "org.role.demote_owner", "org.member.create_owner"]}
+      approver: owner
+      ttl_s: 3600
+    - id: org-privileged
+      description: "Promote/demote admins, add an admin, deactivate an admin/owner, widen an agent's destination"
+      when: {kind: [action], action: ["org.role.*", "org.member.create_admin", "org.member.deactivate_privileged", "org.agent.widen_destination"]}
+      approver: owner                 # judges may lower to admin (the code floor stays admin)
+      ttl_s: 3600
+    - id: org-routine
+      description: "Routine member/agent administration (admins apply these directly)"
+      when: {kind: [action], action: ["org.member.*", "org.agent.*"]}
+      approver: admin
+
+# Suggested profile overrides (policy-engine owns config/profiles/*):
+#   strict:   {controls: {GOV-02: {params: {reroute_on_class: {RESTRICTED: local}}}}}
+#   paranoid: {controls: {GOV-01: {params: {anonymous_action: block, require_auth: true}},
+#                         GOV-02: {params: {reroute_on_class: {RESTRICTED: local}}}}}

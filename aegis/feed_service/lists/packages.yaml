@@ -1,0 +1,46 @@
+# Package lists shipped in the signed bundle (`lists`), consumed by SIG-03 (package-install guard)
+# and by anyone reading rt.feed.lists(). OSV-like entries; empty `versions` = every version is bad.
+malicious_versions:
+  # from AEGIS-TI-017 (compromised AI packages / MCP servers)
+  - {ecosystem: npm, name: postmark-mcp, versions: ["1.0.16"], ref: koi-2025-09}
+  - {ecosystem: pypi, name: litellm, versions: ["1.82.7", "1.82.8"], ref: csa-2026-03}
+  - {ecosystem: pypi, name: mistralai, versions: ["2.4.6"], ref: mistral-MAI-2026-002}
+  - {ecosystem: vscode, name: amazonwebservices.amazon-q-vscode, versions: ["1.84.0"], ref: CVE-2025-8217}
+  # historic npm supply-chain compromises (SIG-03-only self-test)
+  - {ecosystem: npm, name: event-stream, versions: ["3.3.6"], ref: npm-2018-flatmap-stream}
+  - {ecosystem: npm, name: ua-parser-js, versions: ["0.7.29", "0.8.0", "1.0.0"], ref: GHSA-pjwm-rvh2-c87w}
+# names LLMs hallucinate and attackers register (slopsquatting) -> require approval
+hallucinated_packages:
+  - {ecosystem: pypi, name: huggingface-cli}
+  - {ecosystem: pypi, name: langchain-community-tools}
+  - {ecosystem: pypi, name: openai-helper}
+  - {ecosystem: npm, name: react-codeshift}
+known_good_packages:
+  pypi: [
+    requests, numpy, pandas, scipy, scikit-learn, matplotlib, seaborn, plotly, fastapi, uvicorn,
+    starlette, pydantic, pydantic-settings, httpx, aiohttp, flask, django, sqlalchemy, alembic,
+    psycopg, psycopg2, psycopg2-binary, pymysql, redis, celery, boto3, botocore, google-cloud-storage,
+    azure-identity, pyyaml, ruamel-yaml, toml, tomli, python-dotenv, click, typer, rich, tqdm,
+    pytest, pytest-asyncio, pytest-cov, hypothesis, mypy, ruff, black, isort, pre-commit, jinja2,
+    markupsafe, beautifulsoup4, lxml, pillow, opencv-python, openpyxl, xlsxwriter, python-dateutil,
+    pytz, arrow, orjson, ujson, msgpack, protobuf, grpcio, cryptography, pynacl, pyjwt, passlib,
+    bcrypt, paramiko, huggingface-hub, transformers, tokenizers, safetensors, datasets, accelerate,
+    torch, torchvision, onnx, onnxruntime, sentence-transformers, openai, anthropic, tiktoken,
+    langchain, langchain-core, langchain-community, llama-index, mcp, ollama, google-re2, polars,
+    pyarrow, duckdb, networkx, sympy, jupyter, ipython, notebook, streamlit, gradio, uv, pip,
+    setuptools, wheel, mistralai, litellm, prometheus-client, sse-starlette, watchfiles, psutil,
+  ]
+  npm: [
+    react, react-dom, react-router-dom, next, vite, typescript, zod, axios, express, fastify,
+    lodash, dayjs, date-fns, moment, uuid, chalk, commander, yargs, dotenv, eslint, prettier,
+    jest, vitest, "@testing-library/react", tailwindcss, postcss, autoprefixer, webpack, esbuild,
+    rollup, "@types/node", "@types/react", "@vitejs/plugin-react", recharts, framer-motion,
+    lucide-react, clsx, tailwind-merge, class-variance-authority, "@radix-ui/react-dialog",
+    "@modelcontextprotocol/sdk", "@modelcontextprotocol/server-filesystem",
+    "@modelcontextprotocol/server-github", "@modelcontextprotocol/server-memory",
+    "@modelcontextprotocol/inspector", "@anthropic-ai/sdk", "@anthropic-ai/claude-code", openai,
+    socket.io, ws, mongoose, pg, mysql2, prisma, "@prisma/client", sequelize, redis, ioredis,
+    jsonwebtoken, bcrypt, cors, helmet, morgan, nodemon, ts-node, tsx, monaco-editor, sonner,
+    cmdk, event-stream, ua-parser-js, postmark-mcp, mcp-remote,
+  ]
+  vscode: [ms-python.python, dbaeumer.vscode-eslint, esbenp.prettier-vscode, anthropic.claude-code]

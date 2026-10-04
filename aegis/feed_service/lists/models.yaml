@@ -1,0 +1,5 @@
+# Model-registry lists shipped in the bundle (`lists`).
+# Hugging Face namespaces whose original owner deleted/renamed the account and that were
+# re-registered by someone else (model namespace reuse; AEGIS-TI-018). Demo placeholders.
+reregistered_hf_namespaces: [ghost-author-demo, orphaned-ns-demo]
+trusted_registries: [registry.ollama.ai, hf.co, huggingface.co]

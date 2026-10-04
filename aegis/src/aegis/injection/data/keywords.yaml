@@ -1,0 +1,173 @@
+# injection-defense vocabulary (docs/plan/05-injection-defense.md, INJ-08 / INJ-05 cascade).
+# Folded at load time (lowercase, diacritics stripped), so write words naturally.
+#
+# fuzzy_vocabulary : canonical keywords the `fuzzy` view restores from typoglycemia
+#                    ("ignroe" -> "ignore") or small edit distance ("systme" -> "system").
+# fuzzy_known_words: real words that are close to a keyword and must never be rewritten.
+# imperatives      : verbs used to rank "instruction-like" sentences in long untrusted text.
+# agent_words      : words that address an AI agent (sentence ranking).
+
+fuzzy_vocabulary:
+  # EN
+  - ignore
+  - disregard
+  - forget
+  - previous
+  - prior
+  - instructions
+  - instruction
+  - prompt
+  - system
+  - reveal
+  - override
+  - bypass
+  - jailbreak
+  - developer
+  - restrictions
+  - unfiltered
+  - password
+  - credentials
+  - everything
+  - above
+  - guidelines
+  - repeat
+  # PL
+  - zignoruj
+  - ignoruj
+  - zapomnij
+  - poprzednie
+  - wcześniejsze
+  - wszystkie
+  - instrukcje
+  - polecenia
+  - zasady
+  - systemowy
+  - hasło
+  - ujawnij
+  - wypisz
+  - pokaż
+  # DE
+  - ignoriere
+  - vorherigen
+  - anweisungen
+
+fuzzy_known_words:
+  - forgot
+  - forgets
+  - forgotten
+  - ignored
+  - ignores
+  - ignoring
+  - ignorant
+  - prompts
+  - prompted
+  - promptly
+  - systems
+  - systemic
+  - reveals
+  - revealed
+  - priority
+  - priors
+  - prison
+  - privacy
+  - preview
+  - previews
+  - provisions
+  - instructor
+  - instructors
+  - construction
+  - constructions
+  - destructions
+  - passwords
+  - credential
+  - developers
+  - developed
+  - restriction
+  - restricted
+  - repeats
+  - repeated
+  - abode
+  - abort
+  - overrides
+  - bypasses
+  - guidance
+  - guideline
+  - wszystko
+  - wszystkich
+  - zasadach
+  - zasadami
+  - polecenie
+  - poleceniem
+  - instrukcja
+  - instrukcji
+  - systemowe
+  - systemowa
+  - hasła
+  - haseł
+
+imperatives:
+  # EN
+  - ignore
+  - disregard
+  - forget
+  - run
+  - execute
+  - send
+  - forward
+  - upload
+  - post
+  - email
+  - delete
+  - approve
+  - transfer
+  - call
+  - invoke
+  - reveal
+  - print
+  - repeat
+  - output
+  - append
+  - include
+  - add
+  - download
+  - install
+  - curl
+  - wget
+  - must
+  - do not
+  - never
+  - always
+  - immediately
+  # PL
+  - zignoruj
+  - wykonaj
+  - uruchom
+  - wyślij
+  - prześlij
+  - usuń
+  - zatwierdź
+  - pokaż
+  - wypisz
+  - dodaj
+  - musisz
+  - nie informuj
+  # DE
+  - ignoriere
+  - führe
+  - sende
+
+agent_words:
+  - ai agent
+  - ai agents
+  - assistant
+  - the agent
+  - llm
+  - language model
+  - claude
+  - chatgpt
+  - copilot
+  - you must
+  - your instructions
+  - asystencie
+  - asystent ai
+  - agencie

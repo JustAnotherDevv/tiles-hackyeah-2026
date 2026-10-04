@@ -1,0 +1,44 @@
+id: AEGIS-TI-003
+title: Unsafe model format download / torch.load on pickle formats
+description: >-
+  CVE-2025-32434 made torch.load RCE even with weights_only=True on PyTorch <= 2.5.1.
+  Policy mitigation: prefer .safetensors / .gguf; downloading a pickle-backed format
+  (.bin/.pt/.pth/.ckpt/.pkl/.joblib) or calling torch.load in generated code needs
+  approval. Matches the download URL path or a torch.load call in model output.
+status: stable
+severity: high
+confidence: medium
+aliases: [CVE-2025-32434, CVE-2025-1944, CVE-2025-1945]
+references:
+  - https://github.com/pytorch/pytorch/security/advisories/GHSA-53q9-r3pm-6pq6
+  - https://www.sonatype.com/blog/bypassing-picklescan-sonatype-discovers-four-vulnerabilities
+tags: [LLM04:2026, ASI04, CWE-502, supply-chain]
+published: "2025-04-18"
+modified: "2026-10-03"
+applies_to: [model_download, output]
+matcher:
+  any_of:
+    - type: url
+      path_regex: '(?i)\.(bin|pt|pth|ckpt|pkl|joblib)$'
+    - type: regex
+      field: all
+      pattern: '(?i)\btorch\.load\s*\('
+action: require_approval
+action_overrides:
+  output: alert
+message: "Unsafe (pickle-backed) model format or torch.load call. Prefer .safetensors/.gguf; approval required before download/load."
+tests:
+  positive:
+    - name: download of a pickle-backed .bin model
+      surface: model_download
+      url: "https://huggingface.co/acme-org/demo-model/resolve/main/pytorch_model.bin?download=true"
+    - name: torch.load call in generated code
+      surface: output
+      text: "Here is the loader:\n    import torch\n    model = torch.load('checkpoint.pt')"
+  negative:
+    - name: download of a safetensors model
+      surface: model_download
+      url: "https://huggingface.co/acme-org/demo-model/resolve/main/model.safetensors"
+    - name: safe loader in generated code
+      surface: output
+      text: "from safetensors.torch import load_file\n    state = load_file('model.safetensors')"

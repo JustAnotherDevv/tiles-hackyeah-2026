@@ -1,0 +1,75 @@
+# =============================================================================
+#  Sample policy: WHO APPROVES WHAT                          docs/samples/
+# =============================================================================
+#  1. `actions` classify tool calls (MCP "<server>.<tool>", Claude Code tools,
+#     /egress requests) into action types with an amount and a resource.
+#  2. ACT-01..04 turn risky action types into require_approval / block.
+#  3. `approvals.rules` route each request to an approver level (FIRST MATCH
+#     WINS): auto | self (the member / the agent's sponsor) | admin | owner |
+#     deny. two_person: true = the owner plus a distinct admin.
+#  4. `approvals.config_rules` do the same for policy changes made in the
+#     dashboard (GOV-05). Saving config/policy.yaml on disk = owner break-glass.
+#  Grants are bound to the exact parameters (fingerprint), expire (ttl_s) and
+#  are single-use by default.
+#
+#  Try it:  AEGIS_POLICY=docs/samples/policy-approvals.yaml make gateway
+#  Reference: docs/policy-reference.md#6-approvals
+# =============================================================================
+version: 1
+metadata:
+  name: sample-approvals
+  description: "Approval routing by action type, amount and data sensitivity; governed config changes"
+profile: balanced
+
+destinations:
+  internal_domains: ["acme-capital.example", "*.acme-capital.example"]
+
+actions:                                      # first match wins
+  - {id: spend.subscription, category: spend, tools: ["marketpulse.purchase_subscription", "*.subscribe"],
+     amount_arg: amount_usd, resource_arg: vendor, resource_prefix: "vendor:",
+     title: "{agent} wants to spend ${amount} on {args.vendor} {args.plan}"}
+  - {id: spend.charge, category: spend, tools: ["payments.create_charge", "*.purchase*"],
+     amount_arg: amount_usd, resource_arg: vendor, resource_prefix: "vendor:"}
+  - {id: db.write, category: data_write, tools: ["acme-db.query"],
+     args_match: {sql: "(?i)^\\s*(insert|update|delete|merge)\\b"},
+     resource_arg: sql, resource_regex: "(?i)\\b(?:into|update|from)\\s+([a-z_][a-z0-9_]*)", resource_prefix: "db:"}
+  - {id: db.read, category: data_read, tools: ["acme-db.query"],
+     resource_arg: sql, resource_regex: "(?i)\\bfrom\\s+([a-z_][a-z0-9_]*)", resource_prefix: "db:"}
+  - {id: email.external, category: external_send, tools: ["mailer.send_email"], args_match: {to: "@"},
+     args_not_match: {to: "(?i)@acme-capital\\.example\\s*$"}}
+
+approvals:
+  defaults:
+    ttl_s: 900                                # a pending request expires after 15 min (= denied)
+    default_approver: admin                   # nothing matched -> fail closed to an admin
+    default_config_approver: owner
+    hold_s: {hook: 60, mcp: 30, egress: 15}   # how long a surface holds the call waiting for a human
+  rules:
+    - {id: spend-owner-2p,  description: "Over $1,000: owner + a second admin", when: {action: ["spend.*"], amount_usd_gt: 1000}, approver: owner, two_person: true}
+    - {id: spend-owner,     description: "Over $200 (e.g. a $480 GPU reservation)", when: {action: ["spend.*"], amount_usd_gt: 200}, approver: owner}
+    - {id: spend-admin,     description: "$20.01-$200 (e.g. the $50 MarketPulse Pro subscription)", when: {action: ["spend.*"], amount_usd_gt: 20}, approver: admin}
+    - {id: spend-self,      description: "Up to $20: the agent's sponsor confirms", when: {action: ["spend.*"]}, approver: self}
+    - {id: db-restricted,   description: "Card tables: never, whoever approves", when: {action: ["db.*"], labels_in: {sensitivity: [RESTRICTED, SECRET]}}, approver: deny}
+    - {id: db-prod-write,   description: "Any agent write to production", when: {action: ["db.write"], labels: {env: prod}}, approver: owner}
+    - {id: db-pii-read,     description: "SELECT * FROM customers (PII)", when: {action: ["db.read"], labels: {sensitivity: CONFIDENTIAL}}, approver: admin}
+    - {id: db-read,         when: {action: ["db.read"], labels_in: {sensitivity: [PUBLIC, INTERNAL]}}, approver: auto}
+    - {id: external-send,   description: "Email to an outside address", when: {action: ["email.external"]}, approver: self}
+  config_rules:
+    - {id: protect-more,    description: "Turning protection ON is always free", when: {action: ["control.enable", "control.threshold.tighten", "control.action.tighten"]}, approver: auto}
+    - {id: disable-control-critical, description: "Disabling DLP-02 / EXE-01 / SIG-01 / SIG-02", when: {action: ["control.disable", "control.mode"], labels: {control_severity: critical}}, approver: owner}
+    - {id: disable-control, when: {action: ["control.disable", "control.mode", "control.action.loosen"]}, approver: admin}
+    - {id: raise-large,     when: {action: ["budget.raise"], scope_type: [team], increase_pct_gt: 100}, approver: owner}
+    - {id: raise-team-small, when: {action: ["budget.raise"], scope_type: [team]}, approver: admin}
+
+controls:
+  - id: ACT-01                                 # spend guard
+    action: require_approval
+    params: {auto_allow_max_usd: 0, hard_block_above_usd: 5000}   # > $5,000 is blocked, not approvable
+    tests:
+      - {name: fifty-dollar-subscription, kind: mcp, surface: mcp.call, destination: third_party,
+         tool_name: marketpulse.purchase_subscription, tool_args: {vendor: marketpulse, plan: mp-pro-monthly, amount_usd: 50},
+         agent: trading-copilot@trading, expect: require_approval, control: ACT-01}
+  - {id: ACT-02, action: require_approval}     # data access by table sensitivity / environment
+  - {id: ACT-03, action: require_approval}     # external send (email, webhooks, uploads)
+  - {id: ACT-04, action: require_approval}     # code execution & deploy (kubectl / terraform apply, push to main)
+  - {id: GOV-05, action: require_approval}     # config-change governance (who may change what)

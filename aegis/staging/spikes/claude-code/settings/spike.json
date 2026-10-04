@@ -1,0 +1,16 @@
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://127.0.0.1:18787",
+    "ANTHROPIC_CUSTOM_HEADERS": "X-Aegis-Team: blue\nX-Aegis-Agent: claude-code",
+    "CLAUDE_CODE_GATEWAY_HINT_HEADERS": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      { "hooks": [ { "type": "command", "command": "python3 /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/staging/spikes/claude-code/hook.py http://127.0.0.1:18787/hook", "timeout": 5 } ] }
+    ],
+    "PreToolUse": [
+      { "matcher": "*", "hooks": [ { "type": "command", "command": "python3 /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/staging/spikes/claude-code/hook.py http://127.0.0.1:18787/hook", "timeout": 5 } ] }
+    ]
+  }
+}

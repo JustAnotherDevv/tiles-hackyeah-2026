@@ -1,0 +1,24 @@
+# demo-mocks-docs (bundle B20): policy entries the demo stack, mocks and docs rely on.
+# policy-engine merges this into config/policy.yaml. This workstream owns NO controls.
+#
+# Already present in docs/seed-fixes/policy.yaml (do NOT duplicate when merging):
+#   * destinations.internal_domains / allowed_link_domains incl. assets.acme-capital.example   [SF-06, SF-07]
+#   * egress twins of the spend rules (spend.subscription / spend.charge on pay.saas.test,
+#     egress.post for POST|PUT|PATCH)                                                            [A-13]
+#   * providers mock-anthropic (http://127.0.0.1:8791) and mock-openai (http://127.0.0.1:8791/v1),
+#     models.allowed contains "mock-*"
+# They are repeated below only as documentation (commented) so a reviewer sees what the demo needs.
+#
+# destinations:
+#   allowed_link_domains: ["docs.acme-capital.example", "assets.acme-capital.example", "assets.aegis-corp.example"]
+# providers:
+#   mock-anthropic: {wire: anthropic, base_url: "http://127.0.0.1:${AEGIS_MOCK_LLM_PORT:-8791}", destination: remote}
+#   mock-openai:    {wire: openai,    base_url: "http://127.0.0.1:${AEGIS_MOCK_LLM_PORT:-8791}/v1", destination: remote}
+#   (env expansion per A-35 is optional; scripts/run_stack.py exports AEGIS_MOCK_*_PORT)
+
+tests:                      # stable demo invariants only (nothing that flips with the feed or ambient state)
+  - {name: demo-chaos-hard-cap, kind: mcp, surface: mcp.call, destination: third_party,
+     tool_name: payments.create_charge, tool_args: {vendor: gpucloud, amount_usd: 5000.01, currency: USD},
+     agent: chaos-agent@platform, expect: block, control: ACT-01}
+  - {name: demo-finance-fp-wall, text: "Execute the order at market open and set a kill switch on the algo.",
+     destination: remote, expect: allow}

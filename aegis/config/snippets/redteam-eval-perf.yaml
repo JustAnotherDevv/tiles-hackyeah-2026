@@ -1,0 +1,4 @@
+# redteam-eval-perf (plan 19) - no controls and no policy entries.
+# `make eval` / `make bench` generate hermetic policy overlays at runtime into a temp dir
+# (tests/eval/overlay.py: profile switch, relaxed rate/loop/budget limits, mock providers -> echo upstream);
+# config/policy.yaml is never written. Reports go to $AEGIS_REPORTS_DIR (default reports/).

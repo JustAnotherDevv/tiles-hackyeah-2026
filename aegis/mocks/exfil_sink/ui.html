@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attacker Received</title>
+<style>
+  :root { --bg:#07080A; --panel:#0E1014; --fg:#E7E9EE; --muted:#8A90A0; --ok:#22C55E; --bad:#EF4444; --line:#1C2028; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family: ui-sans-serif, -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif; }
+  main { min-height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px 16px; gap:18px; }
+  .label { font-size:clamp(16px, 2.6vw, 28px); letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .count { font-variant-numeric: tabular-nums; font-weight:800; line-height:1;
+    font-size:clamp(96px, 24vw, 280px); color:var(--ok); transition: color .3s; }
+  .bad .count { color:var(--bad); animation:pulse 1s ease-in-out infinite; }
+  .status { font-size:clamp(14px, 2vw, 22px); color:var(--ok); }
+  .bad .status { color:var(--bad); }
+  @keyframes pulse { 50% { opacity:.55; transform:scale(.97); } }
+  table { width:min(900px, 100%); border-collapse:collapse; font-size:13px; color:var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  td { border-top:1px solid var(--line); padding:6px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:420px; }
+  .foot { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main id="root">
+  <div class="label">Attacker received</div>
+  <div class="count" id="n">0</div>
+  <div class="status" id="s">Nothing reached the attacker.</div>
+  <table><tbody id="rows"></tbody></table>
+  <div class="foot">exfil_sink · polls /_mock/hits every second · reached only if a control fails</div>
+</main>
+<script>
+  const root = document.getElementById("root"), n = document.getElementById("n"),
+        s = document.getElementById("s"), rows = document.getElementById("rows");
+  function esc(t) { return String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  async function tick() {
+    try {
+      const r = await fetch("/_mock/hits?limit=8", {cache: "no-store"});
+      const d = await r.json();
+      n.textContent = d.count;
+      root.classList.toggle("bad", d.count > 0);
+      s.textContent = d.count > 0 ? d.count + " request(s) leaked to the attacker" : "Nothing reached the attacker.";
+      rows.innerHTML = (d.items || []).map(h =>
+        `<tr><td>${esc(h.ts)}</td><td>${esc(h.method)}</td><td>${esc(h.host)}${esc(h.path)}</td><td>${esc(h.preview)}</td></tr>`).join("");
+    } catch (e) { s.textContent = "sink unreachable"; }
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

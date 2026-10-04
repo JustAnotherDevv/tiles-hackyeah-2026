@@ -1,0 +1,18 @@
+{
+  "model": "combined: horizon + ner + minilm(shared vocab)",
+  "threads_per_session": 2,
+  "load_s": 1.79,
+  "footprint_before_mb": 39,
+  "footprint_after_mb": 1067,
+  "rss_peak_mb": 1097,
+  "latency_t1_sequential": {
+    "p50_ms": 28.71,
+    "p95_ms": 67.23,
+    "n": 48
+  },
+  "latency_t1_parallel": {
+    "p50_ms": 19.59,
+    "p95_ms": 46.53,
+    "n": 48
+  }
+}

@@ -1,0 +1,2032 @@
+{
+  "$defs": {
+    "ActionRule": {
+      "additionalProperties": true,
+      "description": "Classifies tool / MCP / egress calls into governed action types (used by GOV-04).",
+      "properties": {
+        "amount_arg": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Arg"
+        },
+        "args_match": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Args Match",
+          "type": "object"
+        },
+        "args_not_match": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Args Not Match",
+          "type": "object"
+        },
+        "category": {
+          "default": "other",
+          "enum": [
+            "spend",
+            "data_read",
+            "data_write",
+            "external_send",
+            "code_exec",
+            "config",
+            "other"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "resource_arg": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resource Arg"
+        },
+        "resource_prefix": {
+          "default": "",
+          "title": "Resource Prefix",
+          "type": "string"
+        },
+        "resource_regex": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resource Regex"
+        },
+        "surfaces": {
+          "items": {
+            "enum": [
+              "prompt.user",
+              "model.request",
+              "model.response",
+              "model.admin",
+              "tool.input",
+              "tool.output",
+              "artifact.file",
+              "mcp.init",
+              "mcp.list",
+              "mcp.call",
+              "mcp.result",
+              "egress.request",
+              "egress.response",
+              "a2a.message",
+              "a2a.result",
+              "config.change"
+            ],
+            "type": "string"
+          },
+          "title": "Surfaces",
+          "type": "array"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tools",
+          "type": "array"
+        },
+        "url_hosts": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Url Hosts",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ActionRule",
+      "type": "object"
+    },
+    "ApprovalDefaults": {
+      "additionalProperties": true,
+      "properties": {
+        "default_approver": {
+          "default": "admin",
+          "enum": [
+            "auto",
+            "self",
+            "admin",
+            "owner",
+            "deny"
+          ],
+          "title": "Default Approver",
+          "type": "string"
+        },
+        "default_config_approver": {
+          "default": "owner",
+          "enum": [
+            "auto",
+            "self",
+            "admin",
+            "owner",
+            "deny"
+          ],
+          "title": "Default Config Approver",
+          "type": "string"
+        },
+        "hold_s": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Hold S",
+          "type": "object"
+        },
+        "max_pending": {
+          "default": 50,
+          "title": "Max Pending",
+          "type": "integer"
+        },
+        "on_timeout": {
+          "const": "deny",
+          "default": "deny",
+          "title": "On Timeout",
+          "type": "string"
+        },
+        "ttl_s": {
+          "default": 900,
+          "title": "Ttl S",
+          "type": "integer"
+        }
+      },
+      "title": "ApprovalDefaults",
+      "type": "object"
+    },
+    "ApprovalRule": {
+      "additionalProperties": true,
+      "properties": {
+        "approver": {
+          "default": "admin",
+          "enum": [
+            "auto",
+            "self",
+            "admin",
+            "owner",
+            "deny"
+          ],
+          "title": "Approver",
+          "type": "string"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "max_uses": {
+          "default": 1,
+          "title": "Max Uses",
+          "type": "integer"
+        },
+        "ttl_s": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ttl S"
+        },
+        "two_person": {
+          "default": false,
+          "title": "Two Person",
+          "type": "boolean"
+        },
+        "when": {
+          "$ref": "#/$defs/ApprovalWhen"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ApprovalRule",
+      "type": "object"
+    },
+    "ApprovalWhen": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "agents": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agents"
+        },
+        "amount_usd_gt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Usd Gt"
+        },
+        "amount_usd_lte": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Usd Lte"
+        },
+        "increase_pct_gt": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Increase Pct Gt"
+        },
+        "increase_pct_lte": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Increase Pct Lte"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "items": {
+                "enum": [
+                  "action",
+                  "config_change",
+                  "budget_raise",
+                  "mcp_pin"
+                ],
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Kind"
+        },
+        "labels": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Labels"
+        },
+        "resource_in": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Resource In"
+        },
+        "scope_type": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scope Type"
+        },
+        "teams": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Teams"
+        }
+      },
+      "title": "ApprovalWhen",
+      "type": "object"
+    },
+    "ApprovalsSection": {
+      "additionalProperties": true,
+      "properties": {
+        "config_rules": {
+          "items": {
+            "$ref": "#/$defs/ApprovalRule"
+          },
+          "title": "Config Rules",
+          "type": "array"
+        },
+        "defaults": {
+          "$ref": "#/$defs/ApprovalDefaults"
+        },
+        "rules": {
+          "items": {
+            "$ref": "#/$defs/ApprovalRule"
+          },
+          "title": "Rules",
+          "type": "array"
+        }
+      },
+      "title": "ApprovalsSection",
+      "type": "object"
+    },
+    "BudgetDefaults": {
+      "additionalProperties": true,
+      "properties": {
+        "local_concurrency": {
+          "default": 1,
+          "title": "Local Concurrency",
+          "type": "integer"
+        },
+        "max_output_tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 4096,
+          "title": "Max Output Tokens"
+        },
+        "on_hard": {
+          "default": "block",
+          "enum": [
+            "block",
+            "require_approval",
+            "downgrade"
+          ],
+          "title": "On Hard",
+          "type": "string"
+        },
+        "on_soft": {
+          "default": "warn",
+          "enum": [
+            "warn",
+            "downgrade",
+            "require_approval"
+          ],
+          "title": "On Soft",
+          "type": "string"
+        },
+        "soft_pct": {
+          "default": 80.0,
+          "title": "Soft Pct",
+          "type": "number"
+        }
+      },
+      "title": "BudgetDefaults",
+      "type": "object"
+    },
+    "BudgetLimit": {
+      "additionalProperties": true,
+      "properties": {
+        "compute_s": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Compute S"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Label"
+        },
+        "on_hard": {
+          "anyOf": [
+            {
+              "enum": [
+                "block",
+                "require_approval",
+                "downgrade"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Hard"
+        },
+        "on_soft": {
+          "anyOf": [
+            {
+              "enum": [
+                "warn",
+                "downgrade",
+                "require_approval"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "On Soft"
+        },
+        "requests": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Requests"
+        },
+        "scope": {
+          "title": "Scope",
+          "type": "string"
+        },
+        "soft_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Soft Pct"
+        },
+        "spend_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Spend Usd"
+        },
+        "tokens": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tokens"
+        },
+        "tool_calls": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Calls"
+        },
+        "usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Usd"
+        },
+        "window": {
+          "default": "day",
+          "enum": [
+            "hour",
+            "day",
+            "week",
+            "month",
+            "session",
+            "total"
+          ],
+          "title": "Window",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scope"
+      ],
+      "title": "BudgetLimit",
+      "type": "object"
+    },
+    "BudgetsSection": {
+      "additionalProperties": true,
+      "properties": {
+        "defaults": {
+          "$ref": "#/$defs/BudgetDefaults"
+        },
+        "kill_switch": {
+          "$ref": "#/$defs/KillSwitch"
+        },
+        "limits": {
+          "items": {
+            "$ref": "#/$defs/BudgetLimit"
+          },
+          "title": "Limits",
+          "type": "array"
+        },
+        "loops": {
+          "$ref": "#/$defs/LoopConfig"
+        },
+        "rate": {
+          "$ref": "#/$defs/RateConfig"
+        }
+      },
+      "title": "BudgetsSection",
+      "type": "object"
+    },
+    "ControlConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "default": "block",
+          "description": "block > require_approval > redact > log > allow (most restrictive wins)",
+          "enum": [
+            "allow",
+            "log",
+            "redact",
+            "require_approval",
+            "block"
+          ],
+          "title": "Action",
+          "type": "string"
+        },
+        "adherence_pct": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "0-100 minimum topic adherence (higher = stricter)",
+          "title": "Adherence Pct"
+        },
+        "description": {
+          "description": "extension key (description)",
+          "type": "string"
+        },
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "fail_mode": {
+          "default": "closed",
+          "description": "closed (error -> block) | open (error -> allow, degraded) | deterministic_only",
+          "enum": [
+            "closed",
+            "open",
+            "deterministic_only"
+          ],
+          "title": "Fail Mode",
+          "type": "string"
+        },
+        "family": {
+          "description": "extension key (family)",
+          "type": "string"
+        },
+        "id": {
+          "anyOf": [
+            {
+              "enum": [
+                "GOV-01",
+                "GOV-02",
+                "GOV-03",
+                "GOV-04",
+                "GOV-05",
+                "GOV-06",
+                "ACT-01",
+                "ACT-02",
+                "ACT-03",
+                "ACT-04",
+                "DLP-01",
+                "DLP-02",
+                "DLP-03",
+                "DLP-04",
+                "DLP-05",
+                "DLP-06",
+                "DLP-07",
+                "DLP-08",
+                "INJ-01",
+                "INJ-02",
+                "INJ-03",
+                "INJ-04",
+                "INJ-05",
+                "EXE-01",
+                "EXE-02",
+                "EXE-03",
+                "EXE-04",
+                "MCP-01",
+                "MCP-02",
+                "MCP-03",
+                "MCP-04",
+                "BUD-01",
+                "BUD-02",
+                "SIG-01",
+                "SIG-02",
+                "SIG-03",
+                "CUS-01",
+                "A2A-01",
+                "A2A-02"
+              ]
+            },
+            {
+              "pattern": "^[A-Z0-9]+-[0-9]{2}$",
+              "type": "string"
+            }
+          ],
+          "description": "Control id from the catalog: GOV-01 Caller identity & attribution, GOV-02 Model allowlist & destination tiering, GOV-03 Tool authorization (RBAC + arg constraints), GOV-04 Human approval gate for other high-impact tools, GOV-05 Config-change governance (who may change what), GOV-06 Agent harness integrity (Claude Code), ACT-01 Spend guard (purchases, subscriptions, top-ups), ACT-02 Data access guard (tables by sensitivity & environment), ACT-03 External send guard (email, webhooks, uploads), ACT-04 Code execution & deploy guard, DLP-01 PII/PCI/Polish-ID tokenization (destination matrix), DLP-02 Secrets & credentials, DLP-03 Metadata stripping & generalization, DLP-04 Tool-arg / egress exfiltration scan, DLP-05 Output & tool-result leak detection (+ canary), DLP-06 Exfil-channel neutralization (md images/links, ANSI), DLP-07 Multilingual NER sensitive data (incl. Polish), DLP-08 Vault & controlled re-identification, INJ-01 Normalization + deterministic injection signatures, INJ-02 Semantic injection / jailbreak classifier, INJ-03 Content safety + topic adherence %, INJ-04 Hidden-context exposure (extraction + canary + overlap), INJ-05 Goal-drift / grounding check, EXE-01 Dangerous command guard, EXE-02 Filesystem & network scope (SSRF), EXE-03 Taint-flow breaker (lethal trifecta), EXE-04 Loop / rate / circuit breaker / kill switch, MCP-01 Server registry & launch check, MCP-02 Tool-definition poisoning scan, MCP-03 Tool pinning (rug pull) & shadowing, MCP-04 Token & auth hygiene, BUD-01 Token & cost budgets (remote + local, spend), BUD-02 Local compute & concurrency, SIG-01 External exploit-signature engine, SIG-02 Model-artifact gate (pickle / GGUF), SIG-03 Package-install / slopsquatting guard, CUS-01 Customer-defined rules (deal code names must not leave the firm), A2A-01 Peer identity & message integrity (reserved), A2A-02 Inter-agent smuggling guard (reserved)",
+          "examples": [
+            "GOV-01",
+            "GOV-02",
+            "GOV-03",
+            "GOV-04",
+            "GOV-05",
+            "GOV-06",
+            "ACT-01",
+            "ACT-02",
+            "ACT-03",
+            "ACT-04",
+            "DLP-01",
+            "DLP-02",
+            "DLP-03",
+            "DLP-04",
+            "DLP-05",
+            "DLP-06",
+            "DLP-07",
+            "DLP-08",
+            "INJ-01",
+            "INJ-02",
+            "INJ-03",
+            "INJ-04",
+            "INJ-05",
+            "EXE-01",
+            "EXE-02",
+            "EXE-03",
+            "EXE-04",
+            "MCP-01",
+            "MCP-02",
+            "MCP-03",
+            "MCP-04",
+            "BUD-01",
+            "BUD-02",
+            "SIG-01",
+            "SIG-02",
+            "SIG-03",
+            "CUS-01",
+            "A2A-01",
+            "A2A-02"
+          ],
+          "title": "Id"
+        },
+        "mode": {
+          "default": "enforce",
+          "description": "enforce | monitor (shadow: logged as 'would <action>') | off",
+          "enum": [
+            "enforce",
+            "monitor",
+            "off"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "notes": {
+          "description": "extension key (notes)",
+          "type": "string"
+        },
+        "owasp": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Owasp",
+          "type": "array"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        },
+        "scope": {
+          "$ref": "#/$defs/ControlScope"
+        },
+        "severity": {
+          "default": "medium",
+          "enum": [
+            "info",
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "tests": {
+          "items": {
+            "$ref": "#/$defs/PolicyTest"
+          },
+          "title": "Tests",
+          "type": "array"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "0-1 score at/above which the action applies (lower = stricter; 0.90 = 90 %)",
+          "title": "Threshold"
+        },
+        "timeout_ms": {
+          "default": 250,
+          "description": "per-control evaluation timeout (1-30000 ms)",
+          "title": "Timeout Ms",
+          "type": "integer"
+        },
+        "when": {
+          "description": "extension key (when)",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ControlConfig",
+      "type": "object"
+    },
+    "ControlScope": {
+      "additionalProperties": true,
+      "properties": {
+        "agents": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Agents",
+          "type": "array"
+        },
+        "destinations": {
+          "items": {
+            "enum": [
+              "local",
+              "remote",
+              "third_party"
+            ],
+            "type": "string"
+          },
+          "title": "Destinations",
+          "type": "array"
+        },
+        "kinds": {
+          "items": {
+            "enum": [
+              "model_call",
+              "tool_call",
+              "mcp",
+              "egress",
+              "a2a",
+              "config_change"
+            ],
+            "type": "string"
+          },
+          "title": "Kinds",
+          "type": "array"
+        },
+        "members": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "orgs": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Orgs",
+          "type": "array"
+        },
+        "surfaces": {
+          "items": {
+            "enum": [
+              "prompt.user",
+              "model.request",
+              "model.response",
+              "model.admin",
+              "tool.input",
+              "tool.output",
+              "artifact.file",
+              "mcp.init",
+              "mcp.list",
+              "mcp.call",
+              "mcp.result",
+              "egress.request",
+              "egress.response",
+              "a2a.message",
+              "a2a.result",
+              "config.change"
+            ],
+            "type": "string"
+          },
+          "title": "Surfaces",
+          "type": "array"
+        },
+        "teams": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Teams",
+          "type": "array"
+        }
+      },
+      "title": "ControlScope",
+      "type": "object"
+    },
+    "Defaults": {
+      "additionalProperties": true,
+      "properties": {
+        "audit_content": {
+          "default": false,
+          "title": "Audit Content",
+          "type": "boolean"
+        },
+        "block_response": {
+          "default": "message",
+          "enum": [
+            "message",
+            "error"
+          ],
+          "title": "Block Response",
+          "type": "string"
+        },
+        "fail_mode": {
+          "default": "closed",
+          "enum": [
+            "closed",
+            "open",
+            "deterministic_only"
+          ],
+          "title": "Fail Mode",
+          "type": "string"
+        },
+        "max_body_bytes": {
+          "default": 8000000,
+          "title": "Max Body Bytes",
+          "type": "integer"
+        },
+        "mode": {
+          "default": "enforce",
+          "description": "global mode; monitor = shadow mode for every control",
+          "enum": [
+            "enforce",
+            "monitor",
+            "off"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "rehydrate_responses": {
+          "default": true,
+          "title": "Rehydrate Responses",
+          "type": "boolean"
+        },
+        "require_auth": {
+          "default": false,
+          "title": "Require Auth",
+          "type": "boolean"
+        },
+        "selftest_gate": {
+          "default": "enforce",
+          "description": "self-test gate: enforce rejects regressions, warn only reports",
+          "enum": [
+            "enforce",
+            "warn",
+            "off"
+          ]
+        },
+        "semantic_timeout_ms": {
+          "default": 400,
+          "title": "Semantic Timeout Ms",
+          "type": "integer"
+        },
+        "stream_mode": {
+          "default": "buffered",
+          "enum": [
+            "buffered",
+            "holdback",
+            "passthrough"
+          ],
+          "title": "Stream Mode",
+          "type": "string"
+        }
+      },
+      "title": "Defaults",
+      "type": "object"
+    },
+    "DestinationsSection": {
+      "additionalProperties": true,
+      "properties": {
+        "allowed_link_domains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Link Domains",
+          "type": "array"
+        },
+        "egress_allowlist": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Egress Allowlist",
+          "type": "array"
+        },
+        "internal_domains": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Internal Domains",
+          "type": "array"
+        },
+        "local_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Local Tools",
+          "type": "array"
+        },
+        "matrix": {
+          "additionalProperties": {
+            "additionalProperties": {
+              "enum": [
+                "allow",
+                "log",
+                "redact",
+                "require_approval",
+                "block"
+              ],
+              "type": "string"
+            },
+            "propertyNames": {
+              "enum": [
+                "local",
+                "remote",
+                "third_party"
+              ]
+            },
+            "type": "object"
+          },
+          "propertyNames": {
+            "enum": [
+              "PUBLIC",
+              "INTERNAL",
+              "CONFIDENTIAL",
+              "RESTRICTED",
+              "SECRET"
+            ]
+          },
+          "title": "Matrix",
+          "type": "object"
+        },
+        "third_party_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Third Party Tools",
+          "type": "array"
+        }
+      },
+      "title": "DestinationsSection",
+      "type": "object"
+    },
+    "DowngradeRule": {
+      "additionalProperties": true,
+      "properties": {
+        "from": {
+          "title": "From",
+          "type": "string"
+        },
+        "to": {
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "title": "DowngradeRule",
+      "type": "object"
+    },
+    "FeedOverride": {
+      "additionalProperties": true,
+      "properties": {
+        "action": {
+          "anyOf": [
+            {
+              "enum": [
+                "allow",
+                "log",
+                "redact",
+                "require_approval",
+                "block"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action"
+        },
+        "enabled": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled"
+        },
+        "justification": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Justification"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "enforce",
+                "monitor",
+                "off"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        }
+      },
+      "title": "FeedOverride",
+      "type": "object"
+    },
+    "FeedSource": {
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "default": true,
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "id": {
+          "default": "aegis-threat-intel",
+          "title": "Id",
+          "type": "string"
+        },
+        "max_age_s": {
+          "default": 86400,
+          "title": "Max Age S",
+          "type": "integer"
+        },
+        "poll_s": {
+          "default": 10.0,
+          "title": "Poll S",
+          "type": "number"
+        },
+        "pubkey_file": {
+          "default": "config/feeds/feed_pubkey.b64",
+          "title": "Pubkey File",
+          "type": "string"
+        },
+        "seed_bundle": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "config/feeds/seed_bundle.json",
+          "title": "Seed Bundle"
+        },
+        "sse": {
+          "default": true,
+          "title": "Sse",
+          "type": "boolean"
+        },
+        "url": {
+          "default": "http://127.0.0.1:8790",
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "title": "FeedSource",
+      "type": "object"
+    },
+    "FeedsSection": {
+      "additionalProperties": true,
+      "properties": {
+        "overrides": {
+          "additionalProperties": {
+            "$ref": "#/$defs/FeedOverride"
+          },
+          "title": "Overrides",
+          "type": "object"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/FeedSource"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "title": "FeedsSection",
+      "type": "object"
+    },
+    "KillSwitch": {
+      "additionalProperties": true,
+      "properties": {
+        "agents": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Agents",
+          "type": "array"
+        },
+        "global": {
+          "default": false,
+          "title": "Global",
+          "type": "boolean"
+        },
+        "members": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Members",
+          "type": "array"
+        },
+        "sessions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sessions",
+          "type": "array"
+        },
+        "teams": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Teams",
+          "type": "array"
+        }
+      },
+      "title": "KillSwitch",
+      "type": "object"
+    },
+    "LoopConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "cycle_k": {
+          "default": 3,
+          "title": "Cycle K",
+          "type": "integer"
+        },
+        "error_streak": {
+          "default": 5,
+          "title": "Error Streak",
+          "type": "integer"
+        },
+        "ladder": {
+          "items": {
+            "enum": [
+              "tool_error",
+              "block",
+              "kill"
+            ],
+            "type": "string"
+          },
+          "title": "Ladder",
+          "type": "array"
+        },
+        "max_steps_per_session": {
+          "default": 200,
+          "title": "Max Steps Per Session",
+          "type": "integer"
+        },
+        "repeat": {
+          "default": 3,
+          "title": "Repeat",
+          "type": "integer"
+        },
+        "window": {
+          "default": 20,
+          "title": "Window",
+          "type": "integer"
+        }
+      },
+      "title": "LoopConfig",
+      "type": "object"
+    },
+    "McpSection": {
+      "additionalProperties": true,
+      "properties": {
+        "max_description_len": {
+          "default": 1024,
+          "title": "Max Description Len",
+          "type": "integer"
+        },
+        "on_tool_change": {
+          "default": "block",
+          "enum": [
+            "allow",
+            "log",
+            "redact",
+            "require_approval",
+            "block"
+          ],
+          "title": "On Tool Change",
+          "type": "string"
+        },
+        "servers": {
+          "additionalProperties": {
+            "$ref": "#/$defs/McpServerConfig"
+          },
+          "title": "Servers",
+          "type": "object"
+        },
+        "unknown_server_action": {
+          "default": "block",
+          "enum": [
+            "allow",
+            "log",
+            "redact",
+            "require_approval",
+            "block"
+          ],
+          "title": "Unknown Server Action",
+          "type": "string"
+        }
+      },
+      "title": "McpSection",
+      "type": "object"
+    },
+    "McpServerConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "allowed_tools": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed Tools",
+          "type": "array"
+        },
+        "command": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "destination": {
+          "default": "third_party",
+          "enum": [
+            "local",
+            "remote",
+            "third_party"
+          ],
+          "title": "Destination",
+          "type": "string"
+        },
+        "headers_env": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Headers Env",
+          "type": "object"
+        },
+        "package": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Package"
+        },
+        "pinned": {
+          "default": true,
+          "title": "Pinned",
+          "type": "boolean"
+        },
+        "transport": {
+          "default": "http",
+          "enum": [
+            "http",
+            "stdio"
+          ],
+          "title": "Transport",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Url"
+        }
+      },
+      "title": "McpServerConfig",
+      "type": "object"
+    },
+    "ModelRoute": {
+      "additionalProperties": true,
+      "properties": {
+        "match": {
+          "title": "Match",
+          "type": "string"
+        },
+        "provider": {
+          "title": "Provider",
+          "type": "string"
+        },
+        "wire": {
+          "anyOf": [
+            {
+              "enum": [
+                "anthropic",
+                "openai",
+                "ollama"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Wire"
+        }
+      },
+      "required": [
+        "match",
+        "provider"
+      ],
+      "title": "ModelRoute",
+      "type": "object"
+    },
+    "ModelsSection": {
+      "additionalProperties": true,
+      "properties": {
+        "allowed": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Allowed",
+          "type": "array"
+        },
+        "default_local": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Default Local"
+        },
+        "denied": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Denied",
+          "type": "array"
+        },
+        "downgrade": {
+          "items": {
+            "$ref": "#/$defs/DowngradeRule"
+          },
+          "title": "Downgrade",
+          "type": "array"
+        },
+        "routes": {
+          "items": {
+            "$ref": "#/$defs/ModelRoute"
+          },
+          "title": "Routes",
+          "type": "array"
+        }
+      },
+      "title": "ModelsSection",
+      "type": "object"
+    },
+    "PolicyMetadata": {
+      "additionalProperties": true,
+      "properties": {
+        "description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Description"
+        },
+        "name": {
+          "default": "aegis-policy",
+          "title": "Name",
+          "type": "string"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Owner"
+        }
+      },
+      "title": "PolicyMetadata",
+      "type": "object"
+    },
+    "PolicyTest": {
+      "additionalProperties": true,
+      "description": "Inline golden test, run by the self-test gate before a policy version is applied.",
+      "properties": {
+        "agent": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent"
+        },
+        "amount_usd": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Amount Usd"
+        },
+        "control": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "examples": [
+            "GOV-01",
+            "GOV-02",
+            "GOV-03",
+            "GOV-04",
+            "GOV-05",
+            "GOV-06",
+            "ACT-01",
+            "ACT-02",
+            "ACT-03",
+            "ACT-04",
+            "DLP-01",
+            "DLP-02",
+            "DLP-03",
+            "DLP-04",
+            "DLP-05",
+            "DLP-06",
+            "DLP-07",
+            "DLP-08",
+            "INJ-01",
+            "INJ-02",
+            "INJ-03",
+            "INJ-04",
+            "INJ-05",
+            "EXE-01",
+            "EXE-02",
+            "EXE-03",
+            "EXE-04",
+            "MCP-01",
+            "MCP-02",
+            "MCP-03",
+            "MCP-04",
+            "BUD-01",
+            "BUD-02",
+            "SIG-01",
+            "SIG-02",
+            "SIG-03",
+            "CUS-01",
+            "A2A-01",
+            "A2A-02"
+          ],
+          "title": "Control"
+        },
+        "destination": {
+          "default": "remote",
+          "enum": [
+            "local",
+            "remote",
+            "third_party"
+          ],
+          "title": "Destination",
+          "type": "string"
+        },
+        "expect": {
+          "enum": [
+            "allow",
+            "log",
+            "redact",
+            "require_approval",
+            "block"
+          ],
+          "title": "Expect",
+          "type": "string"
+        },
+        "kind": {
+          "default": "model_call",
+          "enum": [
+            "model_call",
+            "tool_call",
+            "mcp",
+            "egress",
+            "a2a",
+            "config_change"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "surface": {
+          "default": "model.request",
+          "enum": [
+            "prompt.user",
+            "model.request",
+            "model.response",
+            "model.admin",
+            "tool.input",
+            "tool.output",
+            "artifact.file",
+            "mcp.init",
+            "mcp.list",
+            "mcp.call",
+            "mcp.result",
+            "egress.request",
+            "egress.response",
+            "a2a.message",
+            "a2a.result",
+            "config.change"
+          ],
+          "title": "Surface",
+          "type": "string"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        },
+        "tool_args": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Args"
+        },
+        "tool_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tool Name"
+        }
+      },
+      "required": [
+        "name",
+        "expect"
+      ],
+      "title": "PolicyTest",
+      "type": "object"
+    },
+    "ProviderConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "api_key_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Api Key Env"
+        },
+        "base_url": {
+          "title": "Base Url",
+          "type": "string"
+        },
+        "destination": {
+          "default": "remote",
+          "enum": [
+            "local",
+            "remote",
+            "third_party"
+          ],
+          "title": "Destination",
+          "type": "string"
+        },
+        "enabled_if_env": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Enabled If Env"
+        },
+        "passthrough_auth": {
+          "default": false,
+          "title": "Passthrough Auth",
+          "type": "boolean"
+        },
+        "timeout_s": {
+          "default": 120.0,
+          "title": "Timeout S",
+          "type": "number"
+        },
+        "wire": {
+          "enum": [
+            "anthropic",
+            "openai",
+            "ollama"
+          ],
+          "title": "Wire",
+          "type": "string"
+        }
+      },
+      "required": [
+        "wire",
+        "base_url"
+      ],
+      "title": "ProviderConfig",
+      "type": "object"
+    },
+    "RateConfig": {
+      "additionalProperties": true,
+      "properties": {
+        "requests_per_min": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 120,
+          "title": "Requests Per Min"
+        },
+        "tool_calls_per_min": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 60,
+          "title": "Tool Calls Per Min"
+        }
+      },
+      "title": "RateConfig",
+      "type": "object"
+    }
+  },
+  "$id": "aegis.policy/1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Control catalog, budgets, approvals and routing for the Aegis AI control layer.",
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/ActionRule"
+      },
+      "title": "Actions",
+      "type": "array"
+    },
+    "approvals": {
+      "$ref": "#/$defs/ApprovalsSection"
+    },
+    "budgets": {
+      "$ref": "#/$defs/BudgetsSection"
+    },
+    "controls": {
+      "items": {
+        "$ref": "#/$defs/ControlConfig"
+      },
+      "title": "Controls",
+      "type": "array"
+    },
+    "defaults": {
+      "$ref": "#/$defs/Defaults"
+    },
+    "destinations": {
+      "$ref": "#/$defs/DestinationsSection"
+    },
+    "feeds": {
+      "$ref": "#/$defs/FeedsSection"
+    },
+    "mcp": {
+      "$ref": "#/$defs/McpSection"
+    },
+    "metadata": {
+      "$ref": "#/$defs/PolicyMetadata"
+    },
+    "models": {
+      "$ref": "#/$defs/ModelsSection"
+    },
+    "profile": {
+      "default": "balanced",
+      "description": "Strictness profile (config/profiles/<name>.yaml): permissive | balanced | strict | paranoid. strict/paranoid act as a floor for pinned knobs.",
+      "enum": [
+        "permissive",
+        "balanced",
+        "strict",
+        "paranoid"
+      ],
+      "title": "Profile",
+      "type": "string"
+    },
+    "providers": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ProviderConfig"
+      },
+      "title": "Providers",
+      "type": "object"
+    },
+    "tests": {
+      "items": {
+        "$ref": "#/$defs/PolicyTest"
+      },
+      "title": "Tests",
+      "type": "array"
+    },
+    "version": {
+      "default": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "title": "Aegis policy (config/policy.yaml)",
+  "type": "object"
+}

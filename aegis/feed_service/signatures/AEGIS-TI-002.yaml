@@ -1,0 +1,50 @@
+# AEGIS-TI-002 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-002
+title: nullifAI — model file with 7z magic instead of a tensor format
+description: >-
+  ReversingLabs' nullifAI (Feb 2025) shipped PyTorch models as 7z archives with a
+  deliberately broken pickle stream, so picklescan errored out before reaching the
+  payload. A file served with a model extension (.bin/.pt/.pth/.ckpt) must begin
+  with a known safe/tensor container magic; a 7z magic there is itself the signal.
+  The test vectors are just the 6-byte 7z magic plus zero padding (no archive
+  contents), and a benign GGUF magic as the negative.
+status: stable
+severity: high
+confidence: high
+aliases: []
+references:
+  - https://www.reversinglabs.com/blog/rl-identifies-malware-ml-model-hosted-on-hugging-face
+tags: [LLM04:2026, ASI04, AML.T0010, CWE-502, supply-chain]
+published: "2025-02-06"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [artifact.file]
+match:
+  type: bytes
+  magic_hex: "377abcaf271c"      # 7z \xBC\xAF\x27\x1C
+  offset: 0
+action: block
+message: "Model artifact starts with 7z archive magic rather than a tensor format (nullifAI pattern). Blocked."
+tests:
+  positive:
+    - name: 7z magic at offset 0
+      surface: artifact.file
+      meta:
+        artifact_b64: N3q8ryccAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        filename: pytorch_model.bin
+    - name: 7z magic with a different padding tail
+      surface: artifact.file
+      meta:
+        artifact_b64: N3q8ryccAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHA==
+        filename: model.ckpt
+  negative:
+    - name: GGUF container magic (allowed format)
+      surface: artifact.file
+      meta:
+        artifact_b64: R0dVRgMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+        filename: model.gguf
+    - name: safetensors header (allowed format)
+      surface: artifact.file
+      meta:
+        artifact_b64: PQAAAAAAAAB7InciOiB7ImR0eXBlIjogIkYzMiIsICJzaGFwZSI6IFsyXSwgImRhdGFfb2Zmc2V0cyI6IFswLCA4XX19AACAPwAAAEA=
+        filename: model.safetensors

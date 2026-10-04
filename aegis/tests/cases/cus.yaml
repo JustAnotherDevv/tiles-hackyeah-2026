@@ -1,0 +1,11 @@
+# Customer-defined rules
+# Case schema: tests/cases/README.md. One YAML item = one test; append a line and re-run `make test`.
+# Seeded from staging/seed/policy.yaml examples by tests/lib/seed_import.py (see `source:`), then curated.
+# Fake/test data only; secret-shaped values come from {{gen:*}} macros at run time.
+cases:
+  - {"id": "CUS01-CODENAME-TO-REMOTE", "control": "CUS-01", "polarity": "attack", "expect": "block", "input": "Draft the board memo for Project Falcon with the updated valuation.", "dest": "remote", "source": "staging/seed/policy.yaml#CUS-01/codename-to-remote"}
+  - {"id": "CUS01-CODENAME-PL-NO-DIACRITICS", "control": "CUS-01", "polarity": "attack", "expect": "block", "input": "Przygotuj notatkę o projekt sokol na jutro.", "dest": "remote", "source": "staging/seed/policy.yaml#CUS-01/codename-pl-no-diacritics"}
+  - {"id": "CUS01-CODENAME-LOCAL", "control": "CUS-01", "polarity": "benign", "expect": "allow", "input": "Summarise the Project Falcon data room index.", "as": "research-agent@research", "dest": "local", "source": "staging/seed/policy.yaml#CUS-01/codename-local"}
+  - {"id": "CUS01-REAL-FALCON", "control": "CUS-01", "polarity": "benign", "expect": "allow", "input": "What is the top speed of a peregrine falcon?", "dest": "remote", "source": "staging/seed/policy.yaml#CUS-01/real-falcon"}
+  # ---- curated
+  - {id: CUS01-GENERIC-TEXT-ALLOWED, control: CUS-01, polarity: benign, expect: allow, input: "Draft a polite note confirming tomorrow's investor call.", dest: remote}

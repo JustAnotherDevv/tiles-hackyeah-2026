@@ -1,0 +1,123 @@
+{"id": "neg-001", "text": "Rejected card (checksum fails): 4709 9869 9460 3949", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-002", "text": "Testowa karta z błędną sumą kontrolną: 2720-8062-2666-2076.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-003", "text": "Rejected card (checksum fails): 4623138705326942815", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-004", "text": "Testowa karta z błędną sumą kontrolną: 3484 122722 85726.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-005", "text": "Rejected card (checksum fails): 6587-6170-0551-3726", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-006", "text": "Testowa karta z błędną sumą kontrolną: 2705754728169654.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-007", "text": "Rejected card (checksum fails): 4407 6486 9134 4558", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-008", "text": "Testowa karta z błędną sumą kontrolną: 4914-0658-8585-4845.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CREDIT_CARD"]}
+{"id": "neg-009", "text": "Błędny PESEL 00320875790 — prosimy o poprawienie formularza.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PESEL"]}
+{"id": "neg-010", "text": "Błędny PESEL 50121428354 — prosimy o poprawienie formularza.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PESEL"]}
+{"id": "neg-011", "text": "Błędny PESEL 71012467065 — prosimy o poprawienie formularza.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PESEL"]}
+{"id": "neg-012", "text": "Błędny PESEL 11302680895 — prosimy o poprawienie formularza.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PESEL"]}
+{"id": "neg-013", "text": "Błędny PESEL 90011150417 — prosimy o poprawienie formularza.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PESEL"]}
+{"id": "neg-014", "text": "PESEL 90132874716 nie przechodzi walidacji daty urodzenia.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "invalid-date", "PL_PESEL"]}
+{"id": "neg-015", "text": "PESEL 80131321258 nie przechodzi walidacji daty urodzenia.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "invalid-date", "PL_PESEL"]}
+{"id": "neg-016", "text": "PESEL 80142752478 nie przechodzi walidacji daty urodzenia.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "invalid-date", "PL_PESEL"]}
+{"id": "neg-017", "text": "NIP 117-687-12-51 jest niepoprawny (suma kontrolna).", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NIP"]}
+{"id": "neg-018", "text": "NIP 158-979-83-82 jest niepoprawny (suma kontrolna).", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NIP"]}
+{"id": "neg-019", "text": "NIP 124-788-90-06 jest niepoprawny (suma kontrolna).", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NIP"]}
+{"id": "neg-020", "text": "NIP 125-172-59-72 jest niepoprawny (suma kontrolna).", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NIP"]}
+{"id": "neg-021", "text": "NIP 119-315-73-84 jest niepoprawny (suma kontrolna).", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NIP"]}
+{"id": "neg-022", "text": "REGON 199747197 odrzucony przez GUS.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_REGON"]}
+{"id": "neg-023", "text": "REGON 81838204304905 odrzucony przez GUS.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_REGON"]}
+{"id": "neg-024", "text": "REGON 014615909 odrzucony przez GUS.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_REGON"]}
+{"id": "neg-025", "text": "REGON 11247615097902 odrzucony przez GUS.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_REGON"]}
+{"id": "neg-026", "text": "Rachunek PL03 3326 5047 3428 8526 6712 7157 jest błędny.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "IBAN"]}
+{"id": "neg-027", "text": "IBAN DE81 8598 6291 0767 2979 22 failed validation.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "IBAN"]}
+{"id": "neg-028", "text": "IBAN GB09 ZMXM 8228 2121 8422 75 failed validation.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "IBAN"]}
+{"id": "neg-029", "text": "Rachunek PL33 1461 1723 7033 2605 2709 7653 jest błędny.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "IBAN"]}
+{"id": "neg-030", "text": "IBAN FR17 8804 2690 0284 3116 2476 993 failed validation.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "IBAN"]}
+{"id": "neg-031", "text": "Numer konta 36 7077 7206 2107 1592 7183 3127 zawiera błąd.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NRB"]}
+{"id": "neg-032", "text": "Numer konta 46 8625 6359 2189 2538 3270 8401 zawiera błąd.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NRB"]}
+{"id": "neg-033", "text": "Numer konta 24 3346 6596 7776 5781 6441 9397 zawiera błąd.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_NRB"]}
+{"id": "neg-034", "text": "Dowód osobisty ZLI108134 — numer nieprawidłowy.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_ID_CARD"]}
+{"id": "neg-035", "text": "Dowód osobisty XBC967104 — numer nieprawidłowy.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_ID_CARD"]}
+{"id": "neg-036", "text": "Dowód osobisty WSW168707 — numer nieprawidłowy.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_ID_CARD"]}
+{"id": "neg-037", "text": "Passport number LG6033019 is invalid.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PASSPORT"]}
+{"id": "neg-038", "text": "Passport number XS3886117 is invalid.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PASSPORT"]}
+{"id": "neg-039", "text": "Passport number SC4298703 is invalid.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "PL_PASSPORT"]}
+{"id": "neg-040", "text": "BTC address 1Bz9mEV2YmtKHa5oZ3AatkJACY1ydR6f9b has a bad checksum.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CRYPTO_BTC"]}
+{"id": "neg-041", "text": "BTC address 38mUvcirYXUdfvtiQptertmzhvSJnVvG85 has a bad checksum.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CRYPTO_BTC"]}
+{"id": "neg-042", "text": "BTC address bc1qprf4w0zr5tl66572leqkufnd4dynajmu576rk2 has a bad checksum.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CRYPTO_BTC"]}
+{"id": "neg-043", "text": "ETH wallet 0x8AC30d10e4E2510B6CdA92a208bB2bAcA04c3c40 fails the EIP-55 checksum.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CRYPTO_ETH"]}
+{"id": "neg-044", "text": "ETH wallet 0x3578AEA530F678442143872eA69203c14D6706ac fails the EIP-55 checksum.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CRYPTO_ETH"]}
+{"id": "neg-045", "text": "ETH wallet 0x0922478E5DD183c566f3fCdEd59EBf575Dcb7CDa fails the EIP-55 checksum.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "off-by-one", "CRYPTO_ETH"]}
+{"id": "neg-046", "text": "Numer zamówienia 5994050337 został przekazany do realizacji.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_NIP"]}
+{"id": "neg-047", "text": "Numer zamówienia 9889623247 został przekazany do realizacji.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_NIP"]}
+{"id": "neg-048", "text": "Numer zamówienia 2790348312 został przekazany do realizacji.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_NIP"]}
+{"id": "neg-049", "text": "SKU 070132320 is back in stock.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_REGON"]}
+{"id": "neg-050", "text": "Kod produktu 311057858 — dostępny od ręki.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_REGON"]}
+{"id": "neg-051", "text": "SKU 11037630396368 is back in stock.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_REGON"]}
+{"id": "neg-052", "text": "Kod rabatowy IMP666254 obowiązuje do niedzieli.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_ID_CARD"]}
+{"id": "neg-053", "text": "Kod rabatowy LAL056771 obowiązuje do niedzieli.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_ID_CARD"]}
+{"id": "neg-054", "text": "Model number AC8240624 ships with a 2-year warranty.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_PASSPORT"]}
+{"id": "neg-055", "text": "Model number OM9252392 ships with a 2-year warranty.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "PL_PASSPORT"]}
+{"id": "neg-056", "text": "keccak digest 0xe0ad3839f58433b841113aa5b174fd3b112a2faf computed in 3 ms", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "CRYPTO_ETH"]}
+{"id": "neg-057", "text": "keccak digest 0xf16d0636955ac19691ce07a8b986ed99acfdd929 computed in 3 ms", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "context-gated", "CRYPTO_ETH"]}
+{"id": "neg-058", "text": "Order #110682050124 has shipped.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "order-number"]}
+{"id": "neg-059", "text": "Zamówienie nr 28595744174106057 zostało wysłane.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "order-number"]}
+{"id": "neg-060", "text": "Order #26501600312241923 has shipped.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "order-number"]}
+{"id": "neg-061", "text": "Zamówienie nr 81609346460664482 zostało wysłane.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "order-number"]}
+{"id": "neg-062", "text": "Order #27201942811832313 has shipped.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "order-number"]}
+{"id": "neg-063", "text": "USPS tracking 9400 2766 3597 8255 8790 76", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "tracking-number"]}
+{"id": "neg-064", "text": "UPS tracking 1Z0CS7N0P8FPAXP31A", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "tracking-number"]}
+{"id": "neg-065", "text": "Przesyłka InPost 435686534901635201272496 jest w paczkomacie.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "tracking-number"]}
+{"id": "neg-066", "text": "Poczta Polska: RR105762071PL", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "tracking-number"]}
+{"id": "neg-067", "text": "DHL waybill JD925411756198885677", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "tracking-number"]}
+{"id": "neg-068", "text": "ts=1728702775 ts_ms=1728702775328", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "timestamp"]}
+{"id": "neg-069", "text": "2026-10-03T12:34:36.705710Z request completed", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "timestamp"]}
+{"id": "neg-070", "text": "created_at: 1731872971659", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "timestamp"]}
+{"id": "neg-071", "text": "Zdarzenie zarejestrowano 1732313951 (epoch)", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "timestamp"]}
+{"id": "neg-072", "text": "nonce=1735870775120648", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "timestamp"]}
+{"id": "neg-073", "text": "Case ID 1399-931-116 is pending review.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "phone-like-id"]}
+{"id": "neg-074", "text": "Sprawa nr 4115-742-280 czeka na decyzję.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "phone-like-id"]}
+{"id": "neg-075", "text": "Case ID 1015-635-242 is pending review.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "phone-like-id"]}
+{"id": "neg-076", "text": "Sprawa nr 1039-352-360 czeka na decyzję.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "phone-like-id"]}
+{"id": "neg-077", "text": "Case ID 1059-667-625 is pending review.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "phone-like-id"]}
+{"id": "neg-078", "text": "IMEI: 354944160789344 — zgłoszono kradzież telefonu", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "imei"]}
+{"id": "neg-079", "text": "IMEI: 011570879978392 (device lost)", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "imei"]}
+{"id": "neg-080", "text": "IMEI: 356081911760171 — zgłoszono kradzież telefonu", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "imei"]}
+{"id": "neg-081", "text": "request_id: 7678f253-0e68-4798-a3f0-8428650dbdd0", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "uuid"]}
+{"id": "neg-082", "text": "commit 158912fba26fc4d832a320470795184c27ca6d60\nMerge: e073ff9 fb27fc8", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "git-sha"]}
+{"id": "neg-083", "text": "sha256: 65a197148150abc77039eb11c1ce1749bfbc6c2aff41c2398ee294e44185c798", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "hash"]}
+{"id": "neg-084", "text": "The ISBN of the handbook is 978-0-306-40615-7.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "isbn"]}
+{"id": "neg-085", "text": "Kraków jest stolicą Małopolski, a Wisła przepływa przez miasto.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-086", "text": "Kraków is the capital of Lesser Poland.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-087", "text": "Bank Pekao i PKO BP obniżyły oprocentowanie lokat o 0,25 p.p.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-088", "text": "Spotkanie zarządu odbędzie się 3 października 2026 o 14:30 w sali 2.15.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "date"]}
+{"id": "neg-089", "text": "The meeting is scheduled for 2026-10-03 at 14:30 UTC in room 2.15.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "date"]}
+{"id": "neg-090", "text": "Kwota przelewu: 4 111,11 zł, prowizja 1,5%.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "amount"]}
+{"id": "neg-091", "text": "Revenue grew 12.5% to $4,111,111.11 in Q3.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "amount"]}
+{"id": "neg-092", "text": "Faktura FV/2026/10/0042 z terminem płatności 14 dni.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "invoice"]}
+{"id": "neg-093", "text": "Nigdy nie podawaj kodu CVV ani PIN-u przez telefon.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-094", "text": "Never share your CVV or one-time passcode with anyone.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-095", "text": "Infolinia banku działa od 8:00 do 20:00, numer alarmowy 112.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-096", "text": "Populacja Polski wynosi około 37 636 508 osób (GUS, 2024).", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "amount"]}
+{"id": "neg-097", "text": "Wersja aplikacji 10.0.19041.1 wymaga aktualizacji.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "version"]}
+{"id": "neg-098", "text": "Umowa z dnia 14.03.1985 została rozwiązana w 2001 r.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "date"]}
+{"id": "neg-099", "text": "Zakres 10-200 sztuk, rabat 5-15%.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "range"]}
+{"id": "neg-100", "text": "Numer IBAN znajdziesz w aplikacji mobilnej w zakładce Konto.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "prose"]}
+{"id": "neg-101", "text": "Saldo techniczne: 1 234 567 890 123,45 zł.", "lang": "pl", "entities": [], "expect": "allow", "tags": ["hard-negative", "amount"]}
+{"id": "neg-102", "text": "Install with npm i @types/node and pin version 1.2.3.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "code"]}
+{"id": "neg-103", "text": "Upgrade to Python 3.13.1 and Node 22.11.0 before Friday.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "version"]}
+{"id": "neg-104", "text": "See RFC 5737: 192.0.2.1 and 198.51.100.7 are documentation addresses.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "private-ip"]}
+{"id": "neg-105", "text": "The broadcast MAC ff:ff:ff:ff:ff:ff and loopback ::1 are reserved.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "reserved"]}
+{"id": "neg-106", "text": "Gateway on 127.0.0.1:8787, upstream 10.0.0.5 and 192.168.1.10.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "private-ip"]}
+{"id": "neg-107", "text": "SNMP oid 1.3.6.1.4.1.311.21.7 and firmware v1.2.3.4", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "version"]}
+{"id": "neg-108", "text": "git clone git@github.com:bank/core-banking.git", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "git-remote"]}
+{"id": "neg-109", "text": "import type { Request } from '@types/express';\nconst logo = 'logo@2x.png';", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "code"]}
+{"id": "neg-110", "text": "API_KEY=${API_KEY}\nOPENAI_API_KEY=your-api-key-here\nDB_PASSWORD=<your-password>", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "placeholder-secret"]}
+{"id": "neg-111", "text": "token = os.environ['GITHUB_TOKEN']\nsecret_key = settings.SECRET_KEY", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "placeholder-secret"]}
+{"id": "neg-115", "text": "def login(username: str, password: str) -> bool:\n    password_hash = bcrypt.hashpw(password.encode(), salt)", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "code"]}
+{"id": "neg-116", "text": "max_tokens: 4096\ntemperature: 0.2\ntimeout_ms: 30000", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "config"]}
+{"id": "neg-117", "text": "Server listening on http://localhost:8787 (pid 41233)", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "code"]}
+{"id": "neg-118", "text": "payload: SGVsbG8gd29ybGQgZnJvbSBBZWdpcw==", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "base64-benign"]}
+{"id": "neg-119", "text": "Use the header `Authorization: Bearer <token>` for all calls.", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "placeholder-secret"]}
+{"id": "neg-120", "text": "password: required\nusername: string\ntoken: string", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "schema"]}
+{"id": "neg-122", "text": "\"integrity\": \"sha512-z4PhNX7vuL3xVChQ1m2AB9Yg5AULVxXcg/SpIdNs6c5H0NE8XYXysP+DGNKHfuwvY7kxvUR8wpOaJpCe6bbAQ==\"", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "hash"]}
+{"id": "neg-123", "text": "for (int i = 0; i < arr[0]; i++) { total += prices[i] * 1.23; }", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "code"]}
+{"id": "neg-124", "text": "docker run -p 8787:8787 -e LOG_LEVEL=debug aegis:0.1.0", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "code"]}
+{"id": "neg-125", "text": "Values like [EMAIL_1] are privacy placeholders; reproduce them verbatim.", "lang": "code", "entities": [], "expect": "allow", "tags": ["hard-negative", "placeholder"]}
+{"id": "neg-126", "text": "Please pick a time between 10:30 and 12:45, or call reception.", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "time"]}
+{"id": "neg-127", "text": "Ref. 2026/10/03-001, page 4 of 12, section 3.4.1 (PCI DSS).", "lang": "en", "entities": [], "expect": "allow", "tags": ["hard-negative", "reference"]}

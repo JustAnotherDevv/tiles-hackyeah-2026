@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "aegis.heatmap/1",
+  "type": "object",
+  "required": ["schema", "generated_at", "profile", "mode", "transforms", "seeds", "cells", "row_rate", "col_rate",
+               "overall", "benign", "variants"],
+  "properties": {
+    "schema": {"const": "aegis.heatmap/1"},
+    "transforms": {"type": "array", "items": {"type": "object", "required": ["id", "handling"]}},
+    "seeds": {"type": "array", "items": {"type": "object", "required": ["id", "lang", "kind", "preview"]}},
+    "cells": {"type": "array", "items": {"type": "array", "items": {
+      "anyOf": [{"type": "null"}, {"type": "object", "required": ["action", "control_id", "detected"]}]}}},
+    "col_rate": {"type": "array", "items": {"type": "object", "required": ["transform", "detected", "n", "rate"]}},
+    "overall": {"type": "object", "required": ["detected", "n", "rate", "ci95"]},
+    "benign": {"type": "object", "required": ["seeds", "transforms", "cells", "over_block", "n"]},
+    "variants": {"type": "array"}
+  }
+}

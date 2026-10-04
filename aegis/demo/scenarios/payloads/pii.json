@@ -1,0 +1,11 @@
+{
+  "_comment": "F1: expect redact DLP-01 ([PESEL_1], [IBAN_1], [PAN_1], [REDACTED:CVV]). Public test values only.",
+  "interaction": {
+    "kind": "model_call",
+    "surface": "model.request",
+    "destination": "remote",
+    "model": "mock-echo",
+    "text": "Reply to client Jan Kowalski, PESEL 44051401359, IBAN PL61 1090 1014 0000 0712 1981 2874, card 4111 1111 1111 1111 exp 12/28 CVV 123 — confirm the refund."
+  },
+  "session_id": "ses_curl_pii"
+}

@@ -1,0 +1,27 @@
+{
+  "name": "edit_hook_settings",
+  "title": "The agent may not edit its own guardrails (GOV-06 / EXE-02)",
+  "steps": [
+    {
+      "event": "PreToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Edit",
+        "tool_input": {
+          "file_path": "{{ROOT}}/demo/claude/settings.json",
+          "old_string": "aegis-hook",
+          "new_string": "true"
+        },
+        "tool_use_id": "toolu_{{N}}_harness"
+      },
+      "expect": {
+        "result": "deny",
+        "contains": "GOV-06|EXE-02"
+      }
+    }
+  ]
+}

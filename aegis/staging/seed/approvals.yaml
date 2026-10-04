@@ -1,0 +1,802 @@
+# =============================================================================
+#  Aegis - approval policy matrix                          org: Acme Capital
+# =============================================================================
+#
+#  WHAT THIS FILE DECIDES
+#    policy.yaml decides WHETHER something needs approval (a control returns
+#    `require_approval`). This file decides WHO may approve it, how many
+#    people are needed, how long the request waits, how long the approval
+#    stays valid, and where it escalates.
+#
+#  WHERE REQUESTS COME FROM
+#    agent_action.*   produced by controls when an agent tries to act:
+#                     ACT-01 spend, ACT-02 data_access, ACT-03/EXE-03 external_send,
+#                     ACT-04/SIG-03 code_exec, ACT-04 deploy.
+#    config_change.*  produced when a human edits configuration in the dashboard
+#                     (budget raise, disable a control, allow a model, edit policy,
+#                     release a kill switch, re-approve a changed MCP tool).
+#    One event -> ONE request. If several controls want approval for the same
+#    tool call, their signals are merged into that one request (e.g. ACT-04
+#    "pkg_install" + SIG-03 "unknown_package").
+#
+#  APPROVAL LEVELS (ordered, least to most restrictive)
+#      auto   approved by the system at once (still audited, still shown)
+#      self   the requester confirms. For an AGENT's request, "self" is the
+#             agent's SPONSOR (org.seed.yaml agents[].sponsor). Agents never approve.
+#      admin  one person with role >= admin, other than the requester
+#      owner  one person with role owner, other than the requester
+#             (see `principals.sole_owner_fallback` for a one-owner org)
+#      deny   nobody can approve this; the request is rejected with the reason
+#    Two-person rule: `require: {all_of: [owner, admin]}` = two DISTINCT people,
+#    one with role owner and one with role >= admin, neither of them the requester.
+#
+#  HOW A REQUEST IS ROUTED (deterministic, no model involved)
+#    1. Collect every rule whose `type` matches and whose `when` conditions are
+#       ALL true and whose `profiles` (if given) include the active profile.
+#    2. The MOST RESTRICTIVE requirement wins (higher level; two-person beats a
+#       single approver of the same level). This mirrors the control engine's
+#       "block > require_approval > modify > allow" and means adding a rule can
+#       only make things stricter, never accidentally looser.
+#    3. TTLs: the SHORTEST pending_ttl / grant_ttl among the matched rules wins.
+#    4. No rule matched -> `defaults.unmatched` (admin; fail closed).
+#    5. `routing_tests` at the bottom run on every reload (policy.yaml selftest).
+#
+#  CONDITIONS (`when:`)
+#    A map of request field -> test. Tests: {eq, ne, in, not_in, lt, lte, gt,
+#    gte, contains}. A bare scalar means eq. Sensitivity fields compare on the
+#    order PUBLIC < INTERNAL < CONFIDENTIAL < RESTRICTED. Special fields:
+#      profile          the active policy profile (strict | balanced | permissive)
+#      requester_kind   agent | member
+#      requester_role   member | admin | owner (agents: their sponsor's role)
+#      signals          set of flags added by controls (unknown_package,
+#                       lethal_trifecta, peer_initiated, intent_drift, ...)
+#
+#  NOTE FOR THE IMPLEMENTER
+#    Field names are proposals; CONTRACTS.md is authoritative. Keep the
+#    semantics: ordered levels, most-restrictive-wins, distinct approvers,
+#    bound parameters, single-use grants, expiry -> deny.
+# =============================================================================
+
+schema: aegis.approvals/v1
+version: "2026.10.04-1"
+
+levels: [auto, self, admin, owner, deny]
+
+# -----------------------------------------------------------------------------
+# Who counts as whom
+# -----------------------------------------------------------------------------
+principals:
+  role_rank: {member: 10, admin: 20, owner: 30}   # same as org.seed.yaml roles
+  agents_can_approve: false                        # hard rule, not configurable
+  self_for_agent_request: sponsor                  # who fills a `self` slot for an agent
+
+  separation_of_duties:
+    # The requester (or the sponsor of the requesting agent) may only fill a
+    # `self` slot of their own request - never admin/owner slots.
+    requester_may_fill: [self]
+    distinct_approvers: true                       # one person = one slot
+    by_profile:
+      permissive:
+        requester_may_fill: [self, admin]          # sandbox: an admin may approve their own admin-level request
+
+  # Acme Capital has ONE owner. When the owner is the requester of an
+  # owner-level change, nobody else could approve it. Fallback: the owner may
+  # fill their own owner slot ONLY together with a distinct admin co-signer.
+  sole_owner_fallback: requester_owner_plus_admin
+
+  # Escalation target when the owner does not respond (org.seed.yaml
+  # members[].owner_delegate). A delegate counts as an owner for single
+  # owner-level slots, never as the owner half of a two-person rule.
+  owner_delegates_from: org.members.owner_delegate
+
+  same_team_required_for_admin: false              # true -> the admin must share a team with the request's scope
+
+# -----------------------------------------------------------------------------
+# Defaults (every rule may override pending_ttl, grant_ttl, grant_uses, escalation)
+# -----------------------------------------------------------------------------
+defaults:
+  unmatched: admin                 # fail closed: unknown request shapes need an admin
+
+  pending_ttl: 30m                 # how long a request waits for a decision
+  on_expiry: deny                  # expired = denied (agent receives a clear error)
+  grant_ttl: 15m                   # how long an approval can be used after it is given
+  grant_uses: 1                    # single use; data_access grants override to `session`
+
+  # The approval is bound to EXACTLY these fields. Any difference = new request.
+  bind_to: [type, params_sha256, requester, agent, session]
+
+  # Escalation ADDS approvers at the next level; the original level can still
+  # approve. Two-person requirements are never relaxed by escalation.
+  escalation:
+    self:  {remind_after: 5m,  escalate_after: 10m, to: admin}
+    admin: {remind_after: 10m, escalate_after: 20m, to: owner}
+    owner: {remind_after: 10m, escalate_after: 20m, to: owner_delegate}
+
+  # Anti human-in-the-loop flooding (OWASP T10 / ASI09).
+  anti_flooding:
+    max_pending_per_agent: 3
+    max_pending_per_member: 10
+    dedupe_window: 10m             # identical bound params -> same request, not a new one
+    on_flood: deny_and_alert
+
+  # What approvers see. Rendered from the BOUND parameters, never from the
+  # agent's own prose; the agent's justification is shown labelled as untrusted.
+  display:
+    render_from: bound_params
+    agent_justification: show_as_untrusted
+    show: [requester, sponsor, team, rule_id, controls_fired, risk_score, budget_impact, config_diff, expires_in]
+
+  notify: [dashboard_inbox, dashboard_toast, sse_event]
+
+  # Demo helper: multiply the clock for TTLs and escalation. 60 makes a 30 min
+  # TTL expire in 30 s on stage. Audited when changed.
+  demo_clock_multiplier: 1
+
+# -----------------------------------------------------------------------------
+# Request types and the parameters each one carries (what `when:` can test)
+# -----------------------------------------------------------------------------
+request_types:
+  agent_action:
+    spend:
+      produced_by: [ACT-01]
+      params:
+        amount_usd: "number, normalised to USD by ACT-01 (per charge; recurring plans use the per-period price)"
+        vendor_id: "org.resources.vendors[].id"
+        vendor_approved: "bool"
+        recurring: "none | monthly | yearly"
+        plan_id: "string"
+    data_access:
+      produced_by: [ACT-02]
+      params:
+        database: "org.resources.databases[].id"
+        environment: "prod | staging"
+        tables: "list"
+        max_sensitivity: "highest sensitivity among touched tables"
+        operation: "read | write | delete | ddl"
+        row_estimate: "int (from EXPLAIN or LIMIT; unknown = large)"
+    external_send:
+      produced_by: [ACT-03, EXE-03]
+      params:
+        destination_host: "string"
+        destination_tier: "T0 | T1 | T2"
+        max_data_class: "highest class detected in the payload; a placeholder like [PERSON_1] counts as the class of the value it stands for"
+        recipients: "int"
+        signals: "e.g. [lethal_trifecta, intent_drift]"
+    code_exec:
+      produced_by: [ACT-04, SIG-03, EXE-01]
+      params:
+        pattern_id: "pkg_install | container_run | remote_shell | python_exec | ..."
+        sandboxed: "bool"
+        signals: "e.g. [unknown_package]"
+    deploy:
+      produced_by: [ACT-04]
+      params:
+        environment: "dev | staging | mainline | prod"
+        pattern_id: "terraform_apply | kubectl_apply | git_push_main | deploy_tool"
+        target: "string"
+
+  config_change:
+    budget_increase:
+      params:
+        scope_type: "org | team | agent | session"
+        scope_id: "e.g. team/trading"
+        dimension: "usd | tokens | local_compute_s"
+        window: "daily | monthly | session"
+        current_value: "number"
+        requested_value: "number (must be > current_value; decreases are policy_edit/tighten)"
+        factor: "requested_value / current_value (computed by the gateway)"
+        revert_at: "optional ISO time: temporary increase auto-reverts"
+    control_disable:
+      params:
+        control_id: "policy.yaml controls[].id"
+        change: "disable | monitor | enable"
+        control_severity: "low | medium | high | critical (from policy.yaml)"
+        profile: "active profile"
+        justification: "free text (required)"
+    model_allow:
+      params:
+        model_id: "policy.yaml models.generative[].id"
+        model_tier: "T0 | T1"
+        target_scope: "agent | team | org"
+        provider_new: "bool - true if no allowlist in the org uses this provider yet"
+    policy_edit:
+      params:
+        direction: "tighten | neutral | loosen (computed from the diff)"
+        sections: "list of top-level sections touched"
+        profile_from: "optional"
+        profile_to: "optional"
+    feed_override:
+      params:
+        signature_id: "AEGIS-TI-###"
+        change: "disable | downgrade_action"
+        signature_severity: "low | medium | high | critical"
+    kill_switch_engage:
+      params: {target: "global | team/<id> | agent/<id> | session/<id>"}
+    kill_switch_release:
+      params: {target: "global | team/<id> | agent/<id> | session/<id>"}
+    mcp_tool_reapprove:
+      produced_by: [MCP-03]
+      params: {server: "string", tool: "string", server_tier: "T0 | T2", old_hash: "sha256", new_hash: "sha256"}
+    mcp_server_register:
+      produced_by: [MCP-01]
+      params: {server: "string", server_tier: "T0 | T2", transport: "stdio | http"}
+
+  # How a directly edited file is treated: editing policy.yaml / approvals.yaml
+  # on disk bypasses this workflow (filesystem access is the break-glass root of
+  # trust). The change is still validated, self-tested, diffed and audited as
+  # `policy.changed source=file`, and owners get a notification.
+  file_edits: {treat_as: break_glass, notify: [owner], audit: true}
+
+# -----------------------------------------------------------------------------
+# RULES
+#   id        stable, shown in the dashboard and audit ("why did this need an owner?")
+#   type      request type (dotted)
+#   when      conditions (all must hold)
+#   profiles  optional: rule only active in these profiles
+#   require   a level, or {all_of: [level, level]} for the two-person rule
+#   grant_ttl / grant_uses / pending_ttl / effect  optional overrides
+# -----------------------------------------------------------------------------
+rules:
+
+  # ===========================================================================
+  # agent_action.spend  - amount tiers ($ per charge)
+  #   <= $20 self   |   $20-200 admin   |   > $200 owner   |   > $1,000 owner + admin
+  #   above ACT-01 hard_block_above_usd ($5,000 balanced) requests never get here
+  # ===========================================================================
+  - id: APR-SPEND-SELF
+    type: agent_action.spend
+    when: {amount_usd: {lte: 20}}
+    require: self
+    grant_ttl: 10m
+    note: "Small purchases: the member (or the agent's sponsor) confirms with one click."
+
+  - id: APR-SPEND-ADMIN
+    type: agent_action.spend
+    when: {amount_usd: {gt: 20, lte: 200}}
+    require: admin
+    note: "E.g. the $50/month MarketPulse Pro subscription."
+
+  - id: APR-SPEND-OWNER
+    type: agent_action.spend
+    when: {amount_usd: {gt: 200}}
+    require: owner
+
+  - id: APR-SPEND-TWO-PERSON
+    type: agent_action.spend
+    when: {amount_usd: {gt: 1000}}
+    require: {all_of: [owner, admin]}
+    pending_ttl: 2h
+
+  - id: APR-SPEND-STRICT-UNAPPROVED-VENDOR
+    type: agent_action.spend
+    profiles: [strict]
+    when: {vendor_approved: false}
+    require: admin
+    note: "Strict: buying from a vendor not on the approved list needs an admin whatever the amount."
+
+  - id: APR-SPEND-STRICT-RECURRING
+    type: agent_action.spend
+    profiles: [strict]
+    when: {recurring: {in: [monthly, yearly]}}
+    require: admin
+    note: "Strict: every new subscription needs an admin (recurring cost)."
+
+  # ===========================================================================
+  # agent_action.data_access  - by table sensitivity and environment
+  # ===========================================================================
+  - id: APR-DATA-PUBLIC-READ
+    type: agent_action.data_access
+    when: {max_sensitivity: {lte: PUBLIC}, operation: read}
+    require: auto
+
+  - id: APR-DATA-INTERNAL-READ
+    type: agent_action.data_access
+    profiles: [strict, balanced]
+    when: {max_sensitivity: INTERNAL, operation: read}
+    require: self
+    grant_uses: session
+    grant_ttl: 60m
+
+  - id: APR-DATA-INTERNAL-READ-PERMISSIVE
+    type: agent_action.data_access
+    profiles: [permissive]
+    when: {max_sensitivity: INTERNAL, operation: read}
+    require: auto
+
+  - id: APR-DATA-CONFIDENTIAL-READ
+    type: agent_action.data_access
+    when: {max_sensitivity: CONFIDENTIAL, operation: read}
+    require: admin
+    grant_uses: session            # read-only, same tables, this session only
+    grant_ttl: 60m
+    note: "E.g. reading the customers table (PII). Rows still pass DLP-05 before any remote model sees them."
+
+  - id: APR-DATA-RESTRICTED
+    type: agent_action.data_access
+    when: {max_sensitivity: RESTRICTED}
+    require: deny
+    note: "PCI: no agent may read raw card data, whoever approves. Use the tokenization service instead."
+
+  - id: APR-DATA-STAGING-WRITE
+    type: agent_action.data_access
+    when: {environment: staging, operation: {in: [write, delete]}}
+    require: self
+
+  - id: APR-DATA-PROD-WRITE
+    type: agent_action.data_access
+    when: {environment: prod, operation: {in: [write, delete]}}
+    require: owner
+    grant_ttl: 10m
+    note: "Any agent write to a production database."
+
+  - id: APR-DATA-PROD-BULK-DELETE
+    type: agent_action.data_access
+    when: {environment: prod, operation: delete, row_estimate: {gt: 1000}}
+    require: {all_of: [owner, admin]}
+
+  - id: APR-DATA-PROD-DDL
+    type: agent_action.data_access
+    when: {environment: prod, operation: ddl}
+    require: deny
+    note: "Schema changes on prod go through migrations, never through an agent (ACT-02 also blocks)."
+
+  - id: APR-DATA-STRICT-SHORT-GRANTS
+    type: agent_action.data_access
+    profiles: [strict]
+    when: {max_sensitivity: {gte: INTERNAL}}
+    require: self                  # does not lower anything (most restrictive wins); only shortens the grant
+    grant_ttl: 15m
+
+  # ===========================================================================
+  # agent_action.external_send  - by destination tier and data class present
+  # ===========================================================================
+  - id: APR-SEND-INTERNAL
+    type: agent_action.external_send
+    when: {destination_tier: T0}
+    require: auto
+
+  - id: APR-SEND-EXTERNAL-PUBLIC
+    type: agent_action.external_send
+    profiles: [strict, balanced]
+    when: {destination_tier: {in: [T1, T2]}, max_data_class: {lte: INTERNAL}}
+    require: self
+
+  - id: APR-SEND-EXTERNAL-PUBLIC-PERMISSIVE
+    type: agent_action.external_send
+    profiles: [permissive]
+    when: {destination_tier: {in: [T1, T2]}, max_data_class: {lte: INTERNAL}}
+    require: auto
+
+  - id: APR-SEND-EXTERNAL-CONFIDENTIAL
+    type: agent_action.external_send
+    when: {destination_tier: {in: [T1, T2]}, max_data_class: CONFIDENTIAL}
+    require: admin
+    note: "Client names/emails (even tokenized) leaving the firm."
+
+  - id: APR-SEND-EXTERNAL-RESTRICTED
+    type: agent_action.external_send
+    when: {destination_tier: {in: [T1, T2]}, max_data_class: RESTRICTED}
+    require: deny
+    note: "Card data or secrets to a third party: never."
+
+  - id: APR-SEND-TAINTED
+    type: agent_action.external_send
+    when: {signals: {contains: lethal_trifecta}}
+    require: admin
+    note: "Session read private data AND saw untrusted content (EXE-03). In strict EXE-03 blocks instead."
+
+  - id: APR-SEND-BULK
+    type: agent_action.external_send
+    when: {recipients: {gt: 10}}
+    require: admin
+
+  - id: APR-SEND-PEER-INITIATED
+    type: agent_action.external_send
+    when: {signals: {contains: peer_initiated}}
+    require: admin
+    note: "An A2A peer asked us to send something (A2A-02 / INJ-05)."
+
+  # ===========================================================================
+  # agent_action.code_exec
+  # ===========================================================================
+  - id: APR-EXEC-PKG-KNOWN
+    type: agent_action.code_exec
+    profiles: [strict, balanced]
+    when: {pattern_id: pkg_install}
+    require: self
+
+  - id: APR-EXEC-PKG-KNOWN-PERMISSIVE
+    type: agent_action.code_exec
+    profiles: [permissive]
+    when: {pattern_id: pkg_install}
+    require: auto
+
+  - id: APR-EXEC-PKG-UNKNOWN
+    type: agent_action.code_exec
+    when: {signals: {contains: unknown_package}}
+    require: admin
+    note: "Possible slopsquatting: name not on the allowlist or too new (SIG-03)."
+
+  - id: APR-EXEC-SANDBOXED
+    type: agent_action.code_exec
+    when: {pattern_id: {in: [container_run, python_exec]}, sandboxed: true}
+    require: self
+
+  - id: APR-EXEC-UNSANDBOXED
+    type: agent_action.code_exec
+    when: {pattern_id: {in: [container_run, python_exec]}, sandboxed: false}
+    require: admin
+
+  - id: APR-EXEC-REMOTE-SHELL
+    type: agent_action.code_exec
+    when: {pattern_id: remote_shell}
+    require: admin
+
+  - id: APR-EXEC-STRICT
+    type: agent_action.code_exec
+    profiles: [strict]
+    when: {pattern_id: {in: [pkg_install, container_run, python_exec]}}
+    require: admin
+
+  # ===========================================================================
+  # agent_action.deploy  - by environment
+  # ===========================================================================
+  - id: APR-DEPLOY-DEV
+    type: agent_action.deploy
+    when: {environment: dev}
+    require: auto
+
+  - id: APR-DEPLOY-STAGING
+    type: agent_action.deploy
+    when: {environment: staging}
+    require: self
+
+  - id: APR-DEPLOY-MAINLINE
+    type: agent_action.deploy
+    when: {environment: mainline}
+    require: admin
+    note: "Pushing to main/release branches (stands in for a code review)."
+
+  - id: APR-DEPLOY-PROD
+    type: agent_action.deploy
+    when: {environment: prod}
+    require: owner
+    grant_ttl: 10m
+
+  - id: APR-DEPLOY-PROD-STRICT
+    type: agent_action.deploy
+    profiles: [strict]
+    when: {environment: prod}
+    require: {all_of: [owner, admin]}
+
+  # ===========================================================================
+  # config_change.budget_increase
+  #   team: <= 2x admin, > 2x owner      org: owner (> 2x: owner + admin)
+  # ===========================================================================
+  - id: APR-BUDGET-AGENT-SMALL
+    type: config_change.budget_increase
+    when: {scope_type: {in: [agent, session]}, factor: {lte: 1.5}}
+    require: self
+    note: "Sponsor gives their own agent up to +50%. Team and org caps still apply on top."
+
+  - id: APR-BUDGET-AGENT-LARGE
+    type: config_change.budget_increase
+    when: {scope_type: {in: [agent, session]}, factor: {gt: 1.5}}
+    require: admin
+
+  - id: APR-BUDGET-TEAM-2X
+    type: config_change.budget_increase
+    when: {scope_type: team, factor: {lte: 2.0}}
+    require: admin
+    note: "E.g. Trading monthly USD 1,200 -> 2,000 (1.67x)."
+
+  - id: APR-BUDGET-TEAM-OVER-2X
+    type: config_change.budget_increase
+    when: {scope_type: team, factor: {gt: 2.0}}
+    require: owner
+
+  - id: APR-BUDGET-ORG
+    type: config_change.budget_increase
+    when: {scope_type: org}
+    require: owner
+
+  - id: APR-BUDGET-ORG-OVER-2X
+    type: config_change.budget_increase
+    when: {scope_type: org, factor: {gt: 2.0}}
+    require: {all_of: [owner, admin]}
+
+  # ===========================================================================
+  # config_change.control_disable  (also: switching a control to monitor)
+  # ===========================================================================
+  - id: APR-CTRL-ENABLE
+    type: config_change.control_disable
+    when: {change: enable}
+    require: auto
+    note: "Turning protection ON is always free."
+
+  - id: APR-CTRL-PERMISSIVE
+    type: config_change.control_disable
+    profiles: [permissive]
+    when: {change: {in: [disable, monitor]}}
+    require: self
+
+  - id: APR-CTRL-BALANCED
+    type: config_change.control_disable
+    profiles: [balanced]
+    when: {change: {in: [disable, monitor]}}
+    require: admin
+    effect: {auto_revert_after: 4h}   # a disabled control comes back on its own unless re-approved
+    note: "The approver cannot be the admin who asked."
+
+  - id: APR-CTRL-BALANCED-CRITICAL
+    type: config_change.control_disable
+    profiles: [balanced]
+    when: {change: disable, control_severity: critical}
+    require: owner
+    effect: {auto_revert_after: 4h}
+    note: "Critical controls (DLP-02 secrets, EXE-01 commands, SIG-01/02 signatures)."
+
+  - id: APR-CTRL-STRICT
+    type: config_change.control_disable
+    profiles: [strict]
+    when: {change: {in: [disable, monitor]}}
+    require: {all_of: [owner, admin]}
+    effect: {auto_revert_after: 1h}
+    pending_ttl: 1h
+    note: "Strict mode: owner + a second admin (two-person rule)."
+
+  # ===========================================================================
+  # config_change.model_allow
+  # ===========================================================================
+  - id: APR-MODEL-LOCAL
+    type: config_change.model_allow
+    when: {model_tier: T0, target_scope: {in: [agent, team]}}
+    require: self
+
+  - id: APR-MODEL-REMOTE
+    type: config_change.model_allow
+    when: {model_tier: T1}
+    require: admin
+    note: "A remote model from a provider the org already uses."
+
+  - id: APR-MODEL-NEW-PROVIDER
+    type: config_change.model_allow
+    when: {provider_new: true}
+    require: owner
+    note: "A new data processor (needs a DPA / vendor review)."
+
+  - id: APR-MODEL-ORG-WIDE
+    type: config_change.model_allow
+    when: {target_scope: org}
+    require: owner
+
+  # ===========================================================================
+  # config_change.policy_edit  (dashboard policy editor)
+  # ===========================================================================
+  - id: APR-POLICY-TIGHTEN
+    type: config_change.policy_edit
+    when: {direction: tighten}
+    require: auto
+
+  - id: APR-POLICY-NEUTRAL
+    type: config_change.policy_edit
+    when: {direction: neutral}
+    require: self
+    note: "Descriptions, comments, new examples."
+
+  - id: APR-POLICY-LOOSEN
+    type: config_change.policy_edit
+    profiles: [balanced, permissive]
+    when: {direction: loosen}
+    require: admin
+
+  - id: APR-POLICY-LOOSEN-STRICT
+    type: config_change.policy_edit
+    profiles: [strict]
+    when: {direction: loosen}
+    require: owner
+
+  - id: APR-POLICY-PROFILE-DOWN
+    type: config_change.policy_edit
+    when: {profile_from: {in: [strict, balanced]}, direction: loosen, sections: {contains: profile}}
+    require: owner
+    note: "strict -> balanced or balanced -> permissive. Going UP is a tighten (auto)."
+
+  - id: APR-FEED-OVERRIDE
+    type: config_change.feed_override
+    when: {signature_severity: {in: [low, medium, high]}}
+    require: admin
+
+  - id: APR-FEED-OVERRIDE-CRITICAL
+    type: config_change.feed_override
+    when: {signature_severity: critical}
+    require: owner
+
+  # ===========================================================================
+  # config_change.kill_switch_* and MCP re-approval
+  # ===========================================================================
+  - id: APR-KILL-ENGAGE
+    type: config_change.kill_switch_engage
+    when: {}
+    require: auto
+    note: "Anyone may pull the brake (members for their own agents, admins for anything)."
+
+  - id: APR-KILL-RELEASE
+    type: config_change.kill_switch_release
+    when: {target: {ne: global}}
+    require: admin
+    note: "The sponsor of the killed agent cannot release it alone."
+
+  - id: APR-KILL-RELEASE-GLOBAL
+    type: config_change.kill_switch_release
+    when: {target: global}
+    require: owner
+
+  - id: APR-MCP-REAPPROVE-INTERNAL
+    type: config_change.mcp_tool_reapprove
+    when: {server_tier: T0}
+    require: self
+
+  - id: APR-MCP-REAPPROVE-EXTERNAL
+    type: config_change.mcp_tool_reapprove
+    when: {server_tier: T2}
+    require: admin
+    note: "A third-party MCP tool changed its description/schema after approval (possible rug pull)."
+
+  - id: APR-MCP-REGISTER
+    type: config_change.mcp_server_register
+    profiles: [balanced, permissive]
+    when: {}
+    require: admin
+
+  - id: APR-MCP-REGISTER-STRICT
+    type: config_change.mcp_server_register
+    profiles: [strict]
+    when: {}
+    require: owner
+
+# -----------------------------------------------------------------------------
+# Lifecycle (for the dashboard and the audit log)
+#   pending -> approved -> consumed          (grant used)
+#   pending -> denied | expired | cancelled  (requester withdrew)
+#   pending -> escalated -> approved | ...   (escalation adds approvers)
+#   approved -> revoked                      (admin pulls an unused grant)
+#   approved config change with effect.auto_revert_after -> reverted
+# Audit events: approval.requested, approval.reminded, approval.escalated,
+# approval.approved (per approver), approval.denied, approval.expired,
+# approval.consumed, approval.revoked, config.reverted.
+# -----------------------------------------------------------------------------
+lifecycle:
+  states: [pending, escalated, approved, consumed, denied, expired, cancelled, revoked, reverted]
+  deny_requires_reason: true
+  approve_requires_reason_for: [owner, deny]   # owner-level approvals and denials need a note
+
+# -----------------------------------------------------------------------------
+# Routing tests (self-test; run on every reload). `request` is what a control
+# or the dashboard would submit; `expect` is the routing result.
+#   approvers_ok / approvers_not_ok: member/agent ids that may / may not fill a slot
+# These include every example promised in the brief.
+# -----------------------------------------------------------------------------
+routing_tests:
+  # --- spend tiers -----------------------------------------------------------
+  - name: saas-subscription-50-needs-admin
+    request: {type: agent_action.spend, requester: trading-copilot@trading, params: {amount_usd: 50.00, vendor_id: marketpulse, vendor_approved: true, recurring: monthly}}
+    expect: {level: admin, rule: APR-SPEND-ADMIN, approvers_ok: [u_emily, u_marek, u_katarzyna], approvers_not_ok: [u_piotr, u_olivia, trading-copilot@trading]}
+  - name: spend-20-is-self
+    request: {type: agent_action.spend, requester: research-agent@research, params: {amount_usd: 20.00, vendor_id: opendata-shop, vendor_approved: true, recurring: none}}
+    expect: {level: self, rule: APR-SPEND-SELF, approvers_ok: [u_agnieszka], approvers_not_ok: [u_james, research-agent@research]}
+  - name: spend-20.01-is-admin
+    request: {type: agent_action.spend, requester: research-agent@research, params: {amount_usd: 20.01, vendor_approved: true, recurring: none}}
+    expect: {level: admin, rule: APR-SPEND-ADMIN}
+  - name: spend-200-is-admin
+    request: {type: agent_action.spend, requester: claude-code@platform, params: {amount_usd: 200.00, vendor_approved: true, recurring: none}}
+    expect: {level: admin, rule: APR-SPEND-ADMIN}
+  - name: spend-480-needs-owner
+    request: {type: agent_action.spend, requester: claude-code@platform, params: {amount_usd: 480.00, vendor_id: gpucloud, vendor_approved: true, recurring: none}}
+    expect: {level: owner, rule: APR-SPEND-OWNER, approvers_ok: [u_katarzyna], approvers_not_ok: [u_marek, u_emily, u_tomasz]}
+  - name: spend-4800-two-person
+    request: {type: agent_action.spend, requester: trading-copilot@trading, params: {amount_usd: 4800.00, vendor_id: marketpulse, vendor_approved: true, recurring: yearly}}
+    expect: {level: owner+admin, rule: APR-SPEND-TWO-PERSON}
+  - name: strict-unapproved-vendor-small
+    profile: strict
+    request: {type: agent_action.spend, requester: trading-copilot@trading, params: {amount_usd: 15.00, vendor_id: shady-signals, vendor_approved: false, recurring: monthly}}
+    expect: {level: admin, rule: [APR-SPEND-STRICT-UNAPPROVED-VENDOR, APR-SPEND-STRICT-RECURRING]}
+
+  # --- data access -----------------------------------------------------------
+  - name: read-customers-pii-needs-admin
+    request: {type: agent_action.data_access, requester: research-agent@research, params: {database: acme-prod-pg, environment: prod, tables: [customers], max_sensitivity: CONFIDENTIAL, operation: read}}
+    expect: {level: admin, rule: APR-DATA-CONFIDENTIAL-READ, grant_uses: session, approvers_not_ok: [u_agnieszka]}
+  - name: prod-db-write-needs-owner
+    request: {type: agent_action.data_access, requester: claude-code@platform, params: {database: acme-prod-pg, environment: prod, tables: [customers], max_sensitivity: CONFIDENTIAL, operation: write, row_estimate: 1}}
+    expect: {level: owner, rule: APR-DATA-PROD-WRITE}
+  - name: read-card-table-denied
+    request: {type: agent_action.data_access, requester: trading-copilot@trading, params: {database: acme-prod-pg, environment: prod, tables: [payment_cards], max_sensitivity: RESTRICTED, operation: read}}
+    expect: {level: deny, rule: APR-DATA-RESTRICTED}
+  - name: prod-ddl-denied
+    request: {type: agent_action.data_access, requester: chaos-agent@platform, params: {database: acme-prod-pg, environment: prod, tables: [trades], max_sensitivity: CONFIDENTIAL, operation: ddl}}
+    expect: {level: deny, rule: APR-DATA-PROD-DDL}
+  - name: staging-write-self
+    request: {type: agent_action.data_access, requester: claude-code@platform, params: {database: acme-staging-pg, environment: staging, tables: [customers_synthetic], max_sensitivity: INTERNAL, operation: write}}
+    expect: {level: self, approvers_ok: [u_tomasz]}
+
+  # --- external send ---------------------------------------------------------
+  - name: external-email-with-client-name-admin
+    request: {type: agent_action.external_send, requester: trading-copilot@trading, params: {destination_host: poczta.example, destination_tier: T2, max_data_class: CONFIDENTIAL, recipients: 1}}
+    expect: {level: admin, rule: APR-SEND-EXTERNAL-CONFIDENTIAL}
+  - name: external-send-card-denied
+    request: {type: agent_action.external_send, requester: trading-copilot@trading, params: {destination_host: client-portal.example, destination_tier: T2, max_data_class: RESTRICTED, recipients: 1}}
+    expect: {level: deny, rule: APR-SEND-EXTERNAL-RESTRICTED}
+  - name: internal-email-auto
+    request: {type: agent_action.external_send, requester: trading-copilot@trading, params: {destination_host: smtp.acme-capital.example, destination_tier: T0, max_data_class: CONFIDENTIAL, recipients: 1}}
+    expect: {level: auto, rule: APR-SEND-INTERNAL}
+
+  # --- code exec / deploy ----------------------------------------------------
+  - name: unknown-package-admin
+    request: {type: agent_action.code_exec, requester: claude-code@platform, params: {pattern_id: pkg_install, sandboxed: false, signals: [unknown_package]}}
+    expect: {level: admin, rule: APR-EXEC-PKG-UNKNOWN}
+  - name: prod-terraform-owner
+    request: {type: agent_action.deploy, requester: claude-code@platform, params: {environment: prod, pattern_id: terraform_apply}}
+    expect: {level: owner, rule: APR-DEPLOY-PROD}
+  - name: prod-terraform-strict-two-person
+    profile: strict
+    request: {type: agent_action.deploy, requester: claude-code@platform, params: {environment: prod, pattern_id: terraform_apply}}
+    expect: {level: owner+admin, rule: APR-DEPLOY-PROD-STRICT}
+
+  # --- budgets ---------------------------------------------------------------
+  - name: team-monthly-raise-under-2x-admin
+    request: {type: config_change.budget_increase, requester: u_piotr, params: {scope_type: team, scope_id: team/trading, dimension: usd, window: monthly, current_value: 1200, requested_value: 2000}}
+    expect: {level: admin, rule: APR-BUDGET-TEAM-2X, computed: {factor: 1.667}, approvers_ok: [u_emily, u_marek, u_katarzyna], approvers_not_ok: [u_piotr]}
+  - name: team-monthly-raise-exactly-2x-admin
+    request: {type: config_change.budget_increase, requester: u_agnieszka, params: {scope_type: team, scope_id: team/research, dimension: usd, window: monthly, current_value: 300, requested_value: 600}}
+    expect: {level: admin, rule: APR-BUDGET-TEAM-2X}
+  - name: team-monthly-raise-over-2x-owner
+    request: {type: config_change.budget_increase, requester: u_agnieszka, params: {scope_type: team, scope_id: team/research, dimension: usd, window: monthly, current_value: 300, requested_value: 900}}
+    expect: {level: owner, rule: APR-BUDGET-TEAM-OVER-2X, approvers_ok: [u_katarzyna], approvers_not_ok: [u_emily]}
+  - name: org-budget-raise-owner
+    request: {type: config_change.budget_increase, requester: u_marek, params: {scope_type: org, scope_id: org, dimension: usd, window: daily, current_value: 150, requested_value: 200}}
+    expect: {level: owner, rule: APR-BUDGET-ORG, approvers_ok: [u_katarzyna], approvers_not_ok: [u_marek]}
+  - name: org-budget-raise-by-sole-owner
+    request: {type: config_change.budget_increase, requester: u_katarzyna, params: {scope_type: org, scope_id: org, dimension: usd, window: monthly, current_value: 3000, requested_value: 4000}}
+    expect: {level: owner, rule: APR-BUDGET-ORG, fallback: requester_owner_plus_admin, approvers_ok: [[u_katarzyna, u_marek], [u_katarzyna, u_emily]]}
+
+  # --- controls --------------------------------------------------------------
+  - name: disable-control-strict-two-person
+    profile: strict
+    request: {type: config_change.control_disable, requester: u_marek, params: {control_id: INJ-02, change: disable, control_severity: high, profile: strict, justification: "False positives on Polish research notes."}}
+    expect: {level: owner+admin, rule: APR-CTRL-STRICT, approvers_ok: [[u_katarzyna, u_emily]], approvers_not_ok: [u_marek]}
+  - name: disable-control-balanced-admin
+    profile: balanced
+    request: {type: config_change.control_disable, requester: u_marek, params: {control_id: INJ-03, change: disable, control_severity: medium, profile: balanced, justification: "Tuning adherence purpose texts."}}
+    expect: {level: admin, rule: APR-CTRL-BALANCED, approvers_ok: [u_emily, u_katarzyna], approvers_not_ok: [u_marek], effect: {auto_revert_after: 4h}}
+  - name: disable-critical-balanced-owner
+    profile: balanced
+    request: {type: config_change.control_disable, requester: u_emily, params: {control_id: DLP-02, change: disable, control_severity: critical, profile: balanced, justification: "Test"}}
+    expect: {level: owner, rule: APR-CTRL-BALANCED-CRITICAL}
+  - name: enable-control-auto
+    request: {type: config_change.control_disable, requester: u_olivia, params: {control_id: INJ-03, change: enable, control_severity: medium}}
+    expect: {level: auto, rule: APR-CTRL-ENABLE}
+
+  # --- models / policy / kill switch -----------------------------------------
+  - name: allow-known-provider-remote-model-admin
+    request: {type: config_change.model_allow, requester: u_olivia, params: {model_id: anthropic/claude-opus-5-5, model_tier: T1, target_scope: agent, provider_new: false}}
+    expect: {level: admin, rule: APR-MODEL-REMOTE}
+  - name: allow-new-provider-owner
+    request: {type: config_change.model_allow, requester: u_olivia, params: {model_id: openai/gpt-4.1-mini, model_tier: T1, target_scope: agent, provider_new: true}}
+    expect: {level: owner, rule: APR-MODEL-NEW-PROVIDER}
+  - name: profile-down-owner
+    request: {type: config_change.policy_edit, requester: u_marek, params: {direction: loosen, sections: [profile], profile_from: balanced, profile_to: permissive}}
+    expect: {level: owner, rule: APR-POLICY-PROFILE-DOWN}
+  - name: profile-up-auto
+    request: {type: config_change.policy_edit, requester: u_tomasz, params: {direction: tighten, sections: [profile], profile_from: balanced, profile_to: strict}}
+    expect: {level: auto, rule: APR-POLICY-TIGHTEN}
+  - name: kill-release-sponsor-cannot-self-release
+    request: {type: config_change.kill_switch_release, requester: u_tomasz, params: {target: agent/chaos-agent@platform}}
+    expect: {level: admin, rule: APR-KILL-RELEASE, approvers_ok: [u_marek, u_emily], approvers_not_ok: [u_tomasz]}
+
+  # --- hard rules ------------------------------------------------------------
+  - name: agent-can-never-approve
+    request: {type: agent_action.spend, requester: research-agent@research, params: {amount_usd: 5.00, vendor_approved: true, recurring: none}}
+    expect: {level: self, approvers_not_ok: [research-agent@research, chaos-agent@platform, claude-code@platform]}
+  - name: unmatched-type-fails-closed
+    request: {type: config_change.something_new, requester: u_james, params: {}}
+    expect: {level: admin, rule: defaults.unmatched}

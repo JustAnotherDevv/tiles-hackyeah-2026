@@ -1,0 +1,6 @@
+# Private signing material MUST NEVER be committed.
+*.key
+!feed-public.key
+*.seed
+*.secret
+feed-signing.*

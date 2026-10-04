@@ -1,0 +1,7 @@
+# Indicators of compromise referenced by AEGIS-TI-017 (literal_set). Defanged context only.
+compromised_package_iocs:
+  - giftshop.club
+  - litellm_init.pth
+  - /tmp/transformers.pyz
+  - 107.173.7.141
+  - 210.117.212.93

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "crm":      { "type": "http", "url": "http://127.0.0.1:8796/mcp/crm" },
+    "poisoned": { "type": "http", "url": "http://127.0.0.1:8796/mcp/poisoned" },
+    "rugpull":  { "type": "http", "url": "http://127.0.0.1:8796/mcp/rugpull" },
+    "poisoned_stdio": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--quiet", "--python", "3.13", "--with", "mcp", "--with", "fastapi", "--with", "httpx",
+               "python", "-m", "aegis_mcp.stdio_wrapper", "--server", "poisoned",
+               "--policy", "/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/staging/spikes/mcp/catalog.json", "--events-file", "/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/staging/spikes/mcp/.stdio-events.jsonl",
+               "--", "python", "/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/staging/spikes/mcp/fake_servers.py", "--stdio", "poisoned"],
+      "env": { "PYTHONPATH": "/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/staging/spikes/mcp" }
+    }
+  }
+}

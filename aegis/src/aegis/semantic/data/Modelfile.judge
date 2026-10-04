@@ -1,0 +1,20 @@
+# Aegis judge / local demo LLM: Qwen3.5-0.8B text-only Q4_K_M (unsloth GGUF, 533 MB) with
+# Ollama's built-in Qwen3.5 chat renderer/parser.
+#
+# Two Ollama 0.24 gotchas this works around:
+#  1. `ollama pull hf.co/unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M` also pulls the mmproj (vision) GGUF;
+#     a model WITH a projector is routed to the bundled llama.cpp runner, which does not know the
+#     `qwen35` architecture -> "unable to load model". FROM the text blob alone -> Ollama engine -> OK.
+#  2. The hf.co import gets a bare "{{ .Prompt }}" template (drops system prompts, no think:false,
+#     no tools). RENDERER/PARSER qwen3.5 restore the official chat format (same as library qwen3.5).
+#
+# download_models.sh replaces __MODEL_BLOB__ with the local blob path and runs
+#   ollama create aegis-judge -f <generated Modelfile>
+FROM __MODEL_BLOB__
+RENDERER qwen3.5
+PARSER qwen3.5
+PARAMETER temperature 0.7
+PARAMETER top_k 20
+PARAMETER top_p 0.8
+PARAMETER presence_penalty 1.5
+PARAMETER num_ctx 2048

@@ -1,0 +1,103 @@
+#!/bin/bash
+# Aegis - Claude Code command-hook client (bash + curl, FAIL-CLOSED).
+#
+#   /bin/bash <ABS>/scripts/aegis-hook <EventName>        (event name = argv[1], set by the profile)
+#
+# Reads the hook JSON on stdin (<= 2 MB), POSTs it to $AEGIS_URL/v1/hooks/claude-code and prints
+# the gateway's hook-output JSON (exit 0). When the gateway is unreachable, slow, errors or answers
+# garbage, the outcome depends on the event:
+#   PreToolUse / UserPromptSubmit / ConfigChange  -> reason on stderr, exit 2 (BLOCKS the action)
+#   PermissionRequest                             -> deny JSON on stdout, exit 0
+#   SessionStart                                  -> {"systemMessage": "AEGIS GATEWAY UNREACHABLE ..."}
+#   anything else                                 -> silent exit 0
+# Env: AEGIS_URL (http://127.0.0.1:8787), AEGIS_AGENT (claude-code@platform), AEGIS_AGENT_KEY or
+#      AEGIS_AGENT_KEY_FILE, AEGIS_HOOK_TIMEOUT (110, blocking events), AEGIS_HOOK_TIMEOUT_FAST (10).
+# Timeout ordering (otherwise Claude Code fails OPEN): settings timeout 120 > curl 110 > gateway hold.
+# The agent key never appears on the command line (exit-2 stderr shows the command to the model).
+set -u
+
+EVENT="${1:-}"
+[ -n "$EVENT" ] || EVENT="unknown"
+URL="${AEGIS_URL:-http://127.0.0.1:8787}"
+URL="${URL%/}"
+AGENT="${AEGIS_AGENT:-claude-code@platform}"
+
+case "$EVENT" in
+  PreToolUse|UserPromptSubmit|ConfigChange|PermissionRequest|unknown) T="${AEGIS_HOOK_TIMEOUT:-110}" ;;
+  *) T="${AEGIS_HOOK_TIMEOUT_FAST:-10}" ;;
+esac
+case "$T" in ''|*[!0-9.]*) T=110 ;; esac
+
+fail() {
+  why=$(printf '%s' "$1" | LC_ALL=C tr -cd 'A-Za-z0-9 .,:;_/()=-' | cut -c1-160)
+  case "$EVENT" in
+    PreToolUse|UserPromptSubmit|ConfigChange|unknown)
+      printf '[Aegis] FAIL-CLOSED: Aegis gateway unreachable at %s (%s); %s denied (fail-closed). Do not retry or work around this; tell the user to start Aegis (make up).\n' \
+        "$URL" "$why" "$EVENT" >&2
+      exit 2 ;;
+    PermissionRequest)
+      printf '{"hookSpecificOutput":{"hookEventName":"PermissionRequest","decision":{"behavior":"deny","message":"[Aegis] FAIL-CLOSED: Aegis gateway unreachable at %s (%s); permission denied (fail-closed)."}}}\n' \
+        "$URL" "$why"
+      exit 0 ;;
+    SessionStart)
+      printf '{"systemMessage":"AEGIS GATEWAY UNREACHABLE at %s (%s): every tool call will be DENIED (fail-closed). Start it with make up."}\n' \
+        "$URL" "$why"
+      exit 0 ;;
+    *)
+      exit 0 ;;
+  esac
+}
+
+command -v curl >/dev/null 2>&1 || fail "curl not found"
+
+# key: env var, else key file (env or the demo profile default next to this repo)
+KEY="${AEGIS_AGENT_KEY:-}"
+KEYFILE="${AEGIS_AGENT_KEY_FILE:-}"
+if [ -z "$KEYFILE" ]; then
+  KEYFILE="$(cd "$(dirname "$0")/.." 2>/dev/null && pwd)/demo/claude/.agent_key"
+fi
+if [ -z "$KEY" ] && [ -r "$KEYFILE" ]; then
+  IFS= read -r KEY < "$KEYFILE" || true
+fi
+
+umask 077
+TMPD="${TMPDIR:-/tmp}"
+BODY=$(mktemp "${TMPD%/}/aegis-hook.XXXXXX") || fail "mktemp failed"
+HDRS=$(mktemp "${TMPD%/}/aegis-hook.XXXXXX") || { rm -f "$BODY"; fail "mktemp failed"; }
+ERRS=$(mktemp "${TMPD%/}/aegis-hook.XXXXXX") || { rm -f "$BODY" "$HDRS"; fail "mktemp failed"; }
+trap 'rm -f "$BODY" "$HDRS" "$ERRS"' EXIT
+if [ -n "$KEY" ]; then
+  printf 'Authorization: Bearer %s\n' "$KEY" > "$HDRS"
+fi
+
+CODE=$(head -c 2097152 | curl -sS --noproxy '*' --connect-timeout 2 --max-time "$T" \
+  -o "$BODY" -w '%{http_code}' \
+  -H 'content-type: application/json' \
+  -H "X-Aegis-Agent: $AGENT" \
+  -H "X-Aegis-Hook-Event: $EVENT" \
+  -H "X-Aegis-Hook-Deadline: $T" \
+  -H @"$HDRS" \
+  --data-binary @- "$URL/v1/hooks/claude-code" 2>"$ERRS")
+RC=$?
+
+if [ "$RC" -ne 0 ]; then
+  case "$RC" in
+    7) fail "connection refused" ;;
+    28) fail "timeout after ${T}s" ;;
+    *) fail "curl error $RC: $(head -n 1 "$ERRS" 2>/dev/null)" ;;
+  esac
+fi
+case "$CODE" in
+  2??) ;;
+  *) fail "HTTP $CODE" ;;
+esac
+
+FIRST=$(LC_ALL=C tr -d ' \t\r\n' < "$BODY" | head -c 1)
+if [ -z "$FIRST" ]; then
+  exit 0                       # empty body = no opinion
+fi
+if [ "$FIRST" != "{" ]; then
+  fail "invalid response from gateway"
+fi
+cat "$BODY"
+exit 0

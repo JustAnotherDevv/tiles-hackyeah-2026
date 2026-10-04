@@ -1,0 +1,11 @@
+{
+  "_comment": "F2: TEMPLATE - render first (keys are generated at runtime, never committed): uv run --frozen python demo/scenarios/payloads/render.py aws_key | curl ... -d @-  -> expect block DLP-02",
+  "interaction": {
+    "kind": "model_call",
+    "surface": "model.request",
+    "destination": "remote",
+    "model": "mock-echo",
+    "text": "Deploy with aws_access_key_id=__AWS_KEY__ aws_secret_access_key=__AWS_SECRET__ please."
+  },
+  "session_id": "ses_curl_aws_key"
+}

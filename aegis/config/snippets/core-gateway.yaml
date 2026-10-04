@@ -1,0 +1,48 @@
+# core-gateway (model proxies, bundle B02) — policy entries the gateway expects.
+# policy-engine merges this into config/policy.yaml (POL-16). core-gateway owns no controls.
+# Matches docs/seed-fixes/policy.yaml; the extra provider keys below are `_Section` extras.
+#
+# The gateway also has these providers/routes BUILT IN (aegis.proxy.router) so it proxies with
+# the Null policy: if the policy defines none, or no policy route matches a model, the built-in
+# table below is used as the last resort.
+
+defaults:
+  stream_mode: buffered          # buffered (MVP: collect, evaluate, re-emit; Anthropic message_start/ping
+  #                                forwarded at once + 15 s keep-alives) | passthrough (raw relay, output
+  #                                controls skipped, usage still recorded) | holdback (not implemented -> buffered)
+  block_response: message        # model proxies: 200 synthetic "[Aegis] Blocked by ..." reply; "error" = 403 wire error
+  #                                (budget 402 / rate 429 / kill switch 429 are ALWAYS wire errors, Addendum A-07)
+  rehydrate_responses: true      # DLP-08 meta.rehydrate -> placeholders in assistant TEXT restored for the local user
+  #                                (never tool_use inputs / tool_calls arguments, never thinking - Addendum A-40)
+  max_body_bytes: 8000000        # Claude Code resends multi-MB histories
+  semantic_timeout_ms: 400
+
+providers:
+  # passthrough_auth: forward the client's own non-aegis credential (Claude Code subscription OAuth).
+  # redact_system (extra key): also redact Anthropic `system` blocks of Claude Code (default false:
+  # attribution block + prompt cache stay byte-identical).
+  anthropic:        {wire: anthropic, base_url: "https://api.anthropic.com", destination: remote, passthrough_auth: true, api_key_env: ANTHROPIC_API_KEY, redact_system: false}
+  openai:           {wire: openai, base_url: "https://api.openai.com/v1", destination: remote, api_key_env: OPENAI_API_KEY, enabled_if_env: OPENAI_API_KEY}
+  openrouter:       {wire: openai, base_url: "https://openrouter.ai/api/v1", destination: remote, api_key_env: OPENROUTER_API_KEY, enabled_if_env: OPENROUTER_API_KEY}
+  ollama:           {wire: ollama, base_url: "http://127.0.0.1:11434", destination: local, timeout_s: 300}     # follows AEGIS_OLLAMA_URL
+  ollama-openai:    {wire: openai, base_url: "http://127.0.0.1:11434/v1", destination: local, timeout_s: 300}
+  ollama-anthropic: {wire: anthropic, base_url: "http://127.0.0.1:11434", destination: local, timeout_s: 300}
+  mock-anthropic:   {wire: anthropic, base_url: "http://127.0.0.1:8791", destination: remote, timeout_s: 30}   # mocks/mock_llm
+  mock-openai:      {wire: openai, base_url: "http://127.0.0.1:8791/v1", destination: remote, timeout_s: 30}
+
+models:
+  routes:                        # first match wins; the provider wire must equal the inbound wire (no translation, A-16)
+    - {match: "mock-*",       provider: mock-anthropic,   wire: anthropic}
+    - {match: "mock-*",       provider: mock-openai,      wire: openai}
+    - {match: "claude-*",     provider: anthropic,        wire: anthropic}
+    - {match: "gpt-*",        provider: openai,           wire: openai}
+    - {match: "meta-llama/*", provider: openrouter,       wire: openai}
+    - {match: "*",            provider: ollama-openai,    wire: openai}      # local: aegis-judge, qwen*, hf.co/*
+    - {match: "*",            provider: ollama,           wire: ollama}
+    - {match: "*",            provider: ollama-anthropic, wire: anthropic}   # Claude Code offline fallback (slow)
+  default_local: aegis-judge
+  # Models ending in ":cloud" are always classified `remote` (they leave the machine), even via Ollama.
+
+# Control timeouts (plan 01 section 4.3 #8): deterministic controls run in-process / via
+# asyncio.to_thread, so their `timeout_ms` must be >= 50 (2-5 ms values time out under load).
+# A control task that already completed is always used, even if it finished past its timeout.

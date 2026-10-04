@@ -1,0 +1,38 @@
+# =============================================================================
+#  Strictness profile: STRICT (regulated production)
+# =============================================================================
+#  Fail closed everywhere, card data never reaches a remote model (blocked,
+#  RESTRICTED requests re-routed to the local model), client data never goes
+#  to third parties, lower injection thresholds, off-topic requests blocked,
+#  lethal-trifecta flows blocked, purchases above $1,000 blocked outright.
+#
+#  floor: true -> for knobs that config/policy.yaml pins (e.g. INJ-02
+#  threshold 0.80) the STRICTER of the pinned and the profile value wins
+#  (threshold = min, adherence_pct = max, action / fail_mode = stricter).
+#  `enabled` and `mode` are never floored: you can always switch a control off.
+#  GOV-01 (caller identity) is never changed by profiles.
+# =============================================================================
+profile: strict
+description: "Regulated production. Fail closed, block card data to remote models, approvals for anything unknown."
+floor: true
+
+kind_defaults:
+  deterministic: {fail_mode: closed}
+  stateful:      {fail_mode: closed}
+  semantic:      {fail_mode: closed}
+  hybrid:        {fail_mode: closed}
+
+controls:
+  GOV-02: {params: {reroute_on_class: {RESTRICTED: local}}}
+  GOV-06: {params: {block_bypass_permissions: true}}
+  ACT-01: {params: {auto_allow_max_usd: 0, hard_block_above_usd: 1000}}
+  DLP-01: {params: {redaction_ratio_block: 0.4, matrix_overrides: {RESTRICTED: {local: redact, remote: block}, CONFIDENTIAL: {third_party: block}}}}
+  DLP-02: {action: block, params: {allow_doc_examples: false}}
+  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}, text: {public_ips: true}}}
+  DLP-07: {threshold: 0.5, fail_mode: deterministic_only}
+  INJ-01: {params: {untrusted_action: redact}}
+  INJ-02: {threshold: 0.75, params: {untrusted_threshold: 0.60}}
+  INJ-03: {threshold: 0.70, adherence_pct: 65, params: {off_topic_action: block}}
+  INJ-05: {mode: monitor}
+  EXE-03: {action: block}
+  MCP-04: {mode: enforce}

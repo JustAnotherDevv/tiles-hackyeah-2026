@@ -1,0 +1,50 @@
+id: AEGIS-TI-006
+title: Probllama — Ollama admin API abuse / path traversal (CVE-2024-37032)
+description: >-
+  CVE-2024-37032 (Ollama < 0.1.34): an unvalidated digest in a registry manifest
+  allowed path traversal via /api/pull, leading to arbitrary file write and RCE.
+  The gateway fronts Ollama and permits agents only /api/chat, /api/generate,
+  /api/embed and /api/tags. Any pull/push/create/copy/delete, an "insecure": true
+  flag, or ../ traversal in the body is the signal.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2024-37032]
+references:
+  - https://www.wiz.io/blog/probllama-ollama-vulnerability-cve-2024-37032
+  - https://cveawg.mitre.org/api/cve/CVE-2024-37032
+tags: [LLM04:2026, ASI05, CWE-22, admin-api]
+published: "2024-05-05"
+modified: "2026-10-03"
+applies_to: [egress]
+matcher:
+  any_of:
+    - type: url
+      path_regex: '(?i)^/api/(pull|push|create|copy|delete)\b'
+    - type: regex
+      field: body
+      pattern: '\.\./|"insecure"\s*:\s*true'
+action: block
+message: "Ollama admin endpoint or path-traversal/insecure flag in request to local model infrastructure. Blocked (agents may use only chat/generate/embed/tags)."
+tests:
+  positive:
+    - name: agent calls the pull admin endpoint
+      surface: egress
+      url: "http://127.0.0.1:11434/api/pull"
+      method: POST
+      body: '{"name":"registry.ollama.ai/library/llama3"}'
+    - name: push with insecure flag set
+      surface: egress
+      url: "http://127.0.0.1:11434/api/push"
+      method: POST
+      body: '{"name":"attacker/model","insecure":true}'
+  negative:
+    - name: allowed chat call
+      surface: egress
+      url: "http://127.0.0.1:11434/api/chat"
+      method: POST
+      body: '{"model":"llama3","messages":[{"role":"user","content":"hi"}]}'
+    - name: allowed tags listing
+      surface: egress
+      url: "http://127.0.0.1:11434/api/tags"
+      method: GET

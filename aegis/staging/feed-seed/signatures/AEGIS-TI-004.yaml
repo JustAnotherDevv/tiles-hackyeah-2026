@@ -1,0 +1,59 @@
+id: AEGIS-TI-004
+title: Keras Lambda-layer code execution on model load
+description: >-
+  CVE-2024-3660 (Keras Lambda layers run arbitrary code on load) and CVE-2025-1550
+  (config.json bypasses safe_mode / enable_unsafe_deserialization). Matches a Keras
+  model config that declares a Lambda layer, or that re-enables unsafe deserialization.
+  The test config declares a Lambda layer with no code body.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2024-3660, CVE-2025-1550]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2024-3660
+  - https://cveawg.mitre.org/api/cve/CVE-2025-1550
+tags: [LLM04:2026, ASI05, AML.T0011, CWE-502]
+published: "2024-05-01"
+modified: "2026-10-03"
+applies_to: [model_download]
+matcher:
+  any_of:
+    - type: jsonpath
+      path: "$..class_name"
+      equals: "Lambda"
+    - type: regex
+      field: all
+      pattern: '(?i)enable_unsafe_deserialization'
+action: block
+message: "Keras model config declares a Lambda layer or re-enables unsafe deserialization. Blocked."
+tests:
+  positive:
+    - name: config.json declaring a Lambda layer
+      surface: model_download
+      filename: config.json
+      json:
+        module: "keras"
+        class_name: "Sequential"
+        config:
+          layers:
+            - {class_name: "InputLayer", config: {batch_shape: [null, 8]}}
+            - {class_name: "Lambda", config: {name: "lambda_0"}}
+    - name: config.json re-enabling unsafe deserialization
+      surface: model_download
+      filename: config.json
+      body: '{"module":"keras","class_name":"Model","enable_unsafe_deserialization":true}'
+  negative:
+    - name: ordinary dense/conv config
+      surface: model_download
+      filename: config.json
+      json:
+        module: "keras"
+        class_name: "Sequential"
+        config:
+          layers:
+            - {class_name: "Dense", config: {units: 64, activation: "relu"}}
+            - {class_name: "Conv2D", config: {filters: 32}}
+    - name: unrelated metadata json
+      surface: model_download
+      filename: tokenizer_config.json
+      body: '{"model_max_length":512,"padding_side":"right"}'

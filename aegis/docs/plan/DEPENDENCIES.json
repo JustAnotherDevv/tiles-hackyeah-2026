@@ -1,0 +1,90 @@
+{
+  "_about": "Deduplicated union of Python and npm dependencies requested by plans 01-20 (synth-B, Sat 3 Oct ~22:50) for the scaffolder. Companion of docs/plan/BUNDLES.json. Implementers may NOT edit manifests; anything missing here goes into their status file as deps_needed. Base list = CONTRACTS 7.6; additions are marked 'added_by'.",
+  "python": {
+    "requires_python": ">=3.13,<3.14",
+    "runtime": [
+      {"spec": "fastapi", "used_by": ["all route owners"]},
+      {"spec": "uvicorn[standard]", "used_by": ["core-gateway", "threat-feed", "mcp-proxy", "demo-mocks-docs", "test-suite", "redteam-eval-perf"]},
+      {"spec": "httpx", "used_by": ["core-gateway upstream", "metadata-egress forwarder", "semantic-models Ollama client", "threat-feed client", "sdk", "tests"], "note": "0.28.x (mcp 2.3.0 brings its own httpx2/httpcore2)"},
+      {"spec": "pydantic>=2.9", "used_by": ["all"]},
+      {"spec": "sse-starlette", "used_by": ["core-gateway /api/events", "threat-feed /feed/events"]},
+      {"spec": "watchfiles", "used_by": ["policy-engine watcher", "budgets-ledger pricing hot reload"]},
+      {"spec": "pyyaml", "used_by": ["all config loaders"]},
+      {"spec": "ruamel.yaml", "used_by": ["policy-engine patch/merge", "threat-feed port script", "test-suite case line numbers"]},
+      {"spec": "google-re2", "import": "re2", "used_by": ["policy-engine", "redaction-engine", "injection-defense", "action-guards", "threat-feed", "mcp-proxy"], "note": "every user guards the import with a stdlib-re fallback"},
+      {"spec": "onnxruntime>=1.30", "used_by": ["semantic-models (Horizon PI, MiniLM, EU-PII NER)", "redaction-engine fallback"], "note": "tested 1.30.0 CPU EP"},
+      {"spec": "tokenizers>=0.23", "used_by": ["semantic-models", "redaction-engine"], "note": "tested 0.23.2"},
+      {"spec": "numpy", "used_by": ["semantic-models", "injection-defense exemplars", "redteam-eval-perf (optional)"]},
+      {"spec": "prometheus-client", "used_by": ["audit-metrics"]},
+      {"spec": "pynacl", "used_by": ["threat-feed signing/verify", "test-suite fake feed", "audit-metrics checkpoints (could)"]},
+      {"spec": "mcp==2.3.0", "used_by": ["mcp-proxy (proxy + mocks/mock_mcp)"], "note": "PIN required by plan 11 (acceptable range mcp>=2.3,<3); brings mcp-types==2.3.0, pyjwt[crypto], jsonschema"},
+      {"spec": "orjson", "used_by": ["core-gateway fast path (guarded)", "metadata-egress (guarded)", "redteam-eval-perf (optional)"]},
+      {"spec": "rapidfuzz", "used_by": ["injection-defense fuzzy view", "mcp-proxy tool-name collisions"]},
+      {"spec": "jsonschema", "used_by": ["policy-engine V10", "test-suite results.json", "redteam-eval-perf output schemas"]},
+      {"spec": "rich", "used_by": ["policy-engine CLI", "test-suite console matrix", "redteam-eval-perf tables", "demo scripts"]},
+      {"spec": "psutil", "used_by": ["semantic-models RAM plan/governor", "redaction-engine NER RAM guard", "demo preflight", "redteam-eval-perf"]},
+      {"spec": "python-multipart", "used_by": ["CONTRACTS 7.6 (form uploads)"]},
+      {"spec": "phonenumbers>=9.0", "used_by": ["redaction-engine PHONE detector"], "added_by": "plan 03 (Apache-2.0; guarded import with regex fallback)"}
+    ],
+    "optional_runtime": [
+      {"spec": "pypdf>=6.0", "used_by": ["metadata-egress PDF full rewrite (META-14, could)"], "note": "guarded import; install only if cheap"},
+      {"spec": "presidio-analyzer", "used_by": [], "note": "listed in CONTRACTS 7.6 as optional leg; NO plan imports it (redaction uses its own validators + bardsai ONNX NER) - recommend skipping to save disk/RAM"},
+      {"spec": "presidio-anonymizer", "used_by": [], "note": "same as above"},
+      {"spec": "spacy + en_core_web_sm (direct URL wheel)", "used_by": [], "note": "same as above; never pl_core_news_* (GPL-3.0)"}
+    ],
+    "dev": [
+      {"spec": "pytest"},
+      {"spec": "pytest-asyncio>=0.23", "note": "asyncio_mode=auto"},
+      {"spec": "pytest-xdist", "note": "make test-unit -n auto (optional)"},
+      {"spec": "asgi-lifespan"},
+      {"spec": "respx"},
+      {"spec": "ruff"},
+      {"spec": "hypothesis", "note": "optional; only core-gateway GW-16 property tests (could) - tests skip without it", "optional": true}
+    ],
+    "ephemeral_only": [
+      {"spec": "pandas, pyarrow", "note": "redteam-eval-perf corpus regeneration via `uv run --with`, never at runtime"}
+    ],
+    "pytest_config": {"testpaths": ["tests"], "pythonpath": [".", "src"], "addopts": "--import-mode=importlib -q", "asyncio_mode": "auto", "markers": ["unit", "e2e", "semantic", "live", "slow", "bench", "aegis(suite, control, polarity): test-suite matrix marker (plan 18)"]}
+  },
+  "npm": {
+    "dependencies": [
+      "react@^19", "react-dom@^19", "react-router-dom@^7",
+      "tailwindcss@^4", "@tailwindcss/vite@^4", "tw-animate-css",
+      "class-variance-authority", "clsx", "tailwind-merge@^3",
+      "lucide-react", "recharts@^3 (if ^2.15 then also react-is@^19)",
+      "framer-motion@^12", "sonner@^2", "cmdk@^1", "date-fns@^4",
+      "monaco-editor", "@monaco-editor/react",
+      "@fontsource-variable/inter", "@fontsource-variable/jetbrains-mono",
+      "@radix-ui/react-slot", "@radix-ui/react-dialog", "@radix-ui/react-dropdown-menu", "@radix-ui/react-select",
+      "@radix-ui/react-switch", "@radix-ui/react-slider", "@radix-ui/react-tooltip", "@radix-ui/react-popover",
+      "@radix-ui/react-separator", "@radix-ui/react-scroll-area", "@radix-ui/react-avatar", "@radix-ui/react-progress",
+      "@radix-ui/react-tabs", "@radix-ui/react-label", "@radix-ui/react-toggle", "@radix-ui/react-toggle-group",
+      "@radix-ui/react-checkbox", "@radix-ui/react-radio-group", "@radix-ui/react-collapsible", "@radix-ui/react-accordion", "@radix-ui/react-hover-card"
+    ],
+    "devDependencies": [
+      "vite@^6 || ^7", "@vitejs/plugin-react", "typescript@^5.6", "@types/react@^19", "@types/react-dom@^19", "@types/node",
+      "eslint@^9", "typescript-eslint", "eslint-plugin-react-hooks", "eslint-plugin-react-refresh (allowExportNames: ['meta'])", "globals"
+    ],
+    "optional_not_required": [
+      {"spec": "monaco-yaml@5", "note": "dashboard-governance schema completion; must NOT be imported unless the scaffold adds it"},
+      {"spec": "yaml@2", "note": "dashboard-governance comment-preserving quick edits; same rule"}
+    ],
+    "scripts": {"dev": "vite", "build": "tsc -b && vite build", "typecheck": "tsc -b --noEmit", "lint": "eslint .", "preview": "vite preview"},
+    "vite": {"base": "/ui/", "alias": {"@": "web/src"}, "dev_proxy_to_8787": ["/api", "/v1", "/healthz", "/metrics"], "monaco": "bundled ESM + ?worker (no CDN)"}
+  },
+  "system": [
+    "uv 0.9.x + Python 3.13 venv", "Node 24 (v24.10.0 present; node --test with native type stripping used by dashboard lib tests)",
+    "Ollama 0.24 with aliases aegis-guard (Qwen3Guard-0.6B) and aegis-judge (Qwen3.5-0.8B) - already present",
+    "bash, curl >= 7.55, perl (hook script + demo.sh)", "Claude Code CLI >= 2.1.271 (demo only)",
+    "headless Chrome (deck PDF via docs/submission/build.py)"
+  ],
+  "not_allowed": ["torch", "transformers", "litellm", "langchain", "Docker", "pl_core_news_* spaCy models (GPL-3.0)"],
+  "by_workstream_additions_beyond_contract": {
+    "redaction-engine": ["phonenumbers>=9.0"],
+    "mcp-proxy": ["mcp==2.3.0 (pin)"],
+    "metadata-egress": ["pypdf>=6.0 (optional)"],
+    "core-gateway": ["hypothesis (dev, optional)"],
+    "dashboard-shell": ["explicit @radix-ui/* list above", "react-is@^19 only if recharts 2.x"],
+    "dashboard-governance": ["monaco-yaml@5, yaml@2 (optional, not required)"]
+  }
+}

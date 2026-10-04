@@ -1,0 +1,13 @@
+# Error-path cases (TEST-16, plan 18 §2.7 H). Every non-2xx body must be a CONTRACTS §5.3
+# envelope without a traceback; tests/e2e/test_errors.py covers the paths a case cannot express
+# (malformed JSON, oversized body, upstream down, revoked key, stale base_version).
+# expect: error:<http status> or error:<json-rpc code>
+defaults: {via: api, polarity: error}
+cases:
+  - {id: ERR-RBAC-BUDGET-RESET-MEMBER, control: GOV-05, expect: "error:403", method: POST, path: /api/budgets/reset, view_as: u_piotr, json: {}, note: "member -> 403 forbidden (admin lever)"}
+  - {id: ERR-RBAC-AUDIT-EXPORT-MEMBER, control: GOV-05, expect: "error:403", method: GET, path: "/api/audit/export?format=jsonl", view_as: u_piotr}
+  - {id: ERR-RBAC-FEED-REFRESH-MEMBER, control: SIG-01, expect: "error:403", method: POST, path: /api/feed/refresh, view_as: u_olivia, json: {}}
+  - {id: ERR-APPROVAL-NOT-FOUND, expect: "error:404", method: GET, path: /api/approvals/apr_b22_does_not_exist, view_as: u_emily}
+  - {id: ERR-GUARD-BAD-SURFACE, expect: "error:400", method: POST, path: /v1/guard, json: {interaction: {kind: model_call, surface: not.a.surface, text: hi}}, note: "invalid interaction -> 400 invalid_request"}
+  - {id: ERR-KILLSWITCH-BAD-SCOPE, control: EXE-04, expect: "error:400", method: POST, path: /api/killswitch, view_as: u_marek, json: {scope: "planet:earth", active: true, reason: test}}
+  - {id: ERR-MCP-UNKNOWN-SERVER, control: MCP-01, via: mcp, polarity: error, expect: "error:-32001", tool: not-a-server.tool, hermetic_only: true, note: "needs an MCP upstream in the stack; skipped otherwise"}

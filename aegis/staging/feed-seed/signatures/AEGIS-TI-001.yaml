@@ -1,0 +1,84 @@
+id: AEGIS-TI-001
+title: Malicious pickle in model file (unsafe-global allowlist)
+description: >-
+  PyTorch/pickle model files can embed arbitrary object-construction opcodes
+  (GLOBAL / STACK_GLOBAL + REDUCE) that run on load. JFrog found ~100 such models
+  on Hugging Face in Feb 2024. The matcher streams opcodes with pickletools.genops
+  (it never unpickles), resolves every global name, and flags any global that is
+  not on the tensor-rebuild allowlist. ZIP members are scanned regardless of file
+  extension, and any parse error is treated as a detection (fail closed).
+  NOTE: the test vectors use harmless off-allowlist globals (collections.Counter,
+  datetime.date) and a truncated stream. No exploit payload is present; what is
+  demonstrated is the allowlist decision, not any malicious behaviour.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2025-1716, CVE-2025-1889]
+references:
+  - https://www.bleepingcomputer.com/news/security/malicious-ai-models-on-hugging-face-backdoor-users-machines/
+  - https://www.sonatype.com/blog/bypassing-picklescan-sonatype-discovers-four-vulnerabilities
+tags: [LLM04:2026, ASI04, AML.T0011, CWE-502, pickle]
+published: "2024-02-28"
+modified: "2026-10-03"
+applies_to: [model_download]
+matcher:
+  type: pickle_opcode
+  mode: allowlist
+  on_parse_error: match        # nullifAI-style broken streams fail closed
+  scan_zip_members: true       # ignore member extensions; scan every pickle-looking member
+  allow_globals:
+    - "collections.OrderedDict"
+    - "torch._utils._rebuild_tensor_v2"
+    - "torch._utils._rebuild_parameter"
+    - "torch._tensor._rebuild_from_type_v2"
+    - "torch.*Storage"
+    - "torch.storage._load_from_bytes"
+    - "torch.device"
+    - "torch.nn.parameter.Parameter"
+    - "numpy.core.multiarray._reconstruct"
+    - "numpy.core.multiarray.scalar"
+    - "numpy.ndarray"
+    - "numpy.dtype"
+    - "_codecs.encode"
+    - "argparse.Namespace"
+  deny_globals:
+    - "os.*"
+    - "posix.*"
+    - "subprocess.*"
+    - "builtins.exec"
+    - "builtins.eval"
+    - "builtins.__import__"
+    - "runpy.*"
+    - "pip.*"
+    - "socket.*"
+    - "pty.*"
+    - "nt.*"
+action: block
+message: "Model file contains a pickle global outside the safe tensor-rebuild allowlist, or an unparseable pickle stream. Blocked."
+tests:
+  positive:
+    - name: off-allowlist global collections.Counter (harmless object, not allowlisted)
+      surface: model_download
+      filename: weights.bin
+      bytes_b64: "gAJjY29sbGVjdGlvbnMKQ291bnRlcgpxAH1xAShYAQAAAGFxAksBWAEAAABicQNLAnWFcQRScQUu"
+    - name: off-allowlist global datetime.date via STACK_GLOBAL (harmless)
+      surface: model_download
+      filename: model.pkl
+      bytes_b64: "gASVIAAAAAAAAACMCGRhdGV0aW1llIwEZGF0ZZSTlEMEB+QBAZSFlFKULg=="
+    - name: pickle hidden in a ZIP under a .cfg extension (off-allowlist global)
+      surface: model_download
+      filename: archive.pt
+      bytes_b64: "UEsDBBQAAAAAAOeLQ13RnmdVAgAAAAIAAAAPAAAAYXJjaGl2ZS92ZXJzaW9uMwpQSwMEFAAAAAAA54tDXXr4Kco5AAAAOQAAABMAAABhcmNoaXZlL3dlaWdodHMuY2ZngAJjY29sbGVjdGlvbnMKQ291bnRlcgpxAH1xAShYAQAAAGFxAksBWAEAAABicQNLAnWFcQRScQUuUEsBAhQDFAAAAAAA54tDXdGeZ1UCAAAAAgAAAA8AAAAAAAAAAAAAAIABAAAAAGFyY2hpdmUvdmVyc2lvblBLAQIUAxQAAAAAAOeLQ116+CnKOQAAADkAAAATAAAAAAAAAAAAAACAAS8AAABhcmNoaXZlL3dlaWdodHMuY2ZnUEsFBgAAAAACAAIAfgAAAJkAAAAAAA=="
+    - name: truncated pickle stream (fail closed on parse error)
+      surface: model_download
+      filename: broken.pkl
+      bytes_b64: "gAJ9cQBYBQAAAHN0YXRlcQFdcQIoSwBLAUsCSwNLBEs="
+  negative:
+    - name: plain state_dict with only OrderedDict (allowlisted)
+      surface: model_download
+      filename: clean.pkl
+      bytes_b64: "gAJjY29sbGVjdGlvbnMKT3JkZXJlZERpY3QKcQApUnEBKFgBAAAAd3ECSwFYAQAAAGJxA0sCdS4="
+    - name: torch-style zip referencing only allowlisted rebuild globals
+      surface: model_download
+      filename: model.pt
+      bytes_b64: "UEsDBBQAAAAAAOeLQ10O1yPQpAAAAKQAAAAQAAAAYXJjaGl2ZS9kYXRhLnBrbIACY2NvbGxlY3Rpb25zCk9yZGVyZWREaWN0CnEAKVJxAVgGAAAAd2VpZ2h0cQJjdG9yY2guX3V0aWxzCl9yZWJ1aWxkX3RlbnNvcl92MgpxAyhYAQAAADBxBGN0b3JjaApGbG9hdFN0b3JhZ2UKcQWGcQZLAEsEhUsBhYljY29sbGVjdGlvbnMKT3JkZXJlZERpY3QKcQcpUnEIdHEJUnEKc2IuUEsDBBQAAAAAAOeLQ13RnmdVAgAAAAIAAAAPAAAAYXJjaGl2ZS92ZXJzaW9uMwpQSwECFAMUAAAAAADni0NdDtcj0KQAAACkAAAAEAAAAAAAAAAAAAAAgAEAAAAAYXJjaGl2ZS9kYXRhLnBrbFBLAQIUAxQAAAAAAOeLQ13RnmdVAgAAAAIAAAAPAAAAAAAAAAAAAACAAdIAAABhcmNoaXZlL3ZlcnNpb25QSwUGAAAAAAIAAgB7AAAAAQEAAAAA"

@@ -1,0 +1,52 @@
+# AEGIS-TI-008 - ported from staging/feed-seed by feed_service/port_staging.py (contract shape, CONTRACTS 4.7)
+id: AEGIS-TI-008
+title: Langflow unauthenticated code-exec endpoint (CVE-2025-3248)
+description: >-
+  CVE-2025-3248 (Langflow < 1.3.0, CISA KEV): POST /api/v1/validate/code exec'd
+  decorators and default arguments, giving unauthenticated RCE; CVE-2026-33017 is
+  the related /api/v1/build_public_tmp variant. Matches the Langflow code endpoint
+  path together with Python exec/import indicators in the body. Test bodies use
+  harmless indicator fragments (@exec(, __import__('this')) with no exploit chain.
+status: stable
+severity: critical
+confidence: high
+aliases: [CVE-2025-3248, CVE-2026-33017]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2025-3248
+  - https://www.horizon3.ai/attack-research/disclosures/unsafe-at-any-speed-abusing-python-exec-for-unauth-rce-in-langflow-ai/
+tags: [LLM04:2026, ASI05, CWE-94, admin-api]
+published: "2025-04-09"
+modified: "2026-10-03"
+applies_to:
+  surfaces: [egress.request]
+match:
+  all_of:
+    - type: url
+      path_regex: '(?i)/api/v1/(validate/code|build_public_tmp)'
+    - type: regex
+      field: body
+      pattern: '(?i)@exec\(|__import__\(|\bsubprocess\b|os\.system|os\.popen'
+action: block
+message: "Request to the Langflow code-validation/build endpoint carrying Python exec/import constructs. Blocked."
+tests:
+  positive:
+    - name: validate/code with an @exec decorator fragment
+      surface: egress.request
+      url: "http://127.0.0.1:7860/api/v1/validate/code"
+      http_method: POST
+      raw: '{"code":"@exec(compile(src, \"f\", \"exec\"))\ndef node():\n    pass"}'
+    - name: validate/code with a default-arg __import__ fragment
+      surface: egress.request
+      url: "http://127.0.0.1:7860/api/v1/validate/code"
+      http_method: POST
+      raw: '{"code":"def handler(x=__import__(''this'')):\n    return x"}'
+  negative:
+    - name: validate/code with ordinary function (no exec/import constructs)
+      surface: egress.request
+      url: "http://127.0.0.1:7860/api/v1/validate/code"
+      http_method: POST
+      raw: '{"code":"def add(a, b):\n    return a + b"}'
+    - name: a normal Langflow flows API call
+      surface: egress.request
+      url: "http://127.0.0.1:7860/api/v1/flows"
+      http_method: GET

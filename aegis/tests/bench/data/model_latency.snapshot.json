@@ -1,0 +1,16 @@
+{
+  "source": "snapshot: staging/models/RESULTS.md + staging/models/bench_results/*.json",
+  "measured_at": "2026-10-03",
+  "machine": "Apple M2, 8 GB RAM (37-45 % free), macOS 27, Ollama 0.24.0, Python 3.13, onnxruntime 1.30.0, ORT CPU 2 intra-op threads",
+  "method": "warm in-process wall clock, p50/p95 over the EN+PL samples in staging/models/samples.py",
+  "note": "Labelled snapshot - NOT this bench run's numbers. Live values from /api/semantic/status are merged in by scripts/bench.py when the semantic stage runs.",
+  "models": [
+    {"name": "pi-horizon-small", "role": "injection", "p50_ms": 14, "p95_ms": 45, "memory_mb": 438, "note": "short prompts; 246 ms at 375 tokens"},
+    {"name": "pg2-22m", "role": "jailbreak vote (optional, off by default)", "p50_ms": 6, "p95_ms": 13, "memory_mb": 298},
+    {"name": "minilm-l12-multi", "role": "exemplar embeddings", "p50_ms": 3, "p95_ms": 4, "memory_mb": 490, "note": "standalone footprint"},
+    {"name": "eu-pii-ner", "role": "NER (PII)", "p50_ms": 13, "p95_ms": 19, "memory_mb": 673},
+    {"name": "T1 combined (horizon + NER + MiniLM)", "role": "tier-1 per prompt", "p50_ms": 20, "p95_ms": 47, "memory_mb": null, "note": "4-thread pool; footprint 1.07-1.23 GB"},
+    {"name": "aegis-guard (Qwen3Guard-Gen-0.6B Q4_K_M)", "role": "moderation (Ollama)", "p50_ms": 223, "p95_ms": 348, "memory_mb": 751},
+    {"name": "aegis-judge (Qwen3.5-0.8B Q4_K_M)", "role": "NL policy rules (Ollama)", "p50_ms": 315, "p95_ms": 381, "memory_mb": 1317, "note": "per rule, yes/no logprob"}
+  ]
+}

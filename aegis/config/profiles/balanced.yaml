@@ -1,0 +1,37 @@
+# =============================================================================
+#  Strictness profile: BALANCED (default)
+# =============================================================================
+#  Default for Acme Capital. Tokenize instead of block so remote models stay
+#  useful; when a guard model is down the deterministic leg still decides
+#  (fail_mode deterministic_only); approvals for high-impact actions.
+#
+#  How profiles apply (config/policy.yaml header has the full chain):
+#    kind_defaults  -> per control kind (deterministic / semantic / hybrid / stateful)
+#    controls.<ID>  -> per-control values; anything written in the policy entry wins
+#    floor: false   -> values pinned in policy.yaml are used as written
+#  GOV-01 (caller identity) is never changed by profiles.
+# =============================================================================
+profile: balanced
+description: "Default. Tokenize instead of block, deterministic-only fallback when a model is down, approvals for high-impact actions."
+floor: false
+
+kind_defaults:
+  deterministic: {fail_mode: closed}
+  stateful:      {fail_mode: closed}
+  semantic:      {fail_mode: deterministic_only}
+  hybrid:        {fail_mode: deterministic_only}
+
+controls:
+  GOV-02: {params: {reroute_on_class: {}}}
+  GOV-06: {params: {block_bypass_permissions: false}}
+  ACT-01: {params: {auto_allow_max_usd: 0, hard_block_above_usd: 5000}}
+  DLP-01: {params: {redaction_ratio_block: 0.6, matrix_overrides: {}}}
+  DLP-02: {action: block, params: {allow_doc_examples: true}}
+  DLP-03: {params: {generalize: {paths: true, hostnames: true, ips: true, usernames: true, git_emails: true}}}
+  DLP-07: {threshold: 0.6}
+  INJ-01: {params: {untrusted_action: redact}}
+  INJ-02: {threshold: 0.80, params: {untrusted_threshold: 0.75}}
+  INJ-03: {threshold: 0.80, adherence_pct: 50, params: {off_topic_action: log}}
+  INJ-05: {mode: monitor}
+  EXE-03: {action: require_approval}
+  MCP-04: {mode: monitor}

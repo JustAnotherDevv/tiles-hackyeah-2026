@@ -1,0 +1,3 @@
+# local spike artefacts: contain local paths, session ids, Claude Code context blocks
+logs/
+runs/

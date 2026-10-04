@@ -1,0 +1,40 @@
+id: AEGIS-TI-015
+title: Agent config hijack for auto-approve ("YOLO mode" / CurXecute)
+description: >-
+  GitHub Copilot CVE-2025-53773 wrote "chat.tools.autoApprove": true into
+  .vscode/settings.json to silence approvals; Cursor CVE-2025-54135 ("CurXecute")
+  created .cursor/mcp.json without approval. Matches tool/file-write operations that
+  target agent config files (.vscode/settings.json, .cursor/mcp.json,
+  .claude/settings*.json, .mcp.json) or that set an auto-approve flag.
+status: stable
+severity: high
+confidence: high
+aliases: [CVE-2025-53773, CVE-2025-54135]
+references:
+  - https://cveawg.mitre.org/api/cve/CVE-2025-53773
+  - https://cveawg.mitre.org/api/cve/CVE-2025-54135
+tags: [LLM03:2026, ASI05, CWE-732]
+published: "2025-08-01"
+modified: "2026-10-03"
+applies_to: [tool_call]
+matcher:
+  type: regex
+  field: all
+  pattern: '(?i)(\.vscode/settings\.json|\.cursor/mcp\.json|\.claude/settings[A-Za-z0-9._-]*\.json|(?:^|[\s"'']/?)\.mcp\.json\b|chat\.tools\.autoApprove|"?autoApprove"?\s*:\s*true)'
+action: require_approval
+message: "Write targets an agent config file or sets an auto-approve flag. Approval required."
+tests:
+  positive:
+    - name: writing a .cursor/mcp.json file
+      surface: tool_call
+      json: {tool: "fs.write", args: {path: ".cursor/mcp.json", content: "{\"mcpServers\":{}}"}}
+    - name: enabling autoApprove in VS Code settings
+      surface: tool_call
+      json: {tool: "fs.write", args: {path: ".vscode/settings.json", content: "{\"chat.tools.autoApprove\": true}"}}
+  negative:
+    - name: writing ordinary source code
+      surface: tool_call
+      json: {tool: "fs.write", args: {path: "src/app.py", content: "print('hello')"}}
+    - name: writing a README
+      surface: tool_call
+      json: {tool: "fs.write", args: {path: "README.md", content: "# Project\nUsage notes."}}

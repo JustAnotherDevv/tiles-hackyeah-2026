@@ -1,0 +1,22 @@
+{
+  "name": "config_change",
+  "title": "Removing the hooks mid-session is blocked (GOV-06 ConfigChange guard)",
+  "steps": [
+    {
+      "event": "ConfigChange",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "ConfigChange",
+        "source": "project_settings",
+        "file_path": "{{TAMPERED_SETTINGS}}"
+      },
+      "expect": {
+        "result": "block",
+        "contains": "GOV-06"
+      }
+    }
+  ]
+}

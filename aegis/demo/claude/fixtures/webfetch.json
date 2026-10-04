@@ -1,0 +1,26 @@
+{
+  "name": "webfetch",
+  "title": "WebFetch is not an allowed tool for claude-code@platform (GOV-03)",
+  "steps": [
+    {
+      "event": "PreToolUse",
+      "payload": {
+        "session_id": "{{SESSION}}",
+        "transcript_path": "{{HOME}}/.claude/projects/demo/{{SESSION}}.jsonl",
+        "cwd": "{{PROJECT}}",
+        "permission_mode": "default",
+        "hook_event_name": "PreToolUse",
+        "tool_name": "WebFetch",
+        "tool_input": {
+          "url": "https://pastebin.example/raw/abc",
+          "prompt": "Summarise this page"
+        },
+        "tool_use_id": "toolu_{{N}}_web"
+      },
+      "expect": {
+        "result": "deny",
+        "contains": "GOV-03"
+      }
+    }
+  ]
+}
