@@ -4,7 +4,7 @@ A-53 (/api/selftest*)."""
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from am_fakes import decision_event, fake_policy
 
@@ -115,7 +115,8 @@ async def test_auto_warmup_full_then_topup(am_rt):
 
 
 def test_generate_rows_deterministic():
-    now = utc_now()
+    # fixed weekday afternoon: the synthetic traffic curve is lighter at night/weekends
+    now = datetime(2026, 10, 1, 15, 0, tzinfo=UTC)
     a = wu.generate_rows(now - timedelta(hours=6), now, 900, wu.FALLBACK_CAST, wu.price_fn(None))
     b = wu.generate_rows(now - timedelta(hours=6), now, 900, wu.FALLBACK_CAST, wu.price_fn(None))
     assert [r["id"][:16] for r in a] == [r["id"][:16] for r in b] and len(a) > 50
