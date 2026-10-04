@@ -1,93 +1,67 @@
-> **Superseded (4 Oct 2026).** This is the earlier Aegis Pocket concept. The Huawei submission is now **Tiles**: see
-> [`README.md`](../../README.md) and [`docs/HACKTRIBE_TILES.md`](../HACKTRIBE_TILES.md). Kept for transparency only.
-
-# Aegis Pocket demo video (≤60 s)
+# Tiles demo video
 
 | File | What |
 |---|---|
-| `aegis-pocket-demo-60s.mp4` | The video: H.264, 1920×1080, 30 fps, silent AAC track, under 58 s, burned-in captions, title and end cards |
-| `cover.png` | 1920×1080 cover image (the title card, with the first Home screenshot in the phone frame) |
-| `captions.txt` / `captions.srt` | Timeline and caption of every beat (generated) |
+| `tiles-demo.mp4` | The demo: 34.2 s, 1920×1080, 30 fps, H.264 (yuv420p, faststart), 11.4 MB, AAC stereo music bed |
+| `captions.srt` | One caption per segment (English), same text as the burned-in captions plus the scene titles |
+| `poster.png` | 1920×1080 poster frame (outro card) |
 
-These files are produced by `scripts/pocket-video/record.sh`. They do not exist until it has been run against a
-running emulator.
+## What each segment shows
 
-## Prerequisites
+| Time (s) | What it shows | Real / simulated |
+|---|---|---|
+| 0.0–4.3 | Title: the Tiles mark assembles from tiles, wordmark and tagline | Motion graphics |
+| 4.3–8.1 | One phone, four people: Halina 78, Zosia 8, Michał (low vision), Daniel 29, each with an illustrative mini home | Motion graphics; personas fictional (footnote on screen) |
+| 8.1–9.2 | Section card “Shapeshift” | Motion graphics |
+| 9.2–16.1 | Onboarding “Who is this phone for?” → tap Senior → the home morphs into Halina’s home | Real app on the HarmonyOS 6.1.1 emulator |
+| 16.1–17.3 | Section card “Guardian” | Motion graphics |
+| 17.3–25.2 | Guardian: incoming demo call, red flags and scam risk, “Hang up. Kasia already knows.” | **Demo call (simulated)** — labelled on screen |
+| 25.2–29.6 | Built on HarmonyOS: the platform kits the app uses | Motion graphics; kits the app uses (haptics need a real device, as the card says) |
+| 29.6–34.2 | Outro: Tiles, HackYeah 2026 · Huawei — Imagine What’s Next, repository URL | Motion graphics |
 
-1. **Emulator running**: DevEco phone emulator `AegisPhone` (HarmonyOS 6.1.1(24)), started from DevEco Device Manager
-   or `/Applications/DevEco-Studio.app/Contents/tools/emulator/Emulator -start AegisPhone`. `hdc list targets` must
-   show it. The script never starts the emulator itself.
-2. **Signed `.hap`** at `entry/build/default/outputs/default/entry-default-signed.hap` (signing configured in DevEco,
-   then rebuilt). Or install it yourself and pass `--no-install`, or pass `--hap <path>`.
-3. Tools: `hdc` (found on `PATH` or at `/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc`;
-   override with `HDC=...`), `ffmpeg` + `ffprobe`, `uv` (Pillow is fetched into an ephemeral environment), `python3`.
-4. Optional: the **AI posture widget** (2x4) already placed on the first home-screen page. If it is not found, the
-   widget beat is left out (no caption claims it).
-5. Do not touch the emulator while the script drives it (about 90 s).
+## What is real and what is simulated
 
-## Run (one command, from the repository root)
+- **App footage is the real Tiles app** (`com.hackyeah.tiles`) running on the DevEco **HarmonyOS 6.1.1 (API 24) phone
+  emulator**. The emulator has no screen recorder, so app clips are bursts of full-resolution screenshots
+  (`snapshot_display`) re-timed to their real capture times, then composited into a drawn phone frame on the
+  "Living Light" gradient. Taps were injected with `uitest`; no touch indicator is drawn.
+- **Guardian**: the incoming call is a **demo call (simulated input)** built into the app (Polish script; the burned-in
+  caption gives the English gist); the red flags, risk score and the caregiver alert are computed on the phone by
+  explainable rules.
+- Ask Tiles (generative UI) and the caregiver approval flow exist in the app but are not shown in this cut.
+- **Personas** (Halina, Zosia, Michał, Daniel, Kasia) are fictional. Phone numbers and names in the footage are fictional.
+- The **"Built on HarmonyOS"** card lists only kits the app uses and that were verified on the emulator (see the
+  capability table in the main `README.md`). Scheduled reminders and spoken text-to-speech are deliberately not claimed.
+- Title, people, platform and outro cards are motion graphics (HTML/CSS rendered frame by frame in headless Chrome,
+  or ImageMagick + ffmpeg), not app footage.
+- Audio: a calm music bed and soft transition sounds, synthesised from scratch in code (additive/FM synthesis and filtered noise). No downloaded or copyrighted music.
 
-```bash
-scripts/pocket-video/record.sh
-```
+## How it was made / how to rebuild
 
-Variants:
+The video was assembled by a small set of scripts (kept outside the repository because they read the raw emulator
+captures):
 
-```bash
-scripts/pocket-video/record.sh --no-install          # app already installed
-scripts/pocket-video/record.sh --target 127.0.0.1:5555 # pick a target when several are connected
-scripts/pocket-video/record.sh --render-only         # re-encode from the last capture (no device needed)
-scripts/pocket-video/record.sh --dry-run             # no device: placeholder frames, output only in the build dir
-```
+1. **Record**: drive the app on the emulator with `hdc shell uitest uiInput …` while two loops call
+   `hdc shell snapshot_display`; pull the JPEGs and assemble them with ffmpeg `concat` using their real timestamps
+   (30 fps, optional `minterpolate`).
+2. **Frame**: a gradient plate (165°, `#EDF1FC → #F6F0FA → #FFF3EA`), a phone frame PNG with a transparent screen hole
+   and a rounded screen mask; footage is scaled to the screen rect, `alphamerge`d with the mask, overlaid on the plate
+   and the phone PNG on top. A slow push-in is done with the `perspective` filter (sub-pixel, eased).
+3. **Motion graphics**: HTML scenes using Manrope (`entry/src/main/resources/rawfile/fonts/`, OFL) and the app's
+   Living Light tokens, rendered deterministically frame by frame.
+4. **Edit**: all segments are normalised to 1920×1080/30 fps, trimmed or frozen to the EDL durations and joined with
+   0.6 s eased crossfades (`xfade=transition=custom`, smoothstep). Caption cards (Manrope, glass card) are overlaid
+   with a fade and a short eased slide. Final encode:
 
-Intermediate files go to `$POCKET_VIDEO_BUILD` (default `$TMPDIR/pocket-video-build`), never inside the repo:
-`raw/` (pulled screenshots), `capture.json` (frame times, beat labels, chosen caption variants), `drive.log`,
-`composed/` (stills) and `concat.txt`. `POCKET_VIDEO_WRAP` can prefix the render step with a wrapper command (for
-example a lock script on a low-memory machine).
+   ```sh
+   ffmpeg … -c:v libx264 -preset slow -crf 19 -profile:v high -pix_fmt yuv420p -movflags +faststart \
+     -c:a aac -b:a 128k tiles-demo.mp4
+   ```
 
-## What the script does
+To re-record on your own machine: install the signed `.hap` (see the main `README.md`), start the emulator, walk the
+flows listed in the table above (Settings → onboarding → Senior; Guardian → Demo call), and capture with `hdc shell snapshot_display -f /data/local/tmp/x.jpeg` in a loop.
 
-1. **Preflight**: finds `hdc`, checks `hdc list targets` and `hdc shell`, installs the `.hap` with `hdc install -r`
-   and checks that `com.hackyeah.aegispocket` is installed.
-2. **Drive** (`scripts/pocket-video/drive.py`, standard library only): force-stops and starts `EntryAbility` so the
-   mock data and its first simulated request (about 20 s after start) reset; allows the notification permission
-   dialog if shown; makes sure the app is in mock mode and the persona is Emily (admin). Controls are found by text
-   in `uitest dumpLayout` output; input uses `uitest uiInput click / swipe / text / keyEvent`. Shot list:
-   1. Home posture (time-lapse while waiting for the simulated request)
-   2. the in-app banner for the new mock request
-   3. notification shade (swipe down from the top left), tap the "Approval needed" notification
-   4. request detail scrolled to the "Why a human is asked" risk card and the untrusted agent note
-   5. Inbox → the seeded $50 MarketPulse Pro request
-   6. Approve → step-up: on the emulator, the app's labelled "Device authentication unavailable" fallback dialog
-   7. the fallback dialog's "Confirm" → toast → back to the inbox
-   8. Preview tab: "Load sample" (the built-in synthetic text: email, phone, PESEL, IBAN, card number), scrolled to the
-      redacted result. Typing is not used: on the emulator the first keyboard use opens the IME's own terms dialog,
-      which the script must not accept
-   9. Home key → the widget, if placed
-3. **Capture**: a background thread runs `hdc shell snapshot_display -f` in a loop (the DevEco emulator does not
-   support screen recording) and labels every frame with the active beat. Frames are pulled at the end.
-4. **Render** (`scripts/pocket-video/render.py`, Pillow + ffmpeg): each frame is placed in a phone frame centred on a
-   dark branded 1920×1080 background, with the beat title on the left, the caption on the right and the footer
-   "DevEco HarmonyOS emulator · HarmonyOS 6.1.1 (API 24) · mock data". Within a beat, frames play over 70 % of the
-   beat and the settled last frame holds for the rest; beats are joined with 0.3 s crossfades. Durations come from
-   `scripts/pocket-video/shots.json` and are scaled down if the total would exceed 57.5 s.
+## Superseded files
 
-## Captions are factual
-
-- Every product shot is labelled "mock data": requests, agents, amounts and posture numbers are simulated on the
-  device (`entry/src/main/ets/data/MockRepository.ets`).
-- The step-up beat says the emulator has no authenticator and shows the app's labelled manual fallback. If a real
-  system authentication sheet appears instead, the driver cancels it (nothing is approved) and the alternative
-  captions in `shots.json` (`variants.sheet`) are used.
-- If the notification is not found in the shade, the request is opened from the inbox and the caption says so
-  (`variants.banner`). If typing fails, the Preview caption says the built-in sample was used (`variants.sample`).
-- Edit captions in `scripts/pocket-video/shots.json`, then `--render-only` re-encodes without the device.
-
-## Limits
-
-- No voice-over. The voice-over script is in `docs/HACKTRIBE_POCKET.md`.
-- Screenshots come at a few frames per second, so motion is shown as a fast slideshow, not real-time video.
-- The driver's text matching assumes the emulator UI is in English (the permission dialog also accepts "允许").
-- Status: run on the DevEco HarmonyOS 6.1.1 (API 24) emulator on 2026-10-04 (`--no-install`, app built and signed with
-  `scripts/build-ohos-signed.sh`). Remove old Aegis notifications from the shade before a run: mock mode re-seeds on
-  start, so a stale notification would open "Request not found".
+`aegis-pocket-demo-60s.mp4`, `aegis-pocket-captions.srt`, `captions.txt` and `cover.png` belong to the earlier
+Aegis Pocket concept and are kept for transparency only (produced by `scripts/pocket-video/record.sh`).

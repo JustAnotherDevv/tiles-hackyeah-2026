@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "aegis-stack",
+      "runtimeExecutable": "make",
+      "runtimeArgs": ["-C", "aegis", "up"],
+      "port": 8787
+    }
+  ]
+}

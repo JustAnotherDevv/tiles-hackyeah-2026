@@ -1,0 +1,43 @@
+1
+00:00:00,000 --> 00:00:03,600
+Aegis Pocket: Approve AI agents, safely, from your pocket.
+
+2
+00:00:03,600 --> 00:00:08,600
+Posture at a glance: Pending approvals, threats blocked, personal data redacted and budget left. All numbers are mock data simulated on the device.
+
+3
+00:00:08,600 --> 00:00:12,600
+An agent asks: A simulated agent request arrives (mock data). The app posts a local notification and shows an in-app banner.
+
+4
+00:00:12,600 --> 00:00:16,800
+Open it from the shade: Tapping the notification opens that exact request through a WantAgent deep link.
+
+5
+00:00:16,800 --> 00:00:23,800
+Why a human is asked: A 0-100 risk score with plain-language reasons, computed on the phone. The agent's own note is labelled untrusted and never scored.
+
+6
+00:00:23,800 --> 00:00:27,800
+A $50 subscription: This one needs an admin. Acting as Emily (admin); a sponsor can never approve their own agent's request.
+
+7
+00:00:27,800 --> 00:00:34,000
+Step-up before approving: Approve first asks for face, fingerprint or PIN. The emulator has no authenticator, so the app shows its labelled manual fallback.
+
+8
+00:00:34,000 --> 00:00:38,000
+Decision recorded: Approved after the manual confirmation; the pending count drops. Denying never asks for authentication.
+
+9
+00:00:38,000 --> 00:00:45,400
+What data leaves: The built-in synthetic sample: email, phone, PESEL, IBAN and card number become [EMAIL_1], [PESEL_1]... placeholders, on the phone.
+
+10
+00:00:45,400 --> 00:00:49,600
+On the home screen: The AI posture widget (MOCK badge) shows what is waiting, updated by the app.
+
+11
+00:00:49,600 --> 00:00:54,000
+github.com/JustAnotherDevv/tiles-hackyeah-2026: Recorded on the DevEco HarmonyOS emulator. Requests, agents and numbers are mock data simulated on the device.
