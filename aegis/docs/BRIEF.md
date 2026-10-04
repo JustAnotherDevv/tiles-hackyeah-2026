@@ -44,7 +44,7 @@ No paid API keys provided → must run fully on local models + OSS; remote provi
 - Implementation agents work **in the same working tree** with **strict file ownership** (see CONTRACTS.md); they must not edit files owned by others, must not change dependency manifests (request deps in their report), and must not run git commands.
 
 ## Research (read the parts relevant to you)
-In `../research/goldman/` (relative to this file's parent repo, i.e. `/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/research/goldman/`):
+In `../research/goldman/` (relative to `aegis/`, i.e. `research/goldman/` at the monorepo root; local notes, not published):
 - `01-threat-model-controls.md` — OWASP LLM 2026 / Agentic ASI01–10 / MCP Top 10 / Agent Control Standard; 32 controls + MVP bundles with test cases.
 - `02-architecture-claude-code.md` — interception points, Claude Code gateway/hooks/MCP/managed settings details, streaming, policy hot reload (note: it proposed Go; we chose Python — reuse the design, not the language).
 - `03-building-blocks-models.md` — OSS to reuse, model shortlist with RAM/latency/licences, fail-open/closed design.

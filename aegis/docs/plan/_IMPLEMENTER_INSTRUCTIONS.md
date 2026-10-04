@@ -1,7 +1,7 @@
 # Instructions for implementation agents (read fully before coding)
 
 You are one of ~25 implementers building **Aegis** in parallel in ONE shared working tree at
-`/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis`. Final submission is Sun ~10:00 — this is a **hackathon demo**: it must look polished and the headline flows must really work end-to-end; the long tail may be simplified or convincingly stubbed (never fake the core demo flows: redaction, blocking, budgets, approvals, live policy edit, feed update).
+`aegis/` (the Aegis folder of the monorepo). Final submission is Sun ~10:00 — this is a **hackathon demo**: it must look polished and the headline flows must really work end-to-end; the long tail may be simplified or convincingly stubbed (never fake the core demo flows: redaction, blocking, budgets, approvals, live policy edit, feed update).
 
 ## Read first
 1. `docs/BRIEF.md`, `docs/CONTRACTS.md` (incl. the latest **Addendum** — binding), `docs/MASTER_PLAN.md`.
@@ -25,7 +25,7 @@ You are one of ~25 implementers building **Aegis** in parallel in ONE shared wor
 
 ## Handoff log (shared, append-only)
 `HANDOFF.md` at the repo root is the single entry point other agents use to resume work. **Never edit it with an editor.** Append one line when you start, at each major milestone, and when you finish, using a shell append only:
-`printf '%s\n' "- [$(date +%H:%M)] [<bundle-id>] <what you did / state / next step>" >> /Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis/HANDOFF.md`
+`printf '%s\n' "- [$(date +%H:%M)] [<bundle-id>] <what you did / state / next step>" >> HANDOFF.md`
 Keep lines short and factual (done task IDs, verification results, blockers) so an agent with no context can continue without redoing your work.
 
 ## Report

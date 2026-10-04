@@ -1,5 +1,9 @@
 # Live demo runbook: Aegis (4:30 target, 5:00 hard stop)
 
+> Paths and commands are relative to `aegis/` in the monorepo
+> [JustAnotherDevv/tiles-hackyeah-2026](https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis)
+> (`git clone … && cd tiles-hackyeah-2026/aegis`).
+
 > **Roles.** **Driver**: hands on keyboard, never talks. **Narrator**: talks, never touches the keyboard.
 > **Backup**: watches the clock, holds the backup video, handles Q&A follow-ups. With one presenter (finalist
 > pitch rule), the narrator also drives; rehearse that version too.

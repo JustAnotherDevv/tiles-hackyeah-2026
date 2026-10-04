@@ -4,6 +4,8 @@ Everything you need to run, test and try to break Aegis in about 5 minutes. Setu
 [README](../README.md#quick-start-clean-checkout); the short version:
 
 ```bash
+git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026
+cd tiles-hackyeah-2026/aegis           # Aegis lives in aegis/ of the monorepo; all paths below are relative to it
 make setup && make web && make up      # gateway :8787, feed :8790, mocks :8791-8794
 open http://127.0.0.1:8787/ui
 ```

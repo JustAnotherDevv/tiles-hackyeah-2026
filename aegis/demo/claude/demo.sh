@@ -34,6 +34,11 @@ case "$SCENE" in
     sed -n '3,6p' "$0"; exit 0 ;;
 esac
 
+# generated, gitignored profile (absolute paths of this checkout)
+ROOT="$(cd "$HERE/../.." && pwd)"
+(cd "$ROOT" && uv run --frozen python -m aegis.integrations.claude_code.profile \
+    --gateway-url "${AEGIS_URL:-http://127.0.0.1:8787}" --out "$HERE" --if-stale >/dev/null) \
+  || { [ -f "$SETTINGS" ] || { echo "cannot generate $SETTINGS (uv missing?)" >&2; exit 1; }; }
 [ -f "$HERE/project/.env" ] || "$HERE/reset.sh" >/dev/null
 [ "$SCENE" = "failclosed" ] && rm -f /tmp/aegis_failclosed_marker
 CLAUDE_BIN="${CLAUDE_BIN:-$(command -v claude || echo "$HOME/.local/bin/claude")}"

@@ -41,6 +41,11 @@ node_modules/
 !staging/feed-seed/keys/feed-public.key
 /keys/
 demo/claude/.agent_key
+# generated per checkout by aegis.integrations.claude_code.profile (absolute local paths);
+# demo/claude/settings.example.json is the committed reference
+/demo/claude/settings.json
+/demo/claude/settings.failclosed.json
+/demo/claude/settings.hardened.json
 
 # ---- spike artefacts (local paths, session ids)
 staging/**/logs/

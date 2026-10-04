@@ -27,8 +27,8 @@ mdls -raw -name kMDItemNumberOfPages docs/submission/out/Aegis_HackYeah2026_GS_A
 uv run --frozen python docs/submission/build.py --check --strict   # fails while any {{TBD}} is unresolved
 ```
 
-Then: fill team names/emails (`[NAME — EMAIL]` in HACKTRIBE.md, README.md and `deck/deck.html`), the repo
-URL (`[PUBLIC REPO URL]`), tick the claims table in HACKTRIBE.md §2, fill the build-status table in
+Then: team (`JustAnotherDevv`, GitHub handle only) and repo URL are filled in HACKTRIBE.md, README.md and
+`deck/deck.html`; add real names/emails only in the HackTribe form itself (never in the repo); tick the claims table in HACKTRIBE.md §2, fill the build-status table in
 [../architecture.md](../architecture.md#build-status), and copy real screenshots into `docs/assets/screens/`.
 
 ## Upload checklist

@@ -25,6 +25,16 @@ HackYeah 2026 · **Goldman Sachs: AI Control Layer** · runs fully offline on an
 
 ## Quick start (clean checkout)
 
+Aegis lives in the `aegis/` folder of the HackYeah 2026 monorepo
+[JustAnotherDevv/tiles-hackyeah-2026](https://github.com/JustAnotherDevv/tiles-hackyeah-2026) (the repo root
+is a separate HarmonyOS submission). Every command below runs from inside `aegis/`, and every path in these
+docs is relative to `aegis/`.
+
+```bash
+git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026
+cd tiles-hackyeah-2026/aegis
+```
+
 Requirements: macOS or Linux, [uv](https://docs.astral.sh/uv/) (Python 3.13 is installed by uv), Node 20+
 (only to build the dashboard), optional [Ollama](https://ollama.com) for the semantic controls.
 
@@ -261,4 +271,4 @@ measured stay as placeholders; we never publish an unmeasured number.
 - Threat references: OWASP Top 10 for LLM Applications 2026, OWASP Agentic Top 10 (ASI01–ASI10),
   OWASP MCP Top 10, OWASP Agent Control Standard v0.1.0. All test data is fictional or published test data.
 
-Team: [NAME — EMAIL] · [NAME — EMAIL] · [NAME — EMAIL] · [NAME — EMAIL]
+Team: [JustAnotherDevv](https://github.com/JustAnotherDevv) · Repository: <https://github.com/JustAnotherDevv/tiles-hackyeah-2026> (Aegis lives in [`aegis/`](https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis))

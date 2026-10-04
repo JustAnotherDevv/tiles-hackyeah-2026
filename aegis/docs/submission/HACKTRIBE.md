@@ -9,9 +9,12 @@
 ## 0. Before you paste
 
 - **Category:** Goldman Sachs: *AI Control Layer*.
-- **Team block:** HackTribe requires the **first name, surname and email of every member** inside the
-  description. Replace every `[NAME — EMAIL]`; delete unused lines (1–6 members). Every member needs a Discord
-  account before upload.
+- **Team block:** the repo copy names the team by GitHub handle only (`JustAnotherDevv`) so the public repo
+  holds no personal data.
+- **ACTION FOR YOU (not in the repo):** HackTribe itself requires the **first name, surname and email of every
+  member** inside the description. When you paste into HackTribe, replace the `Team:` line with your real
+  `First Surname — email` (1–6 members, one per line). Do **not** commit those details back here. Every member
+  needs a Discord account before upload. The 500-word limit includes those lines.
 - Re-run `uv run --frozen python docs/submission/build.py --check` after any edit.
 - Tick the claims table in §2 against the running build; strike any claim that is not true on Sunday.
 
@@ -51,13 +54,9 @@ Tech. Python 3.13, FastAPI, SQLite, RE2, ONNX Runtime, Ollama; React dashboard. 
 
 Measured (make eval, 1,234 labelled prompts incl. public held-out sets): {{TBD: eval.detection_rate}} attack detection ({{TBD: eval.heldout_detection}} on held-out sets) at {{TBD: eval.fpr}} false positives; gateway overhead p50 {{TBD: perf.overhead_p50_ms}} ms deterministic.
 
-How judges test it. make setup, make up, open http://127.0.0.1:8787/ui, then make test. Type anything into the Playground, edit config/policy.yaml and watch the next decision change, or publish a feed signature and replay the exploit. Guide: docs/JUDGES.md.
+How judges test it. Code: https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis. In aegis/: make setup, make up, open http://127.0.0.1:8787/ui, then make test. Type anything into the Playground, edit config/policy.yaml and watch the next decision change, or publish a feed signature and replay the exploit. Guide: aegis/docs/JUDGES.md.
 
-Team:
-[NAME — EMAIL]
-[NAME — EMAIL]
-[NAME — EMAIL]
-[NAME — EMAIL]
+Team: JustAnotherDevv
 ```
 <!-- description:end -->
 
@@ -86,11 +85,7 @@ Headline: customer data never leaves in clear text. PII, payment cards, Polish I
 
 Plus: hybrid deterministic and local-AI guardrails mapped to OWASP; hierarchical budgets with loop detection; org roles with approval routing; a signed threat feed of historical AI exploits; a live dashboard with hash-chained audit export; and a one-command self-test suite. Runs offline on Ollama.
 
-Team:
-[NAME — EMAIL]
-[NAME — EMAIL]
-[NAME — EMAIL]
-[NAME — EMAIL]
+Team: JustAnotherDevv
 ```
 <!-- checkpoint:end -->
 
@@ -123,8 +118,12 @@ The ≤ 60 s cut from [VIDEO_60S.md](VIDEO_60S.md), YouTube **Unlisted**; check 
 ### Repository URL
 
 ```text
-[PUBLIC REPO URL]
+https://github.com/JustAnotherDevv/tiles-hackyeah-2026
 ```
+
+Monorepo: Aegis lives in the `aegis/` folder (direct link:
+https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis); the repo root is the separate
+HarmonyOS submission. If HackTribe accepts a folder link, paste the direct link instead.
 
 Before pasting: repo public; README one-command start works from a clean clone; `reports/` holds the final
 `make test` results; no secrets in history (run `gitleaks detect` once; see HANDOFF known issues).
@@ -134,11 +133,11 @@ Before pasting: repo public; README one-command start works from a clean clone; 
 <!-- opening:start -->
 ```text
 Requirements: macOS or Linux, uv (installs Python 3.13), Node 20+ to build the dashboard, optional Ollama for the semantic controls.
-1. git clone [PUBLIC REPO URL] && cd aegis
+1. git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026 && cd tiles-hackyeah-2026/aegis
 2. make setup && make web && make up     # gateway :8787, threat feed :8790, mocks :8791-8794
 3. Open http://127.0.0.1:8787/ui and use the view-as switcher (owner u_katarzyna / admin u_emily / member u_piotr)
 4. make test                             # deterministic suite, no model needed
-5. Try to break it: Playground page; edit config/policy.yaml and resend; publish a signature in the feed editor at http://127.0.0.1:8790. Full guide: docs/JUDGES.md
+5. Try to break it: Playground page; edit config/policy.yaml and resend; publish a signature in the feed editor at http://127.0.0.1:8790. Full guide: aegis/docs/JUDGES.md
 Optional: make claude (Claude Code routed through Aegis with a demo settings profile; nothing machine-wide)
 ```
 <!-- opening:end -->

@@ -60,7 +60,11 @@ source `hook` and agent `claude-code@platform`.
 
 `uv run --frozen python -m aegis.integrations.claude_code.profile [--gateway-url URL] [--check]`
 writes `settings.json` (demo), `settings.failclosed.json`, `settings.hardened.json`, `mcp.json`,
-`.agent_key` (seed demo key, mode 600) - only under `demo/claude/`. It refuses `~/.claude`,
+`.agent_key` (seed demo key, mode 600) - only under `demo/claude/`. The three `settings*.json` files contain
+absolute paths of your checkout, so they are **generated, not committed** (gitignored); `run.sh` and
+`demo.sh` regenerate them on every launch
+(`uv run --frozen python -m aegis.integrations.claude_code.profile --if-stale`). `settings.example.json` shows
+the shape with an `${AEGIS_ROOT}` placeholder for reference only. It refuses `~/.claude`,
 `.claude/` dirs and managed-settings paths. `run.sh` launches
 `claude --settings demo/claude/settings.json --setting-sources project --mcp-config demo/claude/mcp.json --strict-mcp-config`,
 so user-level hooks/MCP servers cannot bypass or interfere. The production equivalent (managed

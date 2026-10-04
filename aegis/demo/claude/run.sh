@@ -21,11 +21,16 @@ case "${AEGIS_PROFILE:-demo}" in
   *) echo "unknown AEGIS_PROFILE=${AEGIS_PROFILE} (demo|failclosed|hardened)" >&2; exit 64 ;;
 esac
 
-# 1. profile up to date for this checkout (absolute paths are machine-specific)
+# 1. profile up to date for this checkout (absolute paths are machine-specific, so settings*.json are
+#    generated here and gitignored; settings.example.json shows the shape with ${AEGIS_ROOT})
 if command -v uv >/dev/null 2>&1; then
   (cd "$ROOT" && uv run --frozen python -m aegis.integrations.claude_code.profile \
       --gateway-url "$GW" --out "$HERE" --if-stale >/dev/null) \
-    || echo "warning: profile regeneration failed; using the committed profile" >&2
+    || echo "warning: profile regeneration failed; using the existing generated profile" >&2
+fi
+if [ ! -f "$SETTINGS" ]; then
+  echo "missing $SETTINGS - generate it: (cd $ROOT && uv run --frozen python -m aegis.integrations.claude_code.profile)" >&2
+  exit 1
 fi
 # 2. demo workspace (.env + hidden SETUP.md line are generated at runtime)
 [ -f "$HERE/project/.env" ] || "$HERE/reset.sh" >/dev/null

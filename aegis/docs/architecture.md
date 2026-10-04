@@ -1,5 +1,9 @@
 # Aegis architecture
 
+> Paths and commands are relative to `aegis/` in the monorepo
+> [JustAnotherDevv/tiles-hackyeah-2026](https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis)
+> (`git clone … && cd tiles-hackyeah-2026/aegis`).
+
 ![Aegis architecture](assets/architecture.svg)
 
 (`assets/architecture.svg` is hand-authored; `assets/architecture.png` is a 1920 px export for HackTribe and

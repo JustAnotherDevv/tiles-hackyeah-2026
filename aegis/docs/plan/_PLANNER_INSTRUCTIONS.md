@@ -1,11 +1,11 @@
 # Instructions for workstream planners (read fully before starting)
 
-You are one of 20 planners working in parallel on **Aegis**, an AI Control Layer for the Goldman Sachs task at HackYeah 2026 (final submission Sun ~10:00; it must look polished and the headline flows must really work; the long tail may be simplified). Project root: `/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/aegis`.
+You are one of 20 planners working in parallel on **Aegis**, an AI Control Layer for the Goldman Sachs task at HackYeah 2026 (final submission Sun ~10:00; it must look polished and the headline flows must really work; the long tail may be simplified). Project root: `aegis/` (this folder of the monorepo).
 
 ## Read first
 1. `docs/BRIEF.md` — requirements, product vision (incl. org roles & approvals), fixed tech decisions.
 2. `docs/CONTRACTS.md` — **binding**: repo tree, ownership map (your owned paths), core types, plug-in auto-discovery, policy schema, HTTP API + JSON shapes, SQLite schema, SSE events, ports, parallel-work rules. It is long: read its overview and the sections relevant to your workstream carefully.
-3. Your research references in `/Users/nevvdevv/Development/hackathons/_october_2026/hackyeah/research/goldman/`.
+3. Your research references in `../research/goldman/` (local notes, not published).
 4. **Pre-built, tested artifacts in `aegis/staging/` — REUSE them** (read the README / FINDINGS / RESULTS relevant to you):
    - `staging/models/` — benchmarked ONNX + Ollama wrappers (`pi_classifier.py`, `ner_pii.py`, `embedder.py`, `ollama_guard.py` with the corrected Qwen3Guard prompt, `ollama_judge.py`), `RESULTS.md` with thresholds; models already downloaded to `aegis/models/`; Ollama aliases `aegis-guard`, `aegis-judge`.
    - `staging/pii/` — deterministic detectors + validators + normalization with offset mapping + placeholder vault + streaming rehydrator + ≥400 labelled fixtures + precision/recall tests (may still be finishing).

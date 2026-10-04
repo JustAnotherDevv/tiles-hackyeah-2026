@@ -24,7 +24,7 @@
 ## Slide 1: Cover
 
 **Aegis** · *Local-first guardrails for every agent call* · Redact locally · Govern centrally · Prove
-continuously · Goldman Sachs · AI Control Layer · HackYeah 2026 · team `[NAME — EMAIL]` · `[PUBLIC REPO URL]`.
+continuously · Goldman Sachs · AI Control Layer · HackYeah 2026 · team `JustAnotherDevv` · `https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis`.
 
 *Notes (10 s):* "Aegis is a control layer on every call an AI agent makes. It redacts customer data locally
 before anything leaves, governs spend and actions by role, and proves it with tests and an audit trail."
@@ -144,7 +144,7 @@ are reported as rates, not as a fake 100 %."
 - Standards: OWASP ACS dispositions, OWASP LLM 2026 / ASI / MCP tags, OCSF, OpenTelemetry GenAI.
 - Supports evidence for GDPR minimisation/pseudonymisation, PCI DSS v4.0.1, EU AI Act logging & oversight,
   DORA third-party controls (supports, does not certify).
-- Try to break it: Playground · `make test` · edit `config/policy.yaml` · `[PUBLIC REPO URL]`.
+- Try to break it: Playground · `make test` · edit `config/policy.yaml` · `https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis`.
 
 *Notes (30 s):* "Redaction has to be local, so the data plane is a sidecar; policy, feed, approvals and
 audit are central. Please try to break it."
