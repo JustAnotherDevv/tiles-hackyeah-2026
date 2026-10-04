@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Idea mockups</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<style>
+:root{--page:#ecebe5;--surface-1:#f5f4ef;--surface-2:#fff;--border:rgba(0,0,0,.12);--border-strong:rgba(0,0,0,.22);--text-primary:#1f1e1d;--text-secondary:#5f5e5a}
+@media (prefers-color-scheme:dark){:root{--page:#1f1e1d;--surface-1:#262624;--surface-2:#30302e;--border:rgba(255,255,255,.12);--border-strong:rgba(255,255,255,.22);--text-primary:#f1efe8;--text-secondary:#b4b2a9}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text-primary);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:780px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;font-weight:600;margin:0 0 4px}
+h2{font-size:19px;font-weight:600;margin:40px 0 4px}
+.batch{font-size:13px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em;margin:40px 0 0}
+.cap{font-size:14px;color:var(--text-secondary);margin:0 0 12px}
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;background:var(--surface-1);border-radius:12px;padding:16px}
+@media (max-width:620px){.row{grid-template-columns:1fr}}
+.ph{background:var(--surface-2);border:.5px solid var(--border);border-radius:22px;padding:14px 12px;display:flex;flex-direction:column;gap:8px}
+.lbl{font-size:12px;color:var(--text-secondary);text-align:center;margin:0 0 6px}
+.t{border-radius:12px;padding:10px 12px}
+.big{font-size:20px;font-weight:600;line-height:1.15;margin:0}
+.sm{font-size:11px;margin:2px 0 0}
+.ic{aspect-ratio:1;border-radius:8px;background:var(--surface-1);border:.5px solid var(--border)}
+.av{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;margin-right:-6px;border:2px solid var(--surface-2)}
+.watch{align-items:center;justify-content:center;min-height:230px}
+</style>
+</head>
+<body>
+<main>
+<h1>Idea mockups</h1>
+<p class="cap">HackYeah 2026 · Huawei "Imagine What's Next" · concept mocks, not final UI</p>
+
+<p class="batch">Batch 2 · sensors, sound, wearables, AR, multi-device</p>
+
+<h2>1. Roll Map</h2>
+<p class="cap">Wheelchairs sense bumps and kerbs while rolling and paint a live accessibility map of the city.</p>
+<div class="row">
+<div><p class="lbl">Rolling now</p><div class="ph">
+<div style="background:#26215C;border-radius:12px;padding:8px"><svg viewBox="0 0 160 80" width="100%"><polyline fill="none" stroke="#AFA9EC" stroke-width="2" points="0,40 10,38 20,42 30,39 40,41 48,40 52,12 56,66 60,40 70,41 80,36 84,46 88,34 92,48 96,33 100,47 104,35 108,45 112,40 122,41 132,39 142,42 152,40 160,41"/><circle cx="52" cy="12" r="4" fill="#E24B4A"/></svg></div>
+<div class="t" style="background:#E24B4A"><p class="sm" style="color:#FCEBEB;margin:0">Kerb detected</p><p class="big" style="color:#FCEBEB">4.2 cm</p></div>
+<div class="t" style="background:#EF9F27"><p class="sm" style="color:#412402;margin:0">Surface now: cobblestones</p></div>
+</div></div>
+<div><p class="lbl">City map, 312 rides</p><div class="ph">
+<div style="background:var(--surface-1);border-radius:12px;padding:6px"><svg viewBox="0 0 160 170" width="100%"><line x1="10" y1="30" x2="150" y2="30" stroke="#1D9E75" stroke-width="6"/><line x1="10" y1="85" x2="80" y2="85" stroke="#E24B4A" stroke-width="6"/><line x1="80" y1="85" x2="150" y2="85" stroke="#EF9F27" stroke-width="6"/><line x1="10" y1="140" x2="150" y2="140" stroke="#1D9E75" stroke-width="6"/><line x1="30" y1="20" x2="30" y2="150" stroke="#1D9E75" stroke-width="6"/><line x1="80" y1="20" x2="80" y2="150" stroke="#E24B4A" stroke-width="6"/><line x1="130" y1="20" x2="130" y2="150" stroke="#1D9E75" stroke-width="6"/><polyline fill="none" stroke="#534AB7" stroke-width="3" stroke-dasharray="6 4" points="30,150 30,30 130,30 130,140"/><circle cx="30" cy="150" r="6" fill="#534AB7"/><circle cx="130" cy="140" r="6" fill="#534AB7"/></svg></div>
+<div class="t" style="background:#534AB7"><p class="sm" style="color:#CECBF6;margin:0">Smooth route</p><p style="font-size:14px;font-weight:600;margin:2px 0 0;color:#EEEDFE">+2 min, avoids 3 kerbs</p></div>
+</div></div>
+<div><p class="lbl">Watch</p><div class="ph watch">
+<div style="width:150px;height:150px;border-radius:50%;background:#E24B4A;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><i class="ti ti-alert-triangle" style="font-size:24px;color:#FCEBEB"></i><p style="font-size:18px;font-weight:600;margin:0;color:#FCEBEB">Kerb in 20 m</p><p style="font-size:12px;margin:0;color:#F7C1C1">Ramp on the left</p></div>
+</div></div>
+</div>
+
+<h2>2. Night Watch</h2>
+<p class="cap">An old phone becomes a private, on-device asthma night monitor for kids.</p>
+<div class="row">
+<div><p class="lbl">Old phone, Zosia's room</p><div class="ph">
+<div class="t" style="background:#042C53;padding:14px 12px"><p class="sm" style="color:#85B7EB;margin:0"><i class="ti ti-microphone"></i> Listening · on this phone only</p><svg viewBox="0 0 160 60" width="100%" style="margin-top:8px"><polyline fill="none" stroke="#378ADD" stroke-width="2" points="0,30 15,29 30,31 45,30 60,29 70,30 74,8 78,52 82,12 86,48 90,30 105,31 120,29 135,30 160,30"/></svg><p class="big" style="color:#E6F1FB;margin-top:8px">02:14</p><p class="sm" style="color:#B5D4F4">Coughing fit · 3rd tonight</p></div>
+</div></div>
+<div><p class="lbl">Parent's watch</p><div class="ph watch">
+<div style="width:150px;height:150px;border-radius:50%;background:#185FA5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><i class="ti ti-lungs" style="font-size:24px;color:#E6F1FB"></i><p style="font-size:16px;font-weight:600;margin:0;color:#E6F1FB">Zosia · 3 min</p><p style="font-size:12px;margin:0;color:#B5D4F4">Longest fit this week</p></div>
+</div></div>
+<div><p class="lbl">Morning report</p><div class="ph">
+<div class="t" style="background:var(--surface-1)"><p class="sm" style="color:var(--text-secondary);margin:0 0 6px">Last night, 22:00 to 07:00</p><svg viewBox="0 0 160 36" width="100%"><rect x="0" y="14" width="160" height="8" rx="4" fill="#B5D4F4"/><rect x="66" y="6" width="3" height="24" fill="#185FA5"/><rect x="70" y="6" width="3" height="24" fill="#185FA5"/><rect x="74" y="6" width="3" height="24" fill="#185FA5"/><rect x="40" y="10" width="3" height="16" fill="#378ADD"/><rect x="120" y="6" width="3" height="24" fill="#185FA5"/><rect x="125" y="6" width="3" height="24" fill="#185FA5"/></svg><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary)"><span>22</span><span>02</span><span>07</span></div></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="t" style="background:#378ADD"><p class="big" style="color:#042C53">14</p><p class="sm" style="color:#042C53">coughs</p></div><div class="t" style="background:#EF9F27"><p class="big" style="color:#412402">+40%</p><p class="sm" style="color:#412402">vs last week</p></div></div>
+<div class="t" style="background:#185FA5;text-align:center"><p style="font-size:13px;font-weight:600;margin:0;color:#E6F1FB">Share with Dr Nowak</p></div>
+</div></div>
+</div>
+
+<h2>3. Calm Pulse</h2>
+<p class="cap">A panic-attack companion: the watch notices a heart-rate spike at rest and guides breathing through vibration.</p>
+<div class="row">
+<div><p class="lbl">Watch, during an episode</p><div class="ph watch">
+<div style="width:160px;height:160px;border-radius:50%;background:#3C3489;display:flex;align-items:center;justify-content:center"><div style="width:120px;height:120px;border-radius:50%;border:6px solid #AFA9EC;display:flex;flex-direction:column;align-items:center;justify-content:center"><p style="font-size:16px;font-weight:600;margin:0;color:#EEEDFE">Breathe in</p><p style="font-size:12px;margin:2px 0 0;color:#CECBF6">4 · feel the buzz</p></div></div>
+<p style="font-size:12px;margin:8px 0 0;color:var(--text-secondary)"><i class="ti ti-heartbeat"></i> 128 bpm, sitting still</p>
+</div></div>
+<div><p class="lbl">Phone, live</p><div class="ph">
+<div class="t" style="background:var(--surface-1)"><p class="sm" style="color:var(--text-secondary);margin:0 0 4px">Heart rate, last 8 min</p><svg viewBox="0 0 160 80" width="100%"><line x1="38" y1="0" x2="38" y2="80" stroke="#AFA9EC" stroke-width="1" stroke-dasharray="3 3"/><polyline fill="none" stroke="#7F77DD" stroke-width="3" points="0,40 12,22 24,10 36,8 50,14 64,24 80,34 96,44 112,52 128,58 144,62 160,63"/></svg><p class="sm" style="color:var(--text-secondary);margin:0">Breathing started here</p></div>
+<div class="t" style="background:#534AB7"><p class="sm" style="color:#CECBF6;margin:0">Episode eased</p><p class="big" style="color:#EEEDFE">128 → 84</p><p class="sm" style="color:#CECBF6">in 6 minutes</p></div>
+</div></div>
+<div><p class="lbl">Patterns</p><div class="ph">
+<div class="t" style="background:#AFA9EC"><p class="sm" style="color:#26215C;margin:0">This month</p><p class="big" style="color:#26215C">5 episodes</p></div>
+<div class="t" style="background:var(--surface-1)"><div style="display:flex;align-items:flex-end;gap:5px;height:60px"><div style="flex:1;height:90%;background:#7F77DD;border-radius:3px"></div><div style="flex:1;height:20%;background:#CECBF6;border-radius:3px"></div><div style="flex:1;height:30%;background:#CECBF6;border-radius:3px"></div><div style="flex:1;height:15%;background:#CECBF6;border-radius:3px"></div><div style="flex:1;height:25%;background:#CECBF6;border-radius:3px"></div><div style="flex:1;height:5%;background:#CECBF6;border-radius:3px"></div><div style="flex:1;height:5%;background:#CECBF6;border-radius:3px"></div></div><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary);margin-top:4px"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div></div>
+<div class="t" style="background:#534AB7;text-align:center"><p style="font-size:13px;font-weight:600;margin:0;color:#EEEDFE">Export for my therapist</p></div>
+</div></div>
+</div>
+
+<h2>4. Face Pilot</h2>
+<p class="cap">Hands-free phone control with head movement and facial expressions, for people who can't use their hands.</p>
+<div class="row">
+<div><p class="lbl">Front camera</p><div class="ph">
+<div style="background:#085041;border-radius:12px;padding:8px"><svg viewBox="0 0 160 150" width="100%"><ellipse cx="80" cy="75" rx="46" ry="58" fill="none" stroke="#5DCAA5" stroke-width="2"/><path d="M 52 50 Q 62 40 72 50" fill="none" stroke="#FAC775" stroke-width="3"/><path d="M 88 50 Q 98 40 108 50" fill="none" stroke="#FAC775" stroke-width="3"/><circle cx="62" cy="62" r="3" fill="#9FE1CB"/><circle cx="98" cy="62" r="3" fill="#9FE1CB"/><circle cx="80" cy="82" r="3" fill="#9FE1CB"/><path d="M 62 102 Q 80 114 98 102" fill="none" stroke="#9FE1CB" stroke-width="2"/><circle cx="52" cy="50" r="2.5" fill="#FAC775"/><circle cx="72" cy="50" r="2.5" fill="#FAC775"/><circle cx="88" cy="50" r="2.5" fill="#FAC775"/><circle cx="108" cy="50" r="2.5" fill="#FAC775"/></svg></div>
+<div class="t" style="background:#EF9F27"><p class="sm" style="color:#412402;margin:0"><i class="ti ti-arrow-up"></i> Eyebrows raised = tap</p></div>
+<div class="t" style="background:#5DCAA5"><p class="sm" style="color:#04342C;margin:0"><i class="ti ti-mood-smile"></i> Smile = back</p></div>
+</div></div>
+<div><p class="lbl">Sending a message</p><div class="ph">
+<div style="background:var(--surface-1);border-radius:12px;padding:10px"><p class="sm" style="color:var(--text-secondary);margin:0">To Mum</p><p style="font-size:13px;margin:6px 0 0">I'll be home by 6. Love you.</p></div>
+<div style="display:flex;justify-content:flex-end;position:relative;padding:10px 0"><div class="t" style="background:#1D9E75;padding:10px 22px"><p style="font-size:14px;font-weight:600;margin:0;color:#E1F5EE">Send</p></div><div style="position:absolute;right:20px;top:2px;width:40px;height:40px;border-radius:50%;border:4px solid #EF9F27;border-right-color:transparent"></div></div>
+<div class="t" style="background:#FAC775"><p class="sm" style="color:#633806;margin:0">Hold your gaze to send · 70%</p></div>
+</div></div>
+<div><p class="lbl">Calibration</p><div class="ph">
+<div class="t" style="background:#0F6E56"><p class="sm" style="color:#9FE1CB;margin:0">Set up for Michał</p><p class="big" style="color:#E1F5EE;font-size:17px">Head range: small</p></div>
+<div class="t" style="background:var(--surface-1)"><p style="font-size:12px;margin:0;line-height:1.8"><i class="ti ti-check"></i> Eyebrows · tap<br><i class="ti ti-check"></i> Smile · back<br><i class="ti ti-x"></i> Blink · off (dry eyes)</p></div>
+<div class="t" style="background:#5DCAA5"><p class="sm" style="color:#04342C;margin:0">Cursor speed adapts to fatigue</p></div>
+</div></div>
+</div>
+
+<h2>5. Memory Palace</h2>
+<p class="cap">AR flashcards pinned to real spots in your room — the method of loci, made literal.</p>
+<div class="row">
+<div><p class="lbl">AR, your room</p><div class="ph">
+<div style="background:#4B1528;border-radius:12px;padding:6px"><svg viewBox="0 0 160 180" width="100%"><rect x="96" y="20" width="44" height="50" fill="none" stroke="#ED93B1" stroke-width="2"/><line x1="118" y1="20" x2="118" y2="70" stroke="#ED93B1" stroke-width="1.5"/><rect x="14" y="120" width="90" height="34" rx="6" fill="none" stroke="#ED93B1" stroke-width="2"/><rect x="14" y="110" width="18" height="44" rx="5" fill="none" stroke="#ED93B1" stroke-width="2"/><line x1="132" y1="100" x2="132" y2="160" stroke="#ED93B1" stroke-width="2"/><path d="M 120 100 L 144 100 L 138 84 L 126 84 Z" fill="none" stroke="#ED93B1" stroke-width="2"/><rect x="30" y="86" width="64" height="24" rx="5" fill="#FAC775"/><text x="62" y="102" text-anchor="middle" font-size="11" font-weight="600" fill="#633806">le chat · cat</text><rect x="88" y="2" width="68" height="22" rx="5" fill="#5DCAA5"/><text x="122" y="17" text-anchor="middle" font-size="11" font-weight="600" fill="#04342C">la fenêtre</text><rect x="96" y="60" width="62" height="22" rx="5" fill="#AFA9EC"/><text x="127" y="75" text-anchor="middle" font-size="11" font-weight="600" fill="#26215C">la lumière</text></svg></div>
+</div></div>
+<div><p class="lbl">Walk and recall</p><div class="ph">
+<div class="t" style="background:#D4537E"><p class="sm" style="color:#4B1528;margin:0"><i class="ti ti-walk"></i> Next stop: the window</p><p class="big" style="color:#FBEAF0;font-size:17px">What did you leave here?</p></div>
+<div class="t" style="background:var(--surface-1)"><p style="font-size:13px;margin:0">la porte</p></div>
+<div class="t" style="background:#5DCAA5"><p style="font-size:13px;font-weight:600;margin:0;color:#04342C"><i class="ti ti-check"></i> la fenêtre</p></div>
+<div class="t" style="background:var(--surface-1)"><p style="font-size:13px;margin:0">le mur</p></div>
+</div></div>
+<div><p class="lbl">Progress</p><div class="ph">
+<div class="t" style="background:#993556"><p class="sm" style="color:#F4C0D1;margin:0">Matura French</p><p class="big" style="color:#FBEAF0">120 words</p><p class="sm" style="color:#F4C0D1">placed in 3 rooms</p></div>
+<div class="t" style="background:#FAC775"><p class="sm" style="color:#633806;margin:0">Recall after 3 days</p><p class="big" style="color:#412402">88%</p></div>
+<div class="t" style="background:var(--surface-1)"><p class="sm" style="color:var(--text-secondary);margin:0"><i class="ti ti-clock"></i> Kitchen walk due tonight</p></div>
+</div></div>
+</div>
+
+<h2>6. Crowd Canvas</h2>
+<p class="cap">Every phone in a stadium becomes one pixel of a giant synced display — and turns into exit arrows in an emergency.</p>
+<div class="row">
+<div><p class="lbl">Section B, from the pitch</p><div class="ph">
+<div style="background:#2C2C2A;border-radius:12px;padding:8px"><svg id="cc1" viewBox="0 0 160 130" width="100%"></svg></div>
+<div class="t" style="background:#E24B4A"><p class="sm" style="color:#FCEBEB;margin:0">Live · 9 412 phones in sync</p></div>
+</div></div>
+<div><p class="lbl">One fan's phone</p><div class="ph">
+<div style="background:#E24B4A;border-radius:12px;min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><p style="font-size:13px;margin:0;color:#FCEBEB">You are pixel</p><p style="font-size:28px;font-weight:600;margin:0;color:#FCEBEB">4 812</p><p style="font-size:12px;margin:0;color:#F7C1C1">Row 14 · seat 22</p></div>
+<div class="t" style="background:var(--surface-1)"><p class="sm" style="color:var(--text-secondary);margin:0"><i class="ti ti-refresh"></i> Synced to 3 ms</p></div>
+</div></div>
+<div><p class="lbl">Evacuation mode</p><div class="ph">
+<div style="background:#2C2C2A;border-radius:12px;padding:8px"><svg id="cc2" viewBox="0 0 160 130" width="100%"></svg></div>
+<div class="t" style="background:#1D9E75;display:flex;align-items:center;gap:10px"><i class="ti ti-arrow-left" style="font-size:24px;color:#E1F5EE"></i><div><p style="font-size:14px;font-weight:600;margin:0;color:#E1F5EE">Exit this way</p><p class="sm" style="color:#E1F5EE;margin:0">Gate 3 · 40 m</p></div></div>
+</div></div>
+</div>
+
+<p class="batch">Batch 1 · agent and adaptive-interface ideas</p>
+
+<h2>Multiplayer agent (original idea)</h2>
+<p class="cap">Your agent plans with your friends' agents; bold generated tiles; private calendars.</p>
+<div class="row">
+<div><p class="lbl">Your phone</p><div class="ph">
+<div style="background:var(--surface-1);border-radius:12px;padding:8px 10px;font-size:12px;line-height:1.4"><i class="ti ti-microphone"></i> Dinner Friday with Ola and Kuba, vegan, near Kazimierz, under 80 zł</div>
+<div class="t" style="background:#D85A30"><p class="sm" style="color:#4A1B0C;margin:0">Plan</p><p class="big" style="color:#FAECE7">Friday dinner</p><p class="sm" style="color:#FAECE7">Kazimierz · vegan · 80 zł</p></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="t" style="background:#534AB7"><p class="sm" style="color:#CECBF6;margin:0 0 6px">Crew</p><span class="av" style="background:#FAC775;color:#633806">D</span><span class="av" style="background:#ED93B1;color:#72243E">O</span><span class="av" style="background:#5DCAA5;color:#085041">K</span></div><div class="t" style="background:#5DCAA5"><p class="big" style="color:#04342C">3</p><p class="sm" style="color:#085041">spots found</p></div></div>
+</div></div>
+<div><p class="lbl">Ola's phone</p><div class="ph">
+<div class="t" style="background:#D4537E"><p class="sm" style="color:#4B1528;margin:0">Incoming agent</p><p class="big" style="color:#FBEAF0">Daniel's agent is planning dinner</p></div>
+<div class="t" style="background:var(--surface-1)"><p style="font-size:12px;margin:0;line-height:1.45">Free Friday after 19:00. Share that?</p><p class="sm" style="color:var(--text-secondary);margin-top:6px"><i class="ti ti-lock"></i> Only free or busy leaves your phone</p></div>
+<div class="t" style="background:#1D9E75;text-align:center"><p style="font-size:13px;font-weight:600;margin:0;color:#E1F5EE">Share</p></div>
+</div></div>
+<div><p class="lbl">Everyone, live</p><div class="ph">
+<div class="t" style="background:#7F77DD"><p class="sm" style="color:#EEEDFE;margin:0">Vote</p><p style="font-size:12px;margin:6px 0 0;color:#EEEDFE">Veganda · 19:30</p><div style="height:8px;border-radius:4px;background:#FAC775;margin-top:3px"></div><p style="font-size:12px;margin:6px 0 0;color:#EEEDFE">Krowarzywa · 20:00</p><div style="height:8px;width:33%;border-radius:4px;background:#FAC775;margin-top:3px"></div></div>
+<div class="t" style="background:#D85A30"><p class="big" style="color:#FAECE7;font-size:17px">Book Veganda 19:30</p><div style="margin-top:8px;background:#4A1B0C;border-radius:8px;padding:6px;text-align:center;font-size:13px;font-weight:600;color:#FAECE7">Confirm</div></div>
+</div></div>
+</div>
+
+<h2>Guardian</h2>
+<p class="cap">Scam shield for seniors: live red flags during a suspicious call, family alerted, call stays on-device.</p>
+<div class="row">
+<div><p class="lbl">Grandma's phone, live call</p><div class="ph">
+<div style="background:var(--surface-1);border-radius:12px;padding:8px 10px"><p class="sm" style="color:var(--text-secondary);margin:0"><i class="ti ti-phone-incoming"></i> Unknown number · 2:14</p><p style="font-size:12px;margin:6px 0 0;line-height:1.4">"Grandma, it's Tomek, I had an accident, I need money today. Don't tell Mum."</p></div>
+<div class="t" style="background:#E24B4A"><p class="sm" style="color:#FCEBEB;margin:0"><i class="ti ti-alert-triangle"></i> Asks for money</p></div>
+<div class="t" style="background:#EF9F27"><p class="sm" style="color:#412402;margin:0"><i class="ti ti-clock"></i> Pressure: right now</p></div>
+<div class="t" style="background:#501313"><p class="sm" style="color:#F7C1C1;margin:0">Scam risk</p><p class="big" style="color:#FCEBEB">92%</p></div>
+</div></div>
+<div><p class="lbl">What grandma sees</p><div class="ph">
+<div class="t" style="background:#E24B4A;padding:16px 12px"><i class="ti ti-shield-x" style="font-size:24px;color:#FCEBEB"></i><p class="big" style="color:#FCEBEB;font-size:24px;margin-top:6px">This looks like a scam</p><p style="font-size:13px;color:#FCEBEB;margin:8px 0 0">Hang up. Kasia already knows.</p></div>
+<div class="t" style="background:#501313;text-align:center;padding:14px"><p style="font-size:18px;font-weight:600;margin:0;color:#FCEBEB">Hang up</p></div>
+</div></div>
+<div><p class="lbl">Kasia's phone</p><div class="ph">
+<div class="t" style="background:#D85A30"><p class="sm" style="color:#4A1B0C;margin:0">Guardian alert</p><p class="big" style="color:#FAECE7">Mum may be on a scam call</p></div>
+<div class="t" style="background:#1D9E75;text-align:center"><p style="font-size:14px;font-weight:600;margin:0;color:#E1F5EE">Call Mum now</p></div>
+</div></div>
+</div>
+
+<h2>Shapeshift</h2>
+<p class="cap">A phone that redesigns itself around the person using it; family approve changes.</p>
+<div class="row">
+<div><p class="lbl">Before</p><div class="ph">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px"><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div><div class="ic"></div></div>
+<div class="t" style="background:#FAC775"><p class="sm" style="color:#633806;margin:0">11 missed taps today</p></div>
+</div></div>
+<div><p class="lbl">After, Halina's morning</p><div class="ph">
+<div class="t" style="background:#EF9F27;padding:16px 12px"><p class="big" style="color:#412402;font-size:24px">Pills</p><p style="font-size:13px;margin:4px 0 0;color:#633806">8:00 · tap when taken</p></div>
+<div class="t" style="background:#534AB7;padding:16px 12px"><p class="big" style="color:#EEEDFE;font-size:24px">Call Kasia</p></div>
+<div class="t" style="background:#5DCAA5;padding:16px 12px"><p class="big" style="color:#04342C;font-size:24px">14° and rain</p></div>
+</div></div>
+<div><p class="lbl">Kasia's phone</p><div class="ph">
+<div class="t" style="background:#7F77DD"><p class="big" style="color:#EEEDFE;font-size:17px">3 changes this week</p></div>
+<div class="t" style="background:var(--surface-1)"><p style="font-size:12px;margin:0;line-height:1.7">Hide 14 unused apps<br>Text 40% bigger<br>Read tiles aloud</p></div>
+<div class="t" style="background:#534AB7;text-align:center"><p style="font-size:14px;font-weight:600;margin:0;color:#EEEDFE">Approve all</p></div>
+</div></div>
+</div>
+
+<h2>Table Talk</h2>
+<p class="cap">A two-sided interpreter lying flat between doctor and patient; summary sent to the patient's watch.</p>
+<div class="row">
+<div><p class="lbl">Lying on the desk</p><div class="ph">
+<div class="t" style="background:#378ADD;transform:rotate(180deg)"><p class="sm" style="color:#042C53;margin:0">Patient side</p><p style="font-size:14px;font-weight:600;margin:4px 0 0;color:#E6F1FB">Приймайте одну таблетку двічі на день.</p></div>
+<div class="t" style="background:#1D9E75"><p class="sm" style="color:#04342C;margin:0">Doctor side</p><p style="font-size:14px;font-weight:600;margin:4px 0 0;color:#E1F5EE">Czy mogę je brać przy jedzeniu?</p></div>
+<div class="t" style="background:#FAC775"><p class="sm" style="color:#633806;margin:0">Confirm back: 1 pill, 2x a day?</p></div>
+</div></div>
+<div><p class="lbl">Summary, sent to patient</p><div class="ph">
+<div class="t" style="background:#185FA5"><p class="sm" style="color:#B5D4F4;margin:0">Підсумок візиту</p><p class="big" style="color:#E6F1FB;font-size:17px">Visit summary in Ukrainian</p></div>
+<div class="t" style="background:#5DCAA5"><p class="sm" style="color:#085041;margin:0">Ibuprofen 400 mg</p><p class="big" style="color:#04342C;font-size:17px">2× на день · 7 днів</p></div>
+</div></div>
+<div><p class="lbl">Patient's watch</p><div class="ph watch">
+<div style="width:150px;height:150px;border-radius:50%;background:#0C447C;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px"><p style="font-size:12px;margin:0;color:#B5D4F4">08:00</p><p style="font-size:18px;font-weight:600;margin:0;color:#E6F1FB">1 таблетка</p><div style="margin-top:6px;background:#5DCAA5;border-radius:16px;padding:4px 16px;font-size:12px;font-weight:600;color:#04342C">Готово</div></div>
+</div></div>
+</div>
+
+<h2>Rehab Mirror</h2>
+<p class="cap">Home physio with live pose tracking; the physiotherapist sees every patient's progress.</p>
+<div class="row">
+<div><p class="lbl">Camera, live</p><div class="ph">
+<div style="background:#04342C;border-radius:12px;padding:8px"><svg viewBox="0 0 160 170" width="100%"><circle cx="80" cy="22" r="11" fill="none" stroke="#9FE1CB" stroke-width="3"/><line x1="80" y1="33" x2="80" y2="88" stroke="#9FE1CB" stroke-width="3"/><line x1="80" y1="48" x2="56" y2="72" stroke="#9FE1CB" stroke-width="3"/><line x1="80" y1="48" x2="104" y2="72" stroke="#9FE1CB" stroke-width="3"/><line x1="80" y1="88" x2="72" y2="160" stroke="#9FE1CB" stroke-width="3"/><line x1="80" y1="88" x2="112" y2="104" stroke="#FAC775" stroke-width="4"/><line x1="112" y1="104" x2="110" y2="148" stroke="#FAC775" stroke-width="4"/><circle cx="112" cy="104" r="5" fill="#EF9F27"/><text x="120" y="96" font-size="13" font-weight="600" fill="#FAC775">92°</text></svg></div>
+<div class="t" style="background:#1D9E75"><p class="sm" style="color:#04342C;margin:0">Reps</p><p class="big" style="color:#E1F5EE">7 / 12</p></div>
+</div></div>
+<div><p class="lbl">Anna's progress</p><div class="ph">
+<div class="t" style="background:#0F6E56"><p class="sm" style="color:#9FE1CB;margin:0">After knee surgery</p><p class="big" style="color:#E1F5EE">Day 9 of 42</p></div>
+<div class="t" style="background:#FAC775"><p class="sm" style="color:#633806;margin:0">6-day streak</p></div>
+</div></div>
+<div><p class="lbl">Physio's tablet</p><div class="ph">
+<div class="t" style="background:#1D9E75"><p style="font-size:14px;font-weight:600;margin:0;color:#E1F5EE">Anna · on track</p></div>
+<div class="t" style="background:#EF9F27"><p style="font-size:14px;font-weight:600;margin:0;color:#412402">Marek · missed 2 days</p></div>
+<div class="t" style="background:#E24B4A"><p style="font-size:14px;font-weight:600;margin:0;color:#FCEBEB">Piotr · pain flagged</p></div>
+</div></div>
+</div>
+
+<h2>Time Window</h2>
+<p class="cap">See Kraków's Main Square in any century; class quests with a live teacher view.</p>
+<div class="row">
+<div><p class="lbl">Camera, Main Square</p><div class="ph">
+<div style="background:#633806;border-radius:12px;padding:8px"><svg viewBox="0 0 160 120" width="100%"><rect x="18" y="52" width="124" height="44" fill="#BA7517"/><rect x="18" y="44" width="124" height="8" fill="#EF9F27"/><rect x="74" y="26" width="12" height="18" fill="#EF9F27"/><rect x="0" y="96" width="160" height="24" fill="#854F0B"/><rect x="20" y="88" width="34" height="14" rx="3" fill="#FAC775"/><text x="112" y="16" font-size="14" font-weight="600" fill="#FAEEDA">1890</text></svg></div>
+<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-secondary)"><span style="color:#BA7517;font-weight:600">1890</span><span>1939</span><span>1960</span><span>now</span></div>
+</div></div>
+<div><p class="lbl">Guide and quest</p><div class="ph">
+<div class="t" style="background:#EF9F27"><p style="font-size:13px;margin:0;color:#412402;line-height:1.4">In 1890, horse-drawn trams ran right past where you're standing.</p></div>
+<div class="t" style="background:#D85A30"><p class="big" style="color:#FAECE7;font-size:17px">Find the building that changed most</p><p class="sm" style="color:#FAECE7;margin-top:6px">3 of 5 found</p></div>
+</div></div>
+<div><p class="lbl">Teacher's phone</p><div class="ph">
+<div class="t" style="background:#1D9E75"><p style="font-size:13px;font-weight:600;margin:0;color:#E1F5EE">Team green · 5/5</p></div>
+<div class="t" style="background:#EF9F27"><p style="font-size:13px;font-weight:600;margin:0;color:#412402">Team amber · 3/5</p></div>
+<div class="t" style="background:#D4537E"><p style="font-size:13px;font-weight:600;margin:0;color:#4B1528">Team pink · 1/5</p></div>
+</div></div>
+</div>
+
+</main>
+<script>
+const heart=[[0,1,1,0,0,0,1,1,0,0],[1,1,1,1,0,1,1,1,1,0],[1,1,1,1,1,1,1,1,1,0],[1,1,1,1,1,1,1,1,1,0],[0,1,1,1,1,1,1,1,0,0],[0,0,1,1,1,1,1,0,0,0],[0,0,0,1,1,1,0,0,0,0],[0,0,0,0,1,0,0,0,0,0]];
+const ns="http://www.w3.org/2000/svg";
+function grid(id,fn){const s=document.getElementById(id);for(let r=0;r<8;r++)for(let c=0;c<11;c++){const x=4+c*14.2,y=4+r*15.5;const e=document.createElementNS(ns,"rect");e.setAttribute("x",x);e.setAttribute("y",y);e.setAttribute("width",10);e.setAttribute("height",12);e.setAttribute("rx",2);s.appendChild(e);fn(e,r,c,x,y,s);}}
+grid("cc1",(e,r,c)=>e.setAttribute("fill",c<10&&heart[r][c]?"#E24B4A":"#444441"));
+grid("cc2",(e,r,c,x,y,s)=>{e.setAttribute("fill","#0F6E56");const t=document.createElementNS(ns,"text");t.setAttribute("x",x+5);t.setAttribute("y",y+10);t.setAttribute("text-anchor","middle");t.setAttribute("fill","#9FE1CB");t.setAttribute("font-size","10");t.textContent=c<5?"←":"→";s.appendChild(t);});
+</script>
+</body>
+</html>

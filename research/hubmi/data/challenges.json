@@ -1,0 +1,332 @@
+{
+ "_meta": {
+  "description": "Obszary wyzwań społecznych dla HubMI: 8 obszarów z „Mapy Wyzwań Społecznych” ROPS Kraków + kontekst regionalny Małopolski. Podsumowania to własne parafrazy; liczby z podanych źródeł.",
+  "created": "2026-10-04",
+  "caveats": [
+   "Mapa Wyzwań zawiera dane ogólnopolskie, nie małopolskie – to lista obszarów tematycznych (dla IWS 2.0), nie mapa geograficzna (verify, czy organizatorzy udostępnią inną wersję).",
+   "Persony z Mapy Wyzwań pominięte (fikcyjne postacie).",
+   "Licencja PDF nieoznaczona – cytować ze źródłem; nie kopiować obszernie (verify)."
+  ],
+  "further_reading_urls": [
+   "https://stat.gov.pl/obszary-tematyczne/osoby-starsze/osoby-starsze/sytuacja-osob-starszych-w-polsce-w-2022-roku,2,5.html",
+   "https://www.pfron.org.pl/fileadmin/Badania_i_analizy/2024/2024-08-07_Raport_koncowy/Raport_koncowy_Badanie_potrzeb_ON_w_Polsce_2024.pdf",
+   "https://mlodeglowy.pl/wp-content/uploads/2023/04/MLODE-GLOWY.-Otwarcie-o-zdrowiu-psychicznym_-Raport-final.pdf",
+   "https://www.szlachetnapaczka.pl/raport-o-samotnosci/",
+   "https://stat.gov.pl/obszary-tematyczne/warunki-zycia/ubostwo-pomoc-spoleczna/zasieg-ubostwa-ekonomicznego-w-polsce-w-2023-roku,14,11.html",
+   "https://rops.krakow.pl/badania-analizy-raporty/raporty-z-badan"
+  ]
+ },
+ "challenges": [
+  {
+   "id": "ch-00",
+   "area": "Małopolska – kontekst regionalny (dane liczbowe)",
+   "summary": "Starzenie się populacji, ujemny przyrost naturalny od 2020 r., spadek liczby klientów pomocy społecznej i niedobór usług opiekuńczych; duże zróżnicowanie między powiatami.",
+   "key_facts": [
+    {
+     "text": "Ludność 22 powiatów łącznie: 3 429 342 (BDL, 2025)",
+     "source": "GUS BDL zm. 72305",
+     "url": "https://bdl.stat.gov.pl/api/v1/variables/72305"
+    },
+    {
+     "text": "W 2024 r. z pomocy społecznej skorzystało 93,8 tys. osób (2,7% mieszkańców), o 60% mniej niż w 2012 r.",
+     "source": "Raport OZPS za 2024",
+     "url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf"
+    },
+    {
+     "text": "Mediana wieku 41,6 lat (2024), najmłodsze województwo w kraju; przyrost naturalny −1,8‰",
+     "source": "Raport OZPS za 2024",
+     "url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf"
+    },
+    {
+     "text": "Zbyt mało usług opiekuńczych w stosunku do szacowanego zapotrzebowania (2024)",
+     "source": "Raport OZPS za 2024 – wnioski",
+     "url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf"
+    },
+    {
+     "text": "Najwięcej beneficjentów pomocy społecznej na 10 tys. (2024): Powiat gorlicki (567), Powiat nowosądecki (561), Powiat limanowski (522)",
+     "source": "GUS BDL zm. 1548717",
+     "url": "https://bdl.stat.gov.pl/api/v1/variables/1548717"
+    },
+    {
+     "text": "Największy spadek ludności 2022–2025: Powiat olkuski (-2.77%), Powiat m. Tarnów (-2.68%), Powiat chrzanowski (-2.45%)",
+     "source": "GUS BDL zm. 72305 (obliczenia własne)",
+     "url": "https://bdl.stat.gov.pl/api/v1/variables/72305"
+    },
+    {
+     "text": "Najwyższa stopa bezrobocia rejestrowanego (2025): Powiat dąbrowski (12.0), Powiat tatrzański (9.0), Powiat nowosądecki (8.2)",
+     "source": "GUS BDL zm. 60270",
+     "url": "https://bdl.stat.gov.pl/api/v1/variables/60270"
+    }
+   ],
+   "key_challenges": [
+    "starzenie się i depopulacja powiatów wiejskich",
+    "usługi opiekuńcze i deinstytucjonalizacja (Regionalny Plan Rozwoju Usług Społecznych)",
+    "rosnący udział osób z niepełnosprawnościami i przewlekle chorych wśród klientów pomocy społecznej"
+   ],
+   "tags": [
+    "demografia",
+    "depopulacja",
+    "usługi społeczne"
+   ],
+   "related_library_areas": [],
+   "source_name": "ROPS Kraków – Raport OZPS za 2024; GUS BDL",
+   "source_url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf",
+   "data_scope": "Małopolska"
+  },
+  {
+   "id": "ch-01",
+   "area": "Rodzina i piecza zastępcza",
+   "summary": "Za mało rodzin zastępczych spowalnia deinstytucjonalizację; słaba współpraca powiat–gmina; do placówek trafiają małe dzieci i liczne rodzeństwa, często z niepełnosprawnościami.",
+   "key_facts": [
+    {
+     "text": "Liczba dzieci w pieczy zastępczej wzrosła o 3,5% (2023 vs 2022), dane ogólnopolskie",
+     "source": "GUS, Piecza zastępcza w 2023 r. (cyt. w Mapie Wyzwań)"
+    }
+   ],
+   "key_challenges": [
+    "pozyskiwanie i weryfikacja kandydatów na rodziny zastępcze",
+    "współpraca międzypowiatowa w systemie pieczy",
+    "nierozdzielanie rodzeństwa",
+    "skracanie pobytu w pieczy i szybsze kierowanie do docelowej formy opieki",
+    "spójne standardy w ośrodkach adopcyjnych"
+   ],
+   "tags": [
+    "rodziny",
+    "dzieci",
+    "piecza zastępcza",
+    "deinstytucjonalizacja"
+   ],
+   "related_library_areas": [
+    "Dzieci, młodzież i rodzina"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-02",
+   "area": "Bezdomność",
+   "summary": "Rośnie grupa młodych osób w kryzysie bezdomności (0–25 lat), często „niewidocznych”; brakuje oferty dla nastolatków i usamodzielnianych wychowanków placówek.",
+   "key_facts": [],
+   "key_challenges": [
+    "wsparcie dla młodych bezdomnych i niepełnoletnich",
+    "luka w przekazaniu wsparcia po opuszczeniu placówki opiekuńczo-wychowawczej",
+    "dostosowanie noclegowni i schronisk do młodych",
+    "odbudowa więzi rodzinnych i społecznych"
+   ],
+   "tags": [
+    "osoby bezdomne",
+    "młodzież",
+    "usamodzielnienie"
+   ],
+   "related_library_areas": [
+    "Osoby w kryzysie bezdomności"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-03",
+   "area": "Niepełnosprawność",
+   "summary": "Osoby z niepełnosprawnościami (14,3% ludności wg NSP 2021) najbardziej potrzebują mieszkań, rehabilitacji, pracy i dostępnej informacji; kluczowe jest przejście z edukacji do dorosłości i pracy.",
+   "key_facts": [
+    {
+     "text": "5,4 mln osób z niepełnosprawnościami w Polsce, 14,3% ludności (NSP 2021)",
+     "source": "GUS NSP 2021 (cyt. w Mapie Wyzwań)"
+    },
+    {
+     "text": "Najbardziej niezaspokojona potrzeba: dostęp do informacji",
+     "source": "PFRON, Badanie potrzeb osób niepełnosprawnych 2024"
+    }
+   ],
+   "key_challenges": [
+    "dostęp do rynku pracy",
+    "edukacja dająca samodzielność",
+    "relacje społeczne i wsparcie emocjonalne",
+    "dostępność techniczna i samodzielne przemieszczanie się",
+    "rehabilitacja i opieka",
+    "dostosowanie mieszkań"
+   ],
+   "tags": [
+    "osoby z niepełnosprawnością",
+    "dostępność",
+    "rynek pracy",
+    "mieszkalnictwo wspomagane"
+   ],
+   "related_library_areas": [
+    "Osoby o ograniczonej mobilności",
+    "Osoby z niepełnosprawnością sensoryczną",
+    "Osoby z niepełnosprawnością intelektualną",
+    "Rynek pracy"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-04",
+   "area": "Ubóstwo",
+   "summary": "Ubóstwo skrajne objęło 6,6% gospodarstw (2023, +2 pp r/r); najbardziej narażeni: rolnicy, mieszkańcy wsi, osoby utrzymujące się ze świadczeń; rośnie zjawisko pracujących biednych.",
+   "key_facts": [
+    {
+     "text": "Ubóstwo skrajne: 6,6% gospodarstw domowych w Polsce w 2023 r.",
+     "source": "GUS, Zasięg ubóstwa ekonomicznego w Polsce w 2023 r."
+    },
+    {
+     "text": "Ubóstwo skrajne wśród rolników 14,1%, wśród rencistów 8,4% (2023)",
+     "source": "GUS (cyt. w Mapie Wyzwań)"
+    }
+   ],
+   "key_challenges": [
+    "ubóstwo dzieci (żłobki, przedszkola)",
+    "ubóstwo seniorów i osób z niepełnosprawnościami",
+    "pracujący biedni i drobni rolnicy",
+    "zatrudnienie socjalne i spółdzielczość socjalna",
+    "ubóstwo energetyczne",
+    "niedożywienie"
+   ],
+   "tags": [
+    "ubóstwo",
+    "mieszkańcy wsi",
+    "ekonomia społeczna"
+   ],
+   "related_library_areas": [
+    "Rynek pracy"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-05",
+   "area": "Integracja cudzoziemców",
+   "summary": "Potrzebny równy dostęp migrantów do usług publicznych, asysta kulturowa i tłumacze, integracja dzieci w szkołach, wsparcie zawodowe i psychiczne oraz przeciwdziałanie stereotypom.",
+   "key_facts": [],
+   "key_challenges": [
+    "równy dostęp do usług społecznych",
+    "tłumacze i asystenci kulturowi",
+    "integracja dzieci migrantów w edukacji",
+    "rynek pracy i uznawanie kwalifikacji",
+    "zdrowie psychiczne cudzoziemców",
+    "postawy wolne od stereotypów"
+   ],
+   "tags": [
+    "cudzoziemcy",
+    "integracja",
+    "edukacja"
+   ],
+   "related_library_areas": [
+    "Cudzoziemcy"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-06",
+   "area": "Zdrowie",
+   "summary": "Główne wyzwania to choroby krążenia, udary, nowotwory i rosnąca liczba chorób otępiennych; samotność starszych osób nasilona po pandemii; potrzeba profilaktyki i opieki długoterminowej.",
+   "key_facts": [],
+   "key_challenges": [
+    "edukacja prozdrowotna i profilaktyka",
+    "równy dostęp do opieki zdrowotnej",
+    "opieka długoterminowa dla starzejącego się społeczeństwa",
+    "zdrowie dzieci i młodzieży",
+    "świadomość zdrowia psychicznego"
+   ],
+   "tags": [
+    "zdrowie",
+    "profilaktyka",
+    "opieka długoterminowa",
+    "demencja"
+   ],
+   "related_library_areas": [
+    "Zdrowie i medycyna",
+    "Seniorzy"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-07",
+   "area": "Zdrowie psychiczne",
+   "summary": "Rośnie liczba prób samobójczych wśród dzieci i młodzieży; nadmierne korzystanie z ekranów, FOMO; niskie finansowanie psychiatrii (ok. 3% wydatków NFZ) i stygmatyzacja ograniczają dostęp do pomocy.",
+   "key_facts": [
+    {
+     "text": "Opieka psychiatryczna to ok. 3% wydatków NFZ",
+     "source": "OECD, Polska: Profil systemu ochrony zdrowia 2023 (cyt. w Mapie Wyzwań)"
+    }
+   ],
+   "key_challenges": [
+    "edukacja o zdrowiu psychicznym (dzieci, młodzież, seniorzy)",
+    "kompetencje rodziców w rozpoznawaniu sygnałów kryzysu",
+    "przejście na środowiskowy model opieki",
+    "przeciwdziałanie stygmatyzacji"
+   ],
+   "tags": [
+    "zdrowie psychiczne",
+    "młodzież",
+    "rodzice",
+    "profilaktyka"
+   ],
+   "related_library_areas": [
+    "Dzieci, młodzież i rodzina",
+    "Zdrowie i medycyna"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  },
+  {
+   "id": "ch-08",
+   "area": "Seniorzy",
+   "summary": "Największe problemy seniorów: zdrowie, samotność, finanse i cyfryzacja; bariery architektoniczne, wielolekowość i zbyt mała podaż usług opiekuńczych w gminach.",
+   "key_facts": [
+    {
+     "text": "Udział ludności w wieku poprodukcyjnym w Małopolsce wzrósł z 18,6% (2015) do 21,8% (2024)",
+     "source": "Raport OZPS za 2024 (za US Kraków)",
+     "url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf"
+    },
+    {
+     "text": "Indeks starości w Małopolsce 120 (65+ na 100 osób 0–14), w Polsce 141 (2024)",
+     "source": "Raport OZPS za 2024",
+     "url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf"
+    },
+    {
+     "text": "Najwyższy współczynnik obciążenia demograficznego: pow. miechowski i m. Tarnów (78), najniższy Kraków (64)",
+     "source": "Raport OZPS za 2024",
+     "url": "https://rops.krakow.pl/mpliki/PS/BA/Raport_OZPS_za_rok_2024.pdf"
+    },
+    {
+     "text": "Najwyższy odsetek 65+ w 2025 (BDL): Powiat m. Tarnów (25.5), Powiat olkuski (24.1), Powiat miechowski (23.9)",
+     "source": "GUS BDL, zm. 634989",
+     "url": "https://bdl.stat.gov.pl/api/v1/variables/634989"
+    }
+   ],
+   "key_challenges": [
+    "dostosowanie usług zdrowotnych i opiekuńczych, także z użyciem technologii",
+    "projektowanie uniwersalne i mieszkalnictwo senioralne",
+    "bezpieczne stosowanie leków (wielolekowość)",
+    "aktywizacja i integracja seniorów",
+    "kompetencje cyfrowe seniorów",
+    "dostęp do usług opiekuńczych w gminach"
+   ],
+   "tags": [
+    "seniorzy",
+    "samotność",
+    "wykluczenie cyfrowe",
+    "usługi opiekuńcze",
+    "opiekunowie nieformalni"
+   ],
+   "related_library_areas": [
+    "Seniorzy",
+    "Zdrowie i medycyna"
+   ],
+   "source_name": "ROPS Kraków, Dział Innowacji Społecznych – „Mapa Wyzwań Społecznych” (IWS 2.0, XI 2024)",
+   "source_url": "https://rops.krakow.pl/mpliki/IS/IWS_20/za._nr_2._Mapa_Wyzwa_Spoecznych.pdf",
+   "data_scope": "dane ogólnopolskie (zgodnie z zastrzeżeniem w dokumencie), chyba że wskazano inaczej"
+  }
+ ]
+}

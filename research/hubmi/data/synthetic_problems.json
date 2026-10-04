@@ -1,0 +1,400 @@
+{
+ "_meta": {
+  "label": "SYNTHETIC – dane fikcyjne do testów matchmakingu HubMI; nie są to prawdziwe zgłoszenia ani dane osobowe",
+  "created": "2026-10-04",
+  "author": "wygenerowane przez AI (Claude) na podstawie obszarów z Mapy Wyzwań i wskaźników BDL",
+  "author_type_values": [
+   "mieszkaniec",
+   "NGO",
+   "gmina"
+  ]
+ },
+ "items": [
+  {
+   "id": "syn-001",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Szczurowa",
+   "teryt_gminy": "1202072",
+   "powiat": "Powiat brzeski",
+   "text": "Moja mama ma 82 lata i mieszka sama na wsi, 6 km od najbliższego sklepu i przychodni. Autobus jeździ dwa razy dziennie. Ostatnio coraz częściej zapomina o lekach i nie chce wychodzić z domu. Ja pracuję w Krakowie i nie mam jak codziennie przyjeżdżać. Czy jest jakaś forma pomocy na miejscu?",
+   "expected_tags": [
+    "seniorzy",
+    "samotność",
+    "usługi opiekuńcze",
+    "transport",
+    "opiekunowie nieformalni",
+    "wielolekowość"
+   ]
+  },
+  {
+   "id": "syn-002",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Nowy Targ",
+   "teryt_gminy": "1211092",
+   "powiat": "Powiat nowotarski",
+   "text": "Prowadzimy klub seniora w mieście. Uczestnicy chcą korzystać z e-recepty, bankowości internetowej i wideorozmów z wnukami za granicą, ale boją się oszustw i nie radzą sobie ze smartfonami. Szukamy sprawdzonej metody nauki dostosowanej do osób 70+.",
+   "expected_tags": [
+    "seniorzy",
+    "wykluczenie cyfrowe",
+    "kompetencje cyfrowe",
+    "bezpieczeństwo w sieci"
+   ]
+  },
+  {
+   "id": "syn-003",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Dąbrowa Tarnowska",
+   "teryt_gminy": "1204023",
+   "powiat": "Powiat dąbrowski",
+   "text": "Gmina odnotowuje rosnącą liczbę młodych osób wyjeżdżających za pracą, a wśród pozostałych mieszkańców rośnie udział osób starszych. Szkoła w jednej z wsi może zostać zamknięta. Szukamy pomysłów, jak zatrzymać młodych i jednocześnie zapewnić wsparcie seniorom.",
+   "expected_tags": [
+    "depopulacja",
+    "młodzież",
+    "seniorzy",
+    "rynek pracy",
+    "obszary wiejskie"
+   ]
+  },
+  {
+   "id": "syn-004",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Kraków",
+   "teryt_gminy": "1261011",
+   "powiat": "Powiat m. Kraków",
+   "text": "Mój syn ma 15 lat, od pół roku prawie nie wychodzi z pokoju, gra całe noce i przestał chodzić na trening. Na wizytę u psychiatry dziecięcego w ramach NFZ czekamy kilka miesięcy. Nie wiem, jak z nim rozmawiać i gdzie szukać pomocy teraz.",
+   "expected_tags": [
+    "zdrowie psychiczne",
+    "młodzież",
+    "rodzice",
+    "uzależnienie od ekranów",
+    "dostęp do usług"
+   ]
+  },
+  {
+   "id": "syn-005",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Nowy Sącz",
+   "teryt_gminy": "1262011",
+   "powiat": "Powiat m. Nowy Sącz",
+   "text": "Pracujemy z młodzieżą w szkołach średnich. Nauczyciele zgłaszają przypadki samookaleczeń i myśli samobójczych, a uczniowie wstydzą się prosić o pomoc. Chcemy wprowadzić program profilaktyki i wczesnego reagowania, który angażuje też rodziców.",
+   "expected_tags": [
+    "zdrowie psychiczne",
+    "młodzież",
+    "profilaktyka",
+    "nauczyciele",
+    "rodzice",
+    "stygmatyzacja"
+   ]
+  },
+  {
+   "id": "syn-006",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Miechów",
+   "teryt_gminy": "1208053",
+   "powiat": "Powiat miechowski",
+   "text": "W naszym powiecie jest jeden z najwyższych w regionie udziałów osób 65+. Brakuje opiekunek i usług opiekuńczych, a lista oczekujących do DPS rośnie. Chcielibyśmy rozwijać usługi w miejscu zamieszkania zamiast opieki instytucjonalnej.",
+   "expected_tags": [
+    "seniorzy",
+    "usługi opiekuńcze",
+    "deinstytucjonalizacja",
+    "opieka długoterminowa"
+   ]
+  },
+  {
+   "id": "syn-007",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Limanowa",
+   "teryt_gminy": "1207072",
+   "powiat": "Powiat limanowski",
+   "text": "Opiekuję się mężem po udarze od dwóch lat. Jestem wyczerpana, nie mam nawet kiedy pójść do lekarza. Nikt mnie nie zastąpi nawet na kilka godzin. Czy istnieją formy opieki wytchnieniowej w naszej okolicy?",
+   "expected_tags": [
+    "opiekunowie nieformalni",
+    "opieka wytchnieniowa",
+    "osoby chore",
+    "rehabilitacja"
+   ]
+  },
+  {
+   "id": "syn-008",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Tarnów",
+   "teryt_gminy": "1216092",
+   "powiat": "Powiat tarnowski",
+   "text": "Prowadzimy warsztaty dla dorosłych osób z niepełnosprawnością intelektualną. Nasi uczestnicy po 25. roku życia nie mają szans na pracę, a rodzice martwią się, co stanie się z nimi, gdy zabraknie opiekunów. Szukamy rozwiązań dotyczących zatrudnienia wspomaganego i mieszkalnictwa.",
+   "expected_tags": [
+    "osoby z niepełnosprawnością intelektualną",
+    "rynek pracy",
+    "mieszkalnictwo wspomagane",
+    "rodzice"
+   ]
+  },
+  {
+   "id": "syn-009",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Zakopane",
+   "teryt_gminy": "1217011",
+   "powiat": "Powiat tatrzański",
+   "text": "Poruszam się na wózku. W mojej miejscowości urzędy, przychodnia i sklepy mają schody, a przewoźnicy busów nie mają podjazdów. Zimą praktycznie nie wychodzę z domu. Kto może pomóc w poprawie dostępności?",
+   "expected_tags": [
+    "osoby z niepełnosprawnością ruchową",
+    "dostępność",
+    "transport",
+    "bariery architektoniczne"
+   ]
+  },
+  {
+   "id": "syn-010",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Gorlice",
+   "teryt_gminy": "1205042",
+   "powiat": "Powiat gorlicki",
+   "text": "Wśród klientów ośrodka pomocy społecznej rośnie udział osób z niepełnosprawnościami i przewlekle chorych. Pracownicy socjalni są przeciążeni, a mieszkańcy wsi mają daleko do jakichkolwiek usług. Szukamy rozwiązań, które pozwolą lepiej koordynować wsparcie.",
+   "expected_tags": [
+    "kadra pomocy społecznej",
+    "osoby chore",
+    "koordynacja usług",
+    "obszary wiejskie",
+    "osoby z niepełnosprawnością"
+   ]
+  },
+  {
+   "id": "syn-011",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Oświęcim",
+   "teryt_gminy": "1213062",
+   "powiat": "Powiat oświęcimski",
+   "text": "Do naszej świetlicy przychodzą dzieci z Ukrainy, które słabo mówią po polsku i nie mają kolegów w klasie. Rodzice pracują po kilkanaście godzin. Potrzebujemy narzędzi do integracji dzieci i wsparcia językowego.",
+   "expected_tags": [
+    "cudzoziemcy",
+    "dzieci",
+    "integracja",
+    "edukacja",
+    "język polski"
+   ]
+  },
+  {
+   "id": "syn-012",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Wieliczka",
+   "teryt_gminy": "1219053",
+   "powiat": "Powiat wielicki",
+   "text": "Jestem słabosłysząca. W przychodni i urzędzie nie ma tłumacza języka migowego ani pętli indukcyjnej. Rejestracja jest tylko telefoniczna, więc nie mogę sama umówić wizyty.",
+   "expected_tags": [
+    "osoby z niepełnosprawnością słuchu",
+    "dostępność",
+    "komunikacja",
+    "zdrowie"
+   ]
+  },
+  {
+   "id": "syn-013",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Chrzanów",
+   "teryt_gminy": "1203033",
+   "powiat": "Powiat chrzanowski",
+   "text": "Działamy na rzecz osób niewidomych i słabowidzących. Nasi podopieczni chcieliby uprawiać sport i korzystać z kultury, ale oferta lokalna nie jest dla nich dostosowana. Szukamy sprawdzonych rozwiązań z innych miejsc.",
+   "expected_tags": [
+    "osoby z niepełnosprawnością wzroku",
+    "kultura",
+    "sport",
+    "dostępność"
+   ]
+  },
+  {
+   "id": "syn-014",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Kraków",
+   "teryt_gminy": "1261011",
+   "powiat": "Powiat m. Kraków",
+   "text": "W mieście rośnie liczba młodych osób w kryzysie bezdomności, w tym byłych wychowanków placówek opiekuńczo-wychowawczych. Noclegownie nie są dostosowane do potrzeb osób w wieku 18–25 lat. Szukamy innowacyjnych form wsparcia.",
+   "expected_tags": [
+    "osoby bezdomne",
+    "młodzież",
+    "usamodzielnienie",
+    "piecza zastępcza"
+   ]
+  },
+  {
+   "id": "syn-015",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Bochnia",
+   "teryt_gminy": "1201022",
+   "powiat": "Powiat bocheński",
+   "text": "Wychowuję sama troje dzieci, w tym jedno z autyzmem. Rodzeństwo czuje się pomijane, a ja nie wiem, jak dzielić uwagę. W naszej okolicy nie ma grup wsparcia dla rodzin.",
+   "expected_tags": [
+    "rodziny",
+    "rodzice",
+    "dzieci",
+    "autyzm",
+    "wsparcie rodziny"
+   ]
+  },
+  {
+   "id": "syn-016",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Proszowice",
+   "teryt_gminy": "1214053",
+   "powiat": "Powiat proszowicki",
+   "text": "Mamy wielu seniorów samotnie mieszkających na wsiach i mało wolontariuszy. Chcemy uruchomić system sąsiedzkiej pomocy i teleopieki, ale nie wiemy, od czego zacząć i jak zdobyć finansowanie.",
+   "expected_tags": [
+    "seniorzy",
+    "teleopieka",
+    "wolontariat",
+    "pomoc sąsiedzka",
+    "finansowanie"
+   ]
+  },
+  {
+   "id": "syn-017",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Myślenice",
+   "teryt_gminy": "1209033",
+   "powiat": "Powiat myślenicki",
+   "text": "Prowadzimy dzienny dom dla seniorów. Coraz więcej uczestników ma objawy otępienia. Szukamy prostych narzędzi do terapii pamięci i aktywizacji, które mogą stosować nasi opiekunowie bez specjalistycznego sprzętu.",
+   "expected_tags": [
+    "seniorzy",
+    "osoby z demencją",
+    "terapia",
+    "aktywizacja"
+   ]
+  },
+  {
+   "id": "syn-018",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Olkusz",
+   "teryt_gminy": "1212053",
+   "powiat": "Powiat olkuski",
+   "text": "Mój ojciec przyjmuje kilkanaście leków od różnych lekarzy i suplementy z reklam. Ostatnio trafił do szpitala z powodu interakcji leków. Jak można pomóc seniorom bezpiecznie przyjmować leki?",
+   "expected_tags": [
+    "seniorzy",
+    "wielolekowość",
+    "zdrowie",
+    "opiekunowie nieformalni"
+   ]
+  },
+  {
+   "id": "syn-019",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Sucha Beskidzka",
+   "teryt_gminy": "1215021",
+   "powiat": "Powiat suski",
+   "text": "Nasza gmina ma wysoki odsetek osób długotrwale bezrobotnych, często po 50. roku życia lub z niskimi kwalifikacjami. Szukamy modeli aktywizacji zawodowej i ekonomii społecznej.",
+   "expected_tags": [
+    "bezrobotni",
+    "rynek pracy",
+    "ekonomia społeczna",
+    "osoby 50+"
+   ]
+  },
+  {
+   "id": "syn-020",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Wadowice",
+   "teryt_gminy": "1218093",
+   "powiat": "Powiat wadowicki",
+   "text": "Prowadzimy rodzinny dom dziecka i współpracujemy z rodzinami zastępczymi. Brakuje kandydatów na rodziny zastępcze, a rodzeństwa często są rozdzielane. Chcemy zwiększyć liczbę rodzin i wesprzeć je w opiece nad dziećmi z niepełnosprawnościami.",
+   "expected_tags": [
+    "piecza zastępcza",
+    "rodziny",
+    "dzieci",
+    "rekrutacja rodzin zastępczych"
+   ]
+  },
+  {
+   "id": "syn-021",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Brzesko",
+   "teryt_gminy": "1202023",
+   "powiat": "Powiat brzeski",
+   "text": "Jestem po 60-tce i od śmierci żony czuję się bardzo samotny. Dzieci mieszkają za granicą. Nie wiem, gdzie w mojej okolicy mogę spotkać ludzi albo się do czegoś przydać.",
+   "expected_tags": [
+    "seniorzy",
+    "samotność",
+    "aktywizacja",
+    "wolontariat"
+   ]
+  },
+  {
+   "id": "syn-022",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Nowy Targ",
+   "teryt_gminy": "1211092",
+   "powiat": "Powiat nowotarski",
+   "text": "Część rodzin w gminie żyje w ubóstwie energetycznym – zimą ogrzewają tylko jeden pokój, dzieci odrabiają lekcje w zimnie. Szukamy rozwiązań łączących wsparcie socjalne z edukacją i pomocą dla dzieci.",
+   "expected_tags": [
+    "ubóstwo",
+    "ubóstwo energetyczne",
+    "dzieci",
+    "rodziny"
+   ]
+  },
+  {
+   "id": "syn-023",
+   "synthetic": true,
+   "author_type": "NGO",
+   "gmina": "Kraków",
+   "teryt_gminy": "1261011",
+   "powiat": "Powiat m. Kraków",
+   "text": "Wspieramy migrantów zarobkowych z Azji pracujących w gastronomii i logistyce. Nie znają swoich praw, nie mają dostępu do psychologa w swoim języku i są izolowani. Chcemy stworzyć punkt wsparcia.",
+   "expected_tags": [
+    "cudzoziemcy",
+    "zdrowie psychiczne",
+    "rynek pracy",
+    "integracja"
+   ]
+  },
+  {
+   "id": "syn-024",
+   "synthetic": true,
+   "author_type": "mieszkaniec",
+   "gmina": "Tarnów",
+   "teryt_gminy": "1216092",
+   "powiat": "Powiat tarnowski",
+   "text": "Mój brat ma schizofrenię i po wyjściu ze szpitala nie ma żadnego wsparcia. Przestaje brać leki i trafia do szpitala ponownie. Szukam informacji o środowiskowych formach pomocy psychiatrycznej.",
+   "expected_tags": [
+    "zdrowie psychiczne",
+    "osoby w kryzysie psychicznym",
+    "opieka środowiskowa",
+    "rodziny"
+   ]
+  },
+  {
+   "id": "syn-025",
+   "synthetic": true,
+   "author_type": "gmina",
+   "gmina": "Słomniki",
+   "teryt_gminy": "1206123",
+   "powiat": "Powiat krakowski",
+   "text": "Gmina chce przygotować wniosek grantowy na projekt integracji międzypokoleniowej – seniorzy i młodzież razem. Potrzebujemy inspiracji z przetestowanych innowacji i danych o sytuacji demograficznej w powiecie.",
+   "expected_tags": [
+    "seniorzy",
+    "młodzież",
+    "integracja międzypokoleniowa",
+    "finansowanie",
+    "dane demograficzne"
+   ]
+  }
+ ]
+}

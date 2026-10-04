@@ -1,0 +1,1007 @@
+{
+ "_meta": {
+  "note": "Pełne sekcje 1-4 opisów ROPS (bez sekcji Autorzy) do RAG/embeddingów. Tylko dla rekordów CC BY 4.0 bez zmian treści; podawać źródło: ROPS Kraków, Biblioteka Innowacji Społecznych, link źródłowy."
+ },
+ "items": [
+  {
+   "id": "rops-001",
+   "title": "BaWita",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,bawita",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Narzędzie rehabilitacyjne w postaci drewnianej tablicy wyposażonej w siedem ruchomych elementów służących do wielopłaszczyznowej stymulacji i usprawniania funkcji pamięciowych, manualnych i organizacji dnia dla osób ze schorzeniami dementywnymi.",
+   "jakie_problemy": "Innowacja odpowiada na problem rozpowszechnianiasię zespołów otępiennych u osób w podeszłym wieku i pozwala zwiększyć ograniczony wachlarz narzędzi rehabilitacyjnych dedykowanych osobom dorosłym.",
+   "grupa_docelowa": "Dorosłe osoby cierpiące na zespół otępienny we wczesnym stadium oraz osoby rehabilitowane pamięciowo po udarach i wylewach.",
+   "kto_moze_skorzystac": "Placówki wsparcia dziennego seniorów, domy pomocy społecznej, miejskie dzienne domy pomocy społecznej, warsztaty terapii zajęciowej, osoby indywidualne."
+  },
+  {
+   "id": "rops-003",
+   "title": "E-rzecznik konsumenta seniora",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,e-rzecznik-konsumenta-seniora",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja umożliwiająca seniorom w prosty i intuicyjny sposób otrzymanie szybkiej, rzetelnej i konkretnej porady prawnej z zakresu wybranych zagadnień prawa konsumenckiego, z którymi konsumenci-seniorzy mają najczęściej problemy (m.in. w zakresie składania reklamacji, odstąpienia od umowy czy egzekwowania przysługujących im praw konsumenckich).",
+   "jakie_problemy": "Innowacja odpowiada na problem niedostatecznej liczby narzędzi pomocy konsumenckiej skierowanych do osób starszych, którzy jako grupa szczególnie narażona na nieuczciwe praktyki przedsiębiorców potrzebują skierowanego bezpośrednio do nich i uwzględniającego ich potrzeby wsparcia narzędzia.",
+   "grupa_docelowa": "Osoby starsze",
+   "kto_moze_skorzystac": "Organizacje pozarządowe zajmujące się prawami konsumentów, rzecznicy praw konsumenta przy podmiotach publicznych, takich jak Urząd Miasta, Urząd Gminy, Starostwo Powiatowe itp., Urząd Ochrony Praw Konsumenta, Rzecznik Praw Obywatelskich, Centra Aktywności Seniorów, Miejskie Dzienne Domy Pomocy Społecznej."
+  },
+  {
+   "id": "rops-004",
+   "title": "Edu gra HaHaHa",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,edu-gra-hahaha",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi integracyjna gra planszowa, ucząca wykorzystania jogi śmiechu w integracji i podtrzymywaniu dobrej kondycji psychicznej osób starszych i z niepełnosprawnościami. Gra składa się z pudełka, planszy, 53 kart w formie fiszek oraz pionka. Karty do gry zostały podzielone na 4 usystematyzowane podstawowe rodzaje ćwiczeń: rozgrzewających, śmiechowych, integrujących i oddechowych według zasady przeprowadzania sesji jogi śmiechu. Przygotowana w ramach innowacji gra nie będzie tradycyjną grą, ponieważ nie wyłania ona wygranych i przegranych. Jej celem jest integracja grupy, a także podniesienie poziomu energii.",
+   "jakie_problemy": "Innowacja odpowiada na brak narzędzi umożliwiających podtrzymanie dobrej kondycji psychicznej osób z niepełnosprawnościami oraz osób starszych oraz brak szerokiego dostępu do łagodnej rehabilitacji, jaką jest joga śmiechu.",
+   "grupa_docelowa": "Osoby starsze o ograniczonej mobilności i percepcji, osoby z niepełnosprawnością intelektualną.",
+   "kto_moze_skorzystac": "Organizacje pozarządowe, podmioty pracujące z osobami starszymi i z osobami z niepełnosprawnością (np. Warsztaty Terapii Zajęciowej, szkoły specjalne)."
+  },
+  {
+   "id": "rops-005",
+   "title": "Kody QR na pomoc seniorom",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,kody-qr-na-pomoc-seniorom",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowacja dostarcza narzędzia w postaci unikalnych kodów QR dla seniorów, generowanych poprzez specjalnie do tego przygotowaną platformę internetową. Model składa się z fizycznie dostępnych naszywek lub naklejek z kodami, umieszczanych na ubraniu seniora, innych częściach garderoby, czy rzeczach osobistych. Kody QR mają stanowić narzędzie pomocy osobom starszym cierpiącym na zaniki pamięci, demencję, choroby otępienne. Po odczytaniu kodu przy pomocy telefonu, osoba gotowa do udzielenia pomocy może mieć dostęp do podstawowych informacji o seniorze.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w samodzielnym poruszaniu się seniorów poza domem i problemów wynikających z zaburzeń pamięci, chorób przewlekłych bądź otępiennych.",
+   "grupa_docelowa": "Osoby starsze, w tym osoby z zaburzeniami pamięci czy chorobami otępiennymi",
+   "kto_moze_skorzystac": "Organizacje pozarządowe, służby ratownictwa medycznego, placówki podstawowej opieki zdrowotnej, jednostki organizacyjne pomocy społecznej, instytucje publiczne działające na rzecz seniorów, np. Centra Aktywności Seniorów."
+  },
+  {
+   "id": "rops-006",
+   "title": "Korytarz wspomnień",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,korytarz-wspomnien",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "„Korytarz wspomnień” ma być miejscem ekspozycji zdjęć, wizualizacji i innych elementów związanych ze wspomnieniami pensjonariuszy. Innowacja polega na zaadaptowaniu osobnego korytarza DPS na pewnego rodzaju miejsce pamięci, w którym znajdą się m.in. zdjęcia pensjonariuszy oraz ich opiekunów. Miejsce to wzbogacone zostanie również w specjalne multimedialne przyciski, po naciśnięciu których możliwe będzie odsłuchanie nagrań zawierających pytania i odpowiedzi na temat osób ze zdjęć. Dzięki temu w dowolnym momencie seniorzy z ograniczoną pamięcią lub chorobami otępiennymi mogą przypomnieć sobie różnorodne informacje i skojarzyć fakty dotyczące własnej przeszłości.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na ograniczoną liczbą narzędzi do pracy z osobami, które cierpią na choroby dementywne, w tym narzędzi do pracy grupowej.",
+   "grupa_docelowa": "Osoby starsze, w tym osoby z problemami pamięci i osoby z chorobami otępiennymi.",
+   "kto_moze_skorzystac": "Domy Pomocy Społecznej"
+  },
+  {
+   "id": "rops-007",
+   "title": "Merkury",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,merkury",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Platforma internetowa umożliwiająca dostęp do symulatora czterech urządzeń samoobsługowych (bankomat, parkomat, paczkomat oraz kasa samoobsługowa), dająca możliwość przetestowania jego obsługi w bezpiecznych, domowych warunkach. Wspiera seniorów w samodzielnej obsłudze tych urządzeń w przestrzeni publicznej ponosząc ich kompetencje cyfrowe.",
+   "jakie_problemy": "Innowacja odpowiada na niskie kompetencje seniorów związane z obsługą rozwiązań technologicznych, a w efekcie na obawy przed skorzystaniem z kiosków samoobsługowych (np. paczkomatu, bankomatu).",
+   "grupa_docelowa": "Osoby starsze, którym towarzyszy strach i niepewność przy korzystaniu z urządzeń samoobsługowych.",
+   "kto_moze_skorzystac": "Organizacje pozarządowe wspierające aktywność seniorów, dzienne domy pomocy społecznej, kluby seniora."
+  },
+  {
+   "id": "rops-011",
+   "title": "Przenośne, modularne łazienki",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,przenosne-modularne-lazienki",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Przenośna łazienka zbudowana z modułów możliwych do wniesienia i zamontowania w pomieszczeniach, które nie są przeznaczone do standardowych rozwiązań sanitarnych (np. strychy, piwnice, przedpokoje). Łazienka modularna pozwala na zamontowanie podstawowego wyposażenia, takiego jak m.in. prysznic, umywalka, toaleta, wentylacja i zapewnienie dostępu do łazienek rodzinom, które były go pozbawione.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu do prywatnej łazienki w zamieszkiwanym lokalu. Umożliwia realizację potrzeb fizjologicznych, dbałość o higienę bez poczucia wstydu oraz zmniejsza izolację społeczną.",
+   "grupa_docelowa": "Osoby ubogie oraz osoby zamieszkujące lokale nieposiadające łazienki, które nie mogą jej zainstalować np. z powodu nieuregulowanej sytuacji własnościowej lokalu.",
+   "kto_moze_skorzystac": "Urząd gminy, ośrodki pomocy społecznej, powiatowe centra pomocy rodzinie, organizacje pozarządowe wspierające osoby ubogie."
+  },
+  {
+   "id": "rops-013",
+   "title": "Ścieżka treningu umysłu",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,sciezka-treningu-umyslu",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "„Ścieżka treningu umysłu” to składająca się z 12 stacji przestrzeń rehabilitacji umysłowej, która ma zapewniać stymulację takich funkcji poznawczych, jak pamięć, logika i myślenie problemowe, koncentracja, refleks i uwaga oraz analityka i procesy myślowe. Każdej z wymienionych funkcji zostały poświęcone 4 stacje ścieżki, a wszystkie ćwiczenia zostały opracowane w trzech stopniach trudności.",
+   "jakie_problemy": "Innowacja odpowiada na problem ograniczonego dostępu do form rehabilitacji i prewencji degradacji funkcji poznawczych seniorów.",
+   "grupa_docelowa": "Osoby starsze o ograniczonej percepcji (głównie te, u których pojawiają się pierwsze objawy chorób otępiennych) oraz osoby z niepełnosprawnością intelektualną.",
+   "kto_moze_skorzystac": "Podmioty dysponujące przestrzenią dostępną dla szerokiego grona odbiorców (ścieżki mogą znaleźć się w parkach miejskich, na bulwarach, trasach spacerowych), domy pomocy społecznej, instytucje wspierające osoby z niepełnosprawnością intelektualną."
+  },
+  {
+   "id": "rops-015",
+   "title": "Stworzenie narzędzia ułatwiającego seniorom prawidłowe regulowanie spraw spadkowych",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,stworzenie-narzedzia-ulatwiajacego-seniorom-prawidlowe-regulowanie-spraw-spadkowych",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Narzędzie IT, które w prosty i intuicyjny sposób umożliwia ustalenie kręgu osób uprawnionych do dziedziczenia zgodnie z dziedziczeniem ustawowym. Aplikacja zapewnia także dostęp do informacji co do możliwych rozrządzeń testamentowych i ich form. Ponadto umożliwia ustalenie własnego kręgu spadkobierców, stworzenie wzoru testamentu lub uzyskanie informacji o konieczności sporządzenia testamentu notarialnego.",
+   "jakie_problemy": "Innowacja odpowiada na problem ograniczonego dostępu do informacji, narzędzi i specjalistów pozwalających uregulować swoją sytuację spadkową osobom starszym o ograniczonej percepcji, które nie orientują się jak sporządzić prawomocny testament i zadysponować swoją własnością zgodnie z własną wolą.",
+   "grupa_docelowa": "Osoby starsze, osoby chorujące i w stanach terminalnych.",
+   "kto_moze_skorzystac": "Hospicja, organizacje pozarządowe zajmujące się osobami terminalnie chorymi, osoby prywatne."
+  },
+  {
+   "id": "rops-016",
+   "title": "Talerze zdrowia",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,talerze-zdrowia",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Talerze zdrowia to zestaw narzędzi, które wesprą proces nauki sporządzania zbilansowanych posiłków przez osoby starsze i osoby z niepełnosprawnością intelektualną. Tego rodzaju proste pomoce dydaktyczne mogą być wykorzystywane zarówno podczas warsztatów dotyczących zdrowego odżywiania, jak i w przypadku chęci samodzielnego sporządzania zbilansowanych posiłków. W skład zestawu wchodzą 3 nałożone na siebie obrotowe tarcze, tzw. talerze zdrowia (każda tarcza przedstawia poszczególne składniki zbilansowanej diety, które zmieniają się w zależności od ustawienia ruchomej tarczy, w efekcie pozwalając skomponować pełny posiłek) oraz książka z prostymi, dietetycznymi potrawami, opisem ich przygotowania i podstawowymi zasadami zdrowego komponowania posiłków.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na brak umiejętności przyrządzania odpowiednio zbilansowanych posiłków przez osoby starsze oraz brak łatwego w obsłudze narzędzia umożliwiającego przyswojenie praktycznej wiedzy na temat zdrowego odżywiania dla seniorów oraz osób z niepełnosprawnością (szczególnie intelektualną).",
+   "grupa_docelowa": "Seniorzy, osoby z niepełnosprawnością (szczególnie intelektualną), osoby, które pragną poznać zasady sporządzania zbilansowanych posiłków.",
+   "kto_moze_skorzystac": "Osoby z grupy docelowej, miejskie dzienne domy pomocy społecznej, domy pomocy społecznej, centra aktywności seniora, warsztaty terapi zajęciowej, opiekunowie/rodzina."
+  },
+  {
+   "id": "rops-019",
+   "title": "Wirtualne izby pamięci",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,wirtualne-izby-pamieci",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model pracy z seniorami, dotyczący przekazywania wartości kulturowych i historycznych związanych z dizajnem sztuki użytkowej oraz rozwoju kompetencji cyfrowych seniorów. W ramach testu innowacji powstał podręcznik opisujący metodę pracy, wirtualna galeria seniorów oraz 5 tutoriali dotyczących: przeprowadzania diagnozy potrzeb seniorów, realizacji warsztatów fotograficznych, założenia wirtualnej galerii, identyfikacji i opisu przedmiotów sztuki użytkowej i storytelingu.",
+   "jakie_problemy": "Innowacja społeczna dotyczy problemów związanych z wykluczeniem społecznym seniorów, którego przyczynami są m.in. osłabione relacje społeczne i ich izolacja, słabe relacje międzypokoleniowe oraz słabe kompetencje cyfrowe, które są jednymi z kluczowych kompetencji współczesnego społeczeństwa.",
+   "grupa_docelowa": "Osoby starsze",
+   "kto_moze_skorzystac": "Centra aktywności seniora, lokalne grupy wsparcia seniorów, organizacje pozarządowe, insytutcje kultury."
+  },
+  {
+   "id": "rops-020",
+   "title": "Żeglowanie w wyobraźni - czyli sposób na strachy na wodzie",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-seniorow,zeglowanie-w-wyobrazni-czyli-sposob-na-strachy-na-wodzie",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowacja stanowi model wsparcia oraz pokonywania barier i lęku osób starszych (60+) przed wejściem na jacht i żaglowaniem, a także umożliwienie dzieciom i młodzieży z niepełnosprawnością ruchową zdobycia doświadczenia żeglarskiego za pomocą wirtualnej rzeczywistości. W innowacji wykorzystanie znalazły gogle wirtualnej rzeczywistości, gdzie za pomocą ruchów rękoma użytkownicy sterują dwoma kontrolerami wirtualnej rzeczywistości, a wszelkie ich ruchy i wykonywane czynności znajdują swoje odzwierciedlenie w wyświetlanym obrazie. Do aplikacji powstały też materiały szkoleniowe dla trenerów żeglarstwa, aby mogli najpierw sami nauczyć się działania aplikacji VR i w kolejnym kroku mogli uczyć za pomocą tego narzędzia inne osoby.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu do żeglarstwa osób z niepełnosprawnością ruchową i lęk przed wodą.",
+   "grupa_docelowa": "Osoby starsze o ograniczonej mobilności i percepcji, młodzież i dzieci z niepełnosprawnością ruchową, osoby odczuwające lęk przed wodą.",
+   "kto_moze_skorzystac": "Organizatorzy turystyki żaglowej/wodnej, ośrodki opieki nad seniorami, instytucje wspierające osoby z niepełnosprawnością ruchową."
+  },
+  {
+   "id": "rops-021",
+   "title": "Bez presji z depresji",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,bez-presji-z-depresji",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Komplet materiałów psychoedukacyjnych w postaci kart pracy i ćwiczeń dla dzieci i młodzieży zmagających się z trudnościami w powrocie do funkcjonowania w życiu społecznym i szkolnym po nieobecności związanej z długoterminową terapią lub leczeniem psychiatrycznym. Innowacja obejmuje zasięgiem także rodzinę i środowisko szkolne dziecka, tworząc sieć wsparcia najbliższego otoczenia. Wypracowane materiały psychoedukacyjne stanowią pomoc wspierającą dziecko i jego najbliższe otoczenie (rodzina, nauczyciele, klasa) w powrocie do równowagi psychicznej i emocjonalnej, a jednocześnie uświadamiają nauczycielom i rówieśnikom skalę problemu oraz zwiększają zaangażowanie w pomoc osobom w kryzysie psychicznym.",
+   "jakie_problemy": "Innowacja odpowiada na potrzeby dzieci i młodzieży borykających się z problemami zdrowia psychicznego, które powracają do środowiska szkolnego po dłuższej nieobecności.",
+   "grupa_docelowa": "Dzieci i młodzież w wieku od 10 do 13 lat (od 4 do 8 klasy szkoły podstawowej), które wracają do czynnego funkcjonowania w życiu społecznym po dłuższej nieobecności spowodowanej trudnościami w sferze emocji, terapią lub leczeniem psychiatrycznym związanym z zaburzeniami nastroju, kryzysami psychicznymi, stanami lękowymi oraz rodzice, rówieśnicy oraz nauczyciele, osób zmagających się z trudnościami w powrocie do funkcjonowania w życiu społecznym i szkolnym.",
+   "kto_moze_skorzystac": "Placówki oświatowe, poradnie psychologiczno-pedagogiczne, ośrodki interwencji kryzysowej, szpitale psychiatryczne z oddziałami dla dzieci i młodzieży."
+  },
+  {
+   "id": "rops-022",
+   "title": "Bez stresu do sukcesu - terapia neurologiczna przyjazna dziecku",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,bez-stresu-do-sukcesu-terapia-neurologiczna-przyjazna-dziecku",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowacja skupia się na połączeniu metod leczenia i terapeutyzowania dzieci i niemowląt z zaburzeniami funkcji układu nerwowego (fizjoterapia, dogoterapii psycholog dziecięcy), dążąc do uzyskania efektu synergii wprowadzonych metod. W ramach innowacji powstał model fizjoterapii neurologicznej dzieci z niepełnosprawnościami, który zakłada integrację i synergię oddziaływań metody NDT Bobath oraz dodatkowych stymulantów psychofizycznych (dogoterapii i psychologa dziecięcego). Wprowadzenie do terapii dodatkowych bodźców w początkowym etapie zajęć ma skutkować regulacją poziomu napięć i umożliwić właściwą terapię leczniczą w sposób szybszy i efektywniejszy.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu do skutecznych terapii kompleksowych dla dzieci poniżej 3. roku życia, które - oddziałując na psychikę - umożliwią zwiększenie skuteczności leczenia właściwego.",
+   "grupa_docelowa": "Dzieci z niepełnosprawnością i zagrożone trwałą niepełnosprawnością między 6. miesiącem a 3. rokiem życia, dzieci obarczone trudnościami rozwojowymi, które odmawiają współpracy z prowadzącym, ponieważ ćwiczenia rehabilitacyjne wykraczają poza ich możliwości koncentracji i stanowią dla nich dyskomfort.",
+   "kto_moze_skorzystac": "Placówki fizjoterapeutyczne, rodzice/opiekunowie, ośrodki wczesnego wspomagania rozwoju, dzienne i całodobowe oddziały rehabilitacyjne."
+  },
+  {
+   "id": "rops-023",
+   "title": "Brzuszkole - brzuszek zostaje w przedszkolu",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,brzuszkole-brzuszek-zostaje-w-przedszkolu",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Materiał edukacyjny zawierający zalecenia dotyczące diety i zdrowego stylu życia dzieci w wieku 4 – 7 lat dostępny w gabinetach lekarskich i wykorzystywany w szczególności podczas wizyt profilaktycznych cztero- i sześcio- lub siedmiolatków (tzw. bilanse zdrowia). Tekst zaleceń jest kierowany do opiekunów, jednak ilustracje przyciągają uwagę dzieci i zachęcają do podejmowania tematu zdrowego stylu życia.",
+   "jakie_problemy": "Innowacja dotyczy takich problemów jak przeciwdziałanie problemowi otyłości nadwagi i otyłości u dzieci w wieku 4-7 lat.",
+   "grupa_docelowa": "Dzieci w wieku 4-7 la tz nadwagą/otyłością lub ryzykiem nadwagi/otyłości",
+   "kto_moze_skorzystac": "Placówki medyczne, przedszkola, organizacje pozarządowe."
+  },
+  {
+   "id": "rops-025",
+   "title": "Edki - kredki terapeutyczne",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,edki-kredki-terapeutyczne",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Zestaw kredek terapeutycznych dla dzieci ze spastycznością kończyny górnej. Dzięki specjalnemu kształtowi, mobilizują i aktywizują dłoń, palce, nadgarstek i łokieć do wyprostu zamiast zamykania i wspierają aktywną terapię przez zabawę.",
+   "jakie_problemy": "Zestaw kredek terapeutycznych dla dzieci ze spastycznością kończyny górnej. Dzięki specjalnemu kształtowi, mobilizują i aktywizują dłoń, palce, nadgarstek i łokieć do wyprostu zamiast zamykania i wspierają aktywną terapię przez zabawę.",
+   "grupa_docelowa": "Dzieci ze spastycznością kończyny górnej",
+   "kto_moze_skorzystac": "Rehabilitanci, rodzice i opiekunowie dzieci ze spastycznością kończyny górnej, nauczyciele wychowania przedszkolnego, wczesnoszkolnego i szkolnego."
+  },
+  {
+   "id": "rops-026",
+   "title": "Hop hop - mobilny plac zabaw",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,hop-hop-mobilny-plac-zabaw",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Rozwiązanie składa się z dwóch części: zestawu meblozabawek, który umożliwia wykonywanie ćwiczeń i zabaw ruchowych. Rozwiązanie znajduje zastosowanie w przestrzeni domowej, ale także aktywizuje najmłodszych do ćwiczeń i zabaw plenerowych. Dzięki fakturze, otworom i frezowanym prowadnicom w matach oraz dodatkowym łącznikom, dzieci mogą kreować tunele, ścieżki sensoryczne, tory przeszkód, obiekty do bujania i wiele innych zabaw. Drugą cześcią są scenariusze wspomagające domową rehabilitację – zbiór wzorów zabaw i ćwiczeń zawierających opis wykonania, porady dla opiekunów dotyczących motywacji dzieci, opisu zakresu wspomagania i terapii oraz przedstawienie ćwiczeń w formie graficznej.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na problemy malejącej sprawności ruchowej i często występujących trudności psychoruchowych, które są coraz większym problemem wśród dzieci. Są one uwarunkowane genetycznie, społecznie i kulturowo. Wspomaganie prawidłowego rozwoju psychoruchowego, profilaktyka i dostęp do codziennej terapii są ważnym elementem w życiu dziecka w wieku przedszkolnym i jego opiekuna.",
+   "grupa_docelowa": "Dzieci w wieku przedszkolnym i wczesnoszkolnym z niepełnosprawnościami ruchowymi typu: nieprawidłowe napięcie mięśniowe, obniżona zdolność motoryczna ciała, problemy przetwarzania sensorycznego w obrębie układu proprioceptywnego czy układu równowagi.",
+   "kto_moze_skorzystac": "Rehabilitanci, fizjoterapeuci i terapeuci integracji sensorycznej oraz rodzice dzieci z niepełnosprawnością ruchową, które mają problem z obniżoną zdolnością motoryczną ciała i zaburzeniami przetwarzania sensorycznego."
+  },
+  {
+   "id": "rops-027",
+   "title": "Językołamacz",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,jezykolamacz",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "\"Językołamacz\" składa się aplikacja wykorzystującej rozszerzoną rzeczywistość, która wspomaga rozwój mowy języka polskiego u dzieci w spektrum autyzmu w wieku 3–10 lat, a także instrukcja użytkowania aplikacji wraz ze scenariuszami możliwych zajęć w domu lub u terapeuty. Aplikacja przeznaczona jest dla dzieci ze spektrum autyzmu, które mają w pełni rozwinięty zmysł słuchu, ale mają zaburzony rozwój ośrodków mowy w mózgu lub inne zmiany biochemiczne w mózgu utrudniające naukę mowy w sposób naturalny.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w komunikacji niewerbalnej dzieci z autyzmem, tzn. w rozumieniu i stosowaniu gestów, wyrazów twarzy lub nawiązywaniu kontaktu wzrokowego.",
+   "grupa_docelowa": "Dzieci w wieku 3-10 lat ze spektrum autyzmu borykające się z małym zasobem słownictwa, z komunikacją z opiekunami, z artykułowaniem swoich potrzeb i komunikacją z rówieśnikami.",
+   "kto_moze_skorzystac": "Rodzice i opiekunowie prawni grupy odbiorców, pedagodzy i logopedzi, które będą wykorzystywać rozwiązanie podczas zajęć z grupą odbiorców, szkoły specjalne i integracyjne, placówki wspomagające terapię osób ze spektrum."
+  },
+  {
+   "id": "rops-028",
+   "title": "koMIX życiowy",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,komix-zyciowy",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Terapeutyczna gra planszowa dedykowana nastoletnim wychowankom placówek opiekuńczowychowawczych. Porusza problemy charakterystyczne dla ich wychowanków oraz zagadnienia związane z okresem dojrzewania wspierając ich prawidłowy rozwój emocjonalny, ucząc identyfikacji emocji, ich oswajania i radzenia sobie z nimi.",
+   "jakie_problemy": "​Innowacja odpowiada na trudności z rozumieniem i radzeniem sobie z trudnymi emocjami przez wychowanków placówek opiekuńczo-wychowawczych oraz brak narzędzi wspierających opiekunów w edukacji emocjonalnej młodzieży z w/w placówek.",
+   "grupa_docelowa": "Wychowankowie placówek opiekuńczo-wychowawczych w okresie dojrzewania",
+   "kto_moze_skorzystac": "Placówki opiekuńczo-wychowawcze typu rodzinnego i instytucjonalnego, szkoły publiczne i niepubliczne, psychologowie, pedagodzy."
+  },
+  {
+   "id": "rops-029",
+   "title": "MarimBaza!",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,marimbaza",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model pracy pn. „Marimbaza” bazuje na połączeniu muzyki z kształtowaniem ważnych kompetencji społecznych. Składa się z aktywności, które angażują młodzież uczącą się i mieszkającą w specjalnych ośrodkach szkolno-wychowawczych oraz w młodzieżowych ośrodkach socjoterapii w przygotowanie wydarzenia muzycznego od podstaw. Warsztatom towarzyszy praca nad wzmocnieniem różnych kompetencji szczególnie ważnych w tej grupie odbiorców – współpraca w grupie, poczucie własnej wartości, komunikacja interpersonalna, ale również zdolności manualnych poprzez własnoręczne tworzenie marimb.",
+   "jakie_problemy": "Trudności w pracy z młodzieżą doświadczającą wykluczenia społecznego i edukacyjnego i brak nowoczesnych narzędzi, które w sposób pośredni oddziaływują terapeutycznie na grupę docelową.",
+   "grupa_docelowa": "Młodzież uczącą się i mieszkającą w specjalnych ośrodkach szkolno-wychowawczych oraz w młodzieżowych ośrodkach socjoterapii",
+   "kto_moze_skorzystac": "Specjalnye ośrodkki szkolno-wychowawcze, młodzieżowe ośrodki socjoterapii, świetlice środowiskowe, świetlice socjoterpauetyczne, placówki wsparcia dziennego."
+  },
+  {
+   "id": "rops-030",
+   "title": "Mobilna pomoc terapeutyczna",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,mobilna-pomoc-terapeutyczna",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Mobilna Pomoc Terapeutyczna zakłada model pracy z rodzinami, co do których zaistniało podejrzenie, że zmagają się z kryzysem – w szczególności przemocą domową – ale nie zostały objęte system pomocy społecznej. Innowacja jest krokiem w zakresie profesjonalizacji kadr pomocy społecznej poprzez wprowadzenie nowego schematu pracy pracowników socjalnych, w połączeniu z osobami świadczącymi specjalistyczne poradnictwo.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na brak adekwatnej pomocy dla osób doświadczających przemocy, które nie trafiły jeszcze do systemu wsparcia długoterminowego",
+   "grupa_docelowa": "Rodziny lub poszczególni członkowie rodzin, które doświadczają kryzysu (ze szczególnym uwzględniem przemocy domowej), ale nie zgłaszają potrzeby skorzystania z pomocy.",
+   "kto_moze_skorzystac": "Ośrodki pomocy społecznej, przede wszystkim na wsi i w mniejszych miejscowościach."
+  },
+  {
+   "id": "rops-031",
+   "title": "Mobilny pomocnik dydaktyczno-sensoryczny dla uczniów/studentów ze spektrum autyzmu",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,mobilny-pomocnik-dydaktyczno-sensoryczny-dla-uczniowstudentow-ze-spektrum-autyzmu",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Mobilny pomocnik dydaktyczno-sensoryczny dla uczniów/studentów z zaburzeniami ze spektrum autyzmu (dalej jako ASD) obejmujący niezbędny sprzęt do wspomagania procesu nauki w środowisku szkolnym/uczelnianym/domowym. Pomocnik ma postać rozkładanej przesłony, w której zostały umieszczone (jako elementy stałe lub mobilne) narzędzia sprzyjające uczeniu się osób z ASD np. wizualny czasomierz wskazujący na upływający czas, szybkie komunikaty wizualno-graficzne niezbędne w realizacji uczenia się osoby z ASD: „nie rozumiem”, „pomóż mi”, „potrzebuję przerwy”, specjalna zakładka wizualna ułatwiająca czytanie czy obciążany długopis. Uzupełnieniem teczki jest zasobnik sensoryczny zawierający: koc sensoryczny na kolana, gumę sensoryczną na krzesło, zatyczki/słuchawki, obrączkę sensoryczną na nadgarstki.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na trudności w nauce wynikające z neuroatypowości/spektrum autyzmu i problemy z uzyskaniem dobrych ocen osób ze spektrum autyzmu.",
+   "grupa_docelowa": "Dzieci i młodzież z zaburzeniami ze spektrum autyzmu, osoby posiadające orzeczenie o potrzebie kształcenia specjalnego.",
+   "kto_moze_skorzystac": "Rodzice i opiekunowie, nauczyciele i terapeuci osób z ASD, szkoły i uniwersytety."
+  },
+  {
+   "id": "rops-032",
+   "title": "Mój pomocny Virtual World",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,moj-pomocny-virtual-world",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi aplikacja posiadająca funkcję wirtualnego, ukraińskojęzycznego towarzysza, Czatbota z instrukcją jak należy postępować w polskiej szkole oraz Czatbota z polskimi, przydanymi w szkole wyrażeniami, dzieci znajdujące się w nowym otoczeniu edukacyjnym i rówieśniczym otrzymają podstawowe wsparcie w kwestii poczucia bezpieczeństwa i w miarę możliwości zminimalizowania poziomu stresu.",
+   "jakie_problemy": "Innowacja dotyczy trudności w adaptacji w środowisku szkolnym dzieci ukraińskich.",
+   "grupa_docelowa": "Dzieci i młodzież ukraińska w wieku szkolnym.",
+   "kto_moze_skorzystac": "Szkoły podstawowe i średnie przyjmujące ukraińskich uczniów do polskiego systemu edukacji."
+  },
+  {
+   "id": "rops-033",
+   "title": "mPatyk",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,mpatyk",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Edukacyjna, inkluzywna gra planszowa, która pozwala graczom wcielić się w role osób z niepełnosprawnościami oraz poznanie stojących przed nimi wyzwań. Poprzez zestawienie ze sobą dwóch odmiennych perspektyw – osób sprawnych oraz osób z niepełnosprawnościami – gra przyczynia się do zwiększenia poczucia akceptacji i zrozumienia osób borykającymi się z różnymi dysfunkcjami.",
+   "jakie_problemy": "Innowacja stanowi odpowiedź na brak zrozumienia dla potrzeb i trudności osób z różnymi typami niepełnosprawności.",
+   "grupa_docelowa": "Dzieci i młodzież – w szczególności ze środowisk, w których trudno o edukację związaną z dostosowaniem społecznym, osoby z niepełnosprawnością.",
+   "kto_moze_skorzystac": "Ośrodki wspierające osoby z niepełnosprawnościami, szkoły podstawowe i ponadpodstawowe, młodzieżowe ośrodki wychowawcze."
+  },
+  {
+   "id": "rops-034",
+   "title": "Nasz wspólny, rodzinny świat - poznaję, uczę, reaguję",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,nasz-wspolny-rodzinny-swiat-poznaje-ucze-reaguje",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji utworzono kmpleksowy model wsparcia rodzin, składający się z dwóch elementów: zespołu szybkiego reagowania na zgłaszany problem – w możliwie najszybszy sposób ma kierować osoby w potrzebie do odpowiedniego organu, jednostki czy specjalisty; autorskiej gry rodzinnej „Nasz wspólny, rodzinny świat” – ma ona wspierać proces poznawania relacji rodzinnych i ułatwiać uzyskanie właściwej diagnozy problemów.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w funkcjonowaniu rodzin dzieci z niepełnosprawnością, problemy w uzyskaniu odpowiedniej diagnozy i zaburzenia w relacjach rodzinnych z tym związanych.",
+   "grupa_docelowa": "Rodziny borykające się z trudnościami wychowawczymi związanymi z zaburzeniami lub niepełnosprawnością dzieci",
+   "kto_moze_skorzystac": "Instytucje i organizacje zajmujące się organizacją opieki i wsparcia dla rodzin w kryzysie, rodziny borykające się z trudnościami wychowawczymi związanymi z zaburzeniami lub niepełnosprawnością występującymi u dziecka/dzieci."
+  },
+  {
+   "id": "rops-035",
+   "title": "Patryk i Kropka",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,patryk-i-kropka",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Tematyczny tekst literacki opracowany w tekście ETR (tj. Easy To Read) opisujący perypetie Patryka i Kropki – tytułowych bohaterów, zmagających się z typowymi dla nastolatków trudnościami. To pozycja skierowana do młodzieży szkolnej z niepełnosprawnością intelektualną, która ma wspierać ich w budowaniu prawidłowych wzorców interakcji społecznych i sposobów radzenia sobie z typowymi dla ich wieku trudnościami.",
+   "jakie_problemy": "Innowacja odpowiada na brak tekstów literackich dostosowanych do potrzeb i możliwości młodzieży z niepełnosprawnością intelektualną w stopniu umiarkowanym i lekkim.",
+   "grupa_docelowa": "Młodzież z niepełnosprawnością intelektualną w stopniu umiarkowanym.",
+   "kto_moze_skorzystac": "Nauczyciele współorganizujący, biblioteki publiczne, biblioteki szkolne, szkoły integracyjne, terapeuci osób z niepełnosprawnością intelektualną, warsztaty terapii zajęciowej."
+  },
+  {
+   "id": "rops-036",
+   "title": "Piosenki uczestniczące",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,piosenki-uczestniczace",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Autorskie kompozycje i piosenki dydaktyczne, które są dostosowane do percepcji dzieci – przede wszystkim tych niemówiących oraz z trudnościami w komunikacji. Dzięki temu rozwiązaniu mogą one brać czynny udział w zabawach muzycznych, z których do tej pory były wykluczone.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony dostęp do narzędzi aktywnej integracji społecznej i edukacyjnej kierowanej do dzieci, które nie są w stanie komunikować się w sposób werbalny lub komunikacja ta jest niepełna, nieczytelna.",
+   "grupa_docelowa": "Dzieci w wieku 1-3 lat, niemówiące oraz z trudnościami w komunikacji, które nie są w stanie porozumiewać się w sposób werbalny, dzieci, których komunikacja jest niepełna, nieczytelna.",
+   "kto_moze_skorzystac": "Rodzice i opiekunowie, placówki opiekuńcze, poradnie specjalistyczne, przedszkola i żłobki."
+  },
+  {
+   "id": "rops-037",
+   "title": "Przewodnik dla osób z ASD \"Moje potrzeby - gdzie i jak je realizować?\"",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,przewodnik-dla-osob-z-asd-moje-potrzeby-gdzie-i-jak-je-realizowac",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi słowno-graficzny przewodnik dla młodzieży i dorosłych osób z zaburzeniami ze spektrum autyzmu (dalej jako ASD) dotyczący miejsc i sposobów realizacji codziennych i podstawowych potrzeb realizowanych poza domem. Jego główne części składowe to: plan aktywności (pokazujący co po kolei należy wykonać), skrypty behawioralne (podpowiadające co i kiedy masz powiedzieć) oraz AAC – alternatywne i wspomagające metody komunikacji (znaki graficzne).",
+   "jakie_problemy": "Innowacja stanowi odpowiedź na niski poziom kompetencji społecznych i specyficznych trudności w uczeniu się zachowań wymagających odwoływania się do specjalnych procedur uczenia behawioralnego przez osoby z ASD (tj. nie wiedzą jak się zachować, mają trudności w odróżnieniu właściwych i niewłaściwych form zachowań, nie wiedzą co i kiedy należy powiedzieć itp.).",
+   "grupa_docelowa": "Osoby posiadające diagnozę ASD (autyzm lub zespół Aspergera) w okresie dojrzewania (do 13 r.ż) lub dorosłości oraz posiadające umiejętność czytania i elementarną umiejętność komunikowania się.",
+   "kto_moze_skorzystac": "Szkoły specjalne, szkoły publiczne z klasami specjalnymi, szkoły niepubliczne, placówki wsparcia osób z ASD."
+  },
+  {
+   "id": "rops-038",
+   "title": "Puzzle 3D",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,puzzle-3d",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Zabawki edukacyjne (puzzle 3D) wspomagające ćwiczenie percepcji dotykowej dzieci i młodzieży z dysfunkcją wzroku. Układanki umożliwiają odbiorcom ćwiczenie percepcji dotykowej, wyobraźni przestrzennej, poszerzają zakres wiedzy o świecie, a także pomagają w nauce pisma Braille’a i trenowaniu umiejętności związanych z nauką czytania i pisania (zwłaszcza dzielenie wyrazu na litery).",
+   "jakie_problemy": "Innowacja odpowiada na deficyt pomocy edukacyjnych dla niewidomych dzieci. Część dostępnych na polskim rynku produktów, mimo deklaratywnego przeznaczenia dla tej grupy nie odpowiada w pełni ich potrzebom. Brakuje produktów atrakcyjnych dla dzieci, wspierających równocześnie różne obszary ich rozwoju.",
+   "grupa_docelowa": "Dzieci niewidome lub niedowidzące.",
+   "kto_moze_skorzystac": "Nauczyciele szkół dla dzieci niewidomych a także rodzice dzieci z niepełnosprawnością wzroku, organizacje pozarządowe wspierające tą grupę dzieci."
+  },
+  {
+   "id": "rops-039",
+   "title": "Rodzina adopcyjna dorasta",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,rodzina-adopcyjna-dorasta",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowacja pomaga rodzicom zrozumieć sytuacje, zachowania i emocje nastolatków oraz własne reakcje, wynikające ze specyficznej historii rodziny. Dzięki interaktywnej formie umożliwia swobodne korzystanie z treści, ćwiczeń i pogłębianie wiedzy w tempie dostosowanym do użytkownika.",
+   "jakie_problemy": "Innowacja wspiera rodziców adopcyjnych, u których występuje wysoki poziom frustracji i stresu związany ze specyficznymi wyzwaniami wychowawczymi w okresie dojrzewania dzieci. Jest odpowiedzią na utrudniony dostęp do poradnictwa psychologicznego dla tej grupy odbiorców.",
+   "grupa_docelowa": "Rodziny adopcyjne wychowujące dzieci w wieku nastoletnim",
+   "kto_moze_skorzystac": "Rodziny adopcyjne, których dzieci wchodzą w wiek nastoletni, organizacje i podmioty zajmujące się wsparciem rodzin adopcyjnych, ośrodki adopcyjne, psychologowie, terapeuci."
+  },
+  {
+   "id": "rops-040",
+   "title": "To nie koniec świata - to początek świata",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,to-nie-koniec-swiata-to-poczatek-swiata",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Narzędzie edukacyjne, przeznaczone dla rodzin, które stają przed wyzwaniem związanym z wychowaniem dziecka/dzieci z niepełnosprawnością. Narzędzia są ze sobą spójne, uzupełniają się i tworzą logiczną całość. Składają się na nie: karty pracy dla rodziców i rodzeństwa, informator dla rodziców, podcasty dla rodziców i rodzeństwa, materiały edukacyjne dla terapeutów, ukierunkowane na to, jak pracować z rodzinami dzieci z niepełnosprawnościami.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na trudności w funkcjonowaniu rodziny, w której jedno lub więcej dzieci cierpi z powodu niepełnosprawności",
+   "grupa_docelowa": "Rodziny borykające się z trudnościami wychowawczymi związanymi z zaburzeniami lub niepełnosprawnością występującymi u dziecka.",
+   "kto_moze_skorzystac": "Instytucje i organizacje zajmujące się organizacją opieki i wsparcia dla rodzin w kórych funkcjonuje dziecko z niepełnosprawnością, rodziny borykające się z trudnościami związanymi z niepełnosprawnością występującą u dziecka."
+  },
+  {
+   "id": "rops-041",
+   "title": "Uważnione rodzieństwo",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-dzieci-mlodziezy-i-rodziny,uwaznione-rodzienstwo",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "\"Uważnione rodzieństwo\" to model postępowania rodziców dziecka z niepełnosprawnością ze zdrowymi dziećmi (rodzeństwem dzieci z niepełnosprawnością). Model składa się ma z różnorodnych, uzupełniających się narzędzi, które wskazują problemy, z jakimi może mierzyć się rodzeństwo dziecka z niepełnosprawnością, sposoby uniknięcia ich negatywnych skutków oraz sposoby radzenia sobie z nimi. Są proste w użyciu, ale też wartościowe – poparte wiedzą psychologiczną, przydatne w rozumieniu i dostosowaniu do sytuacji.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na brak kompleksowego wsparcia dla rodzin (rodziców i rodzeństwa), w których rodzi się dziecko z niepełnosprawnością i braki w zakresie ustandaryzowanych ścieżek postępowania, modeli wsparcia czy pomocy dla tej grupy odbiorców.",
+   "grupa_docelowa": "Rodzice dzieci z niepełnosprawnością, rodzeństwo dzieci z niepełnosprawnością.",
+   "kto_moze_skorzystac": "Ośrodki wsparcia, poradnie psychologiczne, ośrodki wczesnego wspomagania rozwoju."
+  },
+  {
+   "id": "rops-042",
+   "title": "BiustSPINKA",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,biustspinka",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Ptoste, tanie i praktyczne urządzenie wykorzystujące taśmę slap, wspomagające zakładanie biustonosza o nazwie BiustSPINKA. Urządzenie jest skierowane do kobiet posiadających różnego typu ograniczenia ruchowe i fizyczne ze względu na swoją niepełnosprawność, schorzenia, wypadek, chorobę lub funkcjonalność jednego ramienia. Ma wspomagać i zwiększać wygodę w procesie zakładania, zapinania i zdejmowania biustonosza.",
+   "jakie_problemy": "Rozwiązanie stanowi odpowiedź na problem braku odpowiednich artykułów i urządzeń wspierających samodzielne ubieranie się kobiet z dysfunkcją ręki.",
+   "grupa_docelowa": "Kobiety posiadające różnego rodzaju ograniczenia fizyczne i ruchowe, które utrudniają lub uniemożliwiają samodzielne założenie biustonosza (m.in. poruszające się na wózku, z niepełnosprawnością wrodzoną, z mózgowym porażeniem dziecięcym, z niepełnosprawnością nabytą w wyniku wypadku lub choroby, kobiety z dysfunkcją ramienia, kobiety po amputacji piersi, kobiety z zaburzeniami ruchu w wyniku udaru lub przebytej operacji, kobiety cierpiące na otyłość).",
+   "kto_moze_skorzystac": "Gabinety rehabilitacyjne, szkoły, szpitale, sklepy z bielizną, przychodnie, oddziały rehabilitacyjne."
+  },
+  {
+   "id": "rops-043",
+   "title": "Chlap Pro",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,chlap-pro",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi chlapoodporny ochraniacz protezy nogi ChlapPro. Produkt zapewnia ochronę przed zachlapaniem tych elementów w protezie, które nie są odporne na wodę. W ramach projektu powstały dwa rodzaje ochraniaczy dostosowanych do najpopularniejszych rodzajów protezy podudzia i uda.",
+   "jakie_problemy": "Innowacja odpowiada na brak odpowiedniego zabezpieczenia protez kończyn dolnych przed zamoknięciem, co może skutkować szybszym zużyciem elementów protez i jej zniszczeniem",
+   "grupa_docelowa": "Osoby z protezami ud i podudzia",
+   "kto_moze_skorzystac": "Osoby poruszające się z pomocą protez uda lub podudzia, ośrodki wsparcia osób z niepełnosprawnościami, urzędy miasta i gmin, na terenie których mieszkają osoby korzystające z protez."
+  },
+  {
+   "id": "rops-044",
+   "title": "Cloudleg",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,cloudleg",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Metoda tworzenia i wykonania realistycznie wyglądających sztucznych nóg w formie protezy kosmetycznej dla osób poruszających się̨ na wózku. Rozwiązanie powstało z myślą o osobach po amputacji obu nóg powyżej kolan lub ich braku od urodzenia. Proteza Cloudleg pełni funkcję estetyczną, wizerunkową - nie jest produktem medycznym. W swojej wyjściowej formie jest gotowa do przycięcia na odpowiednią długość względem indywidualnych potrzeb użytkownika/użytkowniczki. Proteza jest utrzymana przy ciele za pomocą elementu trzymającego w postaci elastycznych szortów.",
+   "jakie_problemy": "Innowacja odpowiada na dyskomfort wynikający z braku nóg u osób po amputacji lub z wrodzoną wadą braku kończyn powyżej kolan, które nie mogą lub nie chcą korzystać z protez funkcjonalnych/ortopedycznych.",
+   "grupa_docelowa": "Odbiorcy innowacji to osoby po amputacji kończyn dolnych powyżej kolan lub ich braku od urodzenia, niekorzystające z medycznych protez lub protez funkcjonalnych, na co dzień poruszające się na wózku, osoby które niedawno doświadczyły utraty nóg i dopiero oswajają się z nowym wizerunkiem.",
+   "kto_moze_skorzystac": "Osoby indywidualne po amputacji kończyn dolnych, placówki rehabilitacyjne, szpitale, organizacje wspierające aktywizację osób z niepełnosprawnością ruchową, po amputacjach i poruszających się na wózku."
+  },
+  {
+   "id": "rops-045",
+   "title": "Dostępna szermierka",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,dostepna-szermierka",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Platforma szermiercza wyróżniająca się na tle innych rozwiązań przede wszystkim samowystarczalnością zawodników (przypinanie wózków, zmiana pozycji zawodników, ustawianie odległości między zawodnikami), wagą która pozwala na łatwy transport oraz nowoczesnym, niezawodnym systemem mocowań wózków (również w czasie zawodów sportowych).",
+   "jakie_problemy": "Innowacja dotyczy utrudnionego dostępu do nowoczesnego sprzętu do szermierki na wózkach - obecnie funkcjonujący jest archaiczny, ciężki, kosztowny w obsłudze i wymaga asysty osób trzecich.",
+   "grupa_docelowa": "Zawodniczki i zawodnicy uprawiające/ uprawiający szermierkę na wózkach, zarówno na poziomie rekreacyjnym, jak i zawodnicy startujący w turniejach.",
+   "kto_moze_skorzystac": "Kluby sportowe i organizacje zajmujące się organizacją treningów i zawodów dla osób poruszajacych się na wózkach"
+  },
+  {
+   "id": "rops-046",
+   "title": "Dostępny stół targowy",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,dostepny-stol-targowy",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowacja polega na opracowaniu specjalnego stołu targowego, który dzięki udogodnieniom staje się dostępny dla osób starszych i niepełnosprawnych, usprawniając czy też umożliwiając proces robienia zakupów na targowisku. W ramach innowacji powstały cztery warianty stołu, które posiadają takie rozwiązania jak m.in.: odpowiednie nachylenie blatu; uchwyty do zawieszenia torby, kuli, laski; bilownice na monety; poręcze; dodatkowe półki pod stołem; dodatkowe wysuwane półki; krzesło/siedzisko.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w robieniu codziennych zakupów występujące wśród osób ze specjalnymi potrzebami.",
+   "grupa_docelowa": "Osoby starsze, osoby z niepełnosprawnościami, osoby poruszające się o kulach ortopedycznych, z balkonikami, osoby z zaburzeniami równowagi, z ograniczoną sprawnością ruchową kończyn górnych, z zaburzoną motoryką dłoni i palców, używające ortez, poruszające się na wózkach inwalidzkich",
+   "kto_moze_skorzystac": "Podmioty będące właścicielami targowisk, urzędy gmin, jednostki edukacyjne, kulturalne"
+  },
+  {
+   "id": "rops-047",
+   "title": "EV moduł do wózków inwalidzkich",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,ev-modul-do-wozkow-inwalidzkich",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji powstał prototyp modułu elektrycznego do wózka inwalidzkiego, który wyposażony jest w dwa koła (przednie i tylne). Dzięki takiemu rozwiązaniu zwiększa się stabilność wózka, szczególnie podczas jazdy pod górę i po chodnikach. Równocześnie wymiary wózka zwiększają się nie więcej niż o 10%.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na trudności w samodzielnym poruszaniu się na wózku osób z niepełnosprawnościami i problemy z jazdą pod górę osób na wózkach.",
+   "grupa_docelowa": "Osoby, które z powodów zdrowotnych poruszają się na wózkach",
+   "kto_moze_skorzystac": "Producenci wózków inwalidzkich, szpitale, ośrodki rehabilitacyjne."
+  },
+  {
+   "id": "rops-049",
+   "title": "Kompleksowa pomoc dla osób po amputacji kończyny dolnej",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,kompleksowa-pomoc-dla-osob-po-amputacji-konczyny-dolnej",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model kompleksowej pomocy dla osób po amputacji kończyny dolnej będący zestawem połączonych ze sobą logicznie działań, umożliwiających szybszy powrót do codziennego, samodzielnego funkcjonowania osobom po amputacji. Model zapewnia holistyczną opiekę nad osobami po amputacji, pełnioną przez psychologa, dietetyka i rehabilitanta. Przewidywana przez innowację praca z pacjentem rozpoczyna się od zebrania wywiadu (fizjoterapeuta, psycholog, dietetyk). Na tej podstawie sporządzony zostaje 12-dniowy plan turnusu rehabilitacyjnego (dwa razy po 6 dni) z wyszczególnionymi zabiegami i wskazaniami dla każdego uczestnika indywidualnie. Oba turnusy rozdzielone są miesięczną przerwą, którą uczestnicy procesu powinni poświęcić na samodzielną pracę zgodnie z wytycznymi.",
+   "jakie_problemy": "Innowacja odpowiada na brak właściwego wsparcia dla osób bezpośrednio po amputacji kończyny dolnej i brak kompleksowych rozwiązań rehabilitacyjnych dla tego typu osób.",
+   "grupa_docelowa": "Osoby po amputacji kończyny dolnej",
+   "kto_moze_skorzystac": "Instytucje, podmioty gospodarcze i prawne opiekujące się osobami po amputacji, jednostki samorządu terytorialnego w ramach świadczenia usług opiekuńczych, szpitale."
+  },
+  {
+   "id": "rops-050",
+   "title": "Lekki wózek aktywny",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,lekki-wozek-aktywny",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "",
+   "jakie_problemy": "Innowacja odpowiada na problem ograniczonego dostępu do niedrogich, funkcjonalnych (przede wszystkim dzięki wadze i zwrotności) wózków aktywnych, które są niezbędne aby prowadzić aktywne społecznie, zawodowo i towarzysko życie.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością ruchową, neurologiczną oraz każdą inną, która wymaga korzystania z wózka aktywnego.",
+   "kto_moze_skorzystac": "Producent dysponujący odpowiednim zapleczem do rozwoju konstrukcji (np. producent sprzętu sportowego m.in. rowerów)."
+  },
+  {
+   "id": "rops-051",
+   "title": "Marina Pai",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,marina-pai",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Narzędzie do autodiagnozy dostępności marin i przystani na wodach morskich, które stanowi wsparcie w zakresie zwiększania dostępności marin dla osób starszych o ograniczonej mobilności oraz osób z niepełnosprawnością narządu wzroku i ruchu. Na narzędzie składa się: schemat autodiagnozy dostępności mariny (ankieta, zestaw ćwiczeń pozwalających zidentyfikować potrzeby osób o ograniczonej mobilności/z niepełnosprawnościami i sposoby odpowiedzi na nie), wytyczne dla zarządców zakresie obsługi osób ze specjalnymi potrzebami oraz materiał edukacyjno-informacyjny o poszczególnych rodzajach niepełnosprawności i osób starszych o ograniczonej mobilności w kontekście ich potrzeb przy korzystaniu z marin.",
+   "jakie_problemy": "Innowacja stanowi odpowiedź na niedostosowanej infrastruktury marin i przystani na wodach morskich dla osób starszych i z niepełnosprawności (obecnie średnią wieku żeglarzy na zachodniopomorskim szlaku żeglarskim szacuje się na przedział 55-60 lat).",
+   "grupa_docelowa": "Zarządcy i projektanci marin oraz osoby starsze mające trudności w poruszaniu się, osoby z niepełnosprawnością narządu wzroku i ruchu, które posiadają doświadczenie w zakresie uprawiania żeglarstwa.",
+   "kto_moze_skorzystac": "Zarządcy i projektanci marin (morskich i śródlądowych)"
+  },
+  {
+   "id": "rops-052",
+   "title": "Moduły niezależności",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,moduly-niezaleznosci",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji powstał model wprowadzenia dostępnej zabudowy kamperowej do zastosowania w samochodach dostawczych. Model ten zawiera istotne modyfikacje, a przede wszystkim opis techniczny konkretnych komponentów i ich instalacji. W ten sposób zabudowa nadaje samochodowi dostawczemu cechy i funkcje kampera, przystosowanego do przewożenia osób poruszających się na wózkach, osób z dysfunkcją wzroku czy osób z dysfunkcją słuchu.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu do swobodnej turystyki/możliwości przemieszczania się dla osób z niepełnosprawnością",
+   "grupa_docelowa": "Osoby z niepełnosprawnościami, seniorzy, osoby o ograniczeniach wynikających ze stanu zdrowia (również ograniczeniach czasowych).",
+   "kto_moze_skorzystac": "Osoby z niepełnosprawnościami, osoby o ograniczeniach wynikających ze stanu zdrowia (również ograniczeniach czasowych), ich opiekunowie/rodziny/osoby towarzyszące, producenci kamperów i samochodów dostawczych, wypożyczalnie kamperów, biura turystyczne."
+  },
+  {
+   "id": "rops-053",
+   "title": "Nakręceni na aktywność",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,nakreceni-na-aktywnosc",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja webowa przeznaczona dla osób z niepełnosprawnościami - wspiera je w samodzielnym planowaniu podróży i aktywnym spędzaniu czasu poprzez przekazywanie im informacji na temat stanu dostępności obiektów użyteczności publicznej (gastronomicznych, kulturalnych, urzędowych, usługowych). Przedstawiciele użytkowników aplikacji, po wizycie w wybranych przez siebie miejscach mogą napisać opinię, wskazując szerokość nachylenia podjazdu, możliwość swobodnego poruszania się itp. Dzięki temu możliwe jest współtworzenie przez użytkowników prawdziwej interaktywnej mapy przyjaznych miejsc.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu osób z niepełnosprawnością do miejsc użyteczności publicznej, w tym restauracji, kawiarni, urzędów, muzeów, obiektów infrastruktury miejskiej itp. oraz wykluczenie społeczne osób z niepełnosprawnością.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością, które mają ograniczoną możliwość poruszania się",
+   "kto_moze_skorzystac": "Osoby z różnymi typami niepełnosprawności, ich opiekunowie/rodziny, ośrodki wspierające osoby z niepełnosprawnościami."
+  },
+  {
+   "id": "rops-054",
+   "title": "Puzzle's Ramp",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,puzzles-ramp",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Uniwersalny typoszereg klocków/puzzli, w postaci gumowych kształtowników, z których można zbudować dowolnej wysokości gładki podjazd. Rozwiązanie służy do trwałego lub tymczasowego, szybkiego i niskobudżetowego usuwania przeszkód architektonicznych w postaci progów, krawężników, uskoków, pojedynczych schodków pozwalając dostosować infrastrukturę obiektu do potrzeb osób o ograniczonych możliwościach motorycznych np. poruszających się na wózkach.",
+   "jakie_problemy": "Innowacja odpowiada na trudności z dostępnością architektoniczną lub transportową dla osób o ograniczonej mobilności np. poruszających się na wózkach.",
+   "grupa_docelowa": "Osoby posiadające problemy z poruszaniem się np. osoby otyłe, starsze, poruszające się o lasce, przy pomocy balkonika rehabilitacyjnego lub na wózku, a także osoby z wózkami dziecięcymi.",
+   "kto_moze_skorzystac": "Placówki użyteczności publicznej, podmioty prywatne, osoby prywatne."
+  },
+  {
+   "id": "rops-055",
+   "title": "Szablony piękna",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,szablony-piekna",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Szablony i tabele rozmiarów bielizny adaptacyjnej (majtek i biustonoszy) dla kobiet z ograniczoną ruchomością poruszających się na wózkach. W wypracowanych projektach zostały uwzględnione walory estetyczne oraz aktualne trendy w modzie, a także materiały i dodatki gwarantujące funkcjonalność i komfort użytkowania (wygodne zapięcia czy dodatki, wkładka z wysokim poziomem absorpcji wilgoci, miękkie naturalne dzianiny z dodatkowymi parametrami takimi jak właściwości antybakteryjne czy zwiększona oddychalność). Opracowane modele posiadają wszystkie funkcjonalności, które ułatwią samodzielne zakładanie bielizny przez osoby z niepełnosprawnością i niedowładem kończyn górnych.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na brak dostępu do estetycznej, eleganckiej a jednocześnie funkcjonalnej bielizny dla kobiet ze specjalnymi potrzebami wynikającymi z niepełnosprawności ruchowej.",
+   "grupa_docelowa": "Kobiety z ograniczoną ruchomością, poruszające się na wózkach, zmagające się z niedowładami lub przykurczami kończyn, skutkującymi mniejszymi możliwościami ruchowymi w zakresie codziennego funkcjonowania.",
+   "kto_moze_skorzystac": "Organizacje pozarządowe wspierające aktywizację osób z niepełnosprawnością ruchową, sklepy z odzieżą/bielizną, firmy bieliźniarskie, ośrodki rehabilitacji działające w obszarze wsparcia osób z niepełnosprawnościami"
+  },
+  {
+   "id": "rops-057",
+   "title": "Wózek szermierczy",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,wozek-szermierczy",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Wózek szermierczy dla zawodników poruszających się na wózkach, spełniający kryteria: samoobsługowość przez osobę z niepełnosprawnościami, lekkość produktu, niższa w stosunku do obecnych na rynku wózków zawodniczych cena, zastosowanie nowoczesnych materiałów kompozytowych oraz stopów aluminium.",
+   "jakie_problemy": "Innowacja odpowiada na problem w dostępie do sprzętu sportowego (taniego, lekkiego, łatwego w obsłudze) – niezbędnego do uprawiania szermierki na wózkach.",
+   "grupa_docelowa": "Zawodniczki i zawodnicy uprawiające/ uprawiający szermierkę na wózkach, zarówno na poziomie rekreacyjnym, jak i zawodnicy startujący w turniejach.",
+   "kto_moze_skorzystac": "Kluby sportowe i organizacje zajmujące się organizacją treningów i zawodów dla osób poruszajacych się na wózkach."
+  },
+  {
+   "id": "rops-059",
+   "title": "Zakupy na jednym wózku z dzieckiem z niepełnosprawnością ruchową",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-o-ograniczonej-mobilnosci,zakupy-na-jednym-wozku-z-dzieckiem-z-niepelnosprawnoscia-ruchowa",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Wózek zakupowy, wyposażony w wyprofilowane siedzisko, które pozwala bezpiecznie przewozić dziecko z niepełnosprawnością (m.in. z mózgowym porażeniem dziecięcym) w trakcie robienia zakupów w sklepach wielkopowierzchniowych. Siedzisko zostało wyposażone w zestaw stabilizatorów (min. zagłówek do stabilizacji głowy czy odcinka lędźwiowego kręgosłupa) oraz pięciopunktowe pasy bezpieczeństwa. Rozwiązanie to, pozwala na utrzymanie spionizowanej i bezpiecznej postawy ciała u dziecka, którego ciało jest wiotkie a napięcie mięśniowe znacząco obniżone.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na potrzeby opiekunów dzieci z niepełnosprawnością w zakresie samodzielności robienia zakupów, bez konieczności organizowania opieki dla dziecka.",
+   "grupa_docelowa": "Rodzice/opiekunowie dzieci z niepełnosprawnością ruchową (m.in. mózgowym porażeniem dziecięcym).",
+   "kto_moze_skorzystac": "Sklepy wielkopowierzchniowe, markety budowlane, dyskonty spożywcze."
+  },
+  {
+   "id": "rops-060",
+   "title": "Blue Sea Eye",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,blue-sea-eye",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Urządzenie mobilne (przenośny wskaźnik kursu kompasowego i wychylenia steru) połączone z aplikacją, która umożliwia osobom niewidomym i niedowidzącym samodzielne sterowanie jednostką pływającą. Urządzenie jest niezależne od aparatury pokładowej a jego funkcją jest precyzyjne generowanie informacji (aktualny kurs, odejście od kursu zadanego, aktualne położenie steru) a następnie przekazywanie ich do aplikacji uruchamianej na smartfonie użytkownika wyposażonym w oprogramowanie odczytu ekranu mową syntetyczną. Równolegle uczestnik jest powiadamiany o zmianach kursu za pomocą serii krótkich dźwięków o różnej częstotliwości, co pozwala na uzyskanie informacji szybciej niż za pomocą syntezy mowy, skracając tym samym czas reakcji na zachodzące zmiany kursu.",
+   "jakie_problemy": "Innowacja odpowiada na brak sprzętu umożliwiającego nawigowanie żeglarzy z dysfunkcją narządu wzroku i utrudniony dostęp osób z dysfunkcją narządu wzroku do żeglarstwa.",
+   "grupa_docelowa": "Osoby niewidome, osoby niedowidzące.",
+   "kto_moze_skorzystac": "Osoby z dysfunkcją narządu wzroku, podmioty organizujące rejsy uwzględniające załogantów z z dysfunkcją narządu wzroku, kluby żeglarskie, organizacje pozarządowe wspierające osoby z dysfunkcją narządu wzroku."
+  },
+  {
+   "id": "rops-061",
+   "title": "Czytamoda",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,czytamoda",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji powstała aplikacja uzupełniająca tradycyjne opisy ubrań w sklepach online oraz stacjonarnych o audiodeskrypcję. Dzięki temu rozwiązaniu osoby z niepełnosprawnością wzroku mogą wysłuchać opisów produktów, informacji na temat ich stylu i wykonania, a później na tej podstawie podjąć decyzję o zakupie konkretnego elementu garderoby.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na trudności w wyborze ubrań osób z niepełnosprawnością wzroku i konieczność posiadania asysty w trakcie zakupów.",
+   "grupa_docelowa": "Osoby niewidome i osoby z zaburzeniami widzenia",
+   "kto_moze_skorzystac": "Sklepy odzieżone stacjonarne oraz online, centra handlowe."
+  },
+  {
+   "id": "rops-062",
+   "title": "Dostępny transport publiczny",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,dostepny-transport-publiczny",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi aplikacja mobilna „Dostępny Transport Publiczny” będąca przeniesieniem aplikacji \"Zaraz jadę\" z systemu iOS na Android. Jest ona dedykowana osobom niewidomym i słabowidzącym i pozwala na bezpieczne, komfortowe i bezproblemowe korzystanie z komunikacji miejskiej. Aplikacja została wyposażona w takie funkcje jak m.in. wyświetlanie przystanków na mapie (wraz z opisem infrastruktury przystankowej), zaznaczanie na mapie położenia pojazdów komunikacji miejskiej wraz z animacją zmiany lokalizacji, wyznaczanie trasy do wybranego przystanku z uwzględnieniem bieżącej sytuacji ruchowej, wsparcie dla funkcji dostępności TalkBack.",
+   "jakie_problemy": "Innowacja odpowiada na utrudniony dostęp do komunikacji miejskiej osób z dysfunkcją narządu wzroku i brak dostępu do informacji pasażerskiej.",
+   "grupa_docelowa": "Osoby z dysfunkcją narządu wzroku, osoby, które regularnie korzystają z komunikacji miejskiej w Warszawie.",
+   "kto_moze_skorzystac": "Przedstawiciele Warszawskiego Transportu Publicznego, opiekunowie i bliscy osób z zaburzeniami wzroku, ośrodki wspierające osoby z zaburzeniami widzenia."
+  },
+  {
+   "id": "rops-063",
+   "title": "Dostępny wniosek dla g/Głuchych",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,dostepny-wniosek-dla-ggluchych",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji opracowano i przetestowano 3 wzory dokumentów urzędowych będących wnioskami o zapewnienie dostępności w określonym obszarze usług publicznych. Rozwiązanie ma na celu ułatwienie osobom g/Głuchym przejście przez urzędowe procedury, w placówkach nie zapewniających natychmiastowego wsparcia tłumacza polskiego języka migowego.",
+   "jakie_problemy": "Innowacja odpowiada na problemy i potrzeby osób głuchych, takie jak: brak szybkiej ścieżki dostępu do usługi tłumaczenia w instytucjach publicznych, brak formalnych dokumentów zrozumiałych dla g/Głuchych chcących załatwić sprawę urzędową i w efekcie konieczność wypełniania dokumentów w języku polskim (obcym dla g/Głuchych) np. w celu zapewnienia sobie tłumacza PJM do konkretnej sprawy urzędowej w instytucjach publicznych.",
+   "grupa_docelowa": "Osoby g/Głuche i niedosłyszące posługujące się Polskim Językiem Migowym",
+   "kto_moze_skorzystac": "Podmioty administracji publicznej, jednostki prywatne oraz organizacje pozarządowe wspierające dostępność dla osób g/Głuchych."
+  },
+  {
+   "id": "rops-064",
+   "title": "Głucha ankieta",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,glucha-ankieta",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Kod źródłowy wtyczki do zainstalowania w LimeSurvey (internetowy system ankietujący). Kod ten umożliwia bezpośrednie nagrywanie i przesyłanie odpowiedzi video w polskim języku migowym w co najmniej jednym rodzaju pytań. Innowacja została stworzona (napisana) z wykorzystaniem dostępnych bibliotek i API (Application Programming Interface) oraz przystosowana do potrzeb g/Głuchych z uwzględnieniem możliwości programu LimeSurvey. Jeśli badacz założył, że w badaniu wezmą udział użytkownicy PJM i zainstalował wypracowaną wtyczkę, osoby g/Głuche mogą odpowiedzieć na pytanie w języku migowym za pomocą kamery w swoim laptopie czy telefonie.",
+   "jakie_problemy": "Innowacja odpowiada na brak możliwości wypowiadania się przedstawicieli społeczności osób g/Głuchych w badaniach ankietowych i brak możliwości przeprowadzania badań ankietowych dla osób pragnących uwzględnić w badaniu osoby z dysfunkcją słuchu.",
+   "grupa_docelowa": "Osoby g/Głuche, badacze, którzy chcą ująć w swoich wynikach użytkowników PJM.",
+   "kto_moze_skorzystac": "Badacze indywidualni, uczelnie wyższe i środowiska akademickie, instytuty badawcze."
+  },
+  {
+   "id": "rops-065",
+   "title": "Głuchy czytelnik w bibliotece",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,gluchy-czytelnik-w-bibliotece",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Publikacja przybliżająca osobom g/Głuchym instytucję jaką jest biblioteka oraz pokazująca, że czytanie jest ważne. Publikacja powstała w polskim języku migowym, a następnie została przełożona na łatwy tekst w języku polskim. Publikacja daje wskazówki jak wspierać dziecko w czytaniu i jak korzystać z biblioteki.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na potrzebę włączenia osób g/Głuchych do społeczności czytelników korzystających z usług bibliotek.",
+   "grupa_docelowa": "Osoby g/Głuche, szczególnie rodzice, którzy posiadają dzieci w wieku szkolnym, zarówno słyszące (KODA), jak i dzieci g/Głuche oraz słabosłyszące.",
+   "kto_moze_skorzystac": "Biblioteki publiczne, biblioteki szkolne, szkoły integracyjne."
+  },
+  {
+   "id": "rops-066",
+   "title": "Hear IT",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,hear-it",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Internetowa platforma edukacyjna opracowana w Polskim Języku Migowym dla osób g/Głuchych pragnących wejść w branżę IT. Zawiera video-słownik z głównymi pojęciami z obszaru programowania, podręczniki dot. języków programowania takich jak Python, Java, Javascript, kursy elearningowe oraz etiudy gamingowe dając dostęp do bazowej wiedzy programistycznej w języku PJM.",
+   "jakie_problemy": "Innowacja odpowiada na brak materiałów dydaktycznych do samodzielnej nauki z obszaru programowania i brak możliwości uczenia się podstaw programowania przez osoby g/Głuche.",
+   "grupa_docelowa": "Osoby g/Głuche, zainteresowane kształceniem w obszarze IT.",
+   "kto_moze_skorzystac": "Szkoły policealne, uczelnie wyższe, technika, licea, organizacje pozarządowe zajmując się aktywizacją zawodową osób g/Głuchych."
+  },
+  {
+   "id": "rops-067",
+   "title": "Kaski binauralne",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,kaski-binauralne",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji stworzono całkowicie wyciemniony oraz wygłuszony kask, który dzięki możliwości odsłuchiwania w nim nagrań binauralnych, imitujących czynności życia codziennego, przyspiesza rehabilitację oraz poprawia jakość życia osób, które niedawno utraciły lub w niedalekim czasie utracą wzrok. Dzięki specjalnej technice nagrywania dźwięku kask umożliwia słuchaczowi odsłuch i precyzyjną lokalizację w przestrzeni zarejestrowanych sygnałów akustycznych, a tym samym stwarza dźwiękową iluzję przebywania w miejscu, w którym dokonywano nagrania.",
+   "jakie_problemy": "Innowacja odpowiada na nieodpowiedni poziom rehabilitacji osób tracących wzrok (rehabilitacja nie dość bezpieczna/bezpośrednia/szybka/efektywna) i brak narzędzi umożliwiających komfortowe funkcjonowanie osobom niewidomym.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością narządu wzroku – zarówno te, które niedawno utraciły wzrok czy osoby niedowidzące, jak i osoby, które w niedługim czasie go utracą.",
+   "kto_moze_skorzystac": "Osoby z niepełnosprawnością narządu wzroku, organizacje zajmujące się rehabilitacją osób niewidomych."
+  },
+  {
+   "id": "rops-068",
+   "title": "My way to culture",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,my-way-to-culture",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja bazująca na systemie nawigacji wewnątrzbudynkowej (iBeacon), zawierająca trzy odrębne, interaktywne ścieżki zwiedzania muzeum, dostosowane do specyficznych potrzeb osób z niepełnosprawnością wzroku, słuchu i narządu ruchu. Aplikacja uruchomiona w momencie przekroczenia bramy obiektu prowadzi zwiedzającego, uwzględniając dogodną dla niego trasę (np. prowadzi tylko „szlakami” komunikacyjnymi dostępnymi dla wózków – czyli od razu proponuje trasę z windą, a nie pokazuje przejścia na poziom wyżej z wykorzystaniem schodów). W profilu osoby z dysfunkcją wzroku uruchamia audiodeskrypcję, a w profilu osoby g/Głuchej pokazuje film z tłumaczeniem PJM (również przy obiektach, które nie mają możliwości instalacji monitora z tłumaczeniem PJM).",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony dostęp do oferty instytucji kultury osób z niepełnosprawnościami, ograniczona możliwość samodzielnego zwiedzania muzeum i swobodnego zapoznania się z eksponatami przez osoby, które potrzebują alternatywnych form korzystania z przestrzeni lub poznawania obiektów artystycznych.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością narządu ruchu, słuchu, wzroku, które z uwagi na towarzyszące im niepełnosprawności mają utrudniony dostęp do oferty instytucji kultury.",
+   "kto_moze_skorzystac": "Muzea, galerie, placówki kultury, które organizują wystawy."
+  },
+  {
+   "id": "rops-070",
+   "title": "Osoby niewidome i niedowidzące jako nauczyciele języka polskiego",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,osoby-niewidome-i-niedowidzace-jako-nauczyciele-jezyka-polskiego",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model wsparcia nauczania języka polskiego dla migrantów prowadzonego przez osoby niewidome. Składa się on z opracowanego kursu języka polskiego, dostosowanego do potrzeb osób niewidomych i niedowidzących, którzy pełnią rolę nauczycieli. Dodatkowo, model zawiera materiały pomocnicze, takie jak konspekty lekcji z prezentacjami, słuchowiskami, piosenkami, tekstami itp., oraz materiały dla tutorów dotyczące doskonalenia umiejętności nauczania języka polskiego.",
+   "jakie_problemy": "Innowacja odpowiada na trudność w podjęciu pracy dostosowanej do potrzeb i możliwości osób niewidomych i niedowidzących oraz trudność w adaptacji podjęciu przecy przez migrantów/uchodźców.",
+   "grupa_docelowa": "Migranci z krajów wschodnich, którzy przyjeżdżając do Polski nie posługują się językiem polskim w stopniu komunikatywn, osoby z niepełnosprawnością narządu wzroku.",
+   "kto_moze_skorzystac": "Szkoły językowe, podmioty aktywizujace zawodowo osoby z dysfunkcją narzadu wzroku, pracodawcy zatrudniający migrantów."
+  },
+  {
+   "id": "rops-071",
+   "title": "Spotkania KulturLove",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,spotkania-kulturlove",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Elektroniczna platforma (strona internetowa dostępna także w wersji mobilnej na smartfony i tablety), skierowana głównie do osób z niepełnosprawnością, których opiekunowie ze względu na inne, codzienne obowiązki nie są w stanie udać się z nimi na wydarzenia kulturalne (np. do kina, teatru itp.). Dzięki platformie możliwe jest łączenie ze sobą osób z niepełnosprawnościami, wymagających wsparcia opiekuna, z użytkownikami mogącymi stać się tzw. „czasowymi opiekunami” podczas korzystania z obiektów kultury, np. podczas wyjścia do kina, do teatru itp.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony dostęp do placówek, wydarzeń i instytucji kultury osób z niepełnosprawnościami.",
+   "grupa_docelowa": "Osoby z niepełnosprawnościami, w szczególności w stopniu znacznym, osoby mające problemy z samodzielnym poruszaniem się w przestrzeni publicznej.",
+   "kto_moze_skorzystac": "Instytucje kultury, sportu czy rekreacji, organizatorzy wydarzeń kulturalnych."
+  },
+  {
+   "id": "rops-072",
+   "title": "Strażnik",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,straznik",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Główną funkcjonalnością aplikacji jest wykrywanie alarmów dźwiękowych pochodzących z np. czujek tlenku węgla, alarmów przeciwpożarowych i przekazywanie informacji o nich użytkownikowi w spersonalizowany przez niego sposób. Dostępne w aplikacji metody ostrzegania o niebezpieczeństwie to: wibracje, latarka, połączenia alarmowe (połączenie telefoniczne pod wskazany numer w przypadku braku reakcji użytkownika na powiadomienia o wykryty). Ponadto aplikacja rejestruje wykryte zdarzenia w historii.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na problemy osób G/głuchych i niedosłyszących w kontekście słyszenia i odbierania oraz rozpoznawania alertów i sygnałów wskazujących na zagrożenia.",
+   "grupa_docelowa": "Osoby g/Głuche, niedosłyszące/słabosłyszące oraz głuchoniewidome.",
+   "kto_moze_skorzystac": "Osoby prywatne ale przede wszystkim hotele, pensjonaty, akademiki w celu zwiększenia bezpieczeństwa gości o specjalnych potrzebach."
+  },
+  {
+   "id": "rops-074",
+   "title": "Turystyka górska/wspinaczka dostępna dla wszystkich",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,turystyka-gorskawspinaczka-dostepna-dla-wszystkich",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi autorska metoda wspinaczki wysokogórskiej, ściankowej i skałkowej z udziałem osób z niepełnosprawnością wzrokową. Rozwiązanie w założeniu ma stanowić propozycję rehabilitacji i terapii przez wyzwanie, czyli stworzenie pod okiem wykwalifikowanych instruktorów takich warunków by podjąć metody współpracy i komunikacji między osobą prowadzącą i niewidomą w bezpiecznych okolicznościach. Metoda zakłada przygotowanie grupy wspinaczkowej w otoczeniu przestrzeni zamkniętej (sztuczna ścianka wspinaczkowa) oraz sprawdzenie nabytych umiejętności w naturalnych warunkach górskich.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony dostęp do turystyki górskiej osób z niepełnosprawnością wzrokową.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością wzroku",
+   "kto_moze_skorzystac": "Obiekty sportowe, podmioty organizujące turystykę górską dla osób z dysfunkcją narządu wzroku, organizacje pozarządowe wspierające osoby z dysfunkcją narządu wzroku."
+  },
+  {
+   "id": "rops-075",
+   "title": "Wibraap",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,wibraap",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Wibraap przetwarza dowolne dźwięki w wibracje odczuwalne przez ciało osoby, która ma założoną „kamizelkę” połączoną z aplikacją. Urządzenie (hardware) funkcjonuje wraz z aplikacją (software) w wersji komputerowej i mobilnej. Użytkownik może we własnym zakresie wybrać tryb działania urządzenia: przekształcenie w wibracje dźwięku rejestrowanego przez mikrofon (A), zaimportowanie własnych próbek dźwiękowych a następnie przekształcenie ich w wibracje (B), gra na elektronicznym instrumencie.",
+   "jakie_problemy": "Wykluczenie osób g/Głuchych i niedosłyszących z wydarzeń, których dominującym medium jest dźwięk. Osoby głuche/Głuche nie mają dostępu do narzędzi umożliwiających rozwój ich kreatywności i wrażliwości w zakresie percepcji dźwięku i szeroko rozumianej muzyki — tj. instrumentów muzycznych (akustycznych i elektronicznych) oraz jej odbioru.",
+   "grupa_docelowa": "Osoby g/Głuche i niedosłyszące.",
+   "kto_moze_skorzystac": "Z innowacją mogą skorzystać przede wszystkim: organizatorzy koncertów i innych wydarzeń muzycznych, w tym spektakli, performansów w których dźwięki odgrywają dużą rolę. Potencjalnie filharmonie, teatry muzyczne, domy kultury, twórcy, którzy chcieliby wzbogacić i/lub rozwinąć swoje spektakle w oparciu o poza-słuchowe doświadczanie muzyki."
+  },
+  {
+   "id": "rops-076",
+   "title": "Wielodziedzinowy słownik terminów specjalistycznych PL-PJM",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,wielodziedzinowy-slownik-terminow-specjalistycznych-pl-pjm",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji opracowano i przetestowano aplikację mobilną stanowiącą słownik wielodziedzinowy PL- PJM, polegający na umieszczaniu w aplikacji filmów z miganiem specjalistycznego słowa. Aplikacja może rozwijać się poprzez dodawanie kolejnych specjalistycznych słów, przez użytkowników aplikacji- osoby głuche. Dzięki temu może rozwijać się system komunikacji językowej PL- PJM. Aplikacja stanowi swego rodzaju Wikipedię w języku migowym.",
+   "jakie_problemy": "Innowacja odpowiada na problemy komunikacyjne osób głuchych, które związane są m. in z brakiem systemowego, trwałego sposobu na rejestrowanie zwrotów specjalistycznych w PJM (brak oficjalnego źródła, zbioru znaków).",
+   "grupa_docelowa": "Osoby g/Głuche i niedosłyszące",
+   "kto_moze_skorzystac": "Użytkownicy indywidualni (osoby głuche - specjaliści w danych dziedzinach), tłumacze PL-PJM, uczelnie wyższe i ich kadra."
+  },
+  {
+   "id": "rops-077",
+   "title": "Wsparcie imprez masowych dla osób z niepełnosprawnością wzroku",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,wsparcie-imprez-masowych-dla-osob-z-niepelnosprawnoscia-wzroku",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Modułowe, mobilne maty naprowadzające, które tworzą drogi bezpiecznego poruszania się na koncertach, festiwalach oraz wewnątrz budynków dla osób z niepełnosprawnościami. Maty są wyposażone w najazdy dla osób niepełnosprawnych ruchowo, linie prowadzące, podkłady, maty kontrastowe, pola uwagi oraz linie graniczne na krawędziach. Rozwiązanie jest uzupełnione o podręcznik o charakterze instruktażowo-informacyjnym, dedykowany organizatorom imprez masowych. Materiał pokazuje jak przy wykorzystaniu wskazanych narzędzi zorganizować komfortowe i dostępne wydarzenie.",
+   "jakie_problemy": "Innowacja odpowiada na problem utrudnionego lub ograniczonego dostępu do masowych wydarzeń o charakterze rozrywkowym i kulturalnym dla osób z dysfunkcją wzroku.",
+   "grupa_docelowa": "Osoby niewidome i niedowidzące oraz osoby poruszające się na wózkach.",
+   "kto_moze_skorzystac": "Organizatorzy imprez masowych, koncertów, wydarzeń plenerowych, spektakli, firmy eventowe, jednostki kultury, biura festiwalowe, teatry, uczelnie, organizatorzy konferencji."
+  },
+  {
+   "id": "rops-078",
+   "title": "Zdobądź swoje szczyty",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,zdobadz-swoje-szczyty",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach innowacji przygotowany został górski przewodnik multimedialny, opisujący cztery szlaki góskie z uwzględnieniem: czasu przejścia dla osób z różnymi dysfunkcjami; specyfiki trasy, czyli rodzaju nawierzchni, średnich i maksymalnych nachyleń oraz minimalnych szerokości drogi; przeszkód na szlaku (kładki, schody, korzenie, inne nierówności nawierzchni); udogodnień (pochylni, barierek, dostosowanych parkingów, toalet przystosowanych dla osób z niepełnosprawnością); powiązania szlaku z siecią schronisk; możliwości dojazdu do szlaku.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony dostęp do turystyki górskiej osób z niepełnosprawnościami.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością fizyczno-motoryczną, osoby z niepełnosprawnością sensoryczną, osoby z niepełnosprawnością wzroku i słuchu.",
+   "kto_moze_skorzystac": "Samorządy terytorialne, na których terenach leżą szlaki górskie, PTTK, parki krajobrazowe i narodowe, organizacje działające na rzecz turystyki, organizacje działające na rzecz osób z niepełnosprawnościami."
+  },
+  {
+   "id": "rops-079",
+   "title": "Zmysły w ruchu. Model choreografii dla osób niewidomych.",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-sensoryczna,zmysly-w-ruchu-model-choreografii-dla-osob-niewidomych",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model pracy ruchowo-choreograficznej w formie publikacji elektronicznej oraz plików dźwiękowych zawierających propozycje ćwiczeń ruchowo-choreograficznych dla osób z niepełnosprawnością wzroku: scenariusze warsztatów, pliki dźwiękowe, zestawy ćwiczeń.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu do aktywności związanych z tańcem (szczególnie form terapii opartych na tańcu i praktykach choreograficznych) dla osób niewidomych.",
+   "grupa_docelowa": "Osoby niewidome i słabowidzące.",
+   "kto_moze_skorzystac": "Osoby niewidome i słabowidzące, placówki i podmioty, które mogą zorganizować takie zajęcia, instytucje kultury."
+  },
+  {
+   "id": "rops-080",
+   "title": "Cold Box",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,cold-box",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi niewielki, mobilny, wodoodszczelny pojemnik chłodzący służący do przechowywania osobistych leków (np. insuliny) w odpowiednich warunkach termicznych. Wyposażony jest w baterię, która umożliwia utrzymanie stałej, niskiej (4-7 stopni Celsjusza) temperatury bez konieczności trwałego korzystania ze stacjonarnych źródeł energii.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w zapewnianiu odpowiednich warunków przechowywania leków wymagających ciągłego chłodzenia i utrudnienia w podróżowaniu osób przyjmujących tego typu leki.",
+   "grupa_docelowa": "Osoby chorujące na cukrzycę oraz inne osoby, które muszą mieć przy sobie leki wymagające stałego chłodzenia.",
+   "kto_moze_skorzystac": "Osoby prywatne, apteki, przychodnie medyczne."
+  },
+  {
+   "id": "rops-081",
+   "title": "Drogowskazy AJKUM",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,drogowskazy-ajkum",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "System nawigacji po centrum leczenia specjalistycznego, np. onkologicznego opierający się na sieci check pointów (nie wymagający instalacji na telefonie użytkownika). Za pomocą dedykowanej aplikacji wskazują drogę do siebie nawzajem nawigując pacjenta „krok po kroku” do wybranego miejsca docelowego. Dzięki niemu, pacjenci i użytkownicy o obniżonej percepcji spowodowanej chorobą, wiekiem czy brakiem osoby towarzyszącej będą w stanie poruszać się po budynku i bez problemu odnajdować interesujące ich pomieszczenia.",
+   "jakie_problemy": "Innowacja stanowi odpowiedź na utrudnioną orientację pacjentów onkologicznych w złożonej architekturze budynków jednostek medycznych (z wieloma zaułkami, przejściami i windami), która może prowadzić do dezorientacji i trudności w odnalezieniu odpowiednich pomieszczeń.",
+   "grupa_docelowa": "Innowacja kierowana jest do pacjentów chorujący onkologicznie, których percepcja ze względu na proces chorobowy i leczniczy jest znacząco obniżona.",
+   "kto_moze_skorzystac": "Centrum specjalistycznego leczenia onkologicznego, szpitale, przychodnie."
+  },
+  {
+   "id": "rops-082",
+   "title": "Gra o zdrowie",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,gra-o-zdrowie",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Terapeutyczna gra planszowa, która wymaga od gracza zaangażowania, wcielania się w różne postaci z obszaru rynku pracy (np. pracownik, pracodawca, kandydat), pozwala odkryć jego potencjał i przygotować się do zmierzenia z realnymi aspektami rynku pracy przed podjęciem rzeczywistych działań.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony zasób rynku gier terapeutycznych dla osób w kryzysie psychicznym, zwłaszcza dotyczących zagadnień związanych z funkcjonowaniem rynku pracy. Równocześnie dostęp do zajęć terapeutycznych oswajających i przygotowujących do podjęcia (niekiedy powtórnego) zatrudnienia jest jednym z kluczowych aspektów zdrowienia pacjentów, gdyż niejednokrotnie podjęcie zatrudnienia chroni ich przed ponownym pojawieniem się kryzysu psychicznego.",
+   "grupa_docelowa": "Osoby doświadczające kryzysu psychicznego (w szczególności mowa o pacjentach z doświadczeniem psychozy, objawami zaburzeń psychotycznych i zaburzeniami nastroju), powracające na rynek pracy.",
+   "kto_moze_skorzystac": "Jednostki wspierające osoby doświadczające kryzysów psychicznych (np. oddziały dzienne), środowiskowe domy samopomocy, kluby pacjenta ale także szkoły publiczne, prywatne przygotowujące młode osoby do wejścia na rynek pracy, Ochotnicze Hufce Pracy, Wojewódzkie Urzędy Pracy."
+  },
+  {
+   "id": "rops-083",
+   "title": "Himalaje autyzmu",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,himalaje-autyzmu",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Himalaje Autyzmu zostały stworzone na potrzeby wizyt w placówkach medycznych takich jak przychodnie, poradnie, punkty pobrań czy szpitale. Jest to model pracy z osobami przede wszystkim ze spektrum autyzmu), które przejawiają zachowania nieakceptowane społecznie, w tym agresywne i autoagresywne. Czterostopniowa, oparta o konkretne scenariusze postępowania metoda przygotowuje pacjenta do wizyty lekarskiej, umożliwia diagnozę schorzenia i podjęcie leczenia.",
+   "jakie_problemy": "Trudności w dostępie do usług i świadczeń medycznych dla osób (w tym ze spektrum autyzmu) przejawiających zachowania trudne (w tym agresywne i autoagresywne).",
+   "grupa_docelowa": "Osoby dorosłe neuroatypowe (przede wszytskim ze spektrum autyzmu) przejawiające trudne zachowania nieakceptowane społeczne.",
+   "kto_moze_skorzystac": "Placówki medyczne, szpitala, rodziny osób przejawiających trudne zachowania, asystenci osób z niepełnosprawnością, organizacje pozarządowe i podmioty zatrudniające asystentów osób z niepełnosprawnością."
+  },
+  {
+   "id": "rops-084",
+   "title": "Inteligentny organizer do leków",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,inteligentny-organizer-do-lekow",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi inteligentne narzędzie w formie organizera na leki, wyposażonego w czujniki umożliwiające detekcję pobrania leku, system sygnalizacji świetlnej uruchamiającej się o określonej godzinie, kiedy powinien być zażyty konkretny lek oraz specjalnie opracowanej aplikacji mobilnej. Dzięki niej, opiekun posiada możliwość ustawienia określonych godzin zażywania poszczególnych leków, a w przypadku ich zażycia lub pominięcia dawki, otrzymuje stosowne powiadomienie. Narzędzie umożliwi zdalną asystę i wsparcie podopiecznych w dbaniu o swoje zdrowie.",
+   "jakie_problemy": "Innowacja stanowi odpowiedź na wyzwania związane ze sprawowaniem opieki przez opiekunów rodzinnych/nieformalnych np. nad rodzicem w starszym wieku.",
+   "grupa_docelowa": "Osoby starsze (które samodzielnie zarządzają przyjmowaniem przez siebie leków przyjmowanych „na stałe” oraz posiadają umiejętność posługiwania się smartfonem) oraz ich opiekunowie (kontrolujących przyjmowanie leków przez podopiecznych).",
+   "kto_moze_skorzystac": "Osoby prywatne, apteki, koncerny farmaceutyczne"
+  },
+  {
+   "id": "rops-085",
+   "title": "Oncotriada",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,oncotriada",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Oncotriada to metoda pracy, która zapewnia pacjentkom onkologicznym (po diagnozie a przed rozpoczęciem procesu leczenia) odpowiednie wsparcie i ustawienie procesu leczenia w formule oncotriady – tj. jednoczesnego połączenia konsultacji psychoonkologa, pacjenta onkologicznego w remisji – wolontariusza z pacjentem ze świeżą diagnozą.",
+   "jakie_problemy": "Innowacja odpowiada na brak właściwego wsparcia osób z diagnozą onkologiczną na wczesnym etapie leczenia (przed hospitalizacją) i niepokój pacjentów po uzyskaniu diagnozy.",
+   "grupa_docelowa": "Osoby na wczesnym etapie diagnozy onkologicznej.",
+   "kto_moze_skorzystac": "Osoby na wczesnym etapie diagnozy onkologicznej, psychoonkolodzy, pacjenci w fazie remisji, poradnie psychologiczne i psychoonkologiczne, szpitale onkologiczne, organizacje pozarządowe wspierające pacjentów w chorobie onkologicznej."
+  },
+  {
+   "id": "rops-086",
+   "title": "Pacjent Pro",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,pacjent-pro",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja PacjentPro jest platformą komunikacji z pacjentem od wejścia na oddział do jego opuszczenia, pomaga pacjentowi zaadoptować się do nowych warunków oraz informuje o możliwościach terapeutycznych, zajęciach, wizytach i pomaga zmotywować do udziału w zajęciach i sesjach terapeutycznych. Ponadto, ma za zadanie pomóc pacjentom polepszyć samopoczucie, obniżyć poziom niepokoju i zachowań niepożądanych oraz poprawić funkcjonowanie w oddziale ogólnopsychiatrycznym aby pacjenci mogli odnieść jak najwięcej korzyści z hospitalizacji psychiatrycznej. Administrator ma możliwość zarządzania aplikacją i dokonywania zmian bezpośrednio poprzez stronę internetową.",
+   "jakie_problemy": "Innowacja odpowiada na wysoki poziom niepokoju wśród pacjentów na oddziale ogólnopsychiatrycznym i brak nowoczesnych i atrakcyjnych dla pacjenta form komunikacji i terapii, które będą mu bliższe ze względu na wykorzystanie znanego mu języka technologii multimedialnych.",
+   "grupa_docelowa": "Pacjenci z ograniczonymi możliwościami percepcji ze względu na niepełnosprawność intelektualną oraz dysfunkcje poznawcze związane z zaburzeniami psychicznymi, pacjenci przyjęci na oddział ogólnopsychiatryczny.",
+   "kto_moze_skorzystac": "Szpitale psychiatryczne, Centra Zdrowia Psychicznego."
+  },
+  {
+   "id": "rops-087",
+   "title": "Paszport pacjenta z chorobą rzadką",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,paszport-pacjenta-z-choroba-rzadka",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Paszport jest rozwiązaniem informatycznym, w ramach którego zapisane są najważniejsze informacje na temat choroby, leków, lekarzy prowadzących pacjenta z chorobą rzadką. Informacje te znajdują się na elektronicznym nośniku, który pacjent może zawsze mieć przy sobie. System składa się z: aplikacji webowej, do której personel medyczny w Centrum Referencyjnym wprowadza niezbędne dane o chorobie pacjenta; czipu elektronicznego, na którym są zapisane dane karty pacjenta oraz standardy postępowania; programatora chipów NFC.",
+   "jakie_problemy": "Choroba rzadka wymaga często specjalnych metod leczenia lub też określone objawy mogą być przeciwwskazaniem do leczenia. Dla wielu chorób rzadkich powstały już standardy leczenia rozprowadzane przez organizacje międzynarodowe. Niestety w polskim systemie, standardy leczenia chorób rzadkich nie są powszechnie stosowane wśród lekarzy niespecjalizujących się w chorobach rzadkich.",
+   "grupa_docelowa": "Pacjenci chorujący na choroby rzadkie",
+   "kto_moze_skorzystac": "Lekarze, fizjoterapeuci – ta grupa może korzystać z paszportu, propagować rozwiązanie w środowisku, opracować kolejne specyfikacje chorób (w ramach innowacji powstały karty 3 chorób rzadkich: dystrofia mięśniowa Duchenne’a, zespół Williamsa, zespół Marfana). Rodzice, pacjenci z chorobą rzadką – ta grupa może korzystać z paszportu, propagować rozwiązanie w środowisku, zainteresować tematem organizacje zrzeszające pacjentów z chorobami rzadkimi."
+  },
+  {
+   "id": "rops-088",
+   "title": "Telerehabilitacja oddechowa",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-zdrowia-i-medycyny,telerehabilitacja-oddechowa",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Telerehabilitacja oddechowa to rozwiązanie dedykowane pacjentom o ograniczonej z powodu wieku mobilności oraz osobom z niepełnosprawnościami i zamieszkującym tereny oddalone, niedostępne komunikacyjnie. W ramach innowacji powstał model zawierający materiały multimedialne (schematy postępowania terapeutycznego, filmy z ćwiczeniami), które ułatwią nie tylko telerehabilitację pod opieką specjalisty, ale także poprawią jakość samodzielnego ćwiczenia w domu. Rozwiązanie bazuje na istniejących już w ochronie zdrowia zasobach wiedzy, które w bezpieczny i profesjonalny sposób są udostępniane pacjentom w domach.",
+   "jakie_problemy": "Innowacja odpowiada na brak pełnego, bezpiecznego dostępu do ujednoliconej rehabilitacji oddechowej prowadzonej metodą zdalną.",
+   "grupa_docelowa": "Osoby z dysfunkcją układu oddechowego, osoby starsze o ograniczonej mobilności, osoby z terenów oddalonych, osoby z niepełnosprawnością.",
+   "kto_moze_skorzystac": "Podmioty (w tym przychodnie rehabilitacyjne) zapewniające wsparcie dla osób dysfunkcją układu oddechowego, naturalni opiekunowie tych pacjentów."
+  },
+  {
+   "id": "rops-089",
+   "title": "Agencja pracy incydentalnej",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-rynku-pracy,agencja-pracy-incydentalnej",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "W ramach modelu działania „Agencja Pracy Incydentalnej” (API) osoby doświadczające wielowarstwowych deficytów mają możliwość podjęcia pracy na zasadach nierejestrowanych działalności gospodarczych. Oferta wykonywanych zadań jest każdorazowo dopasowywana do ich preferencji, możliwości oraz uwarunkowań obecnej sytuacji życiowej. API w założeniu ma maksymalnie odformalizować pracę, tak, by stała się dostępna dla osób, które w danym momencie życia nie są w stanie podjąć zatrudnienia w ramach najczęściej wybieranych rozwiązań (umowa o pracę oraz umów cywilnoprawnych takich jak umowa zlecenie, umowa o dzieło). Model zakłada rezygnację z takich elementów zatrudnienia jak wymagana regularności pracy, sztywne dni i godziny jej wykonywania, prowadzenie skomplikowanej dokumentacji pracy itp.",
+   "jakie_problemy": "Innowacja odpowiada na trudność w powrocie na rynek pracy osób pozostajacych w głębokim/wielowymiarowym kryzysie",
+   "grupa_docelowa": "Osoby w kryzysie bezdomności i /lub psychicznym i/lub długotrwale bezrobotne i/lub z przeszłościa kryminalną i/lub osoby z niepełnosprawnością, który to kryzys skutkuje niemożnością podjęcia pracy wiążącej się z określonym czasem czy wymiarem",
+   "kto_moze_skorzystac": "Agencje pracy, podmioty, organizacje pozarządowe zajmujące się aktywizacja zawodową osób w glębokim kryzysie"
+  },
+  {
+   "id": "rops-090",
+   "title": "Konsultant ETR",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-rynku-pracy,konsultant-etr",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Modelu pracy konsultanta tekstów ETR składa się z profilu kompetencji konsultanta ETR wraz z kwestionariuszem oceny tych kompetencji (narzędzie to pozwala wyselekcjonować osoby, które przystąpią do szkolenia i potencjalnie będą mogły zostać konsultantami ETR), a także programu szkoleń/warsztatów przygotowujących do roli konsultanta ETR.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w zakresie aktywizacji zawodowej osób z niepełnosprawnością intelektualną i trudności w pozyskaniu i odpowiednim przygotowaniu konsultantów ETR",
+   "grupa_docelowa": "Osoby z niepełnosprawnością intelektualną wraz z rodzinami tych osób.",
+   "kto_moze_skorzystac": "Podmioty (np. szkoły, urzędy) zainteresowane tworzeniem informacji o swoim funkcjonowaniu w formie tekstów łatwych do czytania i rozumienia, szkoły specjalne, urzędy wojewódzkie, miasta i gminy."
+  },
+  {
+   "id": "rops-091",
+   "title": "Mobilna giełda pracy",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-rynku-pracy,mobilna-gielda-pracy",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Mobilnej Giełdy Pracy (MGP) to model wsparcia kobiet nieaktywnych zawodowo zamieszkujących obszary wiejskie i małomiasteczkowe. Opiera się na współpracy samorządu lokalnego wraz z lokalnymi przedsiębiorcami i instytucjami rynku pracy na rzecz dostarczenia mobilnych usług publicznych i społecznych w zakresie aktywizacji zawodowej mieszkanek obszarów wiejskich i małomiasteczkowych, poprzez organizację mobilnych wydarzeń rynku pracy, jak giełda pracy, doradztwo zawodowe, pośrednictwo pracy, spotkania z pracodawcami. Mobilna giełda pracy przewiduje organizację wydarzeń rynku pracy jak najbliżej miejsca zamieszkania osób nieaktywnych zawodowo, z wykorzystaniem zasobów lokalowych samorządów lokalnych.",
+   "jakie_problemy": "Innowacja odpowiada na problem aktywizacji zawodowej kobiet na terenach wiejskich.",
+   "grupa_docelowa": "Innowacja skierowana jest do kobiet nieaktywnych zawodowo, mieszkanek obszarów wiejskich, które z uwagi na miejsce zamieszkania (tereny wiejskie) mają trudności w dostępie do rynku pracy i nie widzą szans na aktywność zawodową.",
+   "kto_moze_skorzystac": "Samorządy gminne, w tym zwłaszcza ośrodki pomocy społecznej, powiatowe urzędy pracy, lokalne organizacje pozarządowe prowadzące działania z zakresu rynku pracy, przedsiębiorcy i pracodawcy zainteresowani zatrudnieniem pracowników, agencje zatrudnienia i lokalne instytucje rynku pracy."
+  },
+  {
+   "id": "rops-092",
+   "title": "NIEwypaleni",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-rynku-pracy,niewypaleni",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model pracy pn. \"NIEwypaleni\" to zestaw narzędzi przeciwdziałających wypaleniu zawodowemu osób z niepełnosprawnością intelektualną składa się z dwóch elementów: 3-dniowego warsztatu, podczas którego uczestnicy poznają narzędzie do pracy własnej, czyli broszurę, wykorzystywaną podczas warsztatu oraz po jego zakończeniu. Powstała ona w tekście łatwym do czytania i zrozumienia (standard ETR). W broszurze opisane są aktywności, które warto stosować w celu sprawiania sobie przyjemności o pracy, oraz informacje dotyczące symptomów wypalenia zawodowego, właściwych i niewłaściwych zachowań w miejscu pracy. broszury do pracy własnej, któa motywuje użytkowników do utrzymania się w tym samym miejscu pracy przez dłuższy okres czasu, oraz do powrotu do aktywności zawodowej jeśli dotychczasowe próby podjęcia i utrzymania pracy nie powiodły się.",
+   "jakie_problemy": "Innowacja odpowiada na trudności w utrzymaniu pracy przez osoby z niepełnosprawnością intelektualną i ich szybszemu wypaleniu zawodowemu.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością intelektualną",
+   "kto_moze_skorzystac": "Podmioty oferujące wsparcie osobom z niepełnosprawnością intelektualną, pracodawcy zatrudniający osoby z niepełnosprawnością intelektualną."
+  },
+  {
+   "id": "rops-093",
+   "title": "Oddawacze",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-rynku-pracy,oddawacze",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Proekologiczny marketplace przedmiotów używanych w postacji aplikacji mobilnej, dzięki której osoby posiadające zbędne przedmioty mogą się ich pozbyć i przy okazji wesprzeć cele charytatywne. „Oddający” przy oddawaniu używanych przedmiotów wskazuje konkretny cel charytatywny, na który trafi symboliczna kwota, którą wpłaci „odbierający”. Odbierający z kolei - dzięki wpłacie drobnej kwoty wskazanej przez „oddającego” (np. 5, 10 lub 15 zł) - otrzyma używany przedmiot. Jednocześnie obie strony wesprą realny cel charytatywny wskazany przez „oddającego”.",
+   "jakie_problemy": "Innowacja odpowiada na brak dostępu do przedmiotów codziennego użytku o wysokiej jakości/trwałości przez osoby o niskim statusie materialnym, ograniczony rozwój organizacji lokalnych, dezintegrację społeczności lokalnej i zaśmiecanie planety.",
+   "grupa_docelowa": "Osoby ubogie",
+   "kto_moze_skorzystac": "Organizacje pozarządowe działające lokalnie, miasta i gminy."
+  },
+  {
+   "id": "rops-094",
+   "title": "Bajkala",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-cudzoziemcow,bajkala",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Bajkala - to zestaw składający się z drewnianej lampki ledowej, z wbudowanym odtwarzaczem mp3 emitującym nagranie bajki, autorskie opracowanie bajki w języku polskim oraz rosyjskim/czeczeńskim, książeczki zawierającej tekst bajki w języku polskim oraz rosyjskim/czeczeńskim oraz słowniczek. Lampka, prócz dawania łagodnego światła, emituje nagrania bajek z polskiego kręgu kulturowego, które mają istotne podobieństwa do opowieści z kręgu kulturowego odbiorcy.",
+   "jakie_problemy": "Innowacja odpowiada na wyzwanie skutecznej integracja migrantów czeczeńskich (w szczególności dzieci), których prawidłowe funkcjonowanie w nowym kraju utrudniają bariery kulturowe, językowe, prawne i psychologiczne.",
+   "grupa_docelowa": "Dzieci czeczeńskie przebywające w Polsce pod opieką rodziny, z nadanym statusem pobytu pozwalającymi na samodzielne funkcjonowanie rodziny",
+   "kto_moze_skorzystac": "Ośrodki migracyjne, szkoły podstawowe do których uczęszczają migranci, organizacje pozarządowe wspierające aktywną integrację uchodźców."
+  },
+  {
+   "id": "rops-095",
+   "title": "Dialog ponad kulturami",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-cudzoziemcow,dialog-ponad-kulturami",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Wystandaryzowany Modelu Mediacji Transgranicznych mający zastosowanie w przypadku porwań lub zagrożenia porwaniem rodzicielskim dla par/rodziców dzieci pochodzących z odmiennych kręgów kulturowych będących w konflikcie dotyczącym głównie ustalenia miejsca pobytu dziecka oraz sprawowania władzy rodzicielskiej. Model zakłada syntezę rozwiązań prawnych, psychologicznych, międzykulturowych i technik negocjacyjnych w procesie mediacji transgranicznych. Model ma charakter uniwersalny i może być zastosowany przed wniesieniem sprawy do sądu, w trakcie postępowania sądowego, a także po jego zakończeniu.",
+   "jakie_problemy": "Innowacja odpowiada na problem uprowadzeń rodzicielskich i konfliktów pomiędzy rodzicami pochodzącymi z różnych krajów/kultur",
+   "grupa_docelowa": "Dzieci doświadczające porwania rodzicielskiego, dzieci zagrożone porwaniem rodzicielskim, dzieci obywateli różnych krajów, których rodzice pozostają w konflikcie rodzicielskim",
+   "kto_moze_skorzystac": "Mediatorzy, prawnicy, pracownicy służb, którzy stykają się z problemem porwań rodzicielskich w swojej pracy, szkoły i uczelnie, w których uczą się dzieci pochodzące z odmiennych kręgów kulturowych, ośrodki pomocy rodzinie, centra praw kobiet."
+  },
+  {
+   "id": "rops-096",
+   "title": "Dialog ponad kulturami",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-cudzoziemcow,dialog-ponad-kulturami-1",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja mobilna stanowiąca rodzaj intuicyjnego komunikatora między uchodźcami z Afganistanu przebywającymi w Polsce w wyniku ewakuacji przez Wojsko Polskie oraz inne instytucje Państwa Polskiego, a społeczeństwem polskim. Aplikacja/komunikator została przygotowana w dwóch wersjach językowych: w języku darii i w języku polskim oraz w postaci piktogramów pomocnych do niektórych słów, dla niepiśmiennej części społeczności afgańskiej. Aplikacja zawiera praktyczne słownictwo z kilku obszarów tematycznych, m.in.: zdrowie, edukacja, praca, sprawy urzędowe.",
+   "jakie_problemy": "Innowacja odpowiada na trudność komunikowania się z uchodźcami afgańskimi, którzy przybyli do Polski w wyniku ewakuacji z Afganistanu w 2021 roku.",
+   "grupa_docelowa": "Mniejszość afgańskia przebywająca w Polsce",
+   "kto_moze_skorzystac": "Mniejszość afgańska przebywająca w Polsce, pracownicy polskich instytucji publicznych takich jak: opieka medyczna, ośrodki pomocy społecznej, służby konsularne, urzędy działające na rzecz cudzoziemców w Polsce, instytucje kultury, instytucje edukacji, organizacje pozarządowe prowadzące działania na rzecz integracji społecznej cudzoziemców w Polsce, centra międzykulturowe."
+  },
+  {
+   "id": "rops-097",
+   "title": "Health Guide PL",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-cudzoziemcow,health-guide-pl",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowacją społeczną jest przewodnik w języku angielskim i języku ukraińskim po systemie publicznej służy zdrowia w Polsce (podstawowa opieka zdrowotna) – Health Guide PL dla Obcokrajowców, przebywających w Polsce i posiadających prawo do usług w ramach polskiej publicznej opieki zdrowotnej. Przewodnik dostępny jest w formie drukowanej z pliku PDF, w formie cyfrowej w pliku PDF oraz aplikacji na urządzenia mobilne w systemie Android. Przewodnik umożliwia dostęp do uporządkowanych, zrozumiałych dla Obcokrajowca informacji i jednocześnie pozwala na zdobycie lub zwiększenie wiedzy o przysługujących pacjentom w Polsce możliwościach zaspokajania potrzeb w zakresie ochrony zdrowia.",
+   "jakie_problemy": "Innowacja odpowiada na utrudniony dla Obcokrajowców (osób niepolskojęzycznych) dostęp do publicznego systemu opieki zdrowotnej w Polsce mimo zgłoszenia do powszechnego ubezpieczenia zdrowotnego.",
+   "grupa_docelowa": "Obcokrajowcy przebywający w Polsce legalnie (na podstawie zatrudnienia, odbywania nauki i/lub statusu uchodźcy) oraz ich rodziny, zwłaszcza dzieci.",
+   "kto_moze_skorzystac": "Obcokrajowcy (pracownicy, studenci, i/lub uchodźcy i ich rodziny którzy przebywają wraz z rodzinami w Polsce legalnie i mają prawo do bezpłatnej opieki medycznej w ramach polskiego systemu służby zdrowia), kadry administracyjne i personel polskiego systemu publicznej służby zdrowia"
+  },
+  {
+   "id": "rops-098",
+   "title": "Wortal informacyjny",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-cudzoziemcow,wortal-informacyjny",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Wortal zawierający pakiet praktycznych informacji w języku dari, dzięki którym uchodźcy z Afganistanu poznają i zrozumieją realia panujące w Polsce. Wortal podzielony jest na sekcje tematyczne odpowiadające najpopularniejszym obszarom z życia społecznego, jak np. zdrowie i edukacja. Nie są to jedynie tłumaczenia poszczególnych wiadomości, a konkretne informacje osadzone w kontekście kulturowym. Na wortalu znajdują się także pakiety informacji dla strony polskiej, np. dla lekarzy czy urzędników, które w prostych opisach, z uwzględnieniem kontekstu kulturowego, przekazują wskazówki co do tego, w jaki sposób prowadzić rozmowy z Afgańczykami.",
+   "jakie_problemy": "Innowacja odpowiada na wykluczenie społeczne uchodzców z Afganistanu oraz barierę komunikacyjną i kulturową, która uniemożliwia im skuteczną integrację",
+   "grupa_docelowa": "Uchodźcy z Afganistanu",
+   "kto_moze_skorzystac": "Organizacje wspierające uchodźców, centra pomocy cudzoziemcom, urzędy, placówki medyczne"
+  },
+  {
+   "id": "rops-099",
+   "title": "Zrozum moją kulturę, zrozum mnie",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-cudzoziemcow,zrozum-moja-kulture-zrozum-mnie",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Metoda pracy na bazie gry integracyjnej z uchodźcami i migrantami przebywającymi w Polsce, którzy doświadczają wykluczenia społecznego w związku z różnicami kulturowo-społecznymi. Gra zawiera m.in. pytania dotyczące kultury, tradycji oraz religii. Odpowiadając na pytania, gracz uzyskuje punkty oraz dzieli się własnym doświadczeniem z innymi uczestnikami spotkania.",
+   "jakie_problemy": "Innowacja odpowiada na wykluczenie społeczne uchodźców i barierę społeczno-kulturowa między imigrantami a autochtonami.",
+   "grupa_docelowa": "Obcokrajowcy, którzy mieszkają i pracują w Polsce, uchodźcy, grupy wykluczone społecznie ze względu na różnice kulturowe.",
+   "kto_moze_skorzystac": "Szkoły, uczelnie, domy kultury, organizacje pozarządowe, które pracują na rzecz integracji środowisk imigranckich."
+  },
+  {
+   "id": "rops-100",
+   "title": "Szlakiem ludzi bezdomnych",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-w-kryzysie-bezdomnosci,szlakiem-ludzi-bezdomnych",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Mobilny Punkt Higieniczny to narzędzie doraźnego wsparcia dla osób w kryzysie bezdomności. MPH znajduje się w ogrzewanej przyczepie sanitarnej wyposażonej w prysznic, umywalkę, szafkę do przechowywania czystej bielizny oraz niezbne akcesoria higieniczno-pielęgnacyjne. Zapewnia dostęp do usług higienicznych osobom znajdującym się w trudnej sytuacji życiowej.",
+   "jakie_problemy": "Innowacja odpowiada na nieodpowiedni poziom higieny osobistej wśród osób w kryzysie bezdomności, który sprzyja rozwijaniu się chorób.",
+   "grupa_docelowa": "Osoby w kryzysie bezdomności.",
+   "kto_moze_skorzystac": "Gminy miejskie, gminy miejsko-wiejskie i wiejskie."
+  },
+  {
+   "id": "rops-101",
+   "title": "Wiejski program pomocy osobom w kryzysie bezdomności - Ścieżka Feniksa",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-w-kryzysie-bezdomnosci,wiejski-program-pomocy-osobom-w-kryzysie-bezdomnosci-sciezka-feniksa",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model wiejskiego programu pomocy osobom w kryzysie bezdomności „Ścieżka Feniksa” łączy w sobie następujące elementy: długofalowe, holistyczne wsparcie w procesie wychodzenia z bezdomności w środowisku lokalnym podejście ekologiczne i rozwiązania z zakresu gospodarki o zamkniętym obiegu w procesie pracy terapeutycznej (np. takie jak: wykorzystanie materiałów z recyklingu do prac na terenie ośrodka reintegracji jak np. opony, szklane butelki, glina, drzwi z recyklingu, skrzyneczki ze sklejki i plastiku, itp., ponowne kreatywne użycie materiałów, stosowanie materiałów naturalnych pozyskanych lokalnie jak: gałęzie, słoma, wiklina, itp.) wykorzystanie lokalnych zasobów gminy, nieużytkowanych i niedostrzegalnych rozwiązania na rzecz deinstytucjonalizacji usług społecznych (odejście od form w systemie placówkowym (ogrzewalnie, noclegownie i schroniska) i integracji.",
+   "jakie_problemy": "Projekt odpowiada na problem braku długofalowych, holistycznych rozwiązań dla osób w kryzysie bezdomności z małych gmin, zwłaszcza wiejskich.",
+   "grupa_docelowa": "Osoby w kryzysie bezdomności.",
+   "kto_moze_skorzystac": "Gminy, gminne ośroki pomocy społecznej, organizacje wspierające osoby w kryzysie bezdomności."
+  },
+  {
+   "id": "rops-102",
+   "title": "AuTyzm i ja",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,autyzm-i-ja",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Przygotowany w ramach innowacji przewodnik zawiera informacje o tym, jak wspierać dzieci w spektrum autyzmu. Znajdują się w nim m.in. wskazówki na temat wiedzy, w jaką należy wyposażyć osoby z ich otoczenia, by zwiększyć szansę na aklimatyzację i integrację w społeczeństwie. Przewodnik ma na celu wsparcie zarówno opiekunów, jak i nauczycieli, którzy dzięki dostępowi do aktualnych, nowoczesnych form pracy z dzieckiem, będą w stanie zapewnić naukę dzieciom w spektrum autyzmu. Przygotowany jednocześnie dzienniczek obserwacji online to narzędzie do obserwacji ważnych parametrów zachowań dzieci zarówno w domu, jak i w przedszkolu. Pozwala on szybciej wyłapać nowe zachowania lub zmianę w dotychczasowych wzorcach zachowań.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na trudności w nawiązywaniu kontaktów, kontynuowaniu lub podtrzymaniu interakcji z drugą osobą, brak kontaktu wzrokowego - szczególnie na wczesnym etapie rozwoju dziecka, brak możliwości rozwinięcia potencjału młodego człowieka oraz ograniczony dostęp do placówek edukacyjnych.",
+   "grupa_docelowa": "Dzieci w wieku przedszkolnym ze spektrum autyzmu.",
+   "kto_moze_skorzystac": "Placówki edukacji przedszkolnej, placówki wczesnej interwencji, szkoły."
+  },
+  {
+   "id": "rops-103",
+   "title": "Dostępna Polska",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,dostepna-polska",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Rozwiązanie stanowi komplet przewodników turystycznych, które zostały przystosowane do potrzeb osób z niepełnosprawnością intelektualną w stopniu lekkim i umiarkowanym. Zawarte w nich informacje będą w formie „easy to read”, opisując kompleksowo po dwa warianty tras turystycznych w trzech polskich miastach.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczony dostęp do samodzielnej turystyki osób z niepełnosprawnością intelektualną i trudności w przyswojeniu informacji zawartych w zwykłych przewodnikach turystycznych przez osoby z niepełnosprawnością intelektualną w stopniu lekkim i umiarkowanym.",
+   "grupa_docelowa": "Dorosłe osoby z niepełnosprawnością intelektualną w stopniu lekkim i umiarkowanym oraz ich rodziny.",
+   "kto_moze_skorzystac": "Jednostki organizacyjne pomocy społecznej, organizacje pozarządowe, ośrodki wspierające dorosłe osoby z niepełnosprawnością intelektualną."
+  },
+  {
+   "id": "rops-104",
+   "title": "Go ahead - mów śmiało!",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,go-ahead-mow-smialo",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi aplikacja rozwijająca umiejętności komunikacyjne osób z niepełnosprawnością intelektualną. Bazuje ona na lekcjach tematycznych oraz quizach, podczas których użytkownik wybiera komunikat zwrotny do przedstawionej sytuacji społecznej i otrzymuje konsekwencję stworzonej interakcji w formie określonej „mimiki” uczestnika rozmowy.",
+   "jakie_problemy": "Innowacja jest odpowiedzią na trudności w komunikowaniu się dorosłych i młodzieży z niepełnosprawnością intelektualną oraz problemy w nawiązywaniu bliższych relacji interpersonalnych;",
+   "grupa_docelowa": "Młodzież z niepełnosprawnością intelektualną i osoby dorosłe z niepełnosprawnością intelektualną.",
+   "kto_moze_skorzystac": "Warsztaty Terapii Zajęciowej, szkoły integracyjne i specjalne, organizacje pozarządowe wspierające osoby z niepełnosprawnością intelektualną."
+  },
+  {
+   "id": "rops-105",
+   "title": "Mix AR i VR dla koordynacji ruchowej",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,mix-ar-i-vr-dla-koordynacji-ruchowej",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja do ćwiczeń motoryki małej ręki przy wykorzystaniu nowoczesnej technologii mix AR i VR. Aplikacja ma zachęcać dzieci ze spektrum autyzmu do codziennego ćwiczenia. Wraz z aplikacją powstały również przykładowe scenariusze zajęć terapeutycznych, którymi można posiłkować się w codziennej pracy z dziećmi. Aplikacja wspiera dzieci ze spektrum autyzmu w codziennym ćwiczeniu sprawności ruchowej rąk, a przede wszystkim w ćwiczeniu chwytania oraz kontrolowania ruchów palców oraz dłoni. Dzięki wykorzystaniu technologii AR i VR dzieci chętniej ćwiczą i dłużej pozostają zaangażowane w ćwiczenia.",
+   "jakie_problemy": "Innowacja odpowiada na trudności z koordynacją wzrokowo-ruchową oraz koordynacją półkul mózgowych u dzieci ze spektrum autyzmu i brak narzędzi, które pozwalają wzmacniać motorykę małej ręki u tego typu dzieci.",
+   "grupa_docelowa": "Osoby w spektrum autyzmu",
+   "kto_moze_skorzystac": "Rodzice i opiekunowie, wychowawcy i przedstawiciele szkół (przede wszystkim szkół specjalnych)"
+  },
+  {
+   "id": "rops-106",
+   "title": "Niepełnosprawność szansą na pełnosprawność w pracy i życiu",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,niepelnosprawnosc-szansa-na-pelnosprawnosc-w-pracy-i-zyciu",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Model pracy o charakterze socjoterapeutycznym skierowany do osób (uczniów szkół średnich) z niepełnosprawnością intelektualną w stopniu umiarkowanym, który zwiększy ich dostęp do rynku pracy. Zajęcia organizowane w ramach innowacji mają zapewnić wszechstronny rozwój uczniów oraz takie ich przygotowanie do pełnienia ról społecznych, w tym pracowniczych, aby mogli w jak najbardziej optymalny sposób zintegrować się ze środowiskiem jako osoby dorosłe. Istotą odziaływań tego rozwiązania jest zapoznanie młodych osób z niepełnosprawnościami z dziedzinami gospodarki w których mogą znaleźć zatrudnienie oraz wyodrębnienie u tych osób mocnych i słabych stron w kontekście zawodowym, jak również możliwie jak najbardziej precyzyjnie określenie najlepszego przyszłego miejsca pracy.",
+   "jakie_problemy": "Innowacja przeciwdziała wykluczeniu społecznemu, wyuczonej bezradności, brakowi wpływu na swoją ścieżkę zawodową. Jest odpowiedzią na niski poziom badań dotyczących jawnych i ukrytych potrzeb osób z niepełnosprawnością intelektualną (młodzieży) w kontekście aktywizacji zawodowej.",
+   "grupa_docelowa": "Innowacja jest kierowana do osób z umiarkowanym stopniem niepełnosprawności intelektualnej, które wymagają specjalistycznej pomocy przy wzmocnieniu ich samodzielności w dorosłym życiu.",
+   "kto_moze_skorzystac": "Warsztaty Terapii Zajęciowej, Środowiskowe Dom Samopomocy, Zakłady Aktywności Zawodowej, organizacje pozarządowe organizujące wsparcie dla odbiorców."
+  },
+  {
+   "id": "rops-107",
+   "title": "OSA i eco puzzle",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,osa-i-eco-puzzle",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "OSA I ECO PUZZLE to całościowy program wsparcia dla rodzin, w których są dorosłe osoby ze spektrum autyzmu (OSA). Program złożony jest z kilku komponentów (puzzli), stanowiących zwartą i spójną całość. W wyniku uczestnictwa w programie rodziny z OSA tworzą grupę samopomocową, wspierającą wzajemnie aktywności OSA, dającą przestrzeń do aktywności społecznej i zarobkowej całych rodzin, dbającą o środowisko naturalne oraz emocjonalne.",
+   "jakie_problemy": "Innowacja odpowiada na niewystarczającą liczba ofert wspierających aktywność zawodową, społeczną i wzmacniających relacje w rodzinie oraz poza nią, która kierowana jest dla rodzin z dorosłą osobą ze spektrum autyzmu (OSA).",
+   "grupa_docelowa": "",
+   "kto_moze_skorzystac": "Dorosłe osoby ze spektrum autyzmu, ich rodzina i bliscy."
+  },
+  {
+   "id": "rops-108",
+   "title": "Pełna wokanda",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,pelna-wokanda",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "„Pełna wokanda” to gra planszowa skierowana do osób z niepełnosprawnością intelektualną. Narzędzie zawiera materiały, pytania, treści, wskazówki i zadania skoncentrowane wokół przygotowania się do rozprawy w sądzie, uczestniczenia w niej, rozmów z prawnikiem, składania zeznań, a także kroków koniecznych po zakończeniu sprawy. Elementy gry wyjaśniają trudne pojęcia, dają wskazówki, gdzie szukać informacji, włączają w zadania, które trzeba zrobić na każdym etapie.",
+   "jakie_problemy": "Innowacja odpowiada na brak narzędzi pozwalających w sposób efektywny osobom z niepełnosprawnością intelektualną zdobyć wiedzę i kompetencję pozwalające na przygotowanie się do udziału w procesie sądowym.",
+   "grupa_docelowa": "Innowacja skierowana jest do osób dorosłych z niepełnosprawnością intelektualną",
+   "kto_moze_skorzystac": "Podmioty działające na rzecz osób z niepełnosprawnością intelektualną m.in. Warsztaty Terapii Zajęciowej, Środowiskowe Domy Samopomocy, organizacje pozarządowe."
+  },
+  {
+   "id": "rops-109",
+   "title": "Pełnia zdrowia",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,pelnia-zdrowia",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "\"Pełnia zdrowia\" to narzędzie edukacyjne, które wyposaża osoby z niepełnosprawnością intelektualną w stopniu lekkim i umiarkowanym w odpowiednie umiejętności i wiedzę niezbędną do korzystania z usług medycznych. Narzędzie składa się z pudełka z elektroniczną planszą dydaktyczną i zestawu kart. Karty zawierają treści prozdrowotne (tablice objawów, karty profilaktyki) i mają wpływ na rozwinięcie wiedzy OzN w zakresie usług medycznych, a przede wszystkim profilaktyki.",
+   "jakie_problemy": "Innowacja odpowiada na ograniczone możliwości dostępu do wiedzy dotyczącej korzystania z usług ochrony zdrowia przez osoby z niepełnosprawnością intelektualną w stopniu lekkim i umiarkowanym.",
+   "grupa_docelowa": "Innowacja skierowana jest do osób dorosłych z niepełnosprawnością intelektualną.",
+   "kto_moze_skorzystac": "Podmioty działające na rzecz osób z niepełnosprawnością intelektualną m.in. Warsztaty Terapii Zajęciowej, Środowiskowe Domy Samopomocy, organizacje pozarządowe a także opiekunowie tych osób."
+  },
+  {
+   "id": "rops-110",
+   "title": "Podróż poza domem w wirtualnej rzeczywistości",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,podroz-poza-domem-w-wirtualnej-rzeczywistosci",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi aplikacja oraz metoda pracy z osobami w wieku szkolnym z niepełnosprawnością intelektualną i zaburzeniami lękowymi. Aplikacja wykorzystuje wirtualną rzeczywistość, pozwalając w komfortowych i bezpiecznych warunkach domowych prowadzić terapię i przygotowywać odbiorców do interakcji społecznych.",
+   "jakie_problemy": "Innowacja odpowiada na brak odpowiednich narzędzi terapeutycznych dla osób z niepełnosprawnością intelektualną, z doświadczeniem zaburzenia psychicznego, z lękiem przed wyjściem z domu.",
+   "grupa_docelowa": "Osoby z orzeczeniem niepełnosprawności intelektualnej a także dzieci w wieku szkolnym, które odczuwają lęk przed wychodzeniem z domu.",
+   "kto_moze_skorzystac": "Rodzice, opiekunowie, terapeuci, pedagodzy, szkoły specjalne, placówki opiekuńcze."
+  },
+  {
+   "id": "rops-111",
+   "title": "Rodzinny system wzajemnej pomocy",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,rodzinny-system-wzajemnej-pomocy",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "\"Rodzinny system wzajemnej pomocy\" to model włączenia społecznego dorosłych osób z autyzmem, w przedziale wiekowym 20 – 26 lat, które zakończyły proces edukacji i dalej jej nie kontynuują, jednocześnie nie są też aktywne zawodowo. Innowacja zakłada wykorzystanie modelu terapii zajęciowo – włączającej, która miałaby optymalną efektywność w warunkach domowych, „rodzinnych” i służyła rozwojowi kompetencji społecznych oraz kompetencji praktycznych- zawodowych osób z grupy docelowej, integracji społecznej w środowisku lokalnym, rodzinnym i sąsiedzkim oraz służyła funkcjom odciążeniowym rodzin i opiekunów osób z ASD.",
+   "jakie_problemy": "Innowacja związana jest z problemami społecznymi osób dorosłych z autyzmem, które nie uczą się i nie są aktywne zawodowo, takimi jak: Brak oferty zajęć dla osób ze spektrum autyzmu po 24 r.ż., w szczególności przygotowujących do pracy na otwartym rynku Niedopasowanie Warsztatów Terapii Zajęciowej do potrzeb osób z autyzmem (zbyt duże grupy, brak opcji wyciszenia itd.) Brak lub ograniczona liczba miejsc na Warsztatach Terapii Zajęciowej Po ukończeniu 24 r.ż. osoby ze spektrum nie mogą kontynuować nauki, a jedyną ofertą są Środowiskowe Domy Samopomocy lub Warsztaty Terapii Zajęciowej, gdzie w dużych grupach, przy zmieniającej się kadrze – osoby autystyczne mogą znaleźć miejsce. Często jednak liczba miejsc nie jest wystarczająca dla wszystkich osób chętnych do udziału w warsztatach, a dodatkowo ich specyfika nie jest dostosowana do ich potrzeb Brak możliwości rozwijania kompetencji, w tym umożliwiających podjęcie pracy Ograniczona skuteczność terapii i poprawy możliwości funkcjonowania społecznego osób z autyzmem Stosowane do tej pory rozwiązania są często uznawane za powierzchowne i nie przygotowują osób z głębokim autyzmem do życia w społeczeństwie i radzenia sobie z obowiązkami codziennymi Obciążenie psychiczne i czasowe opiekunów osób ze spektrum autyzmu po 24 r.ż związane z samodzielną opieką Opiekunowie osób ze spektrum autyzmu są wyjątkowo obciążeni koniecznością opieki nad swoim dorosłym dzieckiem. Możliwość zamiennej opieki pozwoliłaby na czasowe odciążenie opiekunów.",
+   "grupa_docelowa": "Osoby dorosłe z autyzmem w przedziale wiekowym 20-26 lat, które ukończyły proces nauki, nie kontynuują edukacji, jednocześnie nie są aktywne zawodowo i nie zostały przyjęte do WTZ oraz ich opiekunów nieformalnych, którzy na co dzień sprawują nad nimi opiekę.",
+   "kto_moze_skorzystac": "Jest to oferta, którą można wdrożyć w warunkach domowych/rodzinnych/sąsiedzkich i nadać jej regularny, profesjonalny, optymalny format, ale oferta może być trudna w skalowaniu. Skalowania wymaga dotarcie do nieformalnych grup, nieformalnych opiekunów, rodziców osób dorosłych z ASD, co w rzeczywistości może stanowić dodatkowe wyzwanie w strategii upowszechniania innowacji. Tego typu grupy- nieformalne, działające indywidualnie, elastycznie powinny być też przygotowane do wdrożenia modelu, przeszkolone i wsparte konsultacjami specjalistycznymi."
+  },
+  {
+   "id": "rops-113",
+   "title": "TA ścieżka. Terapeutyczna ścieżka kulturowa dla dzieci i dorosłych z autyzmem.",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,ta-sciezka-terapeutyczna-sciezka-kulturowa-dla-dzieci-i-doroslych-z-autyzmem",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Aplikacja wykorzystująca nawigację wewnątrz budynków do przeprowadzenia osoby ze spektrum autyzmu przez ścieżkę dydaktyczną w jak najbardziej komfortowy dla niej sposób. Na rozwiązanie składa się sieć Beaconów tworząca czytelną „mapę” przestrzeni, zarówno terytorialną, jak i funkcjonalną. Dzięki aplikacji skorelowanej z systemem iBeaconów osoba ze spektrum autyzmu, która przemieszcza się w nowej dla siebie przestrzeni, nie tylko uzyskuje informację o swoim położeniu i dalszej trasie, którą musi pokonać, aby dotrzeć do wybranego przez siebie miejsca/osoby, lecz także otrzymuje informacje o tym, jakie kroki musi podjąć w następnej kolejności.",
+   "jakie_problemy": "Innowacja odpowiada na utrudniony dostęp do miejsc użyteczności publicznej dla osób neuroatypowych",
+   "grupa_docelowa": "Młodzież i starsze dzieci ze spektrum autyzmu.",
+   "kto_moze_skorzystac": "Organizacje pozarządowe wspierające osoby ze spektrum autyzmu, podmioty organizujące treningi samodzielności dla tego typu osób"
+  },
+  {
+   "id": "rops-114",
+   "title": "Urzędowy ambaras",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,urzedowy-ambaras",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "„Urzędowy Ambaras\" jest grą planszową, która wyposaża osoby z niepełnosprawnością intelektualną w odpowiednie umiejętności i wiedzę niezbędną do korzystania z usług: urzędu pracy, urzędu miasta, centrum pomocy rodzinie i urzędu pocztowego. W trakcie rozgrywki na graczy czeka będzie wiele wyzwań, opartych o elementarne umiejętności i wiedzę niezbędną do załatwiania spraw w w/w urzędach a zadania przez nich wykonywane są adekwatne do faktycznie występujących spraw w danym miejscu, np. „Wyślij list polecony”.",
+   "jakie_problemy": "Innowacja odpowiada na brak narzędzi pozwalających w sposób efektywny osobom z niepełnosprawnością intelektualną zdobyć wiedzę i kompetencję pozwalające na samodzielne załatwianie prostych spraw urzędowych.",
+   "grupa_docelowa": "Innowacja skierowana jest do osób dorosłych z niepełnosprawnością intelektualną",
+   "kto_moze_skorzystac": "Podmioty działające na rzecz osób z niepełnosprawnością intelektualną m.in. Warsztaty Terapii Zajęciowej, Środowiskowe Domy Samopomocy, organizacje pozarządowe."
+  },
+  {
+   "id": "rops-115",
+   "title": "Załatw to sam",
+   "source_url": "https://rops.krakow.pl/innowacje-spoleczne/biblioteka-innowacji-spolecznych/dla-osob-z-niepelnosprawnoscia-intelektualna,zalatw-to-sam",
+   "licence": "CC BY 4.0 (oznaczenie na stronie innowacji)",
+   "na_czym_polega": "Innowację stanowi planszowa gra miejska, która w atrakcyjny sposób przedstawia informacje o instytucjach publicznych, wprowadzając osoby z niepełnosprawnością intelektualną w zawiłości poruszania się po wybranych placówkach/urzędach i zachęcając do samodzielności w tym obszarze. Gra wsparta jest materiałem umożliwiającym zastosowanie jej w treningu samodzielności podopiecznych (scenariusze warsztatów, warunki przeprowadzenia gry).",
+   "jakie_problemy": "Innowacja odpowiada na niski poziom samodzielności osób z niepełnosprawnością intelektualną, brak świadomości swoich praw i obowiązków jako obywatela, członka społeczności i brak poczucia sprawczości.",
+   "grupa_docelowa": "Osoby z niepełnosprawnością intelektualną (głównie dorosłe osoby z lekkim i umiarkowanym stopniem niepełnosprawności).",
+   "kto_moze_skorzystac": "Warsztaty Terapii Zajęciowej, środowiskowe domy samopomocy, wszelkie organizacje wspierające osoby z niepełnosprawnością intelektualną."
+  }
+ ]
+}

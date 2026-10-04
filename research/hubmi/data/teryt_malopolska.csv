@@ -1,0 +1,300 @@
+teryt,bdl_unit_id,nazwa,rodzaj,teryt_powiat,powiat,ludnosc_2025,odsetek_65plus_2025,aktualna_2025
+1201011,011212001011,Bochnia,gmina miejska,1201,Powiat bocheński,28187,22.5,tak
+1201022,011212001022,Bochnia,gmina wiejska,1201,Powiat bocheński,20945,17.2,tak
+1201032,011212001032,Drwinia,gmina wiejska,1201,Powiat bocheński,6240,19.0,tak
+1201042,011212001042,Lipnica Murowana,gmina wiejska,1201,Powiat bocheński,5489,15.8,tak
+1201052,011212001052,Łapanów,gmina wiejska,1201,Powiat bocheński,8693,15.1,tak
+1201063,011212001063,Nowy Wiśnicz,gmina miejsko-wiejska,1201,Powiat bocheński,14522,16.1,tak
+1201064,011212001064,Nowy Wiśnicz - miasto,miasto w gminie miejsko-wiejskiej,1201,,2695,18.6,tak
+1201065,011212001065,Nowy Wiśnicz - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1201,,11827,15.5,tak
+1201072,011212001072,Rzezawa,gmina wiejska,1201,Powiat bocheński,11600,15.9,tak
+1201082,011212001082,Trzciana,gmina wiejska,1201,Powiat bocheński,5711,16.1,tak
+1201092,011212001092,Żegocina,gmina wiejska,1201,Powiat bocheński,5539,16.7,tak
+1206012,011212006012,Czernichów,gmina wiejska,1206,Powiat krakowski,15507,17.1,tak
+1206022,011212006022,Igołomia-Wawrzeńczyce,gmina wiejska,1206,Powiat krakowski,7809,20.5,tak
+1206032,011212006032,Iwanowice,gmina wiejska,1206,Powiat krakowski,9859,17.9,tak
+1206042,011212006042,Jerzmanowice-Przeginia,gmina wiejska,1206,Powiat krakowski,11094,19.3,tak
+1206052,011212006052,Kocmyrzów-Luborzyca,gmina wiejska,1206,Powiat krakowski,18779,15.7,tak
+1206063,011212006063,Krzeszowice,gmina miejsko-wiejska,1206,Powiat krakowski,31661,22.6,tak
+1206064,011212006064,Krzeszowice - miasto,miasto w gminie miejsko-wiejskiej,1206,,9722,25.3,tak
+1206065,011212006065,Krzeszowice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1206,,21939,21.4,tak
+1206072,011212006072,Liszki,gmina wiejska,1206,Powiat krakowski,18832,16.8,tak
+1206082,011212006082,Michałowice,gmina wiejska,1206,Powiat krakowski,13692,14.2,tak
+1206092,011212006092,Mogilany,gmina wiejska,1206,Powiat krakowski,16594,14.7,tak
+1206103,011212006103,Skała,gmina miejsko-wiejska,1206,Powiat krakowski,10860,18.9,tak
+1206104,011212006104,Skała - miasto,miasto w gminie miejsko-wiejskiej,1206,,3833,19.5,tak
+1206105,011212006105,Skała - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1206,,7027,18.5,tak
+1206113,011212006113,Skawina,gmina miejsko-wiejska,1206,Powiat krakowski,43944,19.8,tak
+1206114,011212006114,Skawina - miasto,miasto w gminie miejsko-wiejskiej,1206,,23766,22.1,tak
+1206115,011212006115,Skawina - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1206,,20178,17.2,tak
+1206123,011212006123,Słomniki,gmina miejsko-wiejska,1206,Powiat krakowski,13620,20.3,tak
+1206124,011212006124,Słomniki - miasto,miasto w gminie miejsko-wiejskiej,1206,,4134,22.1,tak
+1206125,011212006125,Słomniki - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1206,,9486,19.5,tak
+1206132,011212006132,Sułoszowa,gmina wiejska,1206,Powiat krakowski,5584,20.3,tak
+1206142,011212006142,Świątniki Górne,gmina wiejska,1206,Powiat krakowski,,,nie (jednostka historyczna?)
+1206143,011212006143,Świątniki Górne,gmina miejsko-wiejska,1206,Powiat krakowski,11165,16.1,tak
+1206144,011212006144,Świątniki Górne - miasto,miasto w gminie miejsko-wiejskiej,1206,,2383,20.0,tak
+1206145,011212006145,Świątniki Górne - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1206,,8782,15.0,tak
+1206152,011212006152,Wielka Wieś,gmina wiejska,1206,Powiat krakowski,17589,13.3,tak
+1206162,011212006162,Zabierzów,gmina wiejska,1206,Powiat krakowski,30041,18.5,tak
+1206172,011212006172,Zielonki,gmina wiejska,1206,Powiat krakowski,28255,14.2,tak
+1208012,011212008012,Charsznica,gmina wiejska,1208,Powiat miechowski,6954,24.0,tak
+1208022,011212008022,Gołcza,gmina wiejska,1208,Powiat miechowski,5827,20.9,tak
+1208032,011212008032,Kozłów,gmina wiejska,1208,Powiat miechowski,4344,24.0,tak
+1208042,011212008042,Książ Wielki,gmina wiejska,1208,Powiat miechowski,,,nie (jednostka historyczna?)
+1208043,011212008043,Książ Wielki,gmina miejsko-wiejska,1208,Powiat miechowski,4736,26.0,tak
+1208044,011212008044,Książ Wielki - miasto,miasto w gminie miejsko-wiejskiej,1208,,821,26.8,tak
+1208045,011212008045,Książ Wielki - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1208,,3915,25.8,tak
+1208053,011212008053,Miechów,gmina miejsko-wiejska,1208,Powiat miechowski,18401,24.2,tak
+1208054,011212008054,Miechów - miasto,miasto w gminie miejsko-wiejskiej,1208,,10755,26.0,tak
+1208055,011212008055,Miechów - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1208,,7646,21.5,tak
+1208062,011212008062,Racławice,gmina wiejska,1208,Powiat miechowski,2378,22.4,tak
+1208072,011212008072,Słaboszów,gmina wiejska,1208,Powiat miechowski,3258,26.1,tak
+1209013,011212009013,Dobczyce,gmina miejsko-wiejska,1209,Powiat myślenicki,15580,17.1,tak
+1209014,011212009014,Dobczyce - miasto,miasto w gminie miejsko-wiejskiej,1209,,6096,19.8,tak
+1209015,011212009015,Dobczyce - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1209,,9484,15.4,tak
+1209022,011212009022,Lubień,gmina wiejska,1209,Powiat myślenicki,10113,15.9,tak
+1209033,011212009033,Myślenice,gmina miejsko-wiejska,1209,Powiat myślenicki,45429,17.4,tak
+1209034,011212009034,Myślenice - miasto,miasto w gminie miejsko-wiejskiej,1209,,17548,21.9,tak
+1209035,011212009035,Myślenice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1209,,27881,14.6,tak
+1209042,011212009042,Pcim,gmina wiejska,1209,Powiat myślenicki,10990,17.1,tak
+1209052,011212009052,Raciechowice,gmina wiejska,1209,Powiat myślenicki,6456,17.1,tak
+1209062,011212009062,Siepraw,gmina wiejska,1209,Powiat myślenicki,9804,15.4,tak
+1209073,011212009073,Sułkowice,gmina miejsko-wiejska,1209,Powiat myślenicki,15274,16.5,tak
+1209074,011212009074,Sułkowice - miasto,miasto w gminie miejsko-wiejskiej,1209,,6523,16.9,tak
+1209075,011212009075,Sułkowice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1209,,8751,16.1,tak
+1209082,011212009082,Tokarnia,gmina wiejska,1209,Powiat myślenicki,8777,14.9,tak
+1209092,011212009092,Wiśniowa,gmina wiejska,1209,Powiat myślenicki,7556,16.4,tak
+1214012,011212014012,Koniusza,gmina wiejska,1214,Powiat proszowicki,9115,19.0,tak
+1214022,011212014022,Koszyce,gmina wiejska,1214,Powiat proszowicki,,,nie (jednostka historyczna?)
+1214023,011212014023,Koszyce,gmina miejsko-wiejska,1214,Powiat proszowicki,5169,22.7,tak
+1214024,011212014024,Koszyce - miasto,miasto w gminie miejsko-wiejskiej,1214,,757,22.1,tak
+1214025,011212014025,Koszyce - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1214,,4412,22.8,tak
+1214032,011212014032,Nowe Brzesko,gmina wiejska,1214,Powiat proszowicki,,,nie (jednostka historyczna?)
+1214033,011212014033,Nowe Brzesko,gmina miejsko-wiejska,1214,Powiat proszowicki,5590,21.6,tak
+1214034,011212014034,Nowe Brzesko - miasto,miasto w gminie miejsko-wiejskiej,1214,,1583,23.5,tak
+1214035,011212014035,Nowe Brzesko - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1214,,4007,20.8,tak
+1214042,011212014042,Pałecznica,gmina wiejska,1214,Powiat proszowicki,3409,20.7,tak
+1214053,011212014053,Proszowice,gmina miejsko-wiejska,1214,Powiat proszowicki,15224,22.0,tak
+1214054,011212014054,Proszowice - miasto,miasto w gminie miejsko-wiejskiej,1214,,5655,23.7,tak
+1214055,011212014055,Proszowice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1214,,9569,21.0,tak
+1214062,011212014062,Radziemice,gmina wiejska,1214,Powiat proszowicki,3140,21.0,tak
+1219012,011212019012,Biskupice,gmina wiejska,1219,Powiat wielicki,12020,15.4,tak
+1219022,011212019022,Gdów,gmina wiejska,1219,Powiat wielicki,18751,16.4,tak
+1219032,011212019032,Kłaj,gmina wiejska,1219,Powiat wielicki,11435,18.6,tak
+1219043,011212019043,Niepołomice,gmina miejsko-wiejska,1219,Powiat wielicki,34020,14.9,tak
+1219044,011212019044,Niepołomice - miasto,miasto w gminie miejsko-wiejskiej,1219,,17572,13.1,tak
+1219045,011212019045,Niepołomice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1219,,16448,16.8,tak
+1219053,011212019053,Wieliczka,gmina miejsko-wiejska,1219,Powiat wielicki,70471,15.8,tak
+1219054,011212019054,Wieliczka - miasto,miasto w gminie miejsko-wiejskiej,1219,,28485,15.9,tak
+1219055,011212019055,Wieliczka - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1219,,41986,15.8,tak
+1261011,011212161011,Kraków,gmina miejska,1261,Powiat m. Kraków,816614,20.0,tak
+1205011,011212205011,Gorlice,gmina miejska,1205,Powiat gorlicki,24825,27.0,tak
+1205023,011212205023,Biecz,gmina miejsko-wiejska,1205,Powiat gorlicki,15827,20.3,tak
+1205024,011212205024,Biecz - miasto,miasto w gminie miejsko-wiejskiej,1205,,4200,24.0,tak
+1205025,011212205025,Biecz - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1205,,11627,19.0,tak
+1205032,011212205032,Bobowa,gmina wiejska,1205,Powiat gorlicki,,,nie (jednostka historyczna?)
+1205033,011212205033,Bobowa,gmina miejsko-wiejska,1205,Powiat gorlicki,9499,15.3,tak
+1205034,011212205034,Bobowa - miasto,miasto w gminie miejsko-wiejskiej,1205,,3045,16.3,tak
+1205035,011212205035,Bobowa - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1205,,6454,14.8,tak
+1205042,011212205042,Gorlice,gmina wiejska,1205,Powiat gorlicki,16829,18.8,tak
+1205052,011212205052,Lipinki,gmina wiejska,1205,Powiat gorlicki,6617,18.9,tak
+1205062,011212205062,Łużna,gmina wiejska,1205,Powiat gorlicki,8233,16.3,tak
+1205072,011212205072,Moszczenica,gmina wiejska,1205,Powiat gorlicki,4893,16.0,tak
+1205082,011212205082,Ropa,gmina wiejska,1205,Powiat gorlicki,5502,15.2,tak
+1205092,011212205092,Sękowa,gmina wiejska,1205,Powiat gorlicki,4858,18.5,tak
+1205102,011212205102,Uście Gorlickie,gmina wiejska,1205,Powiat gorlicki,6642,16.8,tak
+1207011,011212207011,Limanowa,gmina miejska,1207,Powiat limanowski,14224,20.9,tak
+1207021,011212207021,Mszana Dolna,gmina miejska,1207,Powiat limanowski,7808,19.1,tak
+1207032,011212207032,Dobra,gmina wiejska,1207,Powiat limanowski,10123,16.7,tak
+1207042,011212207042,Jodłownik,gmina wiejska,1207,Powiat limanowski,8777,15.9,tak
+1207052,011212207052,Kamienica,gmina wiejska,1207,Powiat limanowski,5948,14.7,tak
+1207062,011212207062,Laskowa,gmina wiejska,1207,Powiat limanowski,8115,14.5,tak
+1207072,011212207072,Limanowa,gmina wiejska,1207,Powiat limanowski,26193,14.0,tak
+1207082,011212207082,Łukowica,gmina wiejska,1207,Powiat limanowski,10236,14.6,tak
+1207092,011212207092,Mszana Dolna,gmina wiejska,1207,Powiat limanowski,17608,14.5,tak
+1207102,011212207102,Niedźwiedź,gmina wiejska,1207,Powiat limanowski,7298,14.1,tak
+1207112,011212207112,Słopnice,gmina wiejska,1207,Powiat limanowski,7054,11.8,tak
+1207122,011212207122,Tymbark,gmina wiejska,1207,Powiat limanowski,6297,16.1,tak
+1207132,011212207132,Szczawa,gmina wiejska,1207,Powiat limanowski,1799,14.8,tak
+1210001,011212210001,Miejska strefa usług publicznych,gmina miejska,1210,Powiat nowosądecki,,,nie (jednostka historyczna?)
+1210011,011212210011,Grybów,gmina miejska,1210,Powiat nowosądecki,5857,19.6,tak
+1210022,011212210022,Chełmiec,gmina wiejska,1210,Powiat nowosądecki,29876,13.6,tak
+1210032,011212210032,Gródek nad Dunajcem,gmina wiejska,1210,Powiat nowosądecki,8823,16.4,tak
+1210042,011212210042,Grybów,gmina wiejska,1210,Powiat nowosądecki,25420,14.4,tak
+1210052,011212210052,Kamionka Wielka,gmina wiejska,1210,Powiat nowosądecki,10486,13.3,tak
+1210062,011212210062,Korzenna,gmina wiejska,1210,Powiat nowosądecki,14443,13.7,tak
+1210073,011212210073,Krynica-Zdrój,gmina miejsko-wiejska,1210,Powiat nowosądecki,15276,23.0,tak
+1210074,011212210074,Krynica-Zdrój - miasto,miasto w gminie miejsko-wiejskiej,1210,,9294,28.1,tak
+1210075,011212210075,Krynica-Zdrój - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1210,,5982,15.1,tak
+1210082,011212210082,Łabowa,gmina wiejska,1210,Powiat nowosądecki,6016,13.3,tak
+1210092,011212210092,Łącko,gmina wiejska,1210,Powiat nowosądecki,16714,14.3,tak
+1210102,011212210102,Łososina Dolna,gmina wiejska,1210,Powiat nowosądecki,11187,14.9,tak
+1210113,011212210113,Muszyna,gmina miejsko-wiejska,1210,Powiat nowosądecki,11012,19.7,tak
+1210114,011212210114,Muszyna - miasto,miasto w gminie miejsko-wiejskiej,1210,,4373,24.2,tak
+1210115,011212210115,Muszyna - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1210,,6639,16.7,tak
+1210122,011212210122,Nawojowa,gmina wiejska,1210,Powiat nowosądecki,8869,14.2,tak
+1210133,011212210133,Piwniczna-Zdrój,gmina miejsko-wiejska,1210,Powiat nowosądecki,9750,18.7,tak
+1210134,011212210134,Piwniczna-Zdrój - miasto,miasto w gminie miejsko-wiejskiej,1210,,5267,20.0,tak
+1210135,011212210135,Piwniczna-Zdrój - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1210,,4483,17.2,tak
+1210142,011212210142,Podegrodzie,gmina wiejska,1210,Powiat nowosądecki,13725,13.2,tak
+1210152,011212210152,Rytro,gmina wiejska,1210,Powiat nowosądecki,3583,18.3,tak
+1210163,011212210163,Stary Sącz,gmina miejsko-wiejska,1210,Powiat nowosądecki,23420,16.9,tak
+1210164,011212210164,Stary Sącz - miasto,miasto w gminie miejsko-wiejskiej,1210,,8555,21.5,tak
+1210165,011212210165,Stary Sącz - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1210,,14865,14.3,tak
+1262011,011212262011,Nowy Sącz,gmina miejska,1262,Powiat m. Nowy Sącz,79416,21.7,tak
+1203013,011212303013,Alwernia,gmina miejsko-wiejska,1203,Powiat chrzanowski,12160,21.1,tak
+1203014,011212303014,Alwernia - miasto,miasto w gminie miejsko-wiejskiej,1203,,3129,21.8,tak
+1203015,011212303015,Alwernia - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1203,,9031,20.9,tak
+1203022,011212303022,Babice,gmina wiejska,1203,Powiat chrzanowski,8961,20.9,tak
+1203033,011212303033,Chrzanów,gmina miejsko-wiejska,1203,Powiat chrzanowski,43122,25.9,tak
+1203034,011212303034,Chrzanów - miasto,miasto w gminie miejsko-wiejskiej,1203,,33193,26.9,tak
+1203035,011212303035,Chrzanów - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1203,,9929,22.9,tak
+1203043,011212303043,Libiąż,gmina miejsko-wiejska,1203,Powiat chrzanowski,20715,22.3,tak
+1203044,011212303044,Libiąż - miasto,miasto w gminie miejsko-wiejskiej,1203,,15615,22.9,tak
+1203045,011212303045,Libiąż - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1203,,5100,20.5,tak
+1203053,011212303053,Trzebinia,gmina miejsko-wiejska,1203,Powiat chrzanowski,31823,23.5,tak
+1203054,011212303054,Trzebinia - miasto,miasto w gminie miejsko-wiejskiej,1203,,18121,24.3,tak
+1203055,011212303055,Trzebinia - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1203,,13702,22.6,tak
+1212011,011212312011,Bukowno,gmina miejska,1212,Powiat olkuski,9104,26.7,tak
+1212021,011212312021,Sławków,gmina miejska,1212,Powiat olkuski,,,nie (jednostka historyczna?)
+1212032,011212312032,Bolesław,gmina wiejska,1212,Powiat olkuski,7353,25.6,tak
+1212042,011212312042,Klucze,gmina wiejska,1212,Powiat olkuski,14206,23.1,tak
+1212053,011212312053,Olkusz,gmina miejsko-wiejska,1212,Powiat olkuski,44782,25.2,tak
+1212054,011212312054,Olkusz - miasto,miasto w gminie miejsko-wiejskiej,1212,,31538,26.9,tak
+1212055,011212312055,Olkusz - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1212,,13244,21.1,tak
+1212062,011212312062,Trzyciąż,gmina wiejska,1212,Powiat olkuski,6876,19.9,tak
+1212073,011212312073,Wolbrom,gmina miejsko-wiejska,1212,Powiat olkuski,21566,22.2,tak
+1212074,011212312074,Wolbrom - miasto,miasto w gminie miejsko-wiejskiej,1212,,7910,24.1,tak
+1212075,011212312075,Wolbrom - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1212,,13656,21.2,tak
+1213011,011212313011,Oświęcim,gmina miejska,1213,Powiat oświęcimski,35005,25.7,tak
+1213023,011212313023,Brzeszcze,gmina miejsko-wiejska,1213,Powiat oświęcimski,20083,23.2,tak
+1213024,011212313024,Brzeszcze - miasto,miasto w gminie miejsko-wiejskiej,1213,,10411,24.7,tak
+1213025,011212313025,Brzeszcze - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1213,,9672,21.6,tak
+1213033,011212313033,Chełmek,gmina miejsko-wiejska,1213,Powiat oświęcimski,12063,23.4,tak
+1213034,011212313034,Chełmek - miasto,miasto w gminie miejsko-wiejskiej,1213,,8175,24.2,tak
+1213035,011212313035,Chełmek - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1213,,3888,21.8,tak
+1213043,011212313043,Kęty,gmina miejsko-wiejska,1213,Powiat oświęcimski,33014,21.2,tak
+1213044,011212313044,Kęty - miasto,miasto w gminie miejsko-wiejskiej,1213,,17419,24.3,tak
+1213045,011212313045,Kęty - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1213,,15595,17.7,tak
+1213052,011212313052,Osiek,gmina wiejska,1213,Powiat oświęcimski,8098,17.6,tak
+1213062,011212313062,Oświęcim,gmina wiejska,1213,Powiat oświęcimski,18897,19.8,tak
+1213072,011212313072,Polanka Wielka,gmina wiejska,1213,Powiat oświęcimski,4296,17.3,tak
+1213082,011212313082,Przeciszów,gmina wiejska,1213,Powiat oświęcimski,6246,21.1,tak
+1213093,011212313093,Zator,gmina miejsko-wiejska,1213,Powiat oświęcimski,8994,19.3,tak
+1213094,011212313094,Zator - miasto,miasto w gminie miejsko-wiejskiej,1213,,3538,20.5,tak
+1213095,011212313095,Zator - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1213,,5456,18.5,tak
+1218013,011212318013,Andrychów,gmina miejsko-wiejska,1218,Powiat wadowicki,41472,20.1,tak
+1218014,011212318014,Andrychów - miasto,miasto w gminie miejsko-wiejskiej,1218,,17867,25.8,tak
+1218015,011212318015,Andrychów - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1218,,23605,15.7,tak
+1218022,011212318022,Brzeźnica,gmina wiejska,1218,Powiat wadowicki,10873,17.0,tak
+1218033,011212318033,Kalwaria Zebrzydowska,gmina miejsko-wiejska,1218,Powiat wadowicki,19752,18.4,tak
+1218034,011212318034,Kalwaria Zebrzydowska - miasto,miasto w gminie miejsko-wiejskiej,1218,,4233,21.8,tak
+1218035,011212318035,Kalwaria Zebrzydowska - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1218,,15519,17.5,tak
+1218042,011212318042,Lanckorona,gmina wiejska,1218,Powiat wadowicki,6231,17.0,tak
+1218052,011212318052,Mucharz,gmina wiejska,1218,Powiat wadowicki,4162,18.3,tak
+1218062,011212318062,Spytkowice,gmina wiejska,1218,Powiat wadowicki,10017,16.4,tak
+1218072,011212318072,Stryszów,gmina wiejska,1218,Powiat wadowicki,6742,16.9,tak
+1218082,011212318082,Tomice,gmina wiejska,1218,Powiat wadowicki,8339,15.8,tak
+1218093,011212318093,Wadowice,gmina miejsko-wiejska,1218,Powiat wadowicki,36050,21.0,tak
+1218094,011212318094,Wadowice - miasto,miasto w gminie miejsko-wiejskiej,1218,,16748,25.7,tak
+1218095,011212318095,Wadowice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1218,,19302,16.9,tak
+1218102,011212318102,Wieprz,gmina wiejska,1218,Powiat wadowicki,12864,15.4,tak
+1202012,011212402012,Borzęcin,gmina wiejska,1202,Powiat brzeski,8057,18.4,tak
+1202023,011212402023,Brzesko,gmina miejsko-wiejska,1202,Powiat brzeski,35120,19.7,tak
+1202024,011212402024,Brzesko - miasto,miasto w gminie miejsko-wiejskiej,1202,,15738,23.6,tak
+1202025,011212402025,Brzesko - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1202,,19382,16.6,tak
+1202032,011212402032,Czchów,gmina wiejska,1202,Powiat brzeski,,,nie (jednostka historyczna?)
+1202033,011212402033,Czchów,gmina miejsko-wiejska,1202,Powiat brzeski,9588,17.4,tak
+1202034,011212402034,Czchów - miasto,miasto w gminie miejsko-wiejskiej,1202,,2223,19.0,tak
+1202035,011212402035,Czchów - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1202,,7365,16.9,tak
+1202042,011212402042,Dębno,gmina wiejska,1202,Powiat brzeski,14458,17.3,tak
+1202052,011212402052,Gnojnik,gmina wiejska,1202,Powiat brzeski,8075,15.5,tak
+1202062,011212402062,Iwkowa,gmina wiejska,1202,Powiat brzeski,6661,16.4,tak
+1202072,011212402072,Szczurowa,gmina wiejska,1202,Powiat brzeski,8983,19.7,tak
+1204012,011212404012,Bolesław,gmina wiejska,1204,Powiat dąbrowski,2614,19.1,tak
+1204023,011212404023,Dąbrowa Tarnowska,gmina miejsko-wiejska,1204,Powiat dąbrowski,20817,19.3,tak
+1204024,011212404024,Dąbrowa Tarnowska - miasto,miasto w gminie miejsko-wiejskiej,1204,,11350,21.8,tak
+1204025,011212404025,Dąbrowa Tarnowska - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1204,,9467,16.2,tak
+1204032,011212404032,Gręboszów,gmina wiejska,1204,Powiat dąbrowski,3112,23.8,tak
+1204042,011212404042,Mędrzechów,gmina wiejska,1204,Powiat dąbrowski,3199,19.8,tak
+1204052,011212404052,Olesno,gmina wiejska,1204,Powiat dąbrowski,7595,18.2,tak
+1204062,011212404062,Radgoszcz,gmina wiejska,1204,Powiat dąbrowski,7366,16.5,tak
+1204072,011212404072,Szczucin,gmina wiejska,1204,Powiat dąbrowski,,,nie (jednostka historyczna?)
+1204073,011212404073,Szczucin,gmina miejsko-wiejska,1204,Powiat dąbrowski,12272,18.1,tak
+1204074,011212404074,Szczucin - miasto,miasto w gminie miejsko-wiejskiej,1204,,4043,18.9,tak
+1204075,011212404075,Szczucin - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1204,,8229,17.6,tak
+1216012,011212416012,Ciężkowice,gmina wiejska,1216,Powiat tarnowski,,,nie (jednostka historyczna?)
+1216013,011212416013,Ciężkowice,gmina miejsko-wiejska,1216,Powiat tarnowski,10929,18.1,tak
+1216014,011212416014,Ciężkowice - miasto,miasto w gminie miejsko-wiejskiej,1216,,2464,19.5,tak
+1216015,011212416015,Ciężkowice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,8465,17.7,tak
+1216022,011212416022,Gromnik,gmina wiejska,1216,Powiat tarnowski,8751,17.2,tak
+1216032,011212416032,Lisia Góra,gmina wiejska,1216,Powiat tarnowski,15694,15.1,tak
+1216042,011212416042,Pleśna,gmina wiejska,1216,Powiat tarnowski,11730,17.5,tak
+1216052,011212416052,Radłów,gmina wiejska,1216,Powiat tarnowski,,,nie (jednostka historyczna?)
+1216053,011212416053,Radłów,gmina miejsko-wiejska,1216,Powiat tarnowski,9288,18.6,tak
+1216054,011212416054,Radłów - miasto,miasto w gminie miejsko-wiejskiej,1216,,2695,19.4,tak
+1216055,011212416055,Radłów - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,6593,18.2,tak
+1216062,011212416062,Ryglice,gmina wiejska,1216,Powiat tarnowski,,,nie (jednostka historyczna?)
+1216063,011212416063,Ryglice,gmina miejsko-wiejska,1216,Powiat tarnowski,11124,16.6,tak
+1216064,011212416064,Ryglice - miasto,miasto w gminie miejsko-wiejskiej,1216,,2627,18.6,tak
+1216065,011212416065,Ryglice - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,8497,16.0,tak
+1216072,011212416072,Rzepiennik Strzyżewski,gmina wiejska,1216,Powiat tarnowski,6488,18.1,tak
+1216082,011212416082,Skrzyszów,gmina wiejska,1216,Powiat tarnowski,14201,17.2,tak
+1216092,011212416092,Tarnów,gmina wiejska,1216,Powiat tarnowski,26526,17.7,tak
+1216103,011212416103,Tuchów,gmina miejsko-wiejska,1216,Powiat tarnowski,16752,19.0,tak
+1216104,011212416104,Tuchów - miasto,miasto w gminie miejsko-wiejskiej,1216,,6074,21.3,tak
+1216105,011212416105,Tuchów - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,10678,17.7,tak
+1216112,011212416112,Wierzchosławice,gmina wiejska,1216,Powiat tarnowski,10433,20.4,tak
+1216122,011212416122,Wietrzychowice,gmina wiejska,1216,Powiat tarnowski,3665,21.6,tak
+1216132,011212416132,Wojnicz,gmina wiejska,1216,Powiat tarnowski,,,nie (jednostka historyczna?)
+1216133,011212416133,Wojnicz,gmina miejsko-wiejska,1216,Powiat tarnowski,13018,18.1,tak
+1216134,011212416134,Wojnicz - miasto,miasto w gminie miejsko-wiejskiej,1216,,3082,21.9,tak
+1216135,011212416135,Wojnicz - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,9936,16.9,tak
+1216142,011212416142,Zakliczyn,gmina wiejska,1216,Powiat tarnowski,,,nie (jednostka historyczna?)
+1216143,011212416143,Zakliczyn,gmina miejsko-wiejska,1216,Powiat tarnowski,12315,17.1,tak
+1216144,011212416144,Zakliczyn - miasto,miasto w gminie miejsko-wiejskiej,1216,,1561,20.9,tak
+1216145,011212416145,Zakliczyn - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,10754,16.5,tak
+1216153,011212416153,Żabno,gmina miejsko-wiejska,1216,Powiat tarnowski,18203,19.2,tak
+1216154,011212416154,Żabno - miasto,miasto w gminie miejsko-wiejskiej,1216,,4061,22.7,tak
+1216155,011212416155,Żabno - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1216,,14142,18.2,tak
+1216162,011212416162,Szerzyny,gmina wiejska,1216,Powiat tarnowski,7404,19.4,tak
+1263011,011212463011,Tarnów,gmina miejska,1263,Powiat m. Tarnów,101177,25.5,tak
+1211011,011216911011,Nowy Targ,gmina miejska,1211,Powiat nowotarski,32956,20.8,tak
+1211021,011216911021,Szczawnica,gmina miejska,1211,Powiat nowotarski,,,nie (jednostka historyczna?)
+1211023,011216911023,Szczawnica,gmina miejsko-wiejska,1211,Powiat nowotarski,6567,21.5,tak
+1211024,011216911024,Szczawnica - miasto,miasto w gminie miejsko-wiejskiej,1211,,5120,23.0,tak
+1211025,011216911025,Szczawnica - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1211,,1447,16.0,tak
+1211032,011216911032,Czarny Dunajec,gmina wiejska,1211,Powiat nowotarski,,,nie (jednostka historyczna?)
+1211033,011216911033,Czarny Dunajec,gmina miejsko-wiejska,1211,Powiat nowotarski,22115,17.2,tak
+1211034,011216911034,Czarny Dunajec - miasto,miasto w gminie miejsko-wiejskiej,1211,,3636,16.4,tak
+1211035,011216911035,Czarny Dunajec - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1211,,18479,17.4,tak
+1211042,011216911042,Czorsztyn,gmina wiejska,1211,Powiat nowotarski,7535,16.9,tak
+1211052,011216911052,Jabłonka,gmina wiejska,1211,Powiat nowotarski,19289,14.4,tak
+1211062,011216911062,Krościenko nad Dunajcem,gmina wiejska,1211,Powiat nowotarski,6592,19.1,tak
+1211072,011216911072,Lipnica Wielka,gmina wiejska,1211,Powiat nowotarski,6060,14.2,tak
+1211082,011216911082,Łapsze Niżne,gmina wiejska,1211,Powiat nowotarski,9237,17.7,tak
+1211092,011216911092,Nowy Targ,gmina wiejska,1211,Powiat nowotarski,24077,16.2,tak
+1211102,011216911102,Ochotnica Dolna,gmina wiejska,1211,Powiat nowotarski,8469,15.4,tak
+1211112,011216911112,Raba Wyżna,gmina wiejska,1211,Powiat nowotarski,14380,16.6,tak
+1211123,011216911123,Rabka-Zdrój,gmina miejsko-wiejska,1211,Powiat nowotarski,16386,21.4,tak
+1211124,011216911124,Rabka-Zdrój - miasto,miasto w gminie miejsko-wiejskiej,1211,,12072,23.4,tak
+1211125,011216911125,Rabka-Zdrój - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1211,,4314,15.9,tak
+1211132,011216911132,Spytkowice,gmina wiejska,1211,Powiat nowotarski,4703,16.2,tak
+1211142,011216911142,Szaflary,gmina wiejska,1211,Powiat nowotarski,11338,15.6,tak
+1215011,011216915011,Jordanów,gmina miejska,1215,Powiat suski,5365,19.8,tak
+1215021,011216915021,Sucha Beskidzka,gmina miejska,1215,Powiat suski,8688,22.6,tak
+1215032,011216915032,Budzów,gmina wiejska,1215,Powiat suski,8807,15.2,tak
+1215042,011216915042,Bystra-Sidzina,gmina wiejska,1215,Powiat suski,6845,15.0,tak
+1215052,011216915052,Jordanów,gmina wiejska,1215,Powiat suski,11118,16.5,tak
+1215063,011216915063,Maków Podhalański,gmina miejsko-wiejska,1215,Powiat suski,15566,19.2,tak
+1215064,011216915064,Maków Podhalański - miasto,miasto w gminie miejsko-wiejskiej,1215,,5450,22.4,tak
+1215065,011216915065,Maków Podhalański - obszar wiejski,obszar wiejski gminy miejsko-wiejskiej,1215,,10116,17.5,tak
+1215072,011216915072,Stryszawa,gmina wiejska,1215,Powiat suski,11846,18.9,tak
+1215082,011216915082,Zawoja,gmina wiejska,1215,Powiat suski,8686,19.4,tak
+1215092,011216915092,Zembrzyce,gmina wiejska,1215,Powiat suski,5331,20.2,tak
+1217011,011216917011,Zakopane,gmina miejska,1217,Powiat tatrzański,24921,25.1,tak
+1217022,011216917022,Biały Dunajec,gmina wiejska,1217,Powiat tatrzański,6810,16.3,tak
+1217032,011216917032,Bukowina Tatrzańska,gmina wiejska,1217,Powiat tatrzański,13556,17.4,tak
+1217042,011216917042,Kościelisko,gmina wiejska,1217,Powiat tatrzański,9087,18.1,tak
+1217052,011216917052,Poronin,gmina wiejska,1217,Powiat tatrzański,11807,15.5,tak

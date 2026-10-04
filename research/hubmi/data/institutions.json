@@ -1,0 +1,235 @@
+{
+ "_meta": {
+  "description": "Wybrane instytucje usług społecznych w Małopolsce (tylko nazwy, gminy, URL – bez danych kontaktowych osób). Lista niekompletna – seed demo.",
+  "created": "2026-10-04",
+  "caveats": [
+   "Lista CUS niepełna: tylko założyciele MSCUS i partnerzy projektu MCUS znalezieni w źródłach publicznych (verify).",
+   "TERYT dopasowany po nazwie gminy (Grybów/Oświęcim – gmina miejska).",
+   "Pola website=null – nie weryfikowano adresów stron."
+  ]
+ },
+ "institutions": [
+  {
+   "name": "Centrum Usług Społecznych (Myślenice)",
+   "type": "CUS",
+   "gmina": "Myślenice",
+   "teryt_gminy": "1209033",
+   "powiat": "Powiat myślenicki",
+   "role": "członek założyciel Małopolskiej Sieci CUS (VI 2024)",
+   "source_url": "https://rops.krakow.pl/gremia-i-zespoly/malopolska-siec-centrow-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Centrum Usług Społecznych (Klucze)",
+   "type": "CUS",
+   "gmina": "Klucze",
+   "teryt_gminy": "1212042",
+   "powiat": "Powiat olkuski",
+   "role": "członek założyciel Małopolskiej Sieci CUS (VI 2024)",
+   "source_url": "https://rops.krakow.pl/gremia-i-zespoly/malopolska-siec-centrow-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Centrum Usług Społecznych (Skawina)",
+   "type": "CUS",
+   "gmina": "Skawina",
+   "teryt_gminy": "1206113",
+   "powiat": "Powiat krakowski",
+   "role": "członek założyciel Małopolskiej Sieci CUS (VI 2024)",
+   "source_url": "https://rops.krakow.pl/gremia-i-zespoly/malopolska-siec-centrow-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Centrum Usług Społecznych (Tarnów)",
+   "type": "CUS",
+   "gmina": "Tarnów",
+   "teryt_gminy": "1263011",
+   "powiat": "Powiat m. Tarnów",
+   "role": "członek założyciel Małopolskiej Sieci CUS (VI 2024) (verify: miasto Tarnów czy gmina wiejska Tarnów 1216092)",
+   "source_url": "https://rops.krakow.pl/gremia-i-zespoly/malopolska-siec-centrow-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Centrum Usług Społecznych (Alwernia)",
+   "type": "CUS",
+   "gmina": "Alwernia",
+   "teryt_gminy": "1203013",
+   "powiat": "Powiat chrzanowski",
+   "role": "członek założyciel Małopolskiej Sieci CUS (VI 2024)",
+   "source_url": "https://rops.krakow.pl/gremia-i-zespoly/malopolska-siec-centrow-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Dobczyce – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Dobczyce",
+   "teryt_gminy": "1209013",
+   "powiat": "Powiat myślenicki",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Grybów – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Grybów",
+   "teryt_gminy": "1210011",
+   "powiat": "Powiat nowosądecki",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Kęty – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Kęty",
+   "teryt_gminy": "1213043",
+   "powiat": "Powiat oświęcimski",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Korzenna – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Korzenna",
+   "teryt_gminy": "1210062",
+   "powiat": "Powiat nowosądecki",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Liszki – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Liszki",
+   "teryt_gminy": "1206072",
+   "powiat": "Powiat krakowski",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Mogilany – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Mogilany",
+   "teryt_gminy": "1206092",
+   "powiat": "Powiat krakowski",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Niepołomice – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Niepołomice",
+   "teryt_gminy": "1219043",
+   "powiat": "Powiat wielicki",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Oświęcim – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Oświęcim",
+   "teryt_gminy": "1213011",
+   "powiat": "Powiat oświęcimski",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Ryglice – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Ryglice",
+   "teryt_gminy": "1216063",
+   "powiat": "Powiat tarnowski",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Skrzyszów – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Skrzyszów",
+   "teryt_gminy": "1216082",
+   "powiat": "Powiat tarnowski",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Gmina Stary Sącz – partner projektu „Małopolskie Centra Usług Społecznych”",
+   "type": "JST/CUS (partner projektu)",
+   "gmina": "Stary Sącz",
+   "teryt_gminy": "1210163",
+   "powiat": "Powiat nowosądecki",
+   "role": "partner projektu ROPS tworzącego/rozwijającego CUS (verify, czy CUS już działa)",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": null
+  },
+  {
+   "name": "Centrum Usług Społecznych w Niepołomicach",
+   "type": "CUS",
+   "gmina": "Niepołomice",
+   "teryt_gminy": "1219043",
+   "powiat": "Powiat wielicki",
+   "role": "CUS – partner projektu MCUS",
+   "source_url": "https://niepolomice.naszops.pl/projekt-malopolskie-centra-uslug-spolecznych",
+   "website": "https://niepolomice.naszops.pl"
+  },
+  {
+   "name": "Centrum Usług Społecznych w Oświęcimiu",
+   "type": "CUS",
+   "gmina": "Oświęcim",
+   "teryt_gminy": "1213011",
+   "powiat": "Powiat oświęcimski",
+   "role": "CUS – partner projektu MCUS",
+   "source_url": "https://cus-oswiecim.pl/malopolskie-centra-uslug-spolecznych/",
+   "website": "https://cus-oswiecim.pl"
+  },
+  {
+   "name": "Regionalny Ośrodek Polityki Społecznej w Krakowie (ROPS)",
+   "type": "samorząd województwa – jednostka regionalna",
+   "gmina": "Kraków",
+   "teryt_gminy": "1261011",
+   "powiat": "Powiat m. Kraków",
+   "role": "operator Biblioteki Innowacji Społecznych, inkubatorów (IWS 2.0) i Obserwatorium",
+   "source_url": "https://rops.krakow.pl/",
+   "website": "https://rops.krakow.pl/"
+  }
+ ],
+ "directory_sources": [
+  {
+   "name": "Krajowe Forum CUS – Baza CUS i OPS",
+   "url": "https://www.forumcus.pl/baza-cus/",
+   "access": "HTML (lista ogólnopolska; filtr województwa) – nie pobrano (verify)"
+  },
+  {
+   "name": "EFS MRPiPS – Centra Usług Społecznych",
+   "url": "https://efs.mrpips.gov.pl/dowiedz-sie-wiecej/centra-uslug-spolecznych",
+   "access": "HTML; lista CUS z projektów pilotażowych (verify)"
+  },
+  {
+   "name": "bazy.ngo.pl – baza organizacji pozarządowych (Stowarzyszenie Klon/Jawor)",
+   "url": "https://bazy.ngo.pl/",
+   "access": "HTML wyszukiwarka; filtr województwo małopolskie; zawiera dane kontaktowe – pobierać tylko nazwy/gminy"
+  },
+  {
+   "name": "KRS – API Otwarte Dane (Ministerstwo Sprawiedliwości)",
+   "url": "https://api-krs.ms.gov.pl/",
+   "access": "REST JSON po numerze KRS (brak wyszukiwania po regionie)"
+  },
+  {
+   "name": "ROPS – Interaktywny katalog produktów i usług małopolskich przedsiębiorstw społecznych (2023)",
+   "url": "https://rops.krakow.pl/dzial-publikacje/interaktywny-katalog-produktow-i-uslug-malopolskich-przedsiebiorstw-spolecznych-2023-1",
+   "access": "PDF/publikacja (verify)"
+  },
+  {
+   "name": "innowacjespoleczne.pl – profile inkubatorów i innowatorów",
+   "url": "https://innowacjespoleczne.pl/profile/?search-category=inkubator&state=active",
+   "access": "HTML"
+  }
+ ]
+}

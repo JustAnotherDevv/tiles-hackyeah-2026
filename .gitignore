@@ -27,6 +27,9 @@ local.properties
 *.hap
 *.hsp
 *.app
+# ...except the one judge-installable debug build (OpenHarmony debug keystore; no secrets inside).
+!release/
+!release/tiles-debug-signed.hap
 
 # ---------------------------------------------------------------------------
 # Signing material and secrets. NEVER commit these.
@@ -63,6 +66,42 @@ secrets.*
 # plus the deveco-cli skill from `devecocli init --skill`. See README.md -> Setup.
 # ---------------------------------------------------------------------------
 .claude/skills/
+
+# ---------------------------------------------------------------------------
+# Agent / editor local state (shared skills above; personal settings never)
+# ---------------------------------------------------------------------------
+.claude/settings.local.json
+.claude/*.local.*
+CLAUDE.local.md
+
+# ---------------------------------------------------------------------------
+# Python (root-level scripts; aegis/ has its own .gitignore as well)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# ---------------------------------------------------------------------------
+# Web prototypes / design explorations (design/**): dependencies + build output
+# ---------------------------------------------------------------------------
+dist/
+.vite/
+*.tsbuildinfo
+
+# ---------------------------------------------------------------------------
+# Scratch / temporary output (screenshots, recordings, emulator logs)
+# ---------------------------------------------------------------------------
+tmp/
+scratch/
+*.tmp
+*.swp
+*~
 
 # ---------------------------------------------------------------------------
 # IDE / OS
