@@ -4,6 +4,16 @@
 
 # Tiles: A Phone That Adapts
 
+<p align="center">
+  <img src="docs/screenshots/living-light/01-onboarding.jpg" width="160" alt="Onboarding: who is this phone for?">
+  <img src="docs/screenshots/living-light/02-senior-home.jpg" width="160" alt="Senior home for Halina with a Tiles noticed suggestion">
+  <img src="docs/screenshots/living-light/03-kid-home.jpg" width="160" alt="Kid home for Zosia with homework checklist">
+  <img src="docs/screenshots/living-light/04-everyday-home.jpg" width="160" alt="Everyday home for Daniel with a dense tile grid">
+  <img src="docs/screenshots/living-light/05-ask-tiles.jpg" width="160" alt="Ask Tiles generating a weather tile">
+  <img src="docs/screenshots/living-light/06-guardian.jpg" width="160" alt="Guardian scam verdict: hang up, Kasia already knows">
+</p>
+<p align="center"><sub>Onboarding · Senior (Halina) · Kid (Zosia) · Everyday (Daniel) · Ask Tiles · Guardian (demo call, simulated). Screenshots from the HarmonyOS 6.1 emulator. Demo video: <a href="docs/video/tiles-demo.mp4"><code>docs/video/tiles-demo.mp4</code></a>.</sub></p>
+
 **Tiles is a phone home that reshapes itself around the person using it.** It is a native **HarmonyOS** app (ArkTS +
 ArkUI, minimum API 20). The home screen is a grid of **big, colourful, live tiles**. Each tile is a small,
 actionable card: "Pills 8:00, tap when taken", "Call Kasia", "14° and rain, take the umbrella", "Homework: 3 of 5
