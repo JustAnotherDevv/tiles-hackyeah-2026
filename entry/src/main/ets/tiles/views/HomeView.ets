@@ -5,6 +5,7 @@ import { PROFILE_IDS, profileBlurb, profileFor } from '../data/SeedTiles';
 import { ThemePalette, TilesTheme, TypeScale, withAlpha } from '../theme/TilesTheme';
 import { TileView } from '../components/TileView';
 import { AssistantSheet } from './AssistantSheet';
+import { Adaptation } from '../ai/Adaptation';
 import { PlatformKeys } from '../platform/TilesPlatform';
 import { Speech } from '../platform/Speech';
 import { TileHaptics } from '../platform/TileHaptics';
@@ -290,7 +291,7 @@ export struct HomeView {
       return;
     }
     this.getUIContext().animateTo({ curve: TilesTheme.springReflow(), duration: this.dur(TilesTheme.DUR_MED) }, () => {
-      TileStore.get().decideSuggestion(s.id, approve);
+      Adaptation.decide(s.id, approve);
     });
     this.toast(approve ? 'Done: ' + s.title : 'Okay, maybe later');
   }

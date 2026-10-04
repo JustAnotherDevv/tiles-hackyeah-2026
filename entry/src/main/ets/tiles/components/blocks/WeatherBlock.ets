@@ -37,7 +37,7 @@ export struct WeatherBlock {
 
   private wear(): WearRow[] {
     const out: WearRow[] = [];
-    const max: number = this.bs.compact ? 0 : (this.bs.detail ? 10 : 3);
+    const max: number = this.bs.limit(0, 2, 3, 10);
     for (let i = 0; i < this.block.items.length && i < max; i++) {
       const r: WearRow = new WearRow();
       r.key = i + ':' + this.block.items[i];
@@ -52,21 +52,25 @@ export struct WeatherBlock {
       Row({ space: 12 }) {
         if (!this.bs.compact) {
           SymbolGlyph(weatherIcon(this.block.text))
-            .fontSize(this.bs.fs(44))
+            .fontSize(this.bs.fs(this.bs.narrow ? 32 : 44))
             .fontColor([this.bs.fg])
         }
         Column({ space: 0 }) {
           Text(this.block.value)
-            .fontSize(this.bs.fs(this.bs.compact ? 26 : 40))
+            .fontSize(this.bs.fs(this.bs.compact ? 26 : (this.bs.narrow ? 32 : 40)))
             .fontWeight(FontWeight.Bolder)
             .fontColor(this.bs.fg)
             .maxLines(1)
+            .minFontSize(14)
+            .maxFontSize(this.bs.fs(this.bs.compact ? 26 : (this.bs.narrow ? 32 : 40)))
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
           if (this.block.text.length > 0) {
             Text(this.block.text)
               .fontSize(this.bs.fs(15))
               .fontWeight(FontWeight.Medium)
               .fontColor(this.bs.fgDim)
-              .maxLines(2)
+              .maxLines(this.bs.compact ? 1 : 2)
+              .wordBreak(WordBreak.NORMAL)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
           }
         }
@@ -86,6 +90,8 @@ export struct WeatherBlock {
               .borderRadius(999)
               .backgroundColor(this.bs.well)
               .maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .constraintSize({ maxWidth: '100%' })
           }, (r: WearRow) => r.key)
         }
         .width('100%')

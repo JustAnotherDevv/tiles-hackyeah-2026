@@ -29,6 +29,23 @@ export class BlockStyle {
   reduceMotion: boolean = false;
   /** Small (1x1) tile: blocks render a condensed variant. */
   compact: boolean = false;
+  /** Layout tier from the tile's MEASURED size: 'compact' | 'medium' | 'full' (detail is always 'full'). */
+  tier: string = 'full';
+  /** Content column narrower than ~230 vp (scaled): stack instead of side-by-side, shorter labels. */
+  narrow: boolean = false;
+  /** Very narrow (< ~120 vp scaled, e.g. 1x1 in a 4-column grid): hero value only, no controls. */
+  tiny: boolean = false;
+
+  /** Pick a per-tier limit (items, rows, buttons...). */
+  limit(compactN: number, mediumN: number, fullN: number, detailN: number): number {
+    if (this.detail) {
+      return detailN;
+    }
+    if (this.compact || this.tier === 'compact') {
+      return compactN;
+    }
+    return this.tier === 'medium' ? mediumN : fullN;
+  }
 
   fs(base: number): number {
     return Math.round(base * this.scale * (this.detail ? 1.15 : 1.0));

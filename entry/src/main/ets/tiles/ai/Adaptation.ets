@@ -292,9 +292,9 @@ export class Adaptation {
       targets.push(m);
     }
     const MISSED: number = 11;
-    // The first target takes the most misses (4), the rest are spread round-robin.
+    // The first target (SOS when there is one) takes the most misses (5), the rest are spread round-robin.
     for (let i = 0; i < MISSED; i++) {
-      const t: TileSpec = i < 4 || targets.length === 1 ? targets[0] : targets[1 + ((i - 4) % (targets.length - 1))];
+      const t: TileSpec = i < 5 || targets.length === 1 ? targets[0] : targets[1 + ((i - 5) % (targets.length - 1))];
       st.recordTap(t.id, true);
     }
     // A call tile is used normally twice.

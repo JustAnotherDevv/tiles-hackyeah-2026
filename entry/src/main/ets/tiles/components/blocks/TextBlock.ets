@@ -12,7 +12,8 @@ export struct TextBlock {
       .fontSize(this.bs.fs(17))
       .fontColor(this.bs.fg)
       .lineHeight(Math.round(this.bs.fs(17) * 1.35))
-      .maxLines(this.bs.compact ? 2 : (this.bs.detail ? 12 : 4))
+      .maxLines(this.bs.limit(2, 3, 4, 12))
+      .wordBreak(WordBreak.NORMAL)
       .textOverflow({ overflow: TextOverflow.Ellipsis })
       .width('100%')
   }

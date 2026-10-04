@@ -154,6 +154,21 @@ export struct TimerBlock {
     return this.total > 0 ? (this.total - this.remaining) / this.total : 0;
   }
 
+  /** Round control size: full tap target, smaller in compact / narrow tiles (but never below 40 vp). */
+  private btnSize(): number {
+    if (this.bs.compact || this.bs.narrow) {
+      return this.bs.minTap > 48 ? 52 : 40;
+    }
+    return this.bs.minTap;
+  }
+
+  private ringSize(): number {
+    if (this.bs.compact) {
+      return this.bs.tiny ? 48 : 56;
+    }
+    return this.bs.narrow ? 64 : 84;
+  }
+
   @Builder
   roundBtn(icon: Resource, label: string, primary: boolean, act: () => void) {
     Stack() {
@@ -161,8 +176,8 @@ export struct TimerBlock {
         .fontSize(this.bs.fs(22))
         .fontColor([primary ? this.bs.onSolid : this.bs.fg])
     }
-    .width(this.bs.compact ? 40 : this.bs.minTap)
-    .height(this.bs.compact ? 40 : this.bs.minTap)
+    .width(this.btnSize())
+    .height(this.btnSize())
     .borderRadius(999)
     .backgroundColor(primary ? this.bs.solid : this.bs.well)
     .accessibilityText(label)
@@ -181,11 +196,15 @@ export struct TimerBlock {
           .fontColor(this.bs.fg)
           .fontFeature('"tnum" on')
           .maxLines(1)
+          .minFontSize(12)
+          .maxFontSize(this.bs.fs(this.bs.compact ? 22 : 34))
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
         Text((this.block.text.length > 0 ? this.block.text + ' · ' : '') + this.clockTarget())
           .fontSize(this.bs.fs(14))
           .fontWeight(FontWeight.Medium)
           .fontColor(this.bs.fgDim)
           .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')
@@ -193,29 +212,41 @@ export struct TimerBlock {
       .accessibilityText((this.block.text.length > 0 ? this.block.text + ', ' : '') + 'at ' + this.clockTarget() + ', ' +
       this.clockLeft())
     } else {
-      Row({ space: 14 }) {
+      Row({ space: this.bs.compact || this.bs.narrow ? 10 : 14 }) {
         Stack() {
           Progress({ value: Math.round(this.fraction() * 1000), total: 1000, type: ProgressType.Ring })
-            .width(this.bs.compact ? 56 : 84)
-            .height(this.bs.compact ? 56 : 84)
+            .width(this.ringSize())
+            .height(this.ringSize())
             .color(this.bs.fg)
             .backgroundColor(this.bs.well)
             .style({ strokeWidth: this.bs.compact ? 6 : 9 })
           Text(clockOf(this.remaining))
-            .fontSize(this.bs.fs(this.bs.compact ? 14 : 19))
+            .fontSize(Math.min(this.bs.fs(this.bs.compact || this.bs.narrow ? 14 : 19), Math.round(this.ringSize() * 0.27)))
             .fontWeight(FontWeight.Bold)
             .fontColor(this.bs.fg)
             .fontFeature('"tnum" on')
         }
 
-        if (!this.bs.compact) {
+        if (this.bs.compact && !this.bs.tiny) {
+          // Compact: the one primary control next to the ring.
+          if (this.running) {
+            this.roundBtn($r('sys.symbol.pause_fill'), 'Pause timer', true, () => {
+              this.pause();
+            })
+          } else {
+            this.roundBtn($r('sys.symbol.play_fill'), 'Start timer', true, () => {
+              this.start();
+            })
+          }
+        } else if (!this.bs.compact) {
           Column({ space: 8 }) {
-            if (this.block.text.length > 0) {
+            if (this.block.text.length > 0 && !this.bs.narrow) {
               Text(this.block.text)
                 .fontSize(this.bs.fs(15))
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.bs.fgDim)
                 .maxLines(2)
+                .wordBreak(WordBreak.NORMAL)
                 .textOverflow({ overflow: TextOverflow.Ellipsis })
             }
             Row({ space: 8 }) {
@@ -238,7 +269,7 @@ export struct TimerBlock {
         }
       }
       .width('100%')
-      .accessibilityText('Timer ' + clockOf(this.remaining) + (this.running ? ', running' : ', paused'))
+      .accessibilityText((this.block.text.length > 0 ? this.block.text + '. ' : '') + 'Timer ' + clockOf(this.remaining) + (this.running ? ', running' : ', paused'))
       .onClick(() => {
         // Compact (1x1) tiles have no room for buttons: tapping the ring starts / pauses.
         if (this.bs.compact) {

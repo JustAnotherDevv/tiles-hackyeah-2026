@@ -41,7 +41,7 @@ export struct AlertBlock {
 
   private flags(): FlagRow[] {
     const out: FlagRow[] = [];
-    const max: number = this.bs.compact ? 0 : (this.bs.detail ? 10 : 3);
+    const max: number = this.bs.limit(0, 2, 3, 10);
     for (let i = 0; i < this.block.items.length && i < max; i++) {
       const r: FlagRow = new FlagRow();
       r.key = i + ':' + this.block.items[i];
@@ -67,14 +67,15 @@ export struct AlertBlock {
           .fontSize(this.bs.fs(this.bs.compact ? 15 : 18))
           .fontWeight(FontWeight.Bolder)
           .fontColor(this.advice().length > 0 ? this.tone() : '#1C2230')
-          .maxLines(this.bs.compact ? 2 : 4)
+          .maxLines(this.bs.limit(2, 3, 4, 4))
+          .wordBreak(WordBreak.NORMAL)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
       }
       .alignItems(VerticalAlign.Top)
       .width('100%')
 
-      if (this.advice().length > 0 && this.block.text.length > 0 && !this.bs.compact) {
+      if (this.advice().length > 0 && this.block.text.length > 0 && !this.bs.compact && !this.bs.narrow) {
         Text(this.block.text)
           .fontSize(this.bs.fs(15))
           .fontStyle(FontStyle.Italic)
@@ -97,6 +98,8 @@ export struct AlertBlock {
             .fontWeight(FontWeight.Medium)
             .fontColor('#3A3F4B')
             .maxLines(2)
+            .wordBreak(WordBreak.NORMAL)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
         }
         .width('100%')

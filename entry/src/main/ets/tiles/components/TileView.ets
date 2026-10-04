@@ -2,13 +2,19 @@ import { TileAction, TileBlock, TileSpec, Profile } from '../model/Tile';
 import { TileColors, TilesTheme, withAlpha } from '../theme/TilesTheme';
 import { BlockStyle, tileIcon } from './blocks/BlockStyle';
 import { BlockView } from './blocks/BlockView';
+import { percentOf } from './blocks/ProgressBlock';
 
 /** One block plus its index in tile.blocks (needed for 'toggle' args) and a stable render key. */
 class BlockSlot {
   key: string = '';
   index: number = 0;
   block: TileBlock = new TileBlock();
+  /** 0 = keep longest (hero value) ... 3 = drop first when the tile is too short. */
+  priority: number = 2;
 }
+
+/** Block kinds that can be a tile's single "key value" in compact tiles. */
+const KEY_KINDS: string[] = ['big', 'timer', 'progress', 'weather', 'alert'];
 
 /** How long after creation an assistant tile still plays its "spring in" entrance. */
 const APPEAR_WINDOW_MS: number = 20000;
@@ -21,13 +27,22 @@ const APPEAR_WINDOW_MS: number = 20000;
  * `onAction(action, tile)` — tile tap = kind 'open', read-aloud = kind 'speak' (arg = text to speak),
  * buttons/chips = their TileAction, checklist = kind 'toggle' (arg '<block>:<item>'), timer = kind 'timer'.
  *
+ * Responsive: the layout tier comes from the tile's MEASURED size (onAreaChange), scaled by the profile's text size:
+ *  - compact (narrow and short, or 1x1): icon + title (<= 2 lines, shrinks before it ellipsizes, never mid-word),
+ *    ONE key value (big / timer / progress / weather / alert), at most one primary button; no subtitle/chips/lists.
+ *  - medium: title + 1-line subtitle + the primary block(s) + up to 2 chips + up to 2 buttons.
+ *  - full: everything that fits (detail mode is always full).
+ * In fixed-height grid cells, blocks that would overflow the tile are dropped lowest-priority first (measured,
+ * not guessed); a soft fade is only drawn if even the last block cannot fit. accessibilityText always carries the
+ * full content (title, subtitle, every block), so nothing hidden visually is lost to screen-reader users.
+ *
  * Usage: TileView({ tile: t, profile: p, dark: isDark, onAction: (a, t) => {...} })
  *        TileView({ tile: t, profile: p, mode: 'detail' })  // full-screen detail rendering
  */
 @Component
 export struct TileView {
-  @Prop tile: TileSpec = new TileSpec();
-  @Prop profile: Profile = new Profile();
+  @Prop @Watch('onInputs') tile: TileSpec = new TileSpec();
+  @Prop @Watch('onInputs') profile: Profile = new Profile();
   /** 'tile' (grid) or 'detail' (full screen, all blocks, larger type). */
   @Prop mode: string = 'tile';
   @Prop dark: boolean = false;
@@ -38,6 +53,14 @@ export struct TileView {
   @State private appearScale: number = 1;
   @State private appearOpacity: number = 1;
   @State private cardW: number = 0;
+  @State private cardH: number = 0;
+  /** tile.blocks indexes dropped because they did not fit the measured tile height. */
+  @State private dropped: number[] = [];
+  /** Even the last remaining block overflows: draw a soft fade at the bottom edge (last resort). */
+  @State private overflowFade: boolean = false;
+  /** Measured bottom edge (vp, inside the content column) per block index. */
+  private bottoms: Map<number, number> = new Map<number, number>();
+  private fitPending: boolean = false;
   private animateIn: boolean = false;
   onAction: (action: TileAction, tile: TileSpec) => void = (action: TileAction, tile: TileSpec) => {
   };
@@ -54,6 +77,20 @@ export struct TileView {
     }
   }
 
+  onInputs(): void {
+    this.resetFit();
+  }
+
+  private resetFit(): void {
+    this.bottoms.clear();
+    if (this.dropped.length > 0) {
+      this.dropped = [];
+    }
+    if (this.overflowFade) {
+      this.overflowFade = false;
+    }
+  }
+
   private colors(): TileColors {
     return TilesTheme.tile(this.tile.color, this.profile.highContrast, this.dark);
   }
@@ -62,8 +99,69 @@ export struct TileView {
     return this.mode === 'detail';
   }
 
+  private typeScale(): number {
+    const s: number = TilesTheme.type(this.profile.textScale).scale;
+    return s > 0 ? s : 1;
+  }
+
+  /** Measured width in "unscaled" vp (width / text scale): how much room the text really has. */
+  private effW(): number {
+    const w: number = this.cardW > 0 ? this.cardW : (this.tile.size === '1x1' ? 90 : 184);
+    return w / this.typeScale();
+  }
+
+  /** Measured height in unscaled vp; unbounded when the tile sizes to its content. */
+  private effH(): number {
+    if (!this.fillHeight || this.isDetail()) {
+      return 9999;
+    }
+    return (this.cardH > 0 ? this.cardH : 150) / this.typeScale();
+  }
+
+  /** Layout tier from the measured size: 'compact' | 'medium' | 'full'. */
+  private tier(): string {
+    if (this.isDetail()) {
+      return 'full';
+    }
+    if (this.tile.size === '1x1') {
+      return 'compact';
+    }
+    const ew: number = this.effW();
+    const eh: number = this.effH();
+    if (ew < 200 && eh < 200) {
+      return 'compact';
+    }
+    if (ew < 320 || eh < 200) {
+      return 'medium';
+    }
+    return 'full';
+  }
+
   private isCompact(): boolean {
-    return !this.isDetail() && this.tile.size === '1x1';
+    return this.tier() === 'compact';
+  }
+
+  private narrow(): boolean {
+    return !this.isDetail() && this.effW() < 230;
+  }
+
+  private tiny(): boolean {
+    return !this.isDetail() && this.effW() < 120;
+  }
+
+  /** Title next to the icon (wide or short tiles) vs. icon row on top + full-width title (narrow, tall tiles). */
+  private titleBeside(): boolean {
+    return !this.tiny() && (!this.narrow() || this.effH() < 170);
+  }
+
+  private pad(): number {
+    if (this.isDetail()) {
+      return 22;
+    }
+    if (this.tiny()) {
+      return 10;
+    }
+    return this.isCompact() ? 12 : 16;
   }
 
   private style(): BlockStyle {
@@ -75,42 +173,96 @@ export struct TileView {
     s.well = c.soft;
     s.solid = c.on;
     s.onSolid = c.bg;
-    s.scale = TilesTheme.type(this.profile.textScale).scale;
+    s.scale = this.typeScale();
     s.highContrast = this.profile.highContrast;
     s.minTap = TilesTheme.tapTarget(this.profile);
     s.detail = this.isDetail();
     s.reduceMotion = this.reduceMotion;
-    s.compact = this.isCompact();
+    s.tier = this.tier();
+    s.compact = s.tier === 'compact';
+    s.narrow = this.narrow();
+    s.tiny = this.tiny();
     return s;
   }
 
   private fs(base: number): number {
-    return Math.round(base * TilesTheme.type(this.profile.textScale).scale * (this.isDetail() ? 1.15 : 1.0));
+    return Math.round(base * this.typeScale() * (this.isDetail() ? 1.15 : 1.0));
   }
 
-  /** Which blocks fit this size: 1x1 → one glanceable block; 2x1 → two (keeping the buttons); 2x2 → four. */
-  private slots(): BlockSlot[] {
+  private titleFs(): number {
+    if (this.isCompact()) {
+      return this.fs(this.tiny() ? 15 : 16);
+    }
+    return this.fs(this.narrow() ? 18 : 20);
+  }
+
+  private firstKind(kind: string): number {
+    for (let i = 0; i < this.tile.blocks.length; i++) {
+      if (this.tile.blocks[i].kind === kind) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  /** Which blocks this tier shows (before height capping), in original order. */
+  private pickIndexes(): number[] {
     const all: TileBlock[] = this.tile.blocks;
     const picked: number[] = [];
+    const tier: string = this.tier();
     if (this.isDetail()) {
       for (let i = 0; i < all.length; i++) {
         picked.push(i);
       }
-    } else if (this.tile.size === '1x1') {
-      // One glanceable block (value / meter / timer / weather); otherwise the tile's primary action.
+      return picked;
+    }
+    if (tier === 'compact') {
+      // ONE key value; tiny tiles only take a short hero value (no controls).
       for (let i = 0; i < all.length; i++) {
         const k: string = all[i].kind;
-        if (k === 'big' || k === 'progress' || k === 'timer' || k === 'weather') {
+        if (this.tiny() ? (k === 'big' || k === 'weather') : KEY_KINDS.indexOf(k) >= 0) {
           picked.push(i);
           break;
         }
       }
-      if (picked.length === 0) {
-        for (let i = 0; i < all.length; i++) {
-          if (all[i].kind === 'buttons' || all[i].kind === 'text') {
-            picked.push(i);
-            break;
+      if (picked.length === 0 && !this.tiny()) {
+        const cl: number = this.firstKind('checklist'); // shown as "2 of 6 done"
+        if (cl >= 0) {
+          picked.push(cl);
+        }
+      }
+      if (!this.tiny()) {
+        const btn: number = this.firstKind('buttons');
+        if (btn >= 0) {
+          picked.push(btn); // rendered as a single primary button; dropped first if it does not fit
+        }
+        if (picked.length === 0) {
+          const tx: number = this.firstKind('text');
+          if (tx >= 0) {
+            picked.push(tx);
           }
+        }
+      }
+    } else if (tier === 'medium') {
+      const maxContent: number = this.effH() >= 240 ? 2 : 1;
+      let n: number = 0;
+      let chips: boolean = false;
+      let btns: boolean = false;
+      for (let i = 0; i < all.length; i++) {
+        const k: string = all[i].kind;
+        if (k === 'buttons') {
+          if (!btns) {
+            picked.push(i);
+            btns = true;
+          }
+        } else if (k === 'chips') {
+          if (!chips) {
+            picked.push(i);
+            chips = true;
+          }
+        } else if (n < maxContent) {
+          picked.push(i);
+          n++;
         }
       }
     } else {
@@ -119,24 +271,39 @@ export struct TileView {
         picked.push(i);
       }
       // Never hide the tile's actions: swap the last picked block for the first 'buttons' block.
-      let btn: number = -1;
-      for (let i = 0; i < all.length; i++) {
-        if (all[i].kind === 'buttons') {
-          btn = i;
-          break;
-        }
-      }
+      const btn: number = this.firstKind('buttons');
       if (btn >= 0 && picked.indexOf(btn) < 0 && picked.length > 0) {
         picked[picked.length - 1] = btn;
       }
     }
+    picked.sort((a: number, b: number) => a - b);
+    return picked;
+  }
+
+  /** Visible blocks: the tier's picks minus the ones dropped for height. */
+  private slots(): BlockSlot[] {
+    const picked: number[] = this.pickIndexes();
     const out: BlockSlot[] = [];
+    let first: boolean = true;
     for (let j = 0; j < picked.length; j++) {
       const i: number = picked[j];
-      const b: TileBlock = all[i];
+      const b: TileBlock = this.tile.blocks[i];
+      if (this.dropped.indexOf(i) >= 0) {
+        continue;
+      }
       const s: BlockSlot = new BlockSlot();
       s.index = i;
       s.block = b;
+      if (b.kind === 'buttons' || b.kind === 'alert') {
+        s.priority = 1;
+      } else if (b.kind === 'chips') {
+        s.priority = 3;
+      } else if (first) {
+        s.priority = 0;
+        first = false;
+      } else {
+        s.priority = 2;
+      }
       s.key = this.tile.id + '#' + i + ':' + b.kind + ':' + b.text + '|' + b.value + '|' + b.progress + '|' +
         b.items.join(',') + '|' + b.checked.join(',') + '|' + b.actions.length;
       out.push(s);
@@ -144,8 +311,57 @@ export struct TileView {
     return out;
   }
 
+  private scheduleFit(): void {
+    if (!this.fillHeight || this.isDetail() || this.fitPending) {
+      return;
+    }
+    this.fitPending = true;
+    setTimeout(() => {
+      this.fitPending = false;
+      this.fit();
+    }, 32);
+  }
+
+  /** Drop the lowest-priority block while any visible block's measured bottom exceeds the tile. */
+  private fit(): void {
+    if (this.cardH <= 0) {
+      return;
+    }
+    const limit: number = this.cardH - this.pad() + 2;
+    const visible: BlockSlot[] = this.slots();
+    let over: boolean = false;
+    for (let i = 0; i < visible.length; i++) {
+      const b: number | undefined = this.bottoms.get(visible[i].index);
+      if (b !== undefined && b > limit) {
+        over = true;
+      }
+    }
+    if (!over) {
+      if (this.overflowFade) {
+        this.overflowFade = false;
+      }
+      return;
+    }
+    if (visible.length <= 1) {
+      this.overflowFade = true;
+      return;
+    }
+    let victim: BlockSlot = visible[0];
+    for (let i = 1; i < visible.length; i++) {
+      const s: BlockSlot = visible[i];
+      if (s.priority > victim.priority || (s.priority === victim.priority && s.index > victim.index)) {
+        victim = s;
+      }
+    }
+    const next: number[] = this.dropped.slice();
+    next.push(victim.index);
+    this.bottoms.delete(victim.index);
+    this.dropped = next;
+    this.scheduleFit();
+  }
+
   private minHeight(): number {
-    if (this.isDetail() || this.cardW <= 0) {
+    if (this.isDetail() || this.cardW <= 0 || this.fillHeight) {
       return 0;
     }
     if (this.tile.size === '2x1') {
@@ -157,8 +373,11 @@ export struct TileView {
     return Math.round(this.cardW); // 1x1 is square
   }
 
-  /** 1x1: skip the title line when the glanceable block already shows the same value (e.g. '14°'). */
+  /** Compact: skip the title line when the hero block already shows the same value (e.g. '14°'). */
   private titleRepeated(): boolean {
+    if (!this.isCompact()) {
+      return false;
+    }
     for (let i = 0; i < this.tile.blocks.length; i++) {
       if (this.tile.blocks[i].value.length > 0 && this.tile.blocks[i].value === this.tile.title) {
         return true;
@@ -167,19 +386,104 @@ export struct TileView {
     return false;
   }
 
-  private a11yText(): string {
-    let s: string = this.tile.title;
-    if (this.tile.speakText.length > 0) {
-      s += '. ' + this.tile.speakText;
-    } else if (this.tile.subtitle.length > 0) {
-      s += '. ' + this.tile.subtitle;
+  /** Spoken summary of one block (screen readers get everything, even what the tile hides). */
+  private blockSummary(b: TileBlock): string {
+    const parts: string[] = [];
+    if (b.kind === 'buttons') {
+      const labels: string[] = [];
+      for (let i = 0; i < b.actions.length; i++) {
+        labels.push(b.actions[i].label.length > 0 ? b.actions[i].label : b.actions[i].kind);
+      }
+      return labels.length > 0 ? 'Actions: ' + labels.join(', ') : '';
     }
-    return s;
+    if (b.kind === 'checklist') {
+      const rows: string[] = [];
+      for (let i = 0; i < b.items.length; i++) {
+        rows.push(b.items[i] + (i < b.checked.length && b.checked[i] ? ', done' : ''));
+      }
+      return (b.text.length > 0 ? b.text + ': ' : '') + rows.join('; ');
+    }
+    if (b.kind === 'progress') {
+      if (b.value.length > 0) {
+        parts.push(b.value);
+      }
+      parts.push(percentOf(b.progress) + ' percent');
+      if (b.text.length > 0) {
+        parts.push(b.text);
+      }
+      return parts.join(', ');
+    }
+    if (b.kind === 'timer') {
+      const v: string = b.value.startsWith('at:') ? 'at ' + b.value.substring(3) :
+        (b.value.length > 0 ? parseInt(b.value) + ' minute timer' : 'timer');
+      return (b.text.length > 0 ? b.text + ', ' : '') + v;
+    }
+    if (b.kind === 'chips' && b.actions.length > 0) {
+      const labels: string[] = [];
+      for (let i = 0; i < b.actions.length; i++) {
+        labels.push(b.actions[i].label);
+      }
+      return (b.text.length > 0 ? b.text + ': ' : '') + 'options ' + labels.join(', ');
+    }
+    if (b.value.length > 0) {
+      parts.push(b.value);
+    }
+    if (b.text.length > 0) {
+      parts.push(b.text);
+    }
+    if (b.items.length > 0) {
+      parts.push(b.items.join(', '));
+    }
+    return parts.join(', ');
+  }
+
+  private a11yText(): string {
+    const parts: string[] = [this.tile.title];
+    if (this.tile.subtitle.length > 0) {
+      parts.push(this.tile.subtitle);
+    }
+    const plain: string = this.tile.subtitle.length > 0 ? this.tile.title + '. ' + this.tile.subtitle : this.tile.title;
+    if (this.tile.speakText.length > 0 && this.tile.speakText !== plain && this.tile.speakText !== this.tile.title) {
+      parts.push(this.tile.speakText);
+    }
+    for (let i = 0; i < this.tile.blocks.length; i++) {
+      const s: string = this.blockSummary(this.tile.blocks[i]);
+      if (s.length > 0) {
+        parts.push(s);
+      }
+    }
+    if (this.badgeText().length > 0) {
+      parts.push(this.badgeText() === 'NEW' ? 'New tile' : 'Adapted for you');
+    }
+    return parts.join('. ');
   }
 
   private isNew(): boolean {
     return this.tile.source === 'assistant' && this.tile.createdAt > 0 &&
       Date.now() - this.tile.createdAt < 10 * 60 * 1000;
+  }
+
+  private badgeText(): string {
+    if (this.isNew()) {
+      return 'NEW';
+    }
+    return this.tile.source === 'adaptation' ? 'ADAPTED' : '';
+  }
+
+  /** Narrow / compact tiles show the NEW / ADAPTED badge as a dot on the icon instead of a pill. */
+  private smallBadge(): boolean {
+    return this.isCompact() || this.narrow();
+  }
+
+  private showSpeaker(): boolean {
+    return this.profile.readAloud || this.isDetail();
+  }
+
+  private iconSize(): number {
+    if (this.tiny()) {
+      return 32;
+    }
+    return this.isCompact() || this.narrow() ? 38 : 44;
   }
 
   private emit(kind: string, arg: string, label: string): void {
@@ -195,79 +499,142 @@ export struct TileView {
   }
 
   @Builder
-  badge(text: string, c: TileColors) {
-    Text(text)
+  badgePill() {
+    Text(this.badgeText())
       .fontSize(this.fs(11))
       .fontWeight(FontWeight.Bold)
-      .fontColor(c.bg)
+      .fontColor(this.colors().bg)
       .letterSpacing(0.6)
+      .maxLines(1)
       .padding({ left: 8, right: 8, top: 3, bottom: 3 })
       .borderRadius(999)
-      .backgroundColor(c.on)
+      .backgroundColor(this.colors().on)
+      .flexShrink(0)
   }
 
   @Builder
-  header(c: TileColors) {
-    Row({ space: 12 }) {
+  iconBox() {
+    Stack({ alignContent: Alignment.TopEnd }) {
       Stack() {
         SymbolGlyph(tileIcon(this.tile.icon, this.tile.type))
-          .fontSize(this.fs(this.isCompact() ? 22 : 24))
-          .fontColor([c.on])
+          .fontSize(Math.round(this.iconSize() * 0.56))
+          .fontColor([this.colors().on])
       }
-      .width(this.isCompact() ? 40 : 44)
-      .height(this.isCompact() ? 40 : 44)
-      .borderRadius(14)
-      .backgroundColor(c.soft)
+      .width(this.iconSize())
+      .height(this.iconSize())
+      .borderRadius(this.tiny() ? 11 : 14)
+      .backgroundColor(this.colors().soft)
 
-      if (!this.isCompact()) {
-        Column({ space: 2 }) {
-          Text(this.tile.title)
-            .fontSize(this.fs(20))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(c.on)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-          if (this.tile.subtitle.length > 0) {
-            Text(this.tile.subtitle)
-              .fontSize(this.fs(14))
-              .fontWeight(FontWeight.Medium)
-              .fontColor(c.onMuted)
-              .maxLines(this.isDetail() ? 3 : 1)
-              .textOverflow({ overflow: TextOverflow.Ellipsis })
-          }
-        }
-        .alignItems(HorizontalAlign.Start)
-        .layoutWeight(1)
-      } else {
-        Blank()
-      }
-
-      if (this.isNew() && !this.isCompact()) {
-        this.badge('NEW', c)
-      } else if (this.tile.source === 'adaptation' && !this.isCompact()) {
-        this.badge('ADAPTED', c)
-      }
-
-      if (this.profile.readAloud || this.isDetail()) {
-        Stack() {
-          SymbolGlyph($r('sys.symbol.speaker_wave_2_fill'))
-            .fontSize(this.fs(20))
-            .fontColor([c.on])
-        }
-        .width(this.isCompact() ? 40 : 48)
-        .height(this.isCompact() ? 40 : 48)
-        .borderRadius(999)
-        .backgroundColor(c.soft)
-        .border({ width: this.profile.highContrast ? 2 : 0, color: c.on })
-        .accessibilityText('Read ' + this.tile.title + ' aloud')
-        .accessibilityRole(AccessibilityRoleType.BUTTON)
-        .onClick(() => {
-          this.speak();
-        })
+      if (this.smallBadge() && this.badgeText().length > 0) {
+        Circle()
+          .width(14)
+          .height(14)
+          .fill(this.colors().on)
+          .stroke(this.colors().bg)
+          .strokeWidth(2.5)
+          .margin({ top: -4, right: -4 })
       }
     }
-    .width('100%')
-    .alignItems(VerticalAlign.Center)
+    .flexShrink(0)
+  }
+
+  @Builder
+  speaker() {
+    Stack() {
+      SymbolGlyph($r('sys.symbol.speaker_wave_2_fill'))
+        .fontSize(this.fs(this.isCompact() ? 18 : 20))
+        .fontColor([this.colors().on])
+    }
+    .width(this.isCompact() || this.narrow() ? 44 : 48)
+    .height(this.isCompact() || this.narrow() ? 44 : 48)
+    .borderRadius(999)
+    .backgroundColor(this.colors().soft)
+    .border({ width: this.profile.highContrast ? 2 : 0, color: this.colors().on })
+    .flexShrink(0)
+    .accessibilityText('Read ' + this.tile.title + ' aloud')
+    .accessibilityRole(AccessibilityRoleType.BUTTON)
+    .onClick(() => {
+      this.speak();
+    })
+  }
+
+  /** Title: up to 2 lines, breaks only between words, shrinks (down to ~75%) before it ellipsizes. */
+  @Builder
+  titleText() {
+    Text(this.tile.title)
+      .fontSize(this.titleFs())
+      .maxFontSize(this.titleFs())
+      .minFontSize(Math.max(11, Math.round(this.titleFs() * 0.75)))
+      .heightAdaptivePolicy(TextHeightAdaptivePolicy.MAX_LINES_FIRST)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.colors().on)
+      .lineHeight(Math.round(this.titleFs() * 1.2))
+      .maxLines(2)
+      .wordBreak(WordBreak.NORMAL)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
+  }
+
+  @Builder
+  subtitleText() {
+    Text(this.tile.subtitle)
+      .fontSize(this.fs(this.narrow() ? 13 : 14))
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.colors().onMuted)
+      .maxLines(this.isDetail() ? 3 : 1)
+      .wordBreak(WordBreak.NORMAL)
+      .textOverflow({ overflow: TextOverflow.Ellipsis })
+  }
+
+  @Builder
+  header() {
+    if (this.titleBeside()) {
+      Row({ space: this.isCompact() || this.narrow() ? 10 : 12 }) {
+        this.iconBox()
+        if (!this.titleRepeated()) {
+          Column({ space: 2 }) {
+            this.titleText()
+            if (!this.isCompact() && this.tile.subtitle.length > 0) {
+              this.subtitleText()
+            }
+          }
+          .alignItems(HorizontalAlign.Start)
+          .layoutWeight(1)
+        } else {
+          Blank()
+        }
+        if (!this.smallBadge() && this.badgeText().length > 0) {
+          this.badgePill()
+        }
+        if (this.showSpeaker()) {
+          this.speaker()
+        }
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
+    } else {
+      Column({ space: 6 }) {
+        Row() {
+          this.iconBox()
+          Blank()
+          if (!this.smallBadge() && this.badgeText().length > 0) {
+            this.badgePill()
+          }
+          if (this.showSpeaker()) {
+            this.speaker()
+          }
+        }
+        .width('100%')
+
+        if (!this.titleRepeated()) {
+          this.titleText()
+        }
+        if (!this.isCompact() && this.tile.subtitle.length > 0) {
+          this.subtitleText()
+        }
+      }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
+    }
   }
 
   build() {
@@ -280,26 +647,26 @@ export struct TileView {
         .position({ right: -18, bottom: -22 })
         .accessibilityLevel('no')
 
-      Column({ space: this.isCompact() ? 8 : 14 }) {
-        this.header(this.colors())
-
-        if (this.isCompact() && !this.titleRepeated()) {
-          Text(this.tile.title)
-            .fontSize(this.fs(16))
-            .fontWeight(FontWeight.Bold)
-            .fontColor(this.colors().on)
-            .maxLines(2)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .width('100%')
-        }
+      Column({ space: this.isCompact() ? 8 : (this.isDetail() ? 14 : 12) }) {
+        this.header()
 
         ForEach(this.slots(), (s: BlockSlot) => {
-          BlockView({
-            block: s.block,
-            bs: this.style(),
-            blockIndex: s.index,
-            onAction: (a: TileAction) => {
-              this.onAction(a, this.tile);
+          Column() {
+            BlockView({
+              block: s.block,
+              bs: this.style(),
+              blockIndex: s.index,
+              onAction: (a: TileAction) => {
+                this.onAction(a, this.tile);
+              }
+            })
+          }
+          .width('100%')
+          .onAreaChange((oldArea: Area, newArea: Area) => {
+            const bottom: number = Number(newArea.position.y) + Number(newArea.height);
+            if (!isNaN(bottom)) {
+              this.bottoms.set(s.index, bottom);
+              this.scheduleFit();
             }
           })
         }, (s: BlockSlot) => s.key)
@@ -307,7 +674,20 @@ export struct TileView {
       .width('100%')
       .alignItems(HorizontalAlign.Start)
       .justifyContent(FlexAlign.Start)
-      .padding(this.isCompact() ? 12 : (this.isDetail() ? 22 : 16))
+      .padding(this.pad())
+
+      if (this.overflowFade) {
+        Column()
+          .width('100%')
+          .height(28)
+          .linearGradient({
+            direction: GradientDirection.Bottom,
+            colors: [[withAlpha(this.colors().bg, 0), 0.0], [this.colors().bg, 1.0]]
+          })
+          .position({ left: 0, bottom: 0 })
+          .hitTestBehavior(HitTestMode.Transparent)
+          .accessibilityLevel('no')
+      }
     }
     .width('100%')
     .height(this.fillHeight ? '100%' : 'auto')
@@ -330,8 +710,18 @@ export struct TileView {
     .animation({ curve: TilesTheme.springPress(), duration: this.reduceMotion ? 0 : 250 })
     .onAreaChange((oldArea: Area, newArea: Area) => {
       const w: number = Number(newArea.width);
+      const h: number = Number(newArea.height);
+      let changed: boolean = false;
       if (!isNaN(w) && Math.abs(w - this.cardW) > 1) {
         this.cardW = w;
+        changed = true;
+      }
+      if (!isNaN(h) && Math.abs(h - this.cardH) > 1) {
+        this.cardH = h;
+        changed = changed || this.fillHeight;
+      }
+      if (changed) {
+        this.resetFit();
       }
     })
     .onAppear(() => {

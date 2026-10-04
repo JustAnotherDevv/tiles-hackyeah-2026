@@ -30,7 +30,7 @@ export struct ChecklistBlock {
   }
 
   private rows(): CheckRow[] {
-    const max: number = this.bs.compact ? 2 : (this.bs.detail ? 30 : 5);
+    const max: number = this.bs.limit(2, 3, 5, 30);
     const out: CheckRow[] = [];
     for (let i = 0; i < this.block.items.length && i < max; i++) {
       const r: CheckRow = new CheckRow();
@@ -67,7 +67,48 @@ export struct ChecklistBlock {
     this.onAction(a);
   }
 
+  @Builder
+  summary() {
+    // Compact tiles: the checklist collapses to one key value ("2 of 6 done" + meter); tap the tile to tick items.
+    Column({ space: 6 }) {
+      Text(this.doneCount() + ' of ' + this.block.items.length + ' done')
+        .fontSize(this.bs.fs(16))
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.bs.fg)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Stack({ alignContent: Alignment.Start }) {
+        Row()
+          .width('100%')
+          .height(this.bs.highContrast ? 14 : 10)
+          .borderRadius(8)
+          .backgroundColor(this.bs.well)
+          .border({ width: this.bs.highContrast ? 2 : 0, color: this.bs.fg })
+        Row()
+          .width(this.block.items.length > 0 ? Math.round(this.doneCount() * 100 / this.block.items.length) + '%' : '0%')
+          .height(this.bs.highContrast ? 14 : 10)
+          .borderRadius(8)
+          .backgroundColor(this.bs.fg)
+      }
+      .width('100%')
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+    .accessibilityGroup(true)
+    .accessibilityText((this.block.text.length > 0 ? this.block.text + ', ' : '') + this.doneCount() + ' of ' +
+      this.block.items.length + ' done')
+  }
+
   build() {
+    if (this.bs.compact && !this.bs.detail) {
+      this.summary()
+    } else {
+      this.fullList()
+    }
+  }
+
+  @Builder
+  fullList() {
     Column({ space: 4 }) {
       if (this.block.text.length > 0 && !this.bs.compact) {
         Text(this.block.text + '  ·  ' + this.doneCount() + '/' + this.block.items.length)
@@ -75,6 +116,7 @@ export struct ChecklistBlock {
           .fontWeight(FontWeight.Bold)
           .fontColor(this.bs.fgDim)
           .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       ForEach(this.rows(), (r: CheckRow) => {
         Row({ space: 12 }) {
@@ -94,11 +136,12 @@ export struct ChecklistBlock {
           .animation({ duration: this.bs.reduceMotion ? 0 : 180, curve: Curve.EaseOut })
 
           Text(r.text)
-            .fontSize(this.bs.fs(16))
+            .fontSize(this.bs.fs(this.bs.narrow && !this.bs.detail ? 15 : 16))
             .fontWeight(r.done ? FontWeight.Normal : FontWeight.Medium)
             .fontColor(r.done ? this.bs.fgDim : this.bs.fg)
             .decoration({ type: r.done ? TextDecorationType.LineThrough : TextDecorationType.None, color: this.bs.fgDim })
-            .maxLines(2)
+            .maxLines(this.bs.narrow && !this.bs.detail ? 1 : 2)
+            .wordBreak(WordBreak.NORMAL)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
         }

@@ -12,8 +12,12 @@ export struct ListBlock {
   @Prop block: TileBlock = new TileBlock();
   @Prop bs: BlockStyle = new BlockStyle();
 
+  private max(): number {
+    return this.bs.limit(2, 3, 4, 20);
+  }
+
   private rows(): ListRow[] {
-    const max: number = this.bs.compact ? 2 : (this.bs.detail ? 20 : 4);
+    const max: number = this.max();
     const out: ListRow[] = [];
     for (let i = 0; i < this.block.items.length && i < max; i++) {
       const r: ListRow = new ListRow();
@@ -33,24 +37,26 @@ export struct ListBlock {
           .fontColor(this.bs.fgDim)
           .letterSpacing(0.6)
           .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       ForEach(this.rows(), (r: ListRow) => {
-        Row({ space: 10 }) {
+        Row({ space: this.bs.narrow && !this.bs.detail ? 7 : 10 }) {
           Circle()
-            .width(7)
-            .height(7)
+            .width(this.bs.narrow && !this.bs.detail ? 5 : 7)
+            .height(this.bs.narrow && !this.bs.detail ? 5 : 7)
             .fill(this.bs.fg)
           Text(r.text)
-            .fontSize(this.bs.fs(16))
+            .fontSize(this.bs.fs(this.bs.narrow && !this.bs.detail ? 14 : 16))
             .fontColor(this.bs.fg)
-            .maxLines(2)
+            .maxLines(this.bs.narrow && !this.bs.detail ? 1 : 2)
+            .wordBreak(WordBreak.NORMAL)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
         }
         .width('100%')
       }, (r: ListRow) => r.key)
-      if (!this.bs.detail && this.block.items.length > (this.bs.compact ? 2 : 4)) {
-        Text('+' + (this.block.items.length - (this.bs.compact ? 2 : 4)) + ' more')
+      if (!this.bs.detail && this.block.items.length > this.max()) {
+        Text('+' + (this.block.items.length - this.max()) + ' more')
           .fontSize(this.bs.fs(13))
           .fontColor(this.bs.fgDim)
       }

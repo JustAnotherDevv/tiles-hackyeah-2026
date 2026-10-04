@@ -22,7 +22,7 @@ export struct ChipsBlock {
   };
 
   private rows(): ChipRow[] {
-    const max: number = this.bs.compact ? 2 : (this.bs.detail ? 20 : 6);
+    const max: number = this.bs.limit(2, 2, 6, 20);
     const out: ChipRow[] = [];
     const useActions: boolean = this.block.actions.length > 0;
     const n: number = useActions ? this.block.actions.length : this.block.items.length;
@@ -45,6 +45,7 @@ export struct ChipsBlock {
           .fontWeight(FontWeight.Bold)
           .fontColor(this.bs.fgDim)
           .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       Flex({ wrap: FlexWrap.Wrap, space: { main: LengthMetrics.vp(6), cross: LengthMetrics.vp(6) } }) {
         ForEach(this.rows(), (r: ChipRow) => {
@@ -60,7 +61,9 @@ export struct ChipsBlock {
               .fontColor(this.selected === r.index ? this.bs.onSolid : this.bs.fg)
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
+              .flexShrink(1)
           }
+          .constraintSize({ maxWidth: '100%' })
           .height(r.tappable ? (this.bs.compact ? 36 : this.bs.minTap - 4) : 30)
           .padding({ left: 12, right: 12 })
           .borderRadius(999)

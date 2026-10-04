@@ -17,7 +17,7 @@ export struct ButtonsBlock {
   };
 
   private rows(): BtnRow[] {
-    const max: number = this.bs.compact ? 1 : 4;
+    const max: number = this.bs.limit(1, 2, 4, 4);
     const out: BtnRow[] = [];
     for (let i = 0; i < this.block.actions.length && i < max; i++) {
       const r: BtnRow = new BtnRow();
@@ -27,6 +27,11 @@ export struct ButtonsBlock {
       out.push(r);
     }
     return out;
+  }
+
+  /** Narrow tiles: one full-width primary button reads better than a squeezed pill. */
+  private fullWidth(): boolean {
+    return this.bs.narrow && !this.bs.detail && this.rows().length === 1;
   }
 
   build() {
@@ -46,9 +51,13 @@ export struct ButtonsBlock {
             .fontColor(r.index === 0 ? this.bs.onSolid : this.bs.fg)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .flexShrink(1)
         }
-        .height(this.bs.compact ? 40 : this.bs.minTap)
-        .padding({ left: 18, right: 18 })
+        .width(this.fullWidth() ? '100%' : 'auto')
+        .justifyContent(FlexAlign.Center)
+        .constraintSize({ maxWidth: '100%' })
+        .height(this.bs.compact ? Math.min(this.bs.minTap, 48) : this.bs.minTap)
+        .padding({ left: this.bs.narrow ? 12 : 18, right: this.bs.narrow ? 12 : 18 })
         .borderRadius(999)
         .backgroundColor(r.index === 0 ? this.bs.solid : this.bs.well)
         .border({ width: this.bs.highContrast && r.index > 0 ? 2 : 0, color: this.bs.fg })

@@ -24,6 +24,7 @@ export struct ProgressBlock {
           .fontWeight(FontWeight.Bold)
           .fontColor(this.bs.fg)
           .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
           .layoutWeight(1)
         if (this.block.value.length > 0 && !this.bs.compact) {
           Text(percentOf(this.block.progress) + '%')
@@ -55,7 +56,8 @@ export struct ProgressBlock {
         Text(this.block.text)
           .fontSize(this.bs.fs(14))
           .fontColor(this.bs.fgDim)
-          .maxLines(2)
+          .maxLines(this.bs.tier === 'full' || this.bs.detail ? 2 : 1)
+          .wordBreak(WordBreak.NORMAL)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
     }
