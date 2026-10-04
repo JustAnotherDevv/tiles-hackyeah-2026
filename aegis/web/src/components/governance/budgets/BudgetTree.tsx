@@ -2,17 +2,19 @@
 // last), each with a live usage bar (used + reserved, 80 % / 100 % marks), value text by dimension,
 // reset countdown, state pill and actions (Request increase · Kill). Ported from the prototype's
 // view-budgets.js row grid. Owner: B19-dashboard-gov-policy.
-import { AnimatePresence, motion } from 'framer-motion';
-import { Bot, Building2, ChevronRight, Clock, TerminalSquare, TrendingUp, User, Users } from 'lucide-react';
+import { Bot, Building2, ChevronRight, Clock, TerminalSquare, TrendingUp, User, Users } from '@/components/icons';
 import { useMemo, useState, type ReactNode } from 'react';
 import type { ApplyResult, BudgetDimension, BudgetScopeView, BudgetStatus, BudgetWindow, BudgetsResponse, Member } from '@/api/types';
 import { dimensionLabel, fmtDimension, scopeParts, windowLabel } from '@/components/governance/lib/format-gov';
 import type { MockViewer } from '@/components/governance/policy/policy-api';
 import { Button } from '@/components/ui/button';
-import { teamColor } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { KillSwitchControl, killPermission } from './KillSwitchControl';
 import { BudgetStatePill, BudgetUsageBar } from './UsageBar';
+
+// Wide (xl, ≥1280 px): 5-column table. Below: stacked row (scope | state, bar, used | actions) so the
+// table never overflows the content column on phones, tablets or a 1024 px laptop with the sidebar open.
+const COLS = 'xl:grid-cols-[minmax(220px,1.4fr)_minmax(200px,2fr)_140px_130px_170px]';
 
 const ICONS: Record<string, typeof Bot> = { org: Building2, team: Users, member: User, agent: Bot, session: TerminalSquare };
 
@@ -102,27 +104,27 @@ export function BudgetTree(props: BudgetTreeProps) {
   };
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[860px]">
-        <div className="grid grid-cols-[minmax(240px,1.4fr)_minmax(220px,2fr)_150px_130px_170px] items-center gap-4 border-b border-border px-4 py-2 text-2xs font-medium uppercase tracking-wider text-text-3">
-          <div>Scope</div>
-          <div>
-            Usage · {dimensionLabel(props.dimension)} / {windowLabel(props.window)}
-          </div>
-          <div className="text-right">Used / limit</div>
-          <div>State</div>
-          <div className="text-right">Actions</div>
+    <div role="table" aria-label="Budget hierarchy">
+      <div role="row" className={cn('hidden items-center gap-4 border-b border-border px-4 py-2 text-2xs font-medium text-text-3 xl:grid', COLS)}>
+        <div role="columnheader">Scope</div>
+        <div role="columnheader">
+          Usage · {dimensionLabel(props.dimension)} / {windowLabel(props.window)}
         </div>
-        <AnimatePresence initial={false}>{roots.flatMap((r) => render(r, 0, null))}</AnimatePresence>
-        {sessions.length > 0 ? (
-          <>
-            <div className="border-b border-border-subtle bg-surface-1/60 px-4 py-1.5 text-2xs font-medium uppercase tracking-wider text-text-3">Sessions</div>
-            {sessions.map((s) => (
-              <BudgetRow key={s.scope} {...props} s={s} depth={0} hasKids={false} open={false} onToggle={() => undefined} directKill={isDirectKill(data.kill_switch, s.scope)} inheritedKill={null} />
-            ))}
-          </>
-        ) : null}
+        <div role="columnheader" className="text-right">Used / limit</div>
+        <div role="columnheader">State</div>
+        <div role="columnheader" className="text-right">Actions</div>
       </div>
+      {roots.flatMap((r) => render(r, 0, null))}
+      {sessions.length > 0 ? (
+        <>
+          <div role="row" className="border-b border-border-subtle bg-surface-2/40 px-4 py-1.5 text-2xs font-medium text-text-3">
+            <span role="rowheader">Sessions</span>
+          </div>
+          {sessions.map((s) => (
+            <BudgetRow key={s.scope} {...props} s={s} depth={0} hasKids={false} open={false} onToggle={() => undefined} directKill={isDirectKill(data.kill_switch, s.scope)} inheritedKill={null} />
+          ))}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -166,36 +168,31 @@ function BudgetRow({
   const killed = s.state === 'killed';
   const perm = killPermission({ canKillswitch, scope: s.scope, viewerId: viewer.id, sponsorId: sponsor?.id ?? null });
   const reset = l ? fmtReset(l.resets_at, now) : null;
-  const tcolor = type === 'team' ? teamColor(id) : type === 'member' || type === 'agent' ? teamColor(s.parent ? scopeParts(s.parent).id : null) : undefined;
   return (
-    <motion.div
-      layout="position"
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -4 }}
-      transition={{ duration: 0.18 }}
+    <div
+      role="row"
+      aria-selected={selected === s.scope}
       onClick={() => onSelect(s.scope)}
       className={cn(
-        'grid cursor-pointer grid-cols-[minmax(240px,1.4fr)_minmax(220px,2fr)_150px_130px_170px] items-center gap-4 border-b border-border-subtle px-4 py-2.5 transition-colors hover:bg-surface-2/50',
-        selected === s.scope && 'bg-[var(--accent-subtle)] hover:bg-[var(--accent-subtle)]',
+        'grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-border-subtle px-3 py-2.5 transition-colors duration-100 hover:bg-surface-2/50 xl:gap-4 md:px-4',
+        COLS,
+        selected === s.scope && 'bg-surface-2 shadow-[inset_2px_0_0_var(--brand)] hover:bg-surface-2',
         killed && 'bg-block/[0.04]',
       )}
     >
-      <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: depth * 20 }}>
+      <div role="cell" className="order-1 flex min-w-0 items-center gap-2 pl-[calc(var(--d)*12px)] md:pl-[calc(var(--d)*20px)]" style={{ ['--d' as string]: depth }}>
         <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             onToggle();
           }}
-          className={cn('grid size-5 shrink-0 place-items-center rounded text-text-3 hover:bg-surface-3', !hasKids && 'invisible')}
+          className={cn('-m-1.5 grid size-8 shrink-0 place-items-center rounded-sm text-text-3 hover:bg-surface-3 md:m-0 md:size-5', !hasKids && 'invisible')}
           aria-label={open ? 'Collapse' : 'Expand'}
         >
-          <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} />
+          <ChevronRight className={cn('size-3.5 transition-transform duration-100', open && 'rotate-90')} />
         </button>
-        <span className="grid size-7 shrink-0 place-items-center rounded-md border border-border bg-surface-2" style={tcolor ? { color: tcolor, borderColor: `${tcolor}40` } : undefined}>
-          <Icon className="size-3.5" />
-        </span>
+        <Icon className="size-4 shrink-0 text-text-3" aria-hidden />
         <div className="min-w-0">
           <div className={cn('truncate text-sm', depth === 0 ? 'font-semibold text-text-1' : 'font-medium text-text-1')}>{s.name || memberName(id)}</div>
           <div className="truncate font-mono text-2xs text-text-3">
@@ -204,7 +201,7 @@ function BudgetRow({
         </div>
       </div>
 
-      <div className="min-w-0">
+      <div role="cell" className="order-3 col-span-2 min-w-0 xl:order-2 xl:col-span-1">
         {l ? (
           <>
             <BudgetUsageBar used={l.used} reserved={l.reserved} limit={l.limit} state={killed ? 'killed' : l.state} />
@@ -215,7 +212,7 @@ function BudgetRow({
                   ({dimensionLabel(l.dimension)} / {windowLabel(l.window)})
                 </span>
               ) : null}
-              {l.label ? <span className="truncate text-text-4">{l.label}</span> : null}
+              {l.label ? <span className="hidden truncate text-text-4 sm:inline">{l.label}</span> : null}
               {reset ? (
                 <span className="ml-auto inline-flex items-center gap-1 text-text-4">
                   <Clock className="size-3" />
@@ -229,7 +226,7 @@ function BudgetRow({
         )}
       </div>
 
-      <div className="text-right font-mono text-xs tabular">
+      <div role="cell" className={cn('order-4 font-mono text-xs tabular xl:order-3 xl:block xl:text-right', !l && 'hidden')}>
         {l ? (
           <>
             <span className={cn(l.state === 'hard' ? 'text-block' : l.state === 'soft' ? 'text-redact' : 'text-text-1')}>{fmtDimension(l.dimension, l.used)}</span>
@@ -240,13 +237,13 @@ function BudgetRow({
         )}
       </div>
 
-      <div>
+      <div role="cell" className="order-2 justify-self-end xl:order-4 xl:justify-self-start">
         <BudgetStatePill state={s.state} />
       </div>
 
-      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <div role="cell" className="order-5 col-start-2 flex items-center justify-end gap-1.5 xl:col-start-auto" onClick={(e) => e.stopPropagation()}>
         {s.limits.length > 0 && !killed ? (
-          <Button size="xs" variant="secondary" onClick={() => onRaise(s, l)} title="Request a budget change (routed by approval rules)">
+          <Button size="xs" variant="secondary" className="max-md:h-9 max-md:px-3" onClick={() => onRaise(s, l)} title="Request a budget change (routed by approval rules)">
             <TrendingUp className="size-3" /> Increase
           </Button>
         ) : null}
@@ -254,6 +251,6 @@ function BudgetRow({
           <KillSwitchControl scope={s.scope} killed={killed} perm={perm} viewer={viewer} onDone={onMutated} inheritedFrom={directKill ? null : inheritedKill} />
         ) : null}
       </div>
-    </motion.div>
+    </div>
   );
 }

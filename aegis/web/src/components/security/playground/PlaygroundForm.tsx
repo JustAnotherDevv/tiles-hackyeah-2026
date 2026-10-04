@@ -1,12 +1,11 @@
-// Playground input form: text, surface, destination (+ provider picks), model, identity, tool name/args, Send.
-import { Play, Wand2 } from 'lucide-react';
-import { useMemo } from 'react';
+// Playground input form: text, surface, destination (+ provider), model, identity, tool name/args, Send.
+import { Play } from '@/components/icons';
+import { useId, useMemo, type ReactNode } from 'react';
 import type { Agent, Surface } from '@/api/types';
 import { Kbd, Segmented } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
-import { MiniSelect } from '../live/FeedFilters';
 import type { PlaygroundPreset } from '../types';
 import { PRESETS, TOOL_SURFACES } from './presets';
 
@@ -71,6 +70,33 @@ export function parseToolArgs(s: string): { value: Record<string, unknown> | nul
 const DEST_CLASSES = ['local', 'remote', 'third_party'] as const;
 const PROVIDERS = ['mock', 'ollama', 'anthropic'];
 
+const INPUT = 'h-9 w-full min-w-0 rounded-md border border-border bg-background px-2.5 text-xs text-text-1 outline-none transition-colors placeholder:text-text-4 hover:border-border-strong focus:border-accent-fg/60';
+
+function Field({ label, htmlFor, hint, className, children }: { label: string; htmlFor?: string; hint?: ReactNode; className?: string; children: ReactNode }) {
+  return (
+    <div className={cn('flex min-w-0 flex-col gap-1', className)}>
+      <label htmlFor={htmlFor} className="text-2xs font-medium text-text-3">
+        {label}
+        {hint ? <span className="font-normal"> {hint}</span> : null}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function NativeSelect({ id, value, onChange, children }: { id: string; value: string; onChange: (v: string) => void; children: ReactNode }) {
+  return (
+    <div className="relative">
+      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className={cn(INPUT, 'cursor-pointer appearance-none pr-7 font-mono')}>
+        {children}
+      </select>
+      <svg aria-hidden viewBox="0 0 12 12" className="pointer-events-none absolute right-2.5 top-1/2 size-3 -translate-y-1/2 text-text-3">
+        <path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      </svg>
+    </div>
+  );
+}
+
 export function PresetPicker({ activeId, onPick }: { activeId: string | null; onPick: (p: PlaygroundPreset) => void }) {
   const groups = useMemo(() => {
     const m = new Map<string, PlaygroundPreset[]>();
@@ -78,26 +104,29 @@ export function PresetPicker({ activeId, onPick }: { activeId: string | null; on
     return [...m.entries()];
   }, []);
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {groups.map(([g, items]) => (
-        <div key={g}>
-          <div className="mb-1 text-2xs uppercase tracking-[0.08em] text-text-4">{g}</div>
+        <div key={g} className="grid gap-1.5 sm:grid-cols-[88px_minmax(0,1fr)] sm:items-start">
+          <div className="text-2xs font-medium text-text-3 sm:pt-2">{g}</div>
           <div className="flex flex-wrap gap-1.5">
-            {items.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                title={p.hint}
-                onClick={() => onPick(p)}
-                className={cn(
-                  'group inline-flex h-7 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-all',
-                  activeId === p.id ? 'border-accent-fg/50 bg-brand/15 text-text-1 shadow-raised' : 'border-border bg-surface-1 text-text-2 hover:-translate-y-px hover:border-border-strong hover:text-text-1',
-                )}
-              >
-                <Wand2 className="size-3 text-text-4 group-hover:text-accent-fg" />
-                {p.label}
-              </button>
-            ))}
+            {items.map((p) => {
+              const on = activeId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  title={p.hint}
+                  aria-pressed={on}
+                  onClick={() => onPick(p)}
+                  className={cn(
+                    'inline-flex min-h-8 max-w-full items-center truncate rounded-md border px-2.5 text-left text-xs transition-colors',
+                    on ? 'border-accent-fg/60 bg-surface-3 text-text-1' : 'border-border bg-surface-1 text-text-2 hover:border-border-strong hover:text-text-1',
+                  )}
+                >
+                  <span className="truncate">{p.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       ))}
@@ -118,15 +147,22 @@ export function PlaygroundForm({
   running: boolean;
   agents: Agent[];
 }) {
+  const uid = useId();
   const set = (patch: Partial<PlaygroundFormState>) => onChange({ ...value, ...patch });
   const showTool = TOOL_SURFACES.has(value.surface);
   const args = parseToolArgs(value.toolArgs);
-  const destClass = (DEST_CLASSES as readonly string[]).includes(value.destination) ? value.destination : value.destination === 'ollama' ? 'local' : 'remote';
+  const isClass = (DEST_CLASSES as readonly string[]).includes(value.destination);
+  const destClass = isClass ? value.destination : value.destination === 'ollama' ? 'local' : 'remote';
+  const provider = PROVIDERS.includes(value.destination) ? value.destination : '';
   const canRun = !running && value.text.trim().length > 0 && !args.error;
   return (
     <div className="space-y-3">
       <div className="relative">
+        <label htmlFor={`${uid}-text`} className="sr-only">
+          Input text
+        </label>
         <textarea
+          id={`${uid}-text`}
           value={value.text}
           onChange={(e) => set({ text: e.target.value })}
           onKeyDown={(e) => {
@@ -135,85 +171,96 @@ export function PlaygroundForm({
               onRun();
             }
           }}
-          rows={6}
+          rows={5}
           spellCheck={false}
-          placeholder="Type a prompt, a tool call or a model response… then press Run (⌘/Ctrl + Enter)"
-          className="w-full resize-y rounded-lg border border-border bg-background px-3.5 py-3 font-mono text-[13px] leading-5 text-text-1 outline-none transition-colors placeholder:text-text-4 focus:border-accent-fg/50 focus:shadow-[0_0_0_3px_rgba(99,102,241,.15)]"
-          aria-label="Playground input"
+          placeholder="Enter a prompt, model response or tool call"
+          className="block min-h-32 w-full resize-y rounded-md border border-border bg-background px-3 pb-6 pt-2.5 font-mono text-[13px] leading-5 text-text-1 outline-none transition-colors placeholder:text-text-4 hover:border-border-strong focus:border-accent-fg/60"
         />
-        <span className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-2xs text-text-4">{value.text.length} chars</span>
+        <span className="pointer-events-none absolute bottom-2 right-3 font-mono text-2xs tabular-nums text-text-4">{value.text.length.toLocaleString()} chars</span>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <MiniSelect label="Surface" value={value.surface} onChange={(s) => set({ surface: (s || 'prompt.user') as Surface })} options={PLAYGROUND_SURFACES.map((s) => ({ value: s, label: s }))} />
-        <Segmented
-          value={destClass as (typeof DEST_CLASSES)[number]}
-          onChange={(d) => set({ destination: d })}
-          ariaLabel="Destination"
-          options={[
-            { value: 'local', label: 'Local' },
-            { value: 'remote', label: 'Remote' },
-            { value: 'third_party', label: '3rd party' },
-          ]}
-        />
-        <div className="flex items-center gap-1">
-          {PROVIDERS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => set({ destination: value.destination === p ? destClass : p })}
-              className={cn(
-                'h-7 rounded-md border px-2 font-mono text-2xs transition-colors',
-                value.destination === p ? 'border-accent-fg/50 bg-brand/15 text-text-1' : 'border-border text-text-3 hover:text-text-1',
-              )}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-        <MiniSelect label="As" value={value.agentId} onChange={(agentId) => set({ agentId })} options={agents.map((a) => ({ value: a.id, label: a.id }))} />
-        <label className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface-1 px-2.5 text-xs text-text-3">
-          Model
-          <input value={value.model} onChange={(e) => set({ model: e.target.value })} placeholder="default" className="w-[110px] bg-transparent font-mono text-text-1 outline-none placeholder:text-text-4" />
-        </label>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2.5 sm:grid-cols-4 xl:grid-cols-2 2xl:grid-cols-4">
+        <Field label="Destination" className="col-span-2">
+          <Segmented
+            value={destClass as (typeof DEST_CLASSES)[number]}
+            onChange={(d) => set({ destination: d })}
+            ariaLabel="Destination"
+            size="lg"
+            className="w-full [&>button]:flex-1 [&>button]:justify-center"
+            options={[
+              { value: 'local', label: 'Local' },
+              { value: 'remote', label: 'Remote' },
+              { value: 'third_party', label: 'Third party' },
+            ]}
+          />
+        </Field>
+        <Field label="Provider" htmlFor={`${uid}-prov`}>
+          <NativeSelect id={`${uid}-prov`} value={provider} onChange={(p) => set({ destination: p || destClass })}>
+            <option value="">auto</option>
+            {PROVIDERS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field label="Surface" htmlFor={`${uid}-surf`}>
+          <NativeSelect id={`${uid}-surf`} value={value.surface} onChange={(s) => set({ surface: (s || 'prompt.user') as Surface })}>
+            {PLAYGROUND_SURFACES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field label="Run as" htmlFor={`${uid}-as`} className="sm:col-span-2 xl:col-span-1 2xl:col-span-2">
+          <NativeSelect id={`${uid}-as`} value={value.agentId} onChange={(agentId) => set({ agentId })}>
+            <option value="">me (viewer)</option>
+            {agents.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.id}
+              </option>
+            ))}
+            {value.agentId && !agents.some((a) => a.id === value.agentId) ? <option value={value.agentId}>{value.agentId}</option> : null}
+          </NativeSelect>
+        </Field>
+        <Field label="Model" htmlFor={`${uid}-model`} className="sm:col-span-2 xl:col-span-1 2xl:col-span-2">
+          <input id={`${uid}-model`} value={value.model} onChange={(e) => set({ model: e.target.value })} placeholder="default" spellCheck={false} className={cn(INPUT, 'font-mono')} />
+        </Field>
       </div>
+
       {showTool ? (
-        <div className="grid gap-2 sm:grid-cols-[200px_1fr]">
-          <label className="flex flex-col gap-1 text-2xs uppercase tracking-[0.08em] text-text-3">
-            Tool name
-            <input
-              value={value.toolName}
-              onChange={(e) => set({ toolName: e.target.value })}
-              placeholder="Bash · acme-db.query"
-              className="h-8 rounded-md border border-border bg-background px-2.5 font-mono text-xs normal-case tracking-normal text-text-1 outline-none focus:border-accent-fg/50"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-2xs uppercase tracking-[0.08em] text-text-3">
-            <span>
-              Tool args (JSON) {args.error ? <span className="normal-case tracking-normal text-block">· {args.error}</span> : null}
-            </span>
+        <div className="grid gap-x-3 gap-y-2.5 sm:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
+          <Field label="Tool name" htmlFor={`${uid}-tool`}>
+            <input id={`${uid}-tool`} value={value.toolName} onChange={(e) => set({ toolName: e.target.value })} placeholder="Bash" spellCheck={false} className={cn(INPUT, 'font-mono')} />
+          </Field>
+          <Field label="Tool args" htmlFor={`${uid}-args`} hint={args.error ? <span className="text-block">· {args.error}</span> : '(JSON object)'}>
             <textarea
+              id={`${uid}-args`}
               value={value.toolArgs}
               onChange={(e) => set({ toolArgs: e.target.value })}
               rows={3}
               spellCheck={false}
               placeholder='{"command": "ls"}'
+              aria-invalid={Boolean(args.error)}
               className={cn(
-                'resize-y rounded-md border bg-background px-2.5 py-1.5 font-mono text-xs normal-case tracking-normal text-text-1 outline-none',
-                args.error ? 'border-block/50' : 'border-border focus:border-accent-fg/50',
+                'w-full min-w-0 resize-y rounded-md border bg-background px-2.5 py-1.5 font-mono text-xs text-text-1 outline-none transition-colors placeholder:text-text-4',
+                args.error ? 'border-block/60' : 'border-border hover:border-border-strong focus:border-accent-fg/60',
               )}
             />
-          </label>
+          </Field>
         </div>
       ) : null}
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-text-2">
+
+      <div className="flex flex-col-reverse gap-3 border-t border-border-subtle pt-3 sm:flex-row sm:items-center">
+        <label className="inline-flex min-h-9 cursor-pointer items-center gap-2 text-xs text-text-2">
           <Switch checked={value.send} onCheckedChange={(send) => set({ send })} />
-          Send to model <span className="text-text-4">(only when allowed)</span>
+          Send to model if allowed
         </label>
-        <Button className="ml-auto min-w-[120px]" onClick={onRun} disabled={!canRun}>
-          <Play className={cn(running && 'animate-pulse')} />
+        <Button className="w-full sm:ml-auto sm:w-auto sm:min-w-[120px]" onClick={onRun} disabled={!canRun}>
+          <Play />
           {running ? 'Running…' : 'Run'}
-          <Kbd>⌘↵</Kbd>
+          <Kbd className="ml-1 hidden sm:inline-grid">⌘↵</Kbd>
         </Button>
       </div>
     </div>

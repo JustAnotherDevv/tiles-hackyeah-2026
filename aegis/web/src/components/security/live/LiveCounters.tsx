@@ -1,6 +1,6 @@
 // Header strip from the SSE `stats` tick (rps, decisions per action over the last minute, overhead p50/p95)
 // + the compact audit-chain status used in the live-feed footer.
-import { Link as LinkIcon, ShieldCheck, ShieldX } from 'lucide-react';
+import { Link as LinkIcon, ShieldCheck, ShieldX } from '@/components/icons';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useApi, useStatsTick } from '@/api/hooks';
@@ -8,22 +8,25 @@ import type { Action, AuditVerifyResult, DecisionSummary } from '@/api/types';
 import { AnimatedNumber } from '@/components/shell';
 import { ACTION_COLORS } from '@/lib/colors';
 import { fmtMs, fmtNum } from '@/lib/format';
+import { cn } from '@/lib/utils';
 import { mockAuditVerify } from '@/mocks/security';
 import { shortHash } from '../common/atoms';
 
 const ORDER: Action[] = ['allow', 'redact', 'require_approval', 'block'];
 
-function Tile({ label, children, accent }: { label: string; children: ReactNode; accent?: string }) {
+function Tile({ label, children, dot, className }: { label: string; children: ReactNode; dot?: string; className?: string }) {
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-card px-3.5 py-2.5 shadow-card">
-      {accent ? <span className="absolute inset-x-0 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} /> : null}
-      <div className="text-2xs uppercase tracking-[0.08em] text-text-3">{label}</div>
-      <div className="mt-1 text-lg font-semibold tabular text-text-1">{children}</div>
+    <div className={cn('min-w-0 bg-surface-1 px-3.5 py-2.5', className)}>
+      <div className="flex items-center gap-1.5 truncate text-2xs font-medium uppercase tracking-[0.06em] text-text-3">
+        {dot ? <span className="size-1.5 shrink-0 rounded-full" style={{ background: dot }} aria-hidden /> : null}
+        {label}
+      </div>
+      <div className="mt-1 font-mono text-[17px] font-medium leading-6 tabular text-text-1">{children}</div>
     </div>
   );
 }
 
-/** Live counters; falls back to counting the visible feed (last 60 s) until the first stats tick arrives. */
+/** Live counters as one divided strip; falls back to counting the visible feed (last 60 s) until the first stats tick arrives. */
 export function LiveCounters({ items }: { items: DecisionSummary[] }) {
   const tick = useStatsTick();
   const now = Date.now();
@@ -32,24 +35,24 @@ export function LiveCounters({ items }: { items: DecisionSummary[] }) {
   const per = tick?.decisions_1m ?? local;
   const total = Object.values(per).reduce((a, b) => a + (b ?? 0), 0);
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7">
-      <Tile label="Requests / s" accent="#6366F1">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border-subtle sm:grid-cols-4 xl:grid-cols-7">
+      <Tile label="Requests / s">
         <AnimatedNumber value={tick?.rps ?? 0} format={(n) => n.toFixed(1)} from0={false} />
       </Tile>
       <Tile label="Decisions · 1 min">
         <AnimatedNumber value={total} from0={false} />
       </Tile>
       {ORDER.map((a) => (
-        <Tile key={a} label={ACTION_COLORS[a].label} accent={ACTION_COLORS[a].chart}>
+        <Tile key={a} label={ACTION_COLORS[a].label} dot={ACTION_COLORS[a].chart}>
           <span style={{ color: (per[a] ?? 0) > 0 && a !== 'allow' ? ACTION_COLORS[a].fg : undefined }}>
             <AnimatedNumber value={per[a] ?? 0} from0={false} />
           </span>
         </Tile>
       ))}
-      <Tile label="Overhead p50 · p95">
-        <span className="text-base">
-          {tick ? fmtMs(tick.p50_overhead_ms) : '—'} <span className="text-text-3">·</span> {tick ? fmtMs(tick.p95_overhead_ms) : '—'}
-        </span>
+      <Tile label="Overhead p50 / p95" className="col-span-2 sm:col-span-2 xl:col-span-1">
+        {tick ? fmtMs(tick.p50_overhead_ms) : '—'}
+        <span className="px-1 text-text-4">/</span>
+        {tick ? fmtMs(tick.p95_overhead_ms) : '—'}
       </Tile>
     </div>
   );
@@ -59,16 +62,16 @@ export function LiveCounters({ items }: { items: DecisionSummary[] }) {
 export function AuditChainStatus() {
   const res = useApi<AuditVerifyResult>('/api/audit/verify', { mock: mockAuditVerify, refreshMs: 60_000 });
   const v = res.data;
-  if (!v) return <span className="text-text-4">verifying audit chain…</span>;
+  if (!v) return <span className="text-text-4">Verifying audit chain…</span>;
   return (
     <Link to="/security/audit" className="inline-flex items-center gap-1.5 hover:text-text-1">
       {v.ok ? <ShieldCheck className="size-3.5 text-allow" /> : <ShieldX className="size-3.5 text-block" />}
       {v.ok ? (
         <span>
-          audit chain verified · {fmtNum(v.records)} records · head <span className="font-mono">{shortHash(v.head_hash)}</span>
+          Audit chain verified · {fmtNum(v.records)} records · head <span className="font-mono">{shortHash(v.head_hash)}</span>
         </span>
       ) : (
-        <span className="text-block">audit chain broken at seq {v.broken_at_seq}</span>
+        <span className="text-block">Audit chain broken at seq {v.broken_at_seq}</span>
       )}
       <LinkIcon className="size-3 opacity-50" />
     </Link>

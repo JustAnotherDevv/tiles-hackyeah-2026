@@ -34,7 +34,7 @@ export function UsageBar({ pct, state, markers = [80, 100], size = 'md', classNa
       ) : null}
       <div
         className="absolute inset-y-0 left-0 rounded-[4px] transition-[width,background-color] duration-[640ms] ease-out"
-        style={{ width: `${w}%`, background: BUDGET_STATE_COLORS[st].fill, boxShadow: st !== 'ok' ? `0 0 12px -2px ${BUDGET_STATE_COLORS[st].fill}` : undefined }}
+        style={{ width: `${w}%`, background: BUDGET_STATE_COLORS[st].fill, }}
       />
       {markers.map((m) => (
         <span

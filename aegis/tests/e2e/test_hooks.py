@@ -20,8 +20,9 @@ import socket
 import string
 import subprocess
 import tempfile
+import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -72,7 +73,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -109,9 +110,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # boot error -> FAIL: a broken gateway must never read as exit 0
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -190,7 +191,7 @@ def _hook(
         headers={"X-Aegis-Agent": agent, "X-Aegis-Hook-Event": payload["hook_event_name"]},
     )
     if r.status_code in (404, 405, 501):
-        pytest.skip("/v1/hooks/claude-code not available")
+        pytest.fail(f"/v1/hooks/claude-code not available ({r.status_code})", pytrace=False)
     assert r.status_code == 200, r.text  # hooks always answer 200
     return r.json(), r
 
@@ -267,10 +268,10 @@ def test_pre_approval_pending_message(stack: LocalStack) -> None:
     stack.api("POST", f"/api/approvals/{apr}/cancel", as_="u_katarzyna", json={})
 
 
-@pytest.mark.aegis(suite="hooks", control="ACT-02", polarity="attack")
-def test_pre_mcp_tool_name_mapping(stack: LocalStack) -> None:
-    out, r = _hook(
-        stack,
+def _mcp_query_hook(s: LocalStack) -> tuple[dict, httpx.Response]:
+    """PreToolUse for `mcp__acme-db__query` on customers (CONFIDENTIAL) -> admin approval."""
+    return _hook(
+        s,
         _payload(
             "PreToolUse",
             tool_name="mcp__acme-db__query",
@@ -278,23 +279,81 @@ def test_pre_mcp_tool_name_mapping(stack: LocalStack) -> None:
         ),
         agent="trading-copilot@trading",
     )
-    dec_id = r.headers.get("x-aegis-decision-id")
-    if not dec_id:
-        pytest.xfail("hook response carries no X-Aegis-Decision-Id header (plan 18 gap E)")
-    d = stack.api("GET", f"/api/decisions/{dec_id}", as_="u_katarzyna")
-    if d.status_code == 404:
-        pytest.skip("decision detail not indexed")
-    detail = d.json()
-    assert detail.get("tool_name") == "acme-db.query", {
-        k: detail.get(k) for k in ("tool_name", "surface")
-    }
-    decision, reason = _pre(out)
-    assert decision == "deny" and "apr_" in reason, (
-        out
-    )  # customers (CONFIDENTIAL) -> admin approval
+
+
+def _cancel_from_reason(s: LocalStack, reason: str) -> None:
     with contextlib.suppress(Exception):
         apr = reason.split("?id=", 1)[1].split()[0].rstrip(".,;)")
-        stack.api("POST", f"/api/approvals/{apr}/cancel", as_="u_katarzyna", json={})
+        s.api("POST", f"/api/approvals/{apr}/cancel", as_="u_katarzyna", json={})
+
+
+def _poll(fn: Callable[[], Any], timeout: float = 5.0) -> Any:
+    """The audit index is written off the request path; poll briefly for the row."""
+    deadline = time.monotonic() + timeout
+    while True:
+        got = fn()
+        if got or time.monotonic() >= deadline:
+            return got
+        time.sleep(0.1)
+
+
+@pytest.mark.aegis(suite="hooks", control="ACT-02", polarity="attack")
+def test_pre_mcp_tool_name_mapping(stack: LocalStack) -> None:
+    """`mcp__acme-db__query` is governed as `acme-db.query` (deny naming the pending apr_...)."""
+    out, _ = _mcp_query_hook(stack)
+    decision, reason = _pre(out)
+    try:
+        assert decision == "deny" and "apr_" in reason, out  # customers (CONFIDENTIAL) -> admin
+        apr = reason.split("?id=", 1)[1].split()[0].rstrip(".,;)")
+        got = stack.api("GET", f"/api/approvals/{apr}", as_="u_katarzyna")
+        assert got.status_code == 200, got.text[:300]
+
+        def _row() -> dict | None:
+            r = stack.api(
+                "GET",
+                "/api/decisions",
+                as_="u_katarzyna",
+                params={"agent_id": "trading-copilot@trading", "limit": 20},
+            )
+            assert r.status_code == 200, r.text[:300]
+            return next(
+                (
+                    it
+                    for it in r.json().get("items") or []
+                    if (it.get("tool_name") or "").endswith("query")
+                ),
+                None,
+            )
+
+        row = _poll(_row)
+        assert row is not None, "no audit decision row for the hook's MCP tool call"
+        assert row.get("tool_name") == "acme-db.query", {
+            k: row.get(k) for k in ("tool_name", "surface", "kind")
+        }
+    finally:
+        _cancel_from_reason(stack, reason)
+
+
+@pytest.mark.aegis(suite="hooks", control="ACT-02", polarity="attack")
+def test_pre_hook_decision_id_header(stack: LocalStack) -> None:
+    """Addendum A-06: hook responses carry X-Aegis-Decision-Id, resolvable to the audit row."""
+    out, r = _mcp_query_hook(stack)
+    _, reason = _pre(out)
+    try:
+        dec_id = r.headers.get("x-aegis-decision-id")
+        assert dec_id, dict(r.headers)
+
+        def _detail() -> dict | None:
+            d = stack.api("GET", f"/api/decisions/{dec_id}", as_="u_katarzyna")
+            return d.json() if d.status_code == 200 else None
+
+        detail = _poll(_detail)
+        assert detail is not None, f"decision {dec_id} from the hook header is not in the audit"
+        assert detail.get("tool_name") == "acme-db.query", {
+            k: detail.get(k) for k in ("tool_name", "surface")
+        }
+    finally:
+        _cancel_from_reason(stack, reason)
 
 
 # --------------------------------------------------------------------------------------
@@ -343,8 +402,10 @@ def _closed_port() -> int:
 
 
 def _run_hook(event: str, payload: dict, url: str) -> subprocess.CompletedProcess[str]:
-    if not HOOK_SCRIPT.exists() or shutil.which("bash") is None or shutil.which("curl") is None:
-        pytest.skip("scripts/aegis-hook, bash or curl missing")
+    if not HOOK_SCRIPT.exists():
+        pytest.fail(f"{HOOK_SCRIPT} missing (the shipped Claude Code hook client)", pytrace=False)
+    if shutil.which("bash") is None or shutil.which("curl") is None:
+        pytest.skip("bash or curl missing on this machine (scripts/aegis-hook needs both)")
     env = {
         **os.environ,
         "AEGIS_URL": url,

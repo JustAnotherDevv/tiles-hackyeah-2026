@@ -244,13 +244,16 @@ export function requesterOf(it: ApprovalItem): string {
   return 'unknown requester';
 }
 
-export function personaName(memberId: string): string {
+export function personaName(memberId: string | null | undefined): string {
+  if (memberId === undefined || memberId === null || typeof memberId !== 'string' || memberId.length === 0) {
+    return 'unknown member';
+  }
   for (const p of PERSONAS) {
     if (p.id === memberId) {
       return p.name;
     }
   }
-  return memberId.startsWith('u_') ? memberId.substring(2, 3).toUpperCase() + memberId.substring(3) : memberId;
+  return memberId.startsWith('u_') && memberId.length > 2 ? memberId.substring(2, 3).toUpperCase() + memberId.substring(3) : memberId;
 }
 
 export function budgetLeftPctOf(s: PostureStats): number {

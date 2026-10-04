@@ -1,7 +1,7 @@
 """F9 against the REAL gateway (`aegis.app.create_app()`: real pipeline, approvals, org, policy).
 
-Only the upstream is in-process (mock_mcp via ASGI). Skipped with a reason when the app cannot
-boot (other workstreams not ready).
+Only the upstream is in-process (mock_mcp via ASGI). Integration is complete: a boot failure or
+an F4/F9 regression fails here (no skips).
 """
 
 from __future__ import annotations
@@ -23,25 +23,19 @@ async def real(tmp_path, monkeypatch, mock_app) -> Any:
     monkeypatch.setenv("AEGIS_SEMANTIC", "off")
     monkeypatch.setenv("AEGIS_FEED_URL", "disabled")
     monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path / "data"))
-    try:
-        from aegis.app import create_app
-        from aegis.core import crypto
-        from aegis.mcp.service import get_service
-        from aegis.settings import Settings
+    from aegis.app import create_app
+    from aegis.core import crypto
+    from aegis.mcp.service import get_service
+    from aegis.settings import Settings
 
-        crypto.configure(data_dir=tmp_path / "data")
-        app = create_app(Settings())
-    except Exception as e:  # pragma: no cover - integration guard
-        pytest.skip(f"gateway app not importable: {type(e).__name__}: {e}")
-    try:
-        manager = LifespanManager(app, startup_timeout=60)
-        await manager.__aenter__()
-    except Exception as e:  # pragma: no cover
-        pytest.skip(f"gateway failed to start: {type(e).__name__}: {e}")
+    crypto.configure(data_dir=tmp_path / "data")
+    app = create_app(Settings())
+    manager = LifespanManager(app, startup_timeout=60)
+    await manager.__aenter__()
     svc = get_service()
     if svc is None or not svc.started:
         await manager.__aexit__(None, None, None)
-        pytest.skip("mcp service not started by the real app")
+        pytest.fail("mcp service not started by the real app")
     old = svc.client
     svc.client = httpx.AsyncClient(
         transport=httpx.ASGITransport(mock_app), base_url="http://127.0.0.1:8792"
@@ -103,9 +97,8 @@ async def test_f4_real_app_purchase_needs_approval(real):
         wait_s=0,
     )
     meta = aegis_decision(r)
-    if not r.get("isError"):
-        pytest.skip("ACT-01 (action-guards) not enforcing yet on mcp.call")
-    assert meta.get("action") in ("require_approval", "block")
+    assert r.get("isError"), f"ACT-01 did not hold the $50 purchase on mcp.call: {result_text(r)}"
+    assert meta.get("action") == "require_approval", meta
 
 
 async def test_f4_real_app_held_call_proceeds_after_approval(real):
@@ -118,8 +111,8 @@ async def test_f4_real_app_held_call_proceeds_after_approval(real):
     args = {"vendor": "marketpulse", "plan": "mp-pro-monthly", "amount_usd": 50}
     first = await mp.call_tool("purchase_subscription", args, wait_s=0)
     apr_id = aegis_decision(first).get("approval_id")
-    if not first.get("isError") or not apr_id:
-        pytest.skip("ACT-01 approval not produced on mcp.call yet")
+    assert first.get("isError"), f"ACT-01 did not hold the purchase: {result_text(first)}"
+    assert apr_id, f"no approval id on the held mcp.call: {aegis_decision(first)}"
 
     async def approve_soon() -> httpx.Response:
         await asyncio.sleep(0.5)

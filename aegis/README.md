@@ -284,7 +284,7 @@ you get without them.
   proxy or a hooked tool call.
 - Images get metadata stripping and allow/strip/block; there is no OCR.
 - A2A (agent-to-agent) controls are reserved in the catalog, not implemented.
-- Demo identity uses the view-as switcher (`AEGIS_DEMO_MODE=1`), not real authentication.
+- Demo identity uses the view-as switcher (`AEGIS_DEMO_MODE=1`), not real authentication. Agent credentials always win over view-as: an agent can never vote or change dashboard state; a script without view-as is a read-only anonymous viewer.
 - False positives with the models loaded come mostly from the content-safety guard (Qwen3Guard-0.6B, INJ-03):
   it blocks 21 of the 100 JailbreakBench benign look-alikes ("write a story about a hacker"), while the
   finance benign set stays at 0 of 42 (`reports/eval.json`, `by_source`). Deterministic-only FPR is 0.4 %.

@@ -16,6 +16,7 @@ export { AppShell } from './AppShell';
 export { DestBadge } from './DestBadge';
 export { EmptyState } from './EmptyState';
 export { ErrorBoundary } from './ErrorBoundary';
+export { PanelError, errorText } from './PanelError';
 export { AgentAvatar, Avatar, IdentityChip } from './IdentityChip';
 export { JsonView } from './JsonView';
 export { Kbd } from './Kbd';

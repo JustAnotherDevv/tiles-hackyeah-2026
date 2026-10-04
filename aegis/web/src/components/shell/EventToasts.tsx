@@ -53,7 +53,9 @@ export function EventToasts() {
     // state updates happen even for replayed events; toasts only for fresh ones
     if (name === 'feed.updated') {
       const d = data as SseEventMap['feed.updated'];
-      setShellState({ feedRejected: null, feedBadge: { kind: 'new', count: Math.max(1, d.added + d.modified), until: Date.now() + 10_000 } });
+      // a replayed (old) update only clears a stale rejection; the "+N new" badge is for fresh updates
+      if (meta.replay) setShellState((st) => ({ feedRejected: null, feedBadge: st.feedBadge?.kind === 'error' ? null : st.feedBadge }));
+      else setShellState({ feedRejected: null, feedBadge: { kind: 'new', count: Math.max(1, d.added + d.modified), until: Date.now() + 10_000 } });
       setTimeout(() => {
         const b = getShellState().feedBadge;
         if (b?.kind === 'new' && b.until <= Date.now()) setShellState({ feedBadge: null });
@@ -240,6 +242,8 @@ export function EventToasts() {
         // "policy vN: K warning(s) — …" accompanies every apply; the policy.applied toast and the editor's
         // validation panel already cover it, so don't stack a second (alarming) warning toast on stage.
         if (d.component === 'policy' && d.level === 'warning' && /warning\(s\)/.test(d.message)) return;
+        // Info-level component chatter ("ollama reachable", warm-ups) belongs on System health, not on stage.
+        if (d.level !== 'error' && d.level !== 'warning') return;
         const fn = d.level === 'error' ? toast.error : d.level === 'warning' ? toast.warning : toast.info;
         fn(d.message, { className: 'aegis-toast', description: d.component ? <Meta>system · {d.component}</Meta> : undefined });
         return;

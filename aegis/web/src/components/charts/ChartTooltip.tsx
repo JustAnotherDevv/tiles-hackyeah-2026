@@ -9,7 +9,7 @@ export interface ChartTooltipRow {
 
 export function ChartTooltipBox({ title, rows, footer }: { title?: ReactNode; rows: ChartTooltipRow[]; footer?: ReactNode }) {
   return (
-    <div className="pointer-events-none min-w-[150px] max-w-[320px] rounded-[10px] bg-surface-3/95 px-2.5 py-2 text-xs leading-[17px] text-text-1 shadow-pop backdrop-blur-sm">
+    <div className="pointer-events-none min-w-[150px] max-w-[320px] rounded-md bg-surface-3 px-2.5 py-2 text-xs leading-[17px] text-text-1 shadow-pop">
       {title ? <div className="mb-1 font-semibold">{title}</div> : null}
       {rows.map((r) => (
         <div key={r.label} className="flex items-center gap-2 text-text-2">

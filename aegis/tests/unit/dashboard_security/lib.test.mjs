@@ -1,6 +1,7 @@
 // UIX-15 · node:test over the PURE security libs (web/src/components/security/lib/*.ts).
-// Node >= 23.6 strips TypeScript types natively; the libs only use top-level `import type`.
-// Run: node --test tests/unit/dashboard_security/
+// Node >= 23.6 (or 22.18+) strips TypeScript types natively; the libs only use top-level `import type`.
+// Run: node --test tests/unit/dashboard_security/lib.test.mjs   (name the file: the directory form
+// finds no tests on Node 24). `make test` runs it through tests/unit/dashboard_security/test_node_libs.py.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 

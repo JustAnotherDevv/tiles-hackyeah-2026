@@ -1,6 +1,6 @@
 // Teams tab: one card per team — colour rail, description, data ceiling / default destination,
 // members (role-coloured avatars) and the agents they sponsor. Owner: B18-dashboard-gov-approvals.
-import { Bot, Crown, Users } from 'lucide-react';
+import { Bot, Crown, Users } from '@/components/icons';
 import type { Agent, DestClass, Member, OrgResponse } from '@/api/types';
 import { DestBadge, RoleBadge } from '@/components/shell';
 import { teamColor } from '@/lib/colors';
@@ -31,19 +31,12 @@ export function TeamCards({ teams, members, agents, viewerId }: { teams: TeamRow
         };
         const lead = meta.lead ? members.find((m) => m.id === meta.lead) : undefined;
         return (
-          <section key={t.id} className="relative overflow-hidden rounded-lg border border-border bg-card shadow-card">
-            <span className="absolute inset-y-0 left-0 w-[3px]" style={{ background: color }} />
+          <section key={t.id} className="min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-card">
             <div className="space-y-3 px-4 pb-4 pt-3.5">
               <div className="flex items-start gap-2.5">
-                <span
-                  className="mt-0.5 size-3 shrink-0 rounded-[4px]"
-                  style={{
-                    background: color,
-                    boxShadow: `0 0 12px ${color}66`,
-                  }}
-                />
+                <span className="mt-[5px] size-2 shrink-0 rounded-[2px]" style={{ background: color }} />
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2">
                     <h3 className="text-sm font-semibold text-text-1">{t.name}</h3>
                     <span className="font-mono text-2xs text-text-4">team:{t.id}</span>
                   </div>
@@ -53,10 +46,10 @@ export function TeamCards({ teams, members, agents, viewerId }: { teams: TeamRow
 
               <div className="flex flex-wrap items-center gap-1.5 text-2xs text-text-3">
                 <span className="inline-flex h-5 items-center gap-1 rounded-xs border border-border bg-surface-2 px-1.5">
-                  <Users className="size-3" /> <span className="tabular text-text-2">{t.member_count}</span> members
+                  <Users className="size-3" /> <span className="tabular text-text-2">{t.member_count}</span> {t.member_count === 1 ? 'member' : 'members'}
                 </span>
                 <span className="inline-flex h-5 items-center gap-1 rounded-xs border border-border bg-surface-2 px-1.5">
-                  <Bot className="size-3" /> <span className="tabular text-text-2">{t.agent_count}</span> agents
+                  <Bot className="size-3" /> <span className="tabular text-text-2">{t.agent_count}</span> {t.agent_count === 1 ? 'agent' : 'agents'}
                 </span>
                 {meta.data_ceiling ? (
                   <span
@@ -78,11 +71,11 @@ export function TeamCards({ teams, members, agents, viewerId }: { teams: TeamRow
                 <div className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-text-4">Members</div>
                 <div className="flex flex-col gap-1">
                   {ms.map((m) => (
-                    <div key={m.id} className={cn('flex items-center gap-2 rounded-md px-1.5 py-1', m.id === viewerId && 'bg-allow/5 ring-1 ring-allow/25')}>
+                    <div key={m.id} className={cn('flex items-center gap-2 rounded-sm px-1.5 py-1', m.id === viewerId && 'bg-surface-2')}>
                       <MemberAvatar member={m} size="xs" />
                       <span className="min-w-0 flex-1 truncate text-[12.5px] text-text-2">
                         {m.name}
-                        {m.id === viewerId ? <span className="ml-1.5 text-2xs font-medium text-allow">you</span> : null}
+                        {m.id === viewerId ? <span className="ml-1.5 text-2xs font-medium text-text-3">(you)</span> : null}
                       </span>
                       <RoleBadge role={m.role} className="h-[18px] px-1.5 text-2xs" />
                     </div>
@@ -100,7 +93,7 @@ export function TeamCards({ teams, members, agents, viewerId }: { teams: TeamRow
                         <span
                           key={a.id}
                           className={cn(
-                            'inline-flex h-6 items-center gap-1.5 rounded-md border border-role-agent/25 bg-role-agent/5 px-1.5 font-mono text-[11px] text-text-2',
+                            'inline-flex h-6 max-w-full items-center gap-1.5 truncate rounded-sm border border-border bg-surface-2 px-1.5 font-mono text-[11px] text-text-2',
                             (a.status === 'killed' || !a.active) && 'border-block/30 bg-block/5 text-block line-through',
                           )}
                           title={`${a.name}${sponsor ? ` · sponsored by ${sponsor.name}` : ''}`}

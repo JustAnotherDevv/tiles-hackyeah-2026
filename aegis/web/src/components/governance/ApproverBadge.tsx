@@ -1,6 +1,6 @@
 // auto | self | admin | owner | deny badge (owner fuchsia, admin sky, self emerald, auto slate, deny rose).
 // Owner: B18-dashboard-gov-approvals.
-import { Ban, Shield, ShieldCheck, User, Zap } from 'lucide-react';
+import { Ban, Shield, ShieldCheck, User, Zap } from '@/components/icons';
 import type { ApproverLevel } from '@/api/types';
 import { ROLE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';

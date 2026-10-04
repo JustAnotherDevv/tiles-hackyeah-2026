@@ -7,7 +7,7 @@ export function StatusDot({ status, pulse = false, label, className }: { status:
   return (
     <span className={cn('inline-flex items-center gap-1.5 text-xs text-text-2', className)}>
       <span className="relative inline-flex size-[7px] shrink-0">
-        {pulse ? <span className={cn('absolute -inset-[3px] rounded-full border-[1.5px] opacity-0 animate-ping-dot', RING[status])} /> : null}
+        {pulse ? <span className={cn('absolute -inset-[3px] rounded-full border-[1.5px] opacity-30', RING[status])} /> : null}
         <span className={cn('relative inline-flex size-[7px] rounded-full', COLOR[status])} />
       </span>
       {label ? <span className="truncate">{label}</span> : null}

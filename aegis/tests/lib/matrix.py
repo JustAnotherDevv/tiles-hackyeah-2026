@@ -61,6 +61,10 @@ class Recorder:
         self.mode = "hermetic"
         self.stack_error: str | None = None
         self.static_coverage: dict[str, dict[str, int]] = {}
+        # set by plugin.pytest_collection_finish: what this session selected
+        self.selected_e2e = 0  # items under tests/e2e
+        self.selected_matrix = 0  # data-driven YAML cases (tests/e2e/test_cases.py)
+        self.keyword_filtered = False  # -k given: partial run, the core gate does not apply
 
     def add(self, entry: Entry) -> None:
         with self.lock:
@@ -201,6 +205,25 @@ def totals(rec: Recorder | None = None, rows: list[dict[str, Any]] | None = None
     }
 
 
+def core_evidence(rec: Recorder | None = None) -> dict[str, dict[str, int]]:
+    """Per control: passing *core* must-block (attack/redact column) and must-allow evidence.
+
+    Only results that actually ran this session count (YAML core cases, `@pytest.mark.aegis`
+    functional tests, golden inline/feed tests). Stretch tier, xfail, skip and fail never count.
+    """
+    rec = rec or RESULTS
+    out: dict[str, dict[str, int]] = {}
+    for e in rec.entries:
+        if not e.control or e.tier != "core" or e.outcome not in ("pass", "pass_other"):
+            continue
+        row = out.setdefault(e.control, {"block": 0, "allow": 0})
+        if e.column in ("attack", "redact"):
+            row["block"] += 1
+        elif e.column == "benign":
+            row["allow"] += 1
+    return out
+
+
 def guard_latency(rec: Recorder | None = None) -> tuple[float | None, float | None]:
     rec = rec or RESULTS
     lat = [
@@ -220,6 +243,7 @@ __all__ = [
     "build_rows",
     "build_suites",
     "control_status",
+    "core_evidence",
     "guard_latency",
     "totals",
 ]

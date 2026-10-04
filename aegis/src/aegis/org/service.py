@@ -355,13 +355,21 @@ class OrgServiceImpl:
     ) -> Identity:
         demo = compat.setting(self.rt, "demo_mode", True)
         configured = compat.setting(self.rt, "default_viewer", None)
+        token = compat.setting(self.rt, "admin_token", None) or self.cache.admin_token
         if demo:
             return identity.resolve_viewer(
-                self.cache, headers, query, configured_default=configured
+                self.cache,
+                headers,
+                query,
+                configured_default=configured,
+                admin_token=token,
+                hmac_fn=self._hmac,
             )
-        # Non-demo (ORG-14): view-as honoured only with the admin token.
-        token = compat.setting(self.rt, "admin_token", None) or self.cache.admin_token
+        # Non-demo (ORG-14): view-as honoured only with the admin token, and never for a
+        # request that also carries agent credentials (R5).
         h = identity.lower_headers(headers)
+        if identity.agent_signal(h, ignore=token):
+            return identity.agent_viewer(self.cache, h, hmac_fn=self._hmac)
         auth = (h.get("authorization") or "").strip()
         presented = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
         if token and presented and _hmac.compare_digest(presented.encode(), token.encode()):

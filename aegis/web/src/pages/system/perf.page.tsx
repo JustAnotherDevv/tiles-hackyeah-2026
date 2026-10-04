@@ -66,8 +66,8 @@ export default function PerfPage() {
 
   return (
     <div className="flex flex-col gap-3">
-      <PageHeader title="Performance" icon="Timer" subtitle="What Aegis adds on top of every call — measured in-process on this machine, not estimated" />
-      <div className="grid grid-cols-5 gap-3 max-[1360px]:grid-cols-3 max-[760px]:grid-cols-1">
+      <PageHeader title="Performance" icon="Timer" subtitle="Latency Aegis adds to each call, measured in-process on this host" />
+      <div className="grid grid-cols-5 gap-3 max-[1360px]:grid-cols-3 max-[760px]:grid-cols-2">
         <KpiTile label="Overhead p50" icon="Gauge" tone="good" loading={!o} value={o ? fmtMs(o.p50) : '—'} hint={`${fmtNum(o?.count ?? 0, { compact: true })} requests sampled`} right={perf.isMock ? <span className="text-[10.5px] text-text-4">demo</span> : null} />
         <KpiTile label="Overhead p95" icon="Gauge" loading={!o} value={o ? fmtMs(o.p95) : '—'} hint="incl. semantic guards when warm" />
         <KpiTile label="Overhead p99" icon="Gauge" loading={!o} value={o ? fmtMs(o.p99) : '—'} hint="tail latency" />
@@ -77,7 +77,7 @@ export default function PerfPage() {
           icon="Percent"
           tone={share !== null && share < 1 ? 'good' : 'neutral'}
           loading={!p}
-          value={share !== null ? fmtPct(share, 2) : '—'}
+          value={share !== null ? (share >= 100 ? `${(share / 100).toFixed(1)}×` : fmtPct(share, share < 10 ? 2 : 1)) : '—'}
           hint={share !== null && o && upP50 ? `${fmtMs(o.p50)} of ${fmtMs(upP50)} model latency` : 'no upstream calls yet'}
         />
       </div>
@@ -90,12 +90,13 @@ export default function PerfPage() {
             <AreaTimeseries
               data={live}
               kind="line"
-              height={220}
+              height={360}
               series={[
                 { key: 'p50', label: 'p50', color: '#3987E5' },
                 { key: 'p95', label: 'p95', color: '#DB2777' },
               ]}
-              yFormat={(n) => fmtMs(n)}
+              yFormat={(n) => (n === 0 ? '0 ms' : fmtMs(n))}
+              yWidth={60}
               xFormat={(v) => new Date(v).toLocaleTimeString('en-GB', { minute: '2-digit', second: '2-digit' })}
               legend
             />
@@ -136,8 +137,8 @@ export default function PerfPage() {
                     <span className="text-text-1">{u.provider}</span>
                     <span className="ml-2 font-mono text-[11.5px] text-text-3">{u.model ?? '—'}</span>
                   </td>
-                  <td className="px-2 py-2 text-right tabular text-text-2">{fmtMs(u.p50)}</td>
-                  <td className="px-2 py-2 text-right tabular text-text-2">{fmtMs(u.p95)}</td>
+                  <td className="whitespace-nowrap px-2 py-2 text-right tabular text-text-2">{fmtMs(u.p50)}</td>
+                  <td className="whitespace-nowrap px-2 py-2 text-right tabular text-text-2">{fmtMs(u.p95)}</td>
                   <td className="px-4 py-2 text-right tabular text-text-3">{fmtNum(u.count, { compact: true })}</td>
                 </tr>
               ))}
@@ -177,7 +178,7 @@ export default function PerfPage() {
         </Panel>
       </div>
 
-      <Panel title="Benchmark report" description="reports/bench.json (aegis.bench/1) — missing numbers print “not measured”, never a guess" isMock={perf.isMock}>
+      <Panel title="Benchmark report" description="reports/bench.json (aegis.bench/1) · missing values show as “not measured”" isMock={perf.isMock}>
         {bench ? (
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-5 max-[1180px]:col-span-12">
@@ -193,7 +194,7 @@ export default function PerfPage() {
             </div>
           </div>
         ) : (
-          <EmptyState icon="FileBarChart" title="No benchmark report yet" hint="Run `make bench` to produce reports/bench.json — it appears here automatically." />
+          <EmptyState icon="FileBarChart" title="No benchmark report yet" hint="Run `make bench` to produce reports/bench.json." />
         )}
       </Panel>
     </div>

@@ -32,6 +32,7 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 from aegis.core.types import Identity, Interaction, Outcome, Usage, Verdict
 from aegis.mcp import interactions as ix
 from aegis.mcp.jsonrpc import (
+    INTERNAL_ERROR,
     INVALID_REQUEST,
     LEGACY,
     MODERN,
@@ -598,7 +599,8 @@ async def handle_post(service: McpService, request: Request, server: str) -> Res
         )
     try:
         body = json.loads(raw) if raw else None
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError) as e:  # bad JSON, invalid UTF-8, too deeply nested
+        log.warning("mcp request parse error server=%s (%s)", server, type(e).__name__)
         return rpc_response(jsonrpc_error(None, PARSE_ERROR, "Parse error"), 400)
     if isinstance(body, list):
         return rpc_response(
@@ -673,6 +675,14 @@ async def handle_post(service: McpService, request: Request, server: str) -> Res
     )
 
 
+def _unparseable_upstream(request_msg: dict[str, Any] | None, server: str) -> dict[str, Any]:
+    log.warning("mcp upstream sent an unparseable JSON-RPC message server=%s", server)
+    req_id = request_msg.get("id") if isinstance(request_msg, dict) else None
+    return jsonrpc_error(
+        req_id, INTERNAL_ERROR, f"[Aegis] upstream MCP server '{server}' sent an unparseable message"
+    )
+
+
 async def relay(
     service: McpService,
     mctx: McpCtx,
@@ -718,8 +728,14 @@ async def relay(
         async def events() -> AsyncIterator[bytes]:
             try:
                 async for ev in iter_sse(resp.aiter_bytes()):
-                    msg = ev.json()
-                    if msg is not None:
+                    try:
+                        msg = ev.json()
+                    except (ValueError, RecursionError):
+                        msg = None
+                    if msg is None and ev.data.strip():
+                        # fail closed: never relay an upstream message we could not inspect
+                        ev.data = json.dumps(_unparseable_upstream(request_msg, mctx.server))
+                    elif msg is not None:
                         new = await transform(msg)
                         if new is not msg:
                             ev.data = json.dumps(new, ensure_ascii=False)
@@ -736,7 +752,9 @@ async def relay(
     if data and "application/json" in resp.headers.get("content-type", ""):
         try:
             msg = json.loads(data)
-        except json.JSONDecodeError:
+        except (ValueError, RecursionError):
+            # fail closed: an answer we cannot parse is never relayed un-inspected
+            data = json.dumps(_unparseable_upstream(request_msg, mctx.server)).encode()
             msg = None
         if msg is not None:
             new = await transform(msg)

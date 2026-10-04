@@ -1,5 +1,5 @@
 // Live-feed filter bar: search, action chips with counts, selects (surface/kind/agent/source/dest), non-allow toggle.
-import { Search, X } from 'lucide-react';
+import { ChevronDown, Search, X } from '@/components/icons';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Action, DecisionSummary } from '@/api/types';
 import { ACTION_COLORS } from '@/lib/colors';
@@ -29,7 +29,7 @@ export function MiniSelect({
   return (
     <label
       className={cn(
-        'relative inline-flex h-8 items-center gap-1.5 rounded-md border bg-surface-1 pl-2.5 pr-1 text-xs transition-colors',
+        'relative inline-flex h-9 shrink-0 items-center gap-1.5 rounded-sm border bg-surface-1 pl-2.5 pr-1 text-xs transition-colors sm:h-8',
         value ? 'border-accent-fg/40 text-text-1' : 'border-border text-text-3 hover:border-border-strong',
         className,
       )}
@@ -48,7 +48,7 @@ export function MiniSelect({
           </option>
         ))}
       </select>
-      <span className="pointer-events-none absolute right-1.5 text-text-4">▾</span>
+      <ChevronDown className="pointer-events-none absolute right-1.5 size-3 text-text-4" aria-hidden />
     </label>
   );
 }
@@ -65,15 +65,15 @@ export function ActionChips({ value, counts, onChange }: { value: Action[]; coun
             type="button"
             onClick={() => onChange(on ? value.filter((x) => x !== a) : [...value, a])}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-all',
-              on ? 'text-text-1 shadow-raised' : 'border-border bg-surface-1 text-text-2 hover:border-border-strong',
+              'inline-flex h-9 items-center gap-1.5 rounded-sm border px-2.5 text-xs transition-colors sm:h-8',
+              on ? 'text-text-1' : 'border-border bg-surface-1 text-text-2 hover:border-border-strong',
             )}
             style={on ? { borderColor: c.border, background: c.bg, color: c.fg } : undefined}
             aria-pressed={on}
           >
             <span className="size-1.5 rounded-full" style={{ background: c.chart }} />
             {c.label}
-            <span className="tabular text-text-3">{counts[a] ?? 0}</span>
+            <span className="font-mono text-2xs tabular text-text-3">{counts[a] ?? 0}</span>
           </button>
         );
       })}
@@ -117,17 +117,17 @@ export function FeedFilters({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="relative flex h-8 min-w-[220px] flex-1 items-center rounded-md border border-border bg-surface-1 px-2.5 focus-within:border-accent-fg/50 sm:max-w-[360px]">
+        <label className="relative flex h-9 w-full min-w-0 items-center rounded-sm border border-border bg-surface-1 px-2.5 focus-within:border-accent-fg/50 sm:h-8 sm:w-auto sm:min-w-[220px] sm:max-w-[360px] sm:flex-1">
           <Search className="size-3.5 text-text-3" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search id, tool, control, entity, agent…"
+            placeholder="Search id, tool, control, entity, agent"
             className="ml-2 h-full w-full bg-transparent text-xs text-text-1 outline-none placeholder:text-text-4"
             aria-label="Search decisions"
           />
           {q ? (
-            <button type="button" onClick={() => setQ('')} className="text-text-3 hover:text-text-1" aria-label="Clear search">
+            <button type="button" onClick={() => setQ('')} className="-mr-1 grid size-7 shrink-0 place-items-center text-text-3 hover:text-text-1" aria-label="Clear search">
               <X className="size-3.5" />
             </button>
           ) : null}
@@ -135,14 +135,14 @@ export function FeedFilters({
         <ActionChips value={filter.actions} counts={counts} onChange={(actions) => set({ actions })} />
         {right ? <div className="ml-auto flex items-center gap-2">{right}</div> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-0.5 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
         <MiniSelect label="Surface" value={filter.surface} onChange={(surface) => set({ surface })} options={ALL_SURFACES.map((s) => ({ value: s, label: s }))} />
         <MiniSelect label="Kind" value={filter.kind} onChange={(kind) => set({ kind })} options={KINDS.map((s) => ({ value: s, label: s }))} />
         <MiniSelect label="Agent" value={filter.agent} onChange={(agent) => set({ agent })} options={agentOptions} />
         <MiniSelect label="Source" value={filter.source} onChange={(source) => set({ source })} options={SOURCES.map((s) => ({ value: s, label: s }))} />
         <MiniSelect label="Dest" value={filter.dest} onChange={(dest) => set({ dest })} options={DESTS.map((s) => ({ value: s, label: s }))} />
         {filter.control ? (
-          <button type="button" onClick={() => set({ control: '' })} className="inline-flex h-8 items-center gap-1 rounded-md border border-accent-fg/40 bg-brand/10 px-2.5 font-mono text-xs text-text-1">
+          <button type="button" onClick={() => set({ control: '' })} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-sm border border-accent-fg/40 bg-brand/10 px-2.5 font-mono text-xs text-text-1 sm:h-8">
             control {filter.control} <X className="size-3" />
           </button>
         ) : null}
@@ -151,15 +151,15 @@ export function FeedFilters({
           onClick={() => set({ nonAllow: !filter.nonAllow })}
           aria-pressed={filter.nonAllow}
           className={cn(
-            'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors',
+            'inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-2.5 text-xs transition-colors sm:h-8',
             filter.nonAllow ? 'border-accent-fg/40 bg-brand/10 text-text-1' : 'border-border bg-surface-1 text-text-3 hover:border-border-strong',
           )}
         >
           <span className={cn('size-2 rounded-[3px] border', filter.nonAllow ? 'border-accent-fg bg-accent-fg' : 'border-border-strong')} />
-          Only non-allow
+          Hide allowed
         </button>
         {isFilterActive(filter) ? (
-          <button type="button" onClick={() => onChange({ ...EMPTY_FILTER, actions: [] })} className="h-8 px-2 text-xs text-text-3 hover:text-text-1">
+          <button type="button" onClick={() => onChange({ ...EMPTY_FILTER, actions: [] })} className="h-9 shrink-0 whitespace-nowrap px-2 text-xs text-text-3 hover:text-text-1 sm:h-8">
             Clear filters
           </button>
         ) : null}

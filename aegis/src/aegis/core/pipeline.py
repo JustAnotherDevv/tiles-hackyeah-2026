@@ -320,28 +320,37 @@ class Pipeline:
         ctx.state["core.decision_id"] = dec_id
 
         # 2. select ----------------------------------------------------------------
-        runs = self._select(snap, ctx, i)
+        select_failed: list[tuple[_Run, str]] = []
+        runs = self._select(snap, ctx, i, select_failed)
         if not dry:
             ctx.state.setdefault("core.evaluated", {})[i.id] = [(r.control, r.cfg) for r in runs]
         priority = {r.control.id: r.priority for r in runs}
+        priority.update({r.control.id: r.priority for r, _ in select_failed})
 
         # 3. enrich ----------------------------------------------------------------
         t = time.perf_counter()
+        enrich_failed: dict[str, str] = {}
         for r in runs:
             if not _overrides_enrich(r.control):
                 continue
             try:
                 timeout = max(r.cfg.timeout_ms, 1000) / 1000.0
                 await asyncio.wait_for(r.control.enrich(ctx, i, r.cfg), timeout)
-            except Exception:
-                log.warning("enrich failed control=%s (ignored)", r.control.id, exc_info=True)
+            except Exception as exc:
+                # The control still evaluates (conservative); its decision is marked degraded.
+                enrich_failed[r.control.id] = f"{type(exc).__name__}: {exc}"[:200]
+                log.warning("enrich failed control=%s (evaluating degraded)", r.control.id,
+                            exc_info=True)
         phases["enrich"] = time.perf_counter() - t
 
-        decisions: list[Decision] = []
+        # R2: a control whose applies_to raised is never silently skipped - it gets a
+        # fail_mode decision (closed -> block, open/deterministic_only -> allow + degraded).
+        decisions: list[Decision] = [self._select_fail_decision(r, err)
+                                     for r, err in select_failed]
 
         # 4. deterministic ----------------------------------------------------------
         t = time.perf_counter()
-        det_block = False
+        det_block = any(d.mode == "enforce" and d.action == "block" for d in decisions)
         for r in runs:
             if r.control.kind not in DETERMINISTIC_KINDS:
                 continue
@@ -367,6 +376,12 @@ class Pipeline:
                 if d is not None:
                     decisions.append(d)
         phases["semantic"] = time.perf_counter() - t
+        if enrich_failed:
+            for d in decisions:
+                err = enrich_failed.get(d.control_id)
+                if err is not None:
+                    d.degraded = True
+                    d.meta = {**(d.meta or {}), "enrich_error": err}
 
         # 8. combine ----------------------------------------------------------------
         final, primary = self._combine(decisions, priority)
@@ -451,7 +466,10 @@ class Pipeline:
         return verdict
 
     # ---------------------------------------------------------------- select
-    def _select(self, snap: PolicySnapshot, ctx: RequestContext, i: Interaction) -> list[_Run]:
+    def _select(self, snap: PolicySnapshot, ctx: RequestContext, i: Interaction,
+                failed: list[tuple[_Run, str]] | None = None) -> list[_Run]:
+        """Selected runs. Controls whose ``applies_to.matches`` raises (and that are otherwise
+        in scope) go to ``failed`` with the error so the caller applies their fail_mode."""
         ident = ctx.identity
         runs: list[_Run] = []
         try:
@@ -469,8 +487,13 @@ class Pipeline:
             try:
                 if not control.applies_to.matches(i):
                     continue
-            except Exception:
-                log.warning("applies_to failed control=%s", cid, exc_info=True)
+            except Exception as exc:
+                log.warning("applies_to failed control=%s (fail_mode=%s)", cid, cfg.fail_mode,
+                            exc_info=True)
+                if _scope_ok(cfg, ident, i) and _when_ok(snap, cid, ctx, i):
+                    if failed is not None:
+                        failed.append((_Run(control, cfg), f"{type(exc).__name__}: {exc}"))
+                    ctx.state.setdefault("core.degraded_select", []).append(cid)
                 continue
             if not _scope_ok(cfg, ident, i):
                 continue
@@ -535,12 +558,13 @@ class Pipeline:
             d.mode = "monitor"
         return d
 
-    def _fail_decision(self, control: Any, cfg: ControlConfig, error: str) -> Decision:
+    def _fail_decision(self, control: Any, cfg: ControlConfig, error: str,
+                       what: str = "unavailable") -> Decision:
         if cfg.fail_mode == "closed":
             return Decision(
                 action="block",
                 control_id=control.id,
-                reason=f"{control.id} unavailable (fail-closed)",
+                reason=f"{control.id} {what} (fail-closed)",
                 severity=cfg.severity,
                 degraded=True,
                 meta={"error": error[:200]},
@@ -548,11 +572,23 @@ class Pipeline:
         return Decision(
             action="allow",
             control_id=control.id,
-            reason=f"{control.id} unavailable (fail-open)",
+            reason=f"{control.id} {what} (fail-open)",
             severity=cfg.severity,
             degraded=True,
             meta={"error": error[:200], "fail_mode": cfg.fail_mode},
         )
+
+    def _select_fail_decision(self, r: _Run, error: str) -> Decision:
+        """fail_mode decision for a control whose applies_to check raised (R2)."""
+        control, cfg = r.control, r.cfg
+        d = self._fail_decision(control, cfg, f"applies_to: {error}",
+                                what="could not check whether it applies")
+        d.meta["stage"] = "select"
+        d.latency_ms = 0.0
+        d.owasp = list(cfg.owasp or getattr(control, "owasp", []) or [])
+        if cfg.mode == "monitor":
+            d.mode = "monitor"
+        return d
 
     def _warn_slow(self, cid: str, elapsed_ms: float, budget_ms: float) -> None:
         now = time.monotonic()

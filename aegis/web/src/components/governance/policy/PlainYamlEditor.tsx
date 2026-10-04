@@ -99,7 +99,7 @@ export function PlainYamlEditor({ initialValue, onChange, markers, changedLines,
             }
           }}
           style={{ lineHeight: `${LINE_H}px`, tabSize: 2 }}
-          className="min-h-0 flex-1 resize-none overflow-auto whitespace-pre bg-transparent px-3 py-2.5 text-text-1 caret-accent-fg outline-none"
+          className="min-h-0 min-w-0 flex-1 resize-none overflow-auto whitespace-pre bg-transparent px-3 py-2.5 text-text-1 caret-accent-fg outline-none"
         />
       </div>
     </div>

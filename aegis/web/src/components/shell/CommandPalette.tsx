@@ -1,7 +1,7 @@
 // ⌘K command palette (UIS-15): Go to (registry pages, locked ones disabled), View as (all members),
 // Actions (verify audit chain, toggle demo data, copy Claude Code env, open playground). `g <key>` page
 // shortcuts from meta.shortcut are wired in AppShell via lib/hotkeys. Owner: dashboard-shell (B16).
-import { ClipboardCopy, FlaskConical, Link2, Lock, ShieldCheck, ToggleLeft } from 'lucide-react';
+import { ClipboardCopy, FlaskConical, Link2, Lock, ShieldCheck, ToggleLeft } from '@/components/icons';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { api, isApiRequestError } from '@/api/client';
@@ -77,7 +77,7 @@ export function CommandPalette() {
                       <Lock className="size-3" /> {ROLE_COLORS[meta.minRole].label.toLowerCase()}
                     </span>
                   ) : meta.shortcut ? (
-                    <CommandShortcut>{meta.shortcut}</CommandShortcut>
+                    <CommandShortcut className="max-md:hidden pointer-coarse:hidden">{meta.shortcut}</CommandShortcut>
                   ) : null}
                 </CommandItem>
               );
@@ -141,7 +141,7 @@ export function CommandPalette() {
             </CommandItem>
           </CommandGroup>
         </CommandList>
-        <div className="flex items-center gap-3 border-t border-border-subtle px-3 py-2 text-[11px] text-text-4">
+        <div className="flex items-center gap-3 border-t border-border-subtle px-3 py-2 text-[11px] text-text-4 max-md:hidden pointer-coarse:hidden">
           <span>↑↓ navigate</span>
           <span>↵ select</span>
           <span>esc close</span>

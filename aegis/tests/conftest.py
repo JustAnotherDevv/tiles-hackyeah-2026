@@ -136,7 +136,12 @@ def _boot(**kw: Any) -> Any:
         st = make_stack(**kw)
     except StackError as exc:
         RESULTS.stack_error = str(exc)
-        pytest.skip(str(exc))
+        if os.environ.get("AEGIS_LIVE_URL"):
+            # live mode: the operator's stack is down; skip with the reason (matrix shows it)
+            pytest.skip(str(exc))
+        # hermetic mode: the gateway is part of the product under test; a boot failure is a
+        # real failure, never a silent skip (plugin.pytest_sessionfinish forces exit != 0).
+        pytest.fail(f"AEGIS GATEWAY FAILED TO BOOT (hermetic): {exc}", pytrace=False)
     if not RESULTS.gateway:
         RESULTS.gateway = st.info()
     if not RESULTS.controls_live:

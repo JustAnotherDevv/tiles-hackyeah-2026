@@ -64,6 +64,9 @@ class EventHub {
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private staleTimer: ReturnType<typeof setInterval> | null = null;
   private openedAt = 0;
+  /** last SSE message id seen (resume point) and its value when the current connection opened */
+  private lastId: number | null = null;
+  private idAtConnect: number | null = null;
   status: SseStatus = 'idle';
   /** epoch ms of the last message received (any event incl. heartbeat) */
   lastEventAt: number | null = null;
@@ -136,7 +139,10 @@ class EventHub {
       this.stopPump = startMockPump((name, data) => this.inject(name, data));
       return;
     }
-    const qs = new URLSearchParams({ replay: '100' });
+    // First connect: replay the last 100 ring-buffer messages. Reconnects (network blip, viewer switch) resume
+    // after the last id we saw, so already-handled events are not re-delivered (no duplicate side effects).
+    const qs = this.lastId !== null ? new URLSearchParams({ last_event_id: String(this.lastId) }) : new URLSearchParams({ replay: '100' });
+    this.idAtConnect = this.lastId;
     const viewer = getViewer();
     if (viewer) qs.set('view_as', viewer);
     this.setStatus(this.failures > 0 ? (this.failures >= 3 ? 'offline' : 'reconnecting') : 'connecting');
@@ -189,6 +195,12 @@ class EventHub {
       return;
     }
     const replay = Date.now() - this.openedAt < REPLAY_WINDOW_MS;
+    const n = ev.lastEventId ? Number(ev.lastEventId) : NaN;
+    if (Number.isFinite(n)) {
+      // backlog duplicates of something already delivered before this connection: drop
+      if (replay && this.idAtConnect !== null && n <= this.idAtConnect) return;
+      this.lastId = n; // last seen (not max: a restarted gateway starts its ids again from 1)
+    }
     this.deliver(name, data as SseEventMap[typeof name], { replay, id: ev.lastEventId || null });
   }
 

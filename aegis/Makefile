@@ -110,7 +110,7 @@ claude: ## Claude Code through Aegis (demo settings profile, never machine-wide)
 
 # ---------------------------------------------------------------- tests (recipes from docs/plan/18 section 2.10)
 test: ## unit + hermetic deterministic e2e + matrix/report
-	@AEGIS_SEMANTIC=off $(PYTEST) tests --ignore=tests/eval --ignore=tests/bench --ignore=tests/redteam -m "not semantic and not live and not slow and not bench" $(OK5)
+	@AEGIS_SEMANTIC=off AEGIS_PERF_SLACK=$${AEGIS_PERF_SLACK:-5} $(PYTEST) tests --ignore=tests/eval --ignore=tests/bench --ignore=tests/redteam -m "not semantic and not live and not slow and not bench" $(OK5)
 
 test-unit: ## unit tests of every workstream
 	@AEGIS_SEMANTIC=off $(PYTEST) tests/unit $(ARGS) $(OK5)

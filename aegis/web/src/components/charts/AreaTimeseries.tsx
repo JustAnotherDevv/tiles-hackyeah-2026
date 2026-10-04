@@ -24,8 +24,10 @@ export interface AreaTimeseriesProps<T> {
   stacked?: boolean;
   height?: number;
   yFormat?: (v: number) => string;
+  /** y-axis label column width in px (default 44) */
+  yWidth?: number;
   xFormat?: (v: string | number) => string;
-  referenceLines?: { y: number; label?: string; color?: string; dashed?: boolean }[];
+  referenceLines?: { y: number; label?: string; color?: string; dashed?: boolean; labelBelow?: boolean }[];
   annotations?: { x: string | number; label: string }[];
   legend?: boolean;
   /** tooltip title formatter (defaults to xFormat) */
@@ -76,11 +78,12 @@ function AnnotationLabel({ viewBox, value, row }: { viewBox?: { x?: number; y?: 
   );
 }
 
-function RefLabel({ viewBox, value, color }: { viewBox?: { x?: number; y?: number; width?: number }; value: string; color: string }) {
-  const x = (viewBox?.x ?? 0) + 4;
-  const y = (viewBox?.y ?? 0) - 5;
+function RefLabel({ viewBox, value, color, below }: { viewBox?: { x?: number; y?: number; width?: number }; value: string; color: string; below?: boolean }) {
+  // `below`: right-aligned under the line, so two close reference lines (soft / hard cap) never overlap.
+  const x = below ? (viewBox?.x ?? 0) + (viewBox?.width ?? 0) - 4 : (viewBox?.x ?? 0) + 4;
+  const y = (viewBox?.y ?? 0) + (below ? 13 : -5);
   return (
-    <text x={x} y={y} fill={color} fontSize={10.5} fontWeight={500}>
+    <text x={x} y={y} fill={color} fontSize={10.5} fontWeight={500} textAnchor={below ? 'end' : 'start'}>
       {value}
     </text>
   );
@@ -94,6 +97,7 @@ export function AreaTimeseries<T>({
   stacked = false,
   height = 240,
   yFormat = fmtAxisNum,
+  yWidth = 44,
   xFormat = fmtClockTick,
   referenceLines = [],
   annotations = [],
@@ -130,7 +134,7 @@ export function AreaTimeseries<T>({
         minTickGap={28}
         tickMargin={6}
       />
-      <YAxis tick={chartTheme.tick} tickFormatter={yFormat} axisLine={false} tickLine={false} width={44} domain={yDomain} allowDecimals />
+      <YAxis tick={chartTheme.tick} tickFormatter={yFormat} axisLine={false} tickLine={false} width={yWidth} domain={yDomain} allowDecimals />
       <Tooltip
         cursor={kind === 'bar' ? { fill: 'rgba(255,255,255,0.03)' } : { stroke: chartTheme.crosshair, strokeWidth: 1 }}
         content={<ChartTooltip labelFormat={tooltipLabel ?? xFormat} valueFormat={yFormat === fmtAxisNum ? undefined : yFormat} total={tooltipTotal ?? (stacked && kind === 'bar')} />}
@@ -145,7 +149,7 @@ export function AreaTimeseries<T>({
           strokeDasharray={r.dashed ? '4 4' : undefined}
           strokeOpacity={0.9}
           ifOverflow="extendDomain"
-          label={r.label ? <RefLabel value={r.label} color={r.color ?? chartTheme.hardCap} /> : undefined}
+          label={r.label ? <RefLabel value={r.label} color={r.color ?? chartTheme.hardCap} below={r.labelBelow} /> : undefined}
         />
       ))}
       {annotations.map((a, i) => (

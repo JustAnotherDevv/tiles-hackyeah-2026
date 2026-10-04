@@ -89,8 +89,7 @@ async def test_admin_disable_critical_needs_owner(client: httpx.AsyncClient) -> 
     r = await client.post("/api/policy/apply", json={"yaml": new, "base_version": pol["version"], "reason": "test"},
                           headers=ADMIN)
     res = r.json()
-    if res["status"] != "pending_approval":  # pragma: no cover - approvals engine not integrated
-        pytest.skip(f"approvals engine unavailable: {res['message']}")
+    assert res["status"] == "pending_approval", f"GOV-05 did not route the disable: {res.get('message')}"
     assert res["approval"]["required_role"] == "owner"
     apr_id = res["approval"]["id"]
     r = await client.post(f"/api/approvals/{apr_id}/approve", json={"comment": "ok"}, headers=OWNER)

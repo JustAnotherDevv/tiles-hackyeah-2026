@@ -65,7 +65,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -103,9 +103,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # boot error -> FAIL: a broken gateway must never read as exit 0
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -305,7 +305,7 @@ def test_j5_egress_encoded_pii_blocked(es: EgressStack) -> None:
         },
     )
     if r.status_code in (404, 501):
-        pytest.skip("/egress not available")
+        pytest.fail(f"/egress not available ({r.status_code})", pytrace=False)
     assert r.status_code == 403, (r.status_code, r.text[:300])
     err = r.json().get("error") or {}
     assert err.get("type") in ("policy_blocked", "approval_required"), err
@@ -321,6 +321,6 @@ def test_j6_egress_benign_get_reaches_sink(es: EgressStack) -> None:
         json={"method": "GET", "url": "http://docs.acme.test/status", "wait_s": 0},
     )
     if r.status_code in (404, 501):
-        pytest.skip("/egress not available")
+        pytest.fail(f"/egress not available ({r.status_code})", pytrace=False)
     assert r.status_code == 200, (r.status_code, r.text[:300])
     assert es.hits() == 1

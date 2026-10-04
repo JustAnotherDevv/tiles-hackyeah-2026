@@ -13,10 +13,11 @@ import {
   requesterOf
 } from '../model/Models';
 import { Pill } from '../components/Common';
-import { PocketStore } from '../data/PocketStore';
+import { PocketStore, StepUp } from '../data/PocketStore';
 import { needsStepUp, sponsorOf, stepUpReason } from '../data/Eligibility';
 import { RiskFactor, RiskSummary, explainRisk } from '../data/RiskExplainer';
-import { StepUpAuth, StepUpOutcome } from '../platform/StepUpAuth';
+import { StepUpAuth } from '../platform/StepUpAuth';
+import { StepUpOutcome } from '../platform/StepUpCodes';
 import { Haptics } from '../platform/Haptics';
 import { promptAction } from '@kit.ArkUI';
 
@@ -24,17 +25,42 @@ import { promptAction } from '@kit.ArkUI';
 @Component
 export struct DetailView {
   @Prop approvalId: string = '';
-  @StorageProp('approvals') approvals: ApprovalItem[] = [];
+  @StorageProp('approvals') @Watch('onDataChange') approvals: ApprovalItem[] = [];
+  @StorageProp('connState') @Watch('onDataChange') connState: string = 'loading';
   @StorageProp('nowMs') nowMs: number = Date.now();
   @StorageProp('persona') persona: string = 'u_emily';
   @State busy: string = ''; // '' | 'approve' | 'deny' | 'auth'
   @State comment: string = '';
+  /** Direct lookup when the request is not in the list: '' (not tried) | 'fetching' | 'done'. */
+  @State lookup: string = '';
+  /** False once the page is gone, so async continuations skip UI work (toasts, state). */
+  private alive: boolean = true;
   onClose: () => void = () => {
   };
 
+  aboutToAppear(): void {
+    this.onDataChange();
+  }
+
+  aboutToDisappear(): void {
+    this.alive = false;
+  }
+
   build() {
     NavDestination() {
-      if (this.item() === undefined) {
+      if (this.item() === undefined && (this.connState === 'loading' || this.lookup !== 'done')) {
+        Column({ space: Space.MD }) {
+          LoadingProgress()
+            .width(32)
+            .height(32)
+            .color(Colors.TEXT_DIM)
+          Text('Loading request…')
+            .fontSize(Fonts.SMALL)
+            .fontColor(Colors.TEXT_DIM)
+        }
+        .width('100%')
+        .padding(Space.XL)
+      } else if (this.item() === undefined) {
         Column({ space: Space.MD }) {
           Text('Request not found')
             .fontSize(Fonts.H2)
@@ -204,7 +230,7 @@ export struct DetailView {
         .fontWeight(FontWeight.Medium)
         .fontColor(Colors.TEXT)
         .width('100%')
-      ForEach(r.factors, (f: RiskFactor) => {
+      ForEach(r.factors, (f: RiskFactor, idx: number) => {
         Row({ space: Space.SM }) {
           Text('+' + f.points.toString())
             .fontSize(Fonts.TINY)
@@ -218,7 +244,7 @@ export struct DetailView {
         }
         .width('100%')
         .alignItems(VerticalAlign.Top)
-      }, (f: RiskFactor) => f.text)
+      }, (f: RiskFactor, idx: number) => idx.toString() + ':' + f.text)
       Text(r.advice + ' On-device, rule-based: nothing is sent anywhere to compute it.')
         .fontSize(Fonts.TINY)
         .fontColor(Colors.TEXT_FAINT)
@@ -357,7 +383,7 @@ export struct DetailView {
         .width('100%')
         .padding({ top: 7, bottom: 7 })
         .border({ width: { top: idx === 0 ? 0 : 1 }, color: Colors.BORDER })
-      }, (kv: KeyValue) => kv.key)
+      }, (kv: KeyValue, idx: number) => idx.toString() + ':' + kv.key)
     }
     .padding(Space.LG)
     .width('100%')
@@ -374,7 +400,7 @@ export struct DetailView {
         .fontColor(Colors.TEXT_DIM)
         .letterSpacing(1)
         .width('100%')
-      ForEach(checks, (c: CheckItem) => {
+      ForEach(checks, (c: CheckItem, idx: number) => {
         Row({ space: Space.SM }) {
           Text(c.ok ? '✓' : '!')
             .fontSize(12)
@@ -400,7 +426,7 @@ export struct DetailView {
         }
         .width('100%')
         .alignItems(VerticalAlign.Top)
-      }, (c: CheckItem) => c.name)
+      }, (c: CheckItem, idx: number) => idx.toString() + ':' + c.name)
     }
     .padding(Space.LG)
     .width('100%')
@@ -442,7 +468,7 @@ export struct DetailView {
         .fontColor(Colors.TEXT_DIM)
         .letterSpacing(1)
         .width('100%')
-      ForEach(votes, (v: VoteView) => {
+      ForEach(votes, (v: VoteView, idx: number) => {
         Row({ space: Space.SM }) {
           Circle()
             .width(8)
@@ -457,7 +483,7 @@ export struct DetailView {
             .fontColor(Colors.TEXT_FAINT)
         }
         .width('100%')
-      }, (v: VoteView) => v.memberId + v.decision)
+      }, (v: VoteView, idx: number) => idx.toString() + ':' + v.memberId + v.decision)
     }
     .padding(Space.LG)
     .width('100%')
@@ -567,8 +593,39 @@ export struct DetailView {
     .border({ width: { top: 1 }, color: Colors.BORDER })
   }
 
+  private itemId(): string {
+    return this.approvalId.split('#')[0];
+  }
+
+  /**
+   * Cold start (e.g. from a notification) can open this page before the first refresh lands, and a request may be
+   * missing from the list (limit, persona). Once loading is over and the item is still missing, ask the store for
+   * it directly before showing "not found".
+   */
+  onDataChange(): void {
+    if (!this.alive || this.lookup.length > 0 || this.connState === 'loading') {
+      return;
+    }
+    if (this.item() !== undefined || this.itemId().length === 0) {
+      if (this.itemId().length === 0) {
+        this.lookup = 'done';
+      }
+      return;
+    }
+    this.lookup = 'fetching';
+    PocketStore.get().fetchOne(this.itemId()).then(() => {
+      if (this.alive) {
+        this.lookup = 'done';
+      }
+    }).catch(() => {
+      if (this.alive) {
+        this.lookup = 'done';
+      }
+    });
+  }
+
   private item(): ApprovalItem | undefined {
-    const id: string = this.approvalId.split('#')[0];
+    const id: string = this.itemId();
     for (const it of this.approvals) {
       if (it.id === id) {
         return it;
@@ -617,23 +674,33 @@ export struct DetailView {
       this.stepUpThenVote(it);
       return;
     }
-    this.submit(id, decision, '');
+    this.submit(id, decision, StepUp.NONE, '');
   }
 
-  /** User Authentication Kit step-up; labelled manual fallback when the device has no authenticator. */
+  /**
+   * User Authentication Kit step-up. The labelled manual fallback is offered only for 'unavailable', which StepUpAuth
+   * returns solely when the device has no authenticator at all; failed, cancelled or timed-out auth never approves.
+   */
   private stepUpThenVote(it: ApprovalItem): void {
     this.busy = 'auth';
     const title: string = 'Approve: ' + it.title + (it.amountUsd > 0 ? ' (' + Fmt.usd(it.amountUsd) + ')' : '');
     StepUpAuth.authenticate(title).then((o: StepUpOutcome) => {
       if (o.status === 'verified') {
-        Haptics.success();
-        this.busy = '';
-        this.submit(it.id, 'approve', 'Verified with ' + o.detail + '. ');
-      } else if (o.status === 'unavailable') {
-        this.busy = '';
+        // The user did verify, so the vote is still wanted even if they already left the page.
+        if (this.alive) {
+          Haptics.success();
+          this.busy = '';
+        }
+        this.submit(it.id, 'approve', StepUp.verified(o.detail), 'Verified with ' + o.detail + '. ');
+        return;
+      }
+      if (!this.alive) {
+        return;
+      }
+      this.busy = '';
+      if (o.status === 'unavailable') {
         this.confirmFallback(it, o.detail);
       } else {
-        this.busy = '';
         Haptics.failure();
         this.getUIContext().getPromptAction().showToast({ message: o.detail + ': not approved', duration: 2500 });
       }
@@ -651,24 +718,38 @@ export struct DetailView {
       ]
     }).then((r: promptAction.ShowDialogSuccessResponse) => {
       if (r.index === 1) {
-        this.submit(it.id, 'approve', 'Manual confirmation (no device authentication). ');
+        this.submit(it.id, 'approve', StepUp.MANUAL, 'Manual confirmation (no device authentication). ');
       }
     }).catch(() => {
       // dismissed: nothing approved
     });
   }
 
-  private submit(id: string, decision: string, toastPrefix: string): void {
-    this.busy = decision;
-    PocketStore.get().vote(id, decision, this.comment).then((r: VoteOutcome) => {
+  /** @param stepUp 'verified:<method>' | 'manual' | 'none' (forwarded to PocketStore.vote for the gate and audit). */
+  private submit(id: string, decision: string, stepUp: string, toastPrefix: string): void {
+    if (this.alive) {
+      this.busy = decision;
+    }
+    PocketStore.get().vote(id, decision, this.comment, stepUp).then((r: VoteOutcome) => {
+      if (!this.alive) {
+        return;
+      }
       this.busy = '';
-      this.comment = '';
+      if (r.ok) {
+        this.comment = '';
+      }
       if (r.ok && decision === 'approve') {
         Haptics.success();
       } else {
         Haptics.failure();
       }
       this.getUIContext().getPromptAction().showToast({ message: toastPrefix + r.message, duration: 2500 });
+    }).catch(() => {
+      if (this.alive) {
+        this.busy = '';
+        Haptics.failure();
+        this.getUIContext().getPromptAction().showToast({ message: 'Vote not confirmed: check the request status', duration: 2500 });
+      }
     });
   }
 }

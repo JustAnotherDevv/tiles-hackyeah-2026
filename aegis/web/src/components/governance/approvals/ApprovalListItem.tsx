@@ -2,7 +2,7 @@
 // Owner: B18-dashboard-gov-approvals.
 import { displayTitle } from '@/components/governance/lib/format-gov';
 import { motion } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { Lock } from '@/components/icons';
 import { forwardRef } from 'react';
 import type { ApprovalRequest } from '@/api/types';
 import { resolveIcon } from '@/lib/icons';
@@ -40,10 +40,10 @@ export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps
     <motion.div
       ref={ref}
       layout="position"
-      initial={{ opacity: 0, y: -10, height: 0 }}
-      animate={{ opacity: 1, y: 0, height: 'auto' }}
-      exit={{ opacity: 0, x: 24, height: 0, transition: { duration: 0.32, ease: [0.65, 0, 0.35, 1] } }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
       className="overflow-hidden"
     >
       <div
@@ -58,15 +58,15 @@ export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps
           }
         }}
         className={cn(
-          'relative flex cursor-pointer gap-3 border-b border-border-subtle px-4 py-3.5 outline-none transition-colors',
-          'hover:bg-white/[0.018] focus-visible:bg-surface-2',
-          selected && 'bg-surface-2 before:absolute before:inset-y-2.5 before:left-0 before:w-0.5 before:rounded-full before:bg-accent-fg',
+          'relative flex cursor-pointer gap-3 border-b border-border-subtle px-3 py-3 outline-none transition-colors sm:px-4',
+          'hover:bg-surface-1 focus-visible:bg-surface-2',
+          selected && 'bg-surface-2 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent-fg',
           fresh && 'animate-row-in',
         )}
       >
         <div
           className={cn(
-            'grid size-8 shrink-0 place-items-center rounded-[9px] border',
+            'grid size-8 shrink-0 place-items-center rounded-md border',
             pending && vote.ok ? 'border-approval/35 bg-approval/10 text-approval' : 'border-border bg-surface-2 text-text-2',
           )}
         >
@@ -78,7 +78,7 @@ export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps
             {pending ? (
               <ApproverBadge level={req.required_role} size="sm" />
             ) : (
-              <span className={cn('inline-flex h-[18px] items-center rounded-full border px-1.5 text-2xs font-medium', TONE[st.tone])}>{st.label}</span>
+              <span className={cn('inline-flex h-[18px] items-center rounded-sm border px-1.5 text-2xs font-medium', TONE[st.tone])}>{st.label}</span>
             )}
             <span className={cn('max-w-[180px] truncate', req.requester.agent_id && 'font-mono text-[11.5px]')}>{who}</span>
             {req.amount_usd !== null ? <span className="tabular text-text-2">{fmtMoney(req.amount_usd)}</span> : null}
@@ -91,7 +91,7 @@ export const ApprovalListItem = forwardRef<HTMLDivElement, ApprovalListItemProps
             <Lock className="size-3.5" />
           </span>
         ) : pending && vote.ok ? (
-          <span className="mt-1 size-2 shrink-0 rounded-full bg-approval shadow-[0_0_0_3px_rgba(139,92,246,.18)]" title="You can act on this" />
+          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-approval" title="You can act on this" />
         ) : null}
       </div>
     </motion.div>

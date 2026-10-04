@@ -127,14 +127,17 @@ class ScanResult:
 
 
 # ---------------------------------------------------------------- compile helpers
-def compile_pattern(pattern: str, *, allow_re_fallback: bool = True) -> tuple[Any, str]:
-    """Compile with RE2, else stdlib ``re`` (vetted built-ins / judges' extras that compile)."""
+def compile_pattern(pattern: str, *, allow_re_fallback: bool = False) -> tuple[Any, str]:
+    """Compile with RE2. Stdlib ``re`` only for vetted built-ins (``allow_re_fallback=True``);
+    policy-authored patterns (``extra_signatures``) are RE2-only -> ``ValueError`` otherwise."""
     if _re2 is not None:
         try:
             return _re2.compile(pattern), "re2"
         except Exception as exc:
             if not allow_re_fallback:
                 raise ValueError(f"RE2 rejected pattern: {exc}") from exc
+    elif not allow_re_fallback:  # pragma: no cover - wheel missing
+        raise ValueError("RE2 unavailable (google-re2 not importable); policy regex refused")
     return re.compile(pattern), "re"
 
 
@@ -164,7 +167,7 @@ def _catalog() -> Catalog:
     for raw in data.get("signatures") or []:
         try:
             pat = fold_diacritics(_expand(str(raw["pattern"]), variables))
-            compiled, engine = compile_pattern(pat)
+            compiled, engine = compile_pattern(pat, allow_re_fallback=True)  # vetted built-in
             unless = raw.get("unless_trusted")
             tests = raw.get("tests") or {}
             sig = Signature(
@@ -181,7 +184,8 @@ def _catalog() -> Catalog:
                     else None
                 ),
                 langs=tuple(raw.get("langs") or ()),
-                unless_trusted=compile_pattern(fold_diacritics(str(unless)))[0] if unless else None,
+                unless_trusted=(compile_pattern(fold_diacritics(str(unless)), allow_re_fallback=True)[0]
+                                if unless else None),
                 compiled=compiled,
                 engine=engine,
                 tests_positive=tuple(str(t) for t in tests.get("positive") or ()),
@@ -247,8 +251,6 @@ def _extra_compiled(extras: tuple[tuple[str, str, str, float, str], ...]) -> tup
         except Exception as exc:
             log.warning("extra_signature rejected id=%s error=%s", sid, exc)
             continue
-        if engine != "re2":
-            log.warning("extra_signature compiled with stdlib re (not RE2) id=%s", sid)
         out.append(
             Signature(
                 id=f"custom.{sid}",
@@ -265,7 +267,7 @@ def _extra_compiled(extras: tuple[tuple[str, str, str, float, str], ...]) -> tup
 
 
 def validate_extra(pattern: str) -> str | None:
-    """None when ``pattern`` compiles (RE2 or re), else the error message (for validators)."""
+    """None when ``pattern`` compiles with RE2, else the error message (for validators)."""
     try:
         compile_pattern(pattern)
     except Exception as exc:

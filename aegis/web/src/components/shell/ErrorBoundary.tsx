@@ -1,6 +1,6 @@
 // Per-route error boundary: one broken sibling page never takes down the shell.
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { TriangleAlert } from 'lucide-react';
+import { TriangleAlert } from '@/components/icons';
 
 interface Props {
   children: ReactNode;

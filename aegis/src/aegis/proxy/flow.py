@@ -65,6 +65,8 @@ from aegis.proxy.adapters._common import (
     header,
     is_claude_code,
     loads,
+    validate_messages_body,
+    validate_response_body,
 )
 from aegis.proxy.blocking import block_message, decision_headers
 from aegis.proxy.router import DEST_RANK, Route, resolve_route
@@ -218,6 +220,8 @@ class ModelCall:
         self.stream_mode = stream_mode
         self.claude_code = is_claude_code(self.headers)
         self.downgraded_from: str | None = None
+        # R10: the evaluated-but-not-completed request hop; `run` completes it on any escape
+        self._open: tuple[RequestContext, Interaction, Verdict] | None = None
 
     # ------------------------------------------------------------------ context
     async def _make_ctx(self, body: dict[str, Any]) -> RequestContext:
@@ -291,10 +295,14 @@ class ModelCall:
             for d in v.decisions:
                 add_timing(ctx, f"ctl.{d.control_id}", d.latency_ms)
         add_timing(ctx, "pipeline", (time.perf_counter() - t) * 1000.0)
+        if i.surface == "model.request":
+            self._open = (ctx, i, v)
         return v
 
     async def _complete(self, ctx: RequestContext, i: Interaction, v: Verdict,
                         outcome: Outcome) -> None:
+        if self._open is not None and self._open[1] is i:
+            self._open = None
         with anyio.CancelScope(shield=True):
             try:
                 await self.rt.pipeline.complete(ctx, i, v, outcome)
@@ -380,6 +388,23 @@ class ModelCall:
 
     # ------------------------------------------------------------------ main entry
     async def run(self, body: dict[str, Any], raw: bytes | None = None) -> ModelCallResult:
+        """Run one call. Never raises for bad input / bad upstream data (R10): a type-confused
+        body -> 400, an unexpected error after evaluation -> 500 envelope, and in every case
+        `pipeline.complete()` is called for an evaluated hop (budget reservations / slots)."""
+        try:
+            return await self._run(body, raw)
+        except Exception as exc:
+            log.exception("model call failed wire=%s", self.wire)
+            verdict = None
+            if self._open is not None:
+                ctx, i, verdict = self._open
+                await self._complete(ctx, i, verdict, Outcome(
+                    status_code=500, usage=Usage(requests=0),
+                    error=f"internal error: {type(exc).__name__}"))
+            return self._error(self.ctx, 500, "internal_error",
+                               "[Aegis] internal error in the model proxy", verdict)
+
+    async def _run(self, body: dict[str, Any], raw: bytes | None = None) -> ModelCallResult:
         ctx = self.ctx or await self._make_ctx(body)
         self.ctx = ctx
         snap = self._snapshot(ctx)
@@ -399,7 +424,16 @@ class ModelCall:
         self.op = op
 
         t_parse = time.perf_counter()
-        req_i = self.adapter.parse_request(body, self.headers)
+        problem = validate_messages_body(body, self.wire)
+        if problem is None:
+            try:
+                req_i = self.adapter.parse_request(body, self.headers)
+            except Exception as exc:  # unexpected shape -> never forward un-inspected
+                log.info("parse_request rejected body wire=%s error=%s", self.wire,
+                         type(exc).__name__)
+                problem = "request body has an unsupported structure"
+        if problem is not None:
+            return self._error(ctx, 400, "invalid_request", f"[Aegis] {problem}")
         if route.redact_system:
             for s in req_i.segments:
                 if s.role == "system":
@@ -506,6 +540,19 @@ class ModelCall:
                 status_code=resp.status_code, usage=Usage(), upstream_ms=ms,
                 provider=route.provider, model_used=route.model,
                 error=f"upstream status {resp.status_code}"))
+            if not _is_json_object(data):
+                # non-JSON upstream error (HTML 500, redirect, proxy page) -> wire envelope (§5.3)
+                status = resp.status_code if 400 <= resp.status_code < 500 else 502
+                res = self._error(ctx, status, "upstream_error",
+                                  f"[Aegis] upstream {route.provider} returned HTTP "
+                                  f"{resp.status_code}", verdict,
+                                  upstream_status=resp.status_code)
+                ra = resp.headers.get("retry-after")
+                if ra:
+                    res.headers["retry-after"] = ra
+                res.route, res.request_interaction, res.outbound = route, req_i, outbound
+                res.upstream_ms = ms
+                return res
             base.headers = {**upstream.response_headers(resp.headers),
                             **self._aegis_headers(ctx, verdict, upstream_ms=ms)}
             base.body = data
@@ -535,8 +582,17 @@ class ModelCall:
                     model_used=route.model, error="unparseable upstream response"))
                 return self._error(ctx, 502, "upstream_error",
                                    "[Aegis] unparseable upstream response", verdict)
-            final, rv, outcome = await self._process_response(ctx, req_i, verdict, resp_obj,
-                                                              route, ms, defaults)
+            try:
+                final, rv, outcome = await self._process_response(ctx, req_i, verdict, resp_obj,
+                                                                  route, ms, defaults)
+            except Exception as exc:  # wrong-typed upstream JSON -> 502, never a 500
+                log.warning("invalid upstream response provider=%s error=%s", route.provider,
+                            type(exc).__name__, exc_info=True)
+                await self._complete(ctx, req_i, verdict, Outcome(
+                    status_code=502, usage=Usage(), upstream_ms=ms, provider=route.provider,
+                    model_used=route.model, error="invalid upstream response"))
+                return self._error(ctx, 502, "upstream_error",
+                                   "[Aegis] invalid upstream response", verdict)
             await self._complete(ctx, req_i, verdict, outcome)
             base.headers = {**upstream.response_headers(resp.headers),
                             **self._aegis_headers(ctx, verdict, rv=rv, upstream_ms=ms)}
@@ -658,6 +714,9 @@ class ModelCall:
         self, ctx: RequestContext, req_i: Interaction, verdict: Verdict,
         resp_obj: dict[str, Any], route: Route, upstream_ms: float, defaults: Defaults,
     ) -> tuple[dict[str, Any], Verdict, Outcome]:
+        problem = validate_response_body(resp_obj, self.wire)
+        if problem is not None:  # callers turn this into 502 upstream_error (R10)
+            raise ValueError(f"invalid upstream response: {problem}")
         usage = self.adapter.parse_usage(resp_obj)
         resp_i = self.adapter.parse_response(resp_obj)
         if usage.input_tokens == 0 and usage.output_tokens == 0:
@@ -761,9 +820,16 @@ class ModelCall:
                                   provider=route.provider, model_used=route.model,
                                   error=err or "upstream stream error")
                 return
-            msg = acc.message()
-            final, rv, outcome = await self._process_response(ctx, req_i, verdict, msg, route,
-                                                              ms, defaults)
+            try:
+                msg = acc.message()
+                final, rv, outcome = await self._process_response(ctx, req_i, verdict, msg,
+                                                                  route, ms, defaults)
+            except Exception as exc:
+                log.warning("invalid upstream stream provider=%s error=%s", route.provider,
+                            type(exc).__name__, exc_info=True)
+                yield _sse_error("api_error", "[Aegis] invalid upstream response")
+                outcome = _bad_upstream(route, ms)
+                return
             res.response_verdict = rv
             res.response_body = final
             res.usage = outcome.usage
@@ -809,9 +875,19 @@ class ModelCall:
                                   provider=route.provider, model_used=route.model,
                                   error=err or "upstream stream error")
                 return
-            comp = acc.completion()
-            final, rv, outcome = await self._process_response(ctx, req_i, verdict, comp, route,
-                                                              ms, defaults)
+            try:
+                comp = acc.completion()
+                final, rv, outcome = await self._process_response(ctx, req_i, verdict, comp,
+                                                                  route, ms, defaults)
+            except Exception as exc:
+                log.warning("invalid upstream stream provider=%s error=%s", route.provider,
+                            type(exc).__name__, exc_info=True)
+                yield (b"data: " + dumps({"error": {
+                    "type": "upstream_error", "code": "upstream_error",
+                    "message": "[Aegis] invalid upstream response"}}) + b"\n\n")
+                yield b"data: [DONE]\n\n"
+                outcome = _bad_upstream(route, ms)
+                return
             res.response_verdict = rv
             res.response_body = final
             res.usage = outcome.usage
@@ -851,9 +927,16 @@ class ModelCall:
                                   provider=route.provider, model_used=route.model,
                                   error=err or "upstream stream error")
                 return
-            obj = acc.response()
-            final, rv, outcome = await self._process_response(ctx, req_i, verdict, obj, route,
-                                                              ms, defaults)
+            try:
+                obj = acc.response()
+                final, rv, outcome = await self._process_response(ctx, req_i, verdict, obj,
+                                                                  route, ms, defaults)
+            except Exception as exc:
+                log.warning("invalid upstream stream provider=%s error=%s", route.provider,
+                            type(exc).__name__, exc_info=True)
+                yield dumps({"error": "[Aegis] invalid upstream response"}) + b"\n"
+                outcome = _bad_upstream(route, ms)
+                return
             res.response_verdict = rv
             res.response_body = final
             res.usage = outcome.usage
@@ -974,6 +1057,19 @@ def fresh_segments(session_id: str | None, segments: list[TextSegment]) -> list[
             if len(seen) < _SEEN_PER_SESSION:
                 seen.add(h)
     return fresh
+
+
+def _is_json_object(data: bytes) -> bool:
+    try:
+        return isinstance(loads(data), dict) if data else False
+    except Exception:
+        return False
+
+
+def _bad_upstream(route: Route, ms: float) -> Outcome:
+    return Outcome(status_code=502, usage=Usage(requests=1), upstream_ms=ms,
+                   provider=route.provider, model_used=route.model,
+                   error="invalid upstream response")
 
 
 def _sse_error(etype: str, message: str) -> bytes:

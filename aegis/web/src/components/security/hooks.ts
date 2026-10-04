@@ -63,7 +63,7 @@ export function useCurrentVersions(): CurrentVersions {
   return { policyVersion: res.data?.policy_version ?? null, feedSerial: res.data?.feed_serial ?? null, isMock: res.isMock };
 }
 
-/** GET /api/decisions/{id} with a mock built from the summary hint (only on 404/405/501/network or forced mocks). */
+/** GET /api/decisions/{id}; the mock built from the summary hint is used only in forced mock mode (a 404 surfaces as an error → "Decision not found"). */
 export function useDecisionDetail(id: string | null, hint?: DecisionSummary | null) {
   const hintRef = hint ?? null;
   return useApi<DecisionDetail>(id ? `/api/decisions/${encodeURIComponent(id)}` : null, {

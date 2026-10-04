@@ -1,6 +1,9 @@
 import { Colors, Fonts, Radius, Space } from '../common/Theme';
-import { Finding, RedactionResult, Redactor, SAMPLE_TEXT } from '../redaction/Redactor';
+import { Finding, MAX_PREVIEW_CHARS, RedactionResult, Redactor, SAMPLE_TEXT } from '../redaction/Redactor';
 import { ScreenHeader } from '../components/Common';
+
+/** Typing is debounced so the redactor does not run on the UI thread for every keystroke. */
+const DEBOUNCE_MS: number = 150;
 
 class Segment {
   key: string;
@@ -35,6 +38,11 @@ export struct PreviewView {
   @State segments: Segment[] = [];
   @State findings: Finding[] = [];
   @State entityCounts: EntityCount[] = [];
+  private analyseTimer: number = -1;
+
+  aboutToDisappear(): void {
+    this.cancelPending();
+  }
 
   build() {
     Scroll() {
@@ -67,10 +75,18 @@ export struct PreviewView {
             .borderRadius(Radius.MD)
             .border({ width: 1, color: Colors.BORDER })
             .height(150)
+            .maxLength(MAX_PREVIEW_CHARS)
             .onChange((v: string) => {
               this.input = v;
-              this.analyse();
+              this.scheduleAnalyse();
             })
+
+          if (this.input.length >= MAX_PREVIEW_CHARS) {
+            Text('Preview limited to 20 000 characters')
+              .fontSize(Fonts.TINY)
+              .fontColor(Colors.TEXT_DIM)
+              .width('100%')
+          }
 
           Row({ space: Space.SM }) {
             Button('Load sample')
@@ -80,6 +96,7 @@ export struct PreviewView {
               .height(36)
               .onClick(() => {
                 this.input = SAMPLE_TEXT;
+                this.cancelPending();
                 this.analyse();
               })
             Button('Clear')
@@ -89,6 +106,7 @@ export struct PreviewView {
               .height(36)
               .onClick(() => {
                 this.input = '';
+                this.cancelPending();
                 this.analyse();
               })
             Blank()
@@ -194,22 +212,48 @@ export struct PreviewView {
     .height('100%')
   }
 
+  private scheduleAnalyse(): void {
+    this.cancelPending();
+    this.analyseTimer = setTimeout(() => {
+      this.analyseTimer = -1;
+      this.analyse();
+    }, DEBOUNCE_MS);
+  }
+
+  private cancelPending(): void {
+    if (this.analyseTimer !== -1) {
+      clearTimeout(this.analyseTimer);
+      this.analyseTimer = -1;
+    }
+  }
+
   private analyse(): void {
-    const res: RedactionResult = Redactor.redact(this.input);
+    // maxLength already caps typed/pasted text; this guards programmatic input too and never
+    // splits a surrogate pair (emoji) at the cut.
+    let text: string = this.input;
+    if (text.length > MAX_PREVIEW_CHARS) {
+      let cut: number = MAX_PREVIEW_CHARS;
+      const code: number = text.charCodeAt(cut - 1);
+      if (code >= 0xD800 && code <= 0xDBFF) {
+        cut--;
+      }
+      text = text.substring(0, cut);
+    }
+    const res: RedactionResult = Redactor.redact(text);
     const segs: Segment[] = [];
     let cursor: number = 0;
     let n: number = 0;
     for (const f of res.findings) {
       if (f.start > cursor) {
-        segs.push(new Segment('t' + n.toString(), this.input.substring(cursor, f.start), false));
+        segs.push(new Segment('t' + n.toString(), text.substring(cursor, f.start), false));
         n++;
       }
       segs.push(new Segment('p' + n.toString(), f.placeholder, true));
       n++;
       cursor = f.start + f.length;
     }
-    if (cursor < this.input.length) {
-      segs.push(new Segment('t' + n.toString(), this.input.substring(cursor), false));
+    if (cursor < text.length) {
+      segs.push(new Segment('t' + n.toString(), text.substring(cursor), false));
     }
     this.segments = segs;
     this.findings = res.findings;

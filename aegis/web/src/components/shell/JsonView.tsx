@@ -1,5 +1,5 @@
 // Collapsible, syntax-coloured JSON viewer with copy (YAML palette from DESIGN_TOKENS §2.5).
-import { Check, ChevronRight, Copy } from 'lucide-react';
+import { Check, ChevronRight, Copy } from '@/components/icons';
 import { useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 

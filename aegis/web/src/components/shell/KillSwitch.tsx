@@ -1,7 +1,7 @@
 // Topbar kill switch (UIS-18): admin+ only. Dialog with scope picker (global / team / agent), reason, then
 // POST /api/killswitch → ApplyResult (applied | pending_approval → approval link | 403 → reason).
 // The killbar itself is rendered by SystemBanners from /api/budgets + `killswitch` SSE events.
-import { Bot, Globe, Power, Users } from 'lucide-react';
+import { Bot, Globe, Power, Users } from '@/components/icons';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -25,7 +25,7 @@ export function KillSwitchButton() {
   if (VIEW_ROLE_RANK[role] < VIEW_ROLE_RANK.admin && !active) return null;
   return (
     <>
-      <Button variant="danger-ghost" size="sm" onClick={() => setOpen(true)} className="h-[26px] shrink-0 gap-1.5 px-2.5 text-xs max-[1360px]:px-2">
+      <Button variant="danger-ghost" size="sm" onClick={() => setOpen(true)} className="h-[26px] shrink-0 gap-1.5 px-2.5 text-xs max-[1360px]:px-2 max-md:w-9 max-md:px-0">
         {active ? <LiveDot tone="bad" /> : <Power className="size-3.5" />}
         <span className="max-[1360px]:hidden">{active ? 'Kill switch on' : 'Kill switch'}</span>
       </Button>
@@ -79,7 +79,7 @@ function KillDialog({ open, onOpenChange, activeScopes, canAct }: { open: boolea
             </span>
             Kill switch
           </DialogTitle>
-          <DialogDescription>Stops matching traffic at the gateway instantly (403 killed). Goes through policy governance — tightening needs admin.</DialogDescription>
+          <DialogDescription>Stops matching traffic at the gateway instantly (429 killed). Goes through policy governance — tightening needs admin.</DialogDescription>
         </DialogHeader>
         <div className="flex max-h-[300px] flex-col gap-1 overflow-y-auto">
           {options.map((o) => {

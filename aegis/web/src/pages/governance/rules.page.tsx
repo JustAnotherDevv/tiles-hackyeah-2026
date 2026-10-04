@@ -1,7 +1,7 @@
 // Approval rules (UIG-06 + UIG-07) — "who can approve what": the live first-match rule tables from
 // policy (`rules` + `config_rules` + defaults) and the "Who would approve this?" route simulator,
 // whose matched rule is highlighted in the tables. Owner: B18-dashboard-gov-approvals.
-import { Info } from 'lucide-react';
+import { Info } from '@/components/icons';
 import { useState } from 'react';
 import type { ApprovalRoute } from '@/api/types';
 import { ApproverBadge } from '@/components/governance/ApproverBadge';
@@ -11,6 +11,7 @@ import { PersonaSwitcher } from '@/components/governance/PersonaSwitcher';
 import { RouteSimulator } from '@/components/governance/rules/RouteSimulator';
 import { RulesTable } from '@/components/governance/rules/RulesTable';
 import { EmptyState, MockBadge, PageHeader, Panel } from '@/components/shell';
+import { Button } from '@/components/ui/button';
 import type { PageMeta } from '@/lib/page';
 
 export const meta: PageMeta = {
@@ -39,23 +40,23 @@ export default function RulesPage() {
         title="Approval rules"
         icon="Scale"
         badge={rules.isMock ? <MockBadge /> : undefined}
-        subtitle="Who can approve what. Live from the active policy — edit the approvals block in the policy editor and these tables update on reload."
+        subtitle="Who can approve what, live from the active policy. Edit the approvals block in the policy editor to change it."
         actions={<PersonaSwitcher />}
       />
 
       <Panel
         className="mb-4"
         title="Who would approve this?"
-        description="Simulate a request — the same router the gateway uses (POST /api/approvals/simulate). The matched rule lights up below."
+        description="Simulate a request against the router the gateway uses (POST /api/approvals/simulate). The matched rule is highlighted below."
         bordered
       >
         <RouteSimulator dir={dir} viewer={viewer} onRoute={setRoute} />
       </Panel>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface-1 px-4 py-2.5 text-[12.5px] text-text-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-1 px-3 py-2.5 text-[12.5px] text-text-2 sm:px-4">
         <Info className="size-4 shrink-0 text-text-3" />
         <span>
-          <span className="text-text-1">First match wins</span>, top to bottom; a config proposal with several changes takes the highest level. No match →
+          <span className="text-text-1">First match wins</span>, top to bottom; a multi-change proposal takes the highest level. No match →
         </span>
         {d ? (
           <>
@@ -65,20 +66,20 @@ export default function RulesPage() {
             <span className="inline-flex items-center gap-1">
               config <ApproverBadge level={d.default_config_approver} size="sm" />
             </span>
-            <span className="text-text-3">· default approval TTL {fmtTtl(d.ttl_s)}</span>
+            <span className="whitespace-nowrap text-text-3">· requests expire after {fmtTtl(d.ttl_s)}</span>
           </>
         ) : null}
       </div>
 
       {rules.error && !rules.data ? (
         <Panel>
-          <EmptyState icon="CloudOff" title="Could not load approval rules" hint={rules.error.message} />
+          <EmptyState icon="CloudOff" title="Could not load approval rules" hint={rules.error.message} action={<Button size="sm" variant="outline" onClick={() => rules.refresh()}>Retry</Button>} />
         </Panel>
       ) : (
-        <div className="grid gap-4 2xl:grid-cols-2">
+        <div className="grid min-w-0 gap-4 2xl:grid-cols-2">
           <Panel
             flush
-            title="Agent actions & budget overrides"
+            title="Agent actions and budget overrides"
             description={`${rules.data?.rules.length ?? 0} rules · approvals.rules`}
             isMock={rules.isMock}
             className={hi && !hiInConfig ? 'ring-1 ring-approval/30' : undefined}

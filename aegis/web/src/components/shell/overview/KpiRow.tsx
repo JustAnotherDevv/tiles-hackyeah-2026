@@ -46,7 +46,7 @@ export function KpiRow({ d }: { d: OverviewData }) {
       format={(n) => fmtNum(n, { compact: n >= 100_000 })}
       hint={rps !== undefined ? `${rps.toFixed(1)} rps now · window ${v?.window ?? ''}` : `through one decision point · ${v?.window ?? ''}`}
       sparkline={totals}
-      sparkColor="#818CF8"
+      sparkColor="#5B8EF0"
       href="/security/live"
     />,
     <KpiTile
@@ -126,7 +126,7 @@ export function KpiRow({ d }: { d: OverviewData }) {
   ];
 
   return (
-    <div className="grid grid-cols-6 gap-3 max-[1500px]:grid-cols-3 max-[760px]:grid-cols-1">
+    <div className="grid grid-cols-6 gap-3 max-[1500px]:grid-cols-3 max-[760px]:grid-cols-2 max-[360px]:grid-cols-1">
       {tiles.map((t, i) => (
         <motion.div key={t.key} {...tileAnim(i, motionOk)} className="flex min-w-0 [&>*]:flex-1">
           {t}

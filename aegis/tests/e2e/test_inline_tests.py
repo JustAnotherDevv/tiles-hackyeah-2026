@@ -19,9 +19,18 @@ import pytest
 from tests.lib.client import KIND_BY_SURFACE
 from tests.lib.matrix import RESULTS, Entry
 from tests.lib.privacy import mask_text
+from tests.lib.stack import is_live
 
 ROOT = Path(__file__).resolve().parents[2]
 SEED_BUNDLE = ROOT / "config" / "feeds" / "seed_bundle.json"
+
+
+def _missing(reason: str) -> None:
+    """Hermetic: the golden policy ships inline tests and the routes, so absence is a failure.
+    Live (AEGIS_LIVE_URL): the remote gateway may run another build/policy, so skip."""
+    if is_live():
+        pytest.skip(reason)
+    pytest.fail(reason, pytrace=False)
 
 
 def _blockish(a: str | None) -> bool:
@@ -31,15 +40,15 @@ def _blockish(a: str | None) -> bool:
 def test_policy_inline_tests(gw: Any) -> None:
     pol = gw.policy()
     if not pol.get("yaml"):
-        pytest.skip("GET /api/policy unavailable")
+        _missing("GET /api/policy unavailable")
     r = gw.api("POST", "/api/policy/validate", json={"yaml": pol["yaml"]})
     if r.status_code in (404, 405, 501):
-        pytest.skip(f"/api/policy/validate not available ({r.status_code})")
+        _missing(f"/api/policy/validate not available ({r.status_code})")
     assert r.status_code == 200, r.text[:300]
     rep = r.json()
     results = rep.get("selftest") or []
     if not results:
-        pytest.skip("policy has no inline tests (or self-test not run)")
+        _missing("policy has no inline tests (or self-test not run)")
     failed = []
     for t in results:
         exp = t.get("expect") or "allow"

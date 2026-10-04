@@ -20,6 +20,7 @@ import type {
 import { mockApproval, mockApprovals, mockCancel, mockSimulate, mockVote, type ApprovalStatusFilter } from '@/mocks/governance/approvals';
 import { mockAgentsList, mockCreateMember, mockMembersList, mockOrg, mockPatchAgent, mockPatchMember, mockWhoAmI } from '@/mocks/governance/org';
 import { mockRules } from '@/mocks/governance/rules';
+import { isMockForced } from '@/lib/mockMode';
 
 export type { ApprovalStatusFilter };
 
@@ -140,8 +141,30 @@ export function parseApiError(e: unknown): ParsedApiError {
     else if (typeof rec.message === 'string' && rec.message) out.message = rec.message;
   }
   if (!out.type && typeof rec.type === 'string') out.type = rec.type;
-  if (out.status === 0 || (out.status === null && /fetch|network/i.test(out.message))) out.message = 'Gateway unreachable — is it running on :8787?';
+  if (out.type !== 'not_applied' && (out.status === 0 || (out.status === null && /fetch|network/i.test(out.message)))) out.message = 'Gateway unreachable — is it running on :8787?';
   return out;
+}
+
+/** Thrown when a mutation was answered by the in-browser mock store instead of the gateway. */
+export class NotAppliedError extends Error {
+  readonly status = 0;
+  readonly envelope = { error: { type: 'not_applied', message: 'The gateway did not answer, so nothing was applied. Check that it is running on :8787 and retry.' } };
+  constructor() {
+    super('The gateway did not answer, so nothing was applied.');
+    this.name = 'NotAppliedError';
+  }
+}
+
+/** Mutations must never report a mock result as success unless mock mode was explicitly forced. */
+export function assertApplied<R>(res: R): R {
+  const rec = asRecord(res);
+  if (rec && rec.isMock === true && !isMockForced()) throw new NotAppliedError();
+  return res;
+}
+
+/** 404/409 on a decision: the request was decided, cancelled or expired elsewhere; refetch. */
+export function isStaleApproval(p: ParsedApiError): boolean {
+  return p.status === 404 || p.status === 409 || p.type === 'not_found' || p.type === 'conflict';
 }
 
 /** Short human title for a parsed error. */
@@ -154,7 +177,13 @@ export function errorTitle(p: ParsedApiError): string {
     case 'approval_denied':
       return 'Approval denied';
     case 'conflict':
-      return 'Conflict';
+      return 'Already decided or changed';
+    case 'not_found':
+      return 'No longer exists';
+    case 'rate_limited':
+      return 'Rate limited, try again shortly';
+    case 'not_applied':
+      return 'Not applied';
     case 'invalid_request':
       return 'Invalid request';
     case 'budget_exceeded':

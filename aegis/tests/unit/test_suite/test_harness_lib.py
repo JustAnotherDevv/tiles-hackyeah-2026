@@ -45,6 +45,19 @@ def test_encoders_nest_innermost_first() -> None:
     assert not macros.has_macro(macros.expand("{{b64url:{{gen:jwt}}}}"))
 
 
+def test_sample_macro_is_base64_of_generated_artifact() -> None:
+    from aegis.feed.samples import SAMPLES
+
+    for name in ("weights.bin", "ssti.gguf", "model.safetensors"):
+        out = macros.expand("{{sample:" + name + "}}")
+        assert base64.b64decode(out) == SAMPLES[name][0]()
+        assert macros.expand(f"{{{{sample:{name}}}}}") == out  # cached per run
+    meta = macros.expand_obj({"artifact_b64": "{{sample:nullifai.bin}}", "filename": "x.bin"})
+    assert base64.b64decode(meta["artifact_b64"]).startswith(b"7z")
+    with pytest.raises(KeyError, match="unknown sample"):
+        macros.expand("{{sample:no-such-file.bin}}")
+
+
 # ---------------------------------------------------------------- loader
 def test_loader_defaults_lines_and_typos(tmp_path: Path) -> None:
     p = tmp_path / "dlp.yaml"

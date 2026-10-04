@@ -214,5 +214,12 @@ export function firstName(name: string | null | undefined): string {
  */
 export function displayTitle(title: string | null | undefined): string {
   if (!title) return '';
-  return title.replace(/\b([a-z][a-z0-9_-]*)\(at\)([a-z][a-z0-9_-]*)\b(?![.(\w-])/g, '$1@$2');
+  return title
+    .replace(/\b([a-z][a-z0-9_-]*)\(at\)([a-z][a-z0-9_-]*)\b(?![.(\w-])/g, '$1@$2')
+    .replace(/\b(day|month|session) (usd|tokens|compute_s) (\d[\d.,]*) → (\d[\d.,]*)/g, (_m, period: string, unit: string, from: string, to: string) => {
+      const label = period === 'day' ? 'daily' : period === 'month' ? 'monthly' : 'per-session';
+      if (unit === 'usd') return `${label} budget $${from} → $${to}`;
+      const u = unit === 'tokens' ? ' tokens' : ' s';
+      return `${label} ${unit === 'tokens' ? 'token' : 'compute'} budget ${from}${u} → ${to}${u}`;
+    });
 }

@@ -2,7 +2,7 @@
 // POST /api/approvals/{id}/approve|deny?view_as=… → result toast (id apr-<id>); 403 shown verbatim.
 // Owner: B18-dashboard-gov-approvals.
 import { displayTitle } from '@/components/governance/lib/format-gov';
-import { Check, LoaderCircle, X } from 'lucide-react';
+import { Check, LoaderCircle, X } from '@/components/icons';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { ApprovalRequest } from '@/api/types';
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { ApproverBadge } from '../ApproverBadge';
-import { errorTitle, govApi, parseApiError } from '../gov-api';
+import { assertApplied, errorTitle, govApi, isStaleApproval, parseApiError } from '../gov-api';
 import { approveLabel, type Viewer } from '../lib/eligibility';
 import { fmtMoney } from '../lib/format-gov';
 import { toastDecision } from './util';
@@ -31,7 +31,8 @@ export interface DecideDialogProps {
   viewer: Viewer;
   viewerName: string;
   sponsorId: string | null;
-  onDone: (res: ApprovalRequest) => void;
+  /** Called with the server answer, or without one when the request turned out stale (404/409). */
+  onDone: (res?: ApprovalRequest) => void;
 }
 
 export function DecideDialog({ req, mode, open, onOpenChange, viewer, viewerName, sponsorId, onDone }: DecideDialogProps) {
@@ -53,13 +54,20 @@ export function DecideDialog({ req, mode, open, onOpenChange, viewer, viewerName
     if (!req || tooShort || busy) return;
     setBusy(true);
     try {
-      const res = deny ? await govApi.deny(req.id, viewer.member_id, comment.trim()) : await govApi.approve(req.id, viewer.member_id, comment.trim() || null);
+      const res = assertApplied(deny ? await govApi.deny(req.id, viewer.member_id, comment.trim()) : await govApi.approve(req.id, viewer.member_id, comment.trim() || null));
       toastDecision(res.data, mode, viewerName);
       onDone(res.data);
       onOpenChange(false);
     } catch (e) {
       const p = parseApiError(e);
-      toast.error(errorTitle(p), { id: `apr-${req.id}`, description: p.message });
+      if (isStaleApproval(p)) {
+        // decided / cancelled / expired elsewhere (other persona, TTL): refetch and close
+        toast.error(errorTitle(p), { id: `apr-${req.id}`, description: `${p.message} The inbox has been refreshed.` });
+        onDone();
+        onOpenChange(false);
+      } else {
+        toast.error(errorTitle(p), { id: `apr-${req.id}`, description: p.message });
+      }
     } finally {
       setBusy(false);
     }
@@ -103,7 +111,7 @@ export function DecideDialog({ req, mode, open, onOpenChange, viewer, viewerName
                   key={p}
                   type="button"
                   onClick={() => setComment(p)}
-                  className={cn('rounded-full border border-border bg-surface-2 px-2 py-0.5 text-2xs text-text-2 hover:border-border-strong hover:text-text-1', comment === p && 'border-block/40 text-block')}
+                  className={cn('rounded-sm border border-border bg-surface-2 px-2 py-1 text-2xs text-text-2 hover:border-border-strong hover:text-text-1', comment === p && 'border-block/40 text-block')}
                 >
                   {p.split(' — ')[0]}
                 </button>

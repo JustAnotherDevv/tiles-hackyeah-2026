@@ -5,8 +5,9 @@
 - lifespan: `Runtime(settings).build()` → `await rt.start()` → `set_runtime(rt)` →
   `app.state.rt = rt` → routers' `on_startup(rt)` hooks → `system` "gateway started" event;
   teardown in reverse (on_shutdown hooks, shared upstream client, `rt.stop()`);
-- pure-ASGI middleware (streaming untouched): request-size guard (413) and the optional admin
-  token for mutating `/api/*` calls (`AEGIS_ADMIN_TOKEN`);
+- pure-ASGI middleware (streaming untouched): request-size guard (413, Content-Length and
+  streamed/chunked bodies), the optional admin token for mutating `/api/*` calls
+  (`AEGIS_ADMIN_TOKEN`) and a last-resort 500 envelope that keeps the connection alive;
 - exception handlers: `AegisHTTPError` → envelope; validation errors → 400/422 `invalid_request`;
   HTTP errors → envelope; unhandled → 500 `internal_error` — always in the wire format of the
   data-plane path (`/v1/messages` Anthropic, `/v1/chat…` OpenAI, `/ollama` Ollama).
@@ -26,7 +27,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from aegis import __version__
 from aegis.core import discovery
@@ -76,8 +77,30 @@ async def _send_json(send: Send, status: int, body: dict[str, Any],
     await send({"type": "http.response.body", "body": payload})
 
 
+def _envelope_for_path(path: str, type_: str, message: str) -> dict[str, Any]:
+    """Standard error body in the wire format of `path` (JSON-RPC for `/mcp/*`)."""
+    if path.startswith("/mcp"):
+        from aegis.mcp.jsonrpc import INTERNAL_ERROR, INVALID_REQUEST, jsonrpc_error
+
+        code = INTERNAL_ERROR if type_ == "internal_error" else INVALID_REQUEST
+        return jsonrpc_error(None, code, f"[Aegis] {message}")
+    from aegis.core.errors import error_inner, wire_body
+
+    wire = wire_for_path(path)
+    return wire_body(wire, type_, message) if wire else {"error": error_inner(type_, message)}
+
+
 class GuardMiddleware:
-    """Request-size guard + admin token (pure ASGI so streaming responses are untouched)."""
+    """Request-size guard + admin token + last-resort error envelope (pure ASGI so streaming
+    responses are untouched).
+
+    - Body size: the Content-Length fast path rejects early; chunked / streamed bodies are counted
+      while the app reads them and answered with 413 as soon as the limit is crossed (the app then
+      sees a client disconnect and its own output is discarded) — R1.
+    - Unhandled exceptions are answered here with the standard 500 envelope instead of reaching
+      Starlette's ServerErrorMiddleware, which re-raises and makes the server drop the keep-alive
+      connection — R12. Internals (exception text / traceback) are only logged, never returned.
+    """
 
     def __init__(self, app: ASGIApp, fastapi_app: Any = None) -> None:
         self.app = app
@@ -92,19 +115,13 @@ class GuardMiddleware:
         headers = {k.decode("latin-1").lower(): v.decode("latin-1")
                    for k, v in scope.get("headers", [])}
         state_app = self.fastapi_app or scope.get("app")
-        # 1. body size
+        limit = _max_body(state_app)
+        # 1. body size (declared)
         length = headers.get("content-length")
-        if length and length.isdigit():
-            limit = _max_body(state_app)
-            if int(length) > limit:
-                from aegis.core.errors import wire_body
-
-                wire = wire_for_path(path)
-                msg = f"request body too large ({int(length)} > {limit} bytes)"
-                body = (wire_body(wire, "invalid_request", msg) if wire
-                        else {"error": {"type": "payload_too_large", "message": msg}})
-                await _send_json(send, 413, body)
-                return
+        if length and length.isdigit() and int(length) > limit:
+            msg = f"request body too large ({int(length)} > {limit} bytes)"
+            await _send_json(send, 413, _envelope_for_path(path, "payload_too_large", msg))
+            return
         # 2. admin token for mutating dashboard calls
         settings = getattr(getattr(state_app, "state", None), "settings", None)
         token = getattr(settings, "admin_token", None)
@@ -117,7 +134,50 @@ class GuardMiddleware:
                     "required_role": None, "expires_at": None, "scope": None,
                     "retry_after_s": None}})
                 return
-        await self.app(scope, receive, send)
+        # 3. streamed body counting + last-resort error envelope
+        received = 0
+        started = False
+        rejected = False
+
+        async def guarded_receive() -> Message:
+            nonlocal received, rejected, started
+            if rejected:
+                return {"type": "http.disconnect"}
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body") or b"")
+                if received > limit:
+                    rejected = True
+                    log.warning("request body over limit path=%s received=%d limit=%d",
+                                path, received, limit)
+                    if not started:
+                        started = True
+                        msg = f"request body too large (> {limit} bytes)"
+                        await _send_json(send, 413,
+                                         _envelope_for_path(path, "payload_too_large", msg))
+                    return {"type": "http.disconnect"}
+            return message
+
+        async def guarded_send(message: Message) -> None:
+            nonlocal started
+            if rejected:
+                return  # 413 already answered; drop whatever the app produces after the cut
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, guarded_receive, guarded_send)
+        except Exception as exc:
+            if rejected:
+                log.debug("app aborted after body limit path=%s (%s)", path, type(exc).__name__)
+                return
+            if started:
+                raise  # response already on the wire; nothing sane left to send
+            log.exception("unhandled error path=%s", path, exc_info=exc)
+            started = True
+            await _send_json(send, 500, _envelope_for_path(path, "internal_error",
+                                                           "internal error"))
 
 
 def _error_response(request: Request, status: int, type_: str, message: str,
@@ -155,8 +215,7 @@ def _install_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception) -> JSONResponse:
         log.exception("unhandled error path=%s", request.url.path, exc_info=exc)
-        return _error_response(request, 500, "internal_error",
-                               f"internal error ({type(exc).__name__})")
+        return _error_response(request, 500, "internal_error", "internal error")
 
 
 async def _run_hooks(routers: list[Any], name: str, rt: Any, *, reverse: bool = False) -> None:

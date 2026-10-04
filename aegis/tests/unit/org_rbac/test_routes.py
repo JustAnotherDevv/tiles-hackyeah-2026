@@ -62,7 +62,8 @@ async def test_whoami(client, helpers):
     assert {o["member_id"] for o in data["view_as_options"]} >= {"u_katarzyna", "u_piotr"}
     r = await client.get("/api/whoami", headers={"X-Aegis-View-As": "member"})
     assert r.json()["identity"]["member_id"] == "u_piotr"
-    r = await client.get("/api/whoami")
+    # R6: no view-as -> default viewer only for the dashboard's same-origin browser fetch
+    r = await client.get("/api/whoami", headers={"Sec-Fetch-Site": "same-origin"})
     body = WhoAmITS.model_validate(r.json())
     assert body.identity.member_id == "u_katarzyna"
     assert body.permissions.can_apply_policy == "yes"

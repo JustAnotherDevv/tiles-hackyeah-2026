@@ -2,7 +2,7 @@
 // /api/budgets, kept fresh by `killswitch` SSE events), feed update rejected (until a later feed.updated),
 // and "live updates offline" after 10 s offline (never when mocks are forced). Owner: dashboard-shell (B16).
 import { AnimatePresence, motion } from 'framer-motion';
-import { Power, ShieldAlert, WifiOff, X } from 'lucide-react';
+import { Power, ShieldAlert, WifiOff, X } from '@/components/icons';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { eventHub } from '@/api/sse';
@@ -19,13 +19,13 @@ function Banner({ tone, icon, children, actions }: { tone: 'bad' | 'warn'; icon:
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
       className="overflow-hidden"
     >
       <div
         className={cn(
-          'flex min-h-9 items-center gap-2.5 border-b px-6 py-1.5 text-[12.5px]',
-          tone === 'bad' ? 'border-block/30 bg-[linear-gradient(90deg,rgba(225,29,72,0.16),rgba(225,29,72,0.05))] text-[#FECDD3]' : 'border-redact/25 bg-redact/[0.07] text-[#FDE68A]',
+          'flex min-h-9 items-center gap-2.5 border-b px-[var(--gutter)] py-1.5 text-[12.5px]',
+          tone === 'bad' ? 'border-block/30 bg-block/[0.1] text-[#FECDD3]' : 'border-redact/25 bg-redact/[0.07] text-[#FDE68A]',
         )}
         role="status"
       >

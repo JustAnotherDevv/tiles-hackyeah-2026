@@ -1,6 +1,6 @@
 // KPI tile (DESIGN_TOKENS §6): label + icon → 28 px tabular value (count-up, bump on increase) →
 // foot (delta pill + hint) → 28 px sparkline. Optional tone accent hairline, footer slot and link.
-import type { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from '@/components/icons';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Sparkline } from '@/components/charts/Sparkline';
@@ -72,9 +72,6 @@ export function KpiTile({ label, value, delta, deltaGoodWhen = 'up', hint, icon,
 
   const body = (
     <>
-      {tone !== 'neutral' ? (
-        <span className="pointer-events-none absolute inset-x-4 top-0 h-px" style={{ background: `linear-gradient(90deg, transparent, ${TONE_FG[tone]}, transparent)`, opacity: 0.7 }} />
-      ) : null}
       <div className="flex items-center gap-1.5 text-xs leading-4 text-text-3">
         {Icon ? <Icon className="size-3.5 shrink-0" /> : null}
         <span className="truncate">{label}</span>

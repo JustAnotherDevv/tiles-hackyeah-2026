@@ -1,6 +1,7 @@
 // Live feed data: backfill (GET /api/decisions) + live SSE ring buffer (shell) + "Load older" cursor pages,
 // deduped by id, newest first, capped at 300 rows. Pause freezes the visible list and buffers new ids.
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 import { api } from '@/api/client';
 import { useApi, useLiveDecisions } from '@/api/hooks';
 import type { DecisionSummary, Page } from '@/api/types';
@@ -34,6 +35,10 @@ export interface FeedItems {
   /** Server-side history search results (UIX-14) — merged into `all` when present. */
   searchHistory: () => Promise<void>;
   searching: boolean;
+  /** Backfill (GET /api/decisions) failure, if any — the SSE rows may still be flowing. */
+  error: Error | null;
+  /** Re-run the backfill request. */
+  retry: () => void;
 }
 
 export function useFeedItems(filter: DecisionFilter): FeedItems {
@@ -94,6 +99,8 @@ export function useFeedItems(filter: DecisionFilter): FeedItems {
       const r = await api.get<Page<DecisionSummary>>(`/api/decisions?limit=100&cursor=${encodeURIComponent(nextCursor)}`, () => ({ items: [], next_cursor: null }));
       setOlder((o) => [...o, ...(r.data.items ?? [])]);
       setCursor(r.data.next_cursor ?? null);
+    } catch (e) {
+      toast.error('Could not load older decisions', { description: e instanceof Error ? e.message : String(e) });
     } finally {
       setLoadingOlder(false);
     }
@@ -103,11 +110,24 @@ export function useFeedItems(filter: DecisionFilter): FeedItems {
     setSearching(true);
     try {
       const r = await api.get<Page<DecisionSummary>>(`/api/decisions?limit=200${toApiQuery(filter)}`, () => ({ items: [], next_cursor: null }));
-      setOlder((o) => [...o, ...(r.data.items ?? [])]);
+      const found = r.data.items ?? [];
+      setOlder((o) => [...o, ...found]);
+      toast.message(found.length ? `History search: ${found.length} matching decision${found.length === 1 ? '' : 's'} merged into the feed` : 'History search: no older matches');
+    } catch (e) {
+      toast.error('History search failed', { description: e instanceof Error ? e.message : String(e) });
     } finally {
       setSearching(false);
     }
   }, [filter]);
+
+  // The backfill is a one-shot GET: if it failed (gateway down at page load) or was served from mocks, refetch it
+  // once the live stream (re)connects, so real history replaces the gap instead of mixing with fabricated rows.
+  const { refresh: refreshBackfill } = backfill;
+  const backfillStale = Boolean(backfill.error) || backfill.isMock;
+  useEffect(() => {
+    if (live.connected && backfillStale) void refreshBackfill();
+  }, [live.connected, backfillStale, refreshBackfill]);
+  const retry = useCallback(() => void refreshBackfill(), [refreshBackfill]);
 
   return {
     rows,
@@ -125,5 +145,7 @@ export function useFeedItems(filter: DecisionFilter): FeedItems {
     loadingOlder,
     searchHistory,
     searching,
+    error: backfill.error,
+    retry,
   };
 }

@@ -1,0 +1,108 @@
+{
+  "_comment": "Beat plan shared by drive.py (capture) and render.py (video). Durations are seconds on screen. Captions must stay factual: everything on the device in mock mode is simulated data. A beat with variants picks its caption from the variant the driver recorded in capture.json.",
+  "title": {
+    "duration": 3.6,
+    "headline": "Aegis Pocket",
+    "tagline": "Approve AI agents, safely, from your pocket.",
+    "meta": "Native ArkTS / ArkUI · HarmonyOS, minimum API 20",
+    "team": "Team JustAnotherDevv"
+  },
+  "end": {
+    "duration": 4.4,
+    "headline": "Aegis Pocket",
+    "repo": "github.com/JustAnotherDevv/tiles-hackyeah-2026",
+    "team": "Team JustAnotherDevv",
+    "kits": "User Authentication Kit · Notification Kit · Form Kit · Background Tasks Kit · Sensor Service Kit · ArkData",
+    "note": "Recorded on the DevEco HarmonyOS emulator. Requests, agents and numbers are mock data simulated on the device."
+  },
+  "footer": "DevEco HarmonyOS emulator · HarmonyOS 6.1.1 (API 24) · mock data",
+  "beats": [
+    {
+      "id": "home",
+      "duration": 5.0,
+      "title": "Posture at a glance",
+      "chip": "ArkUI · MOCK MODE",
+      "caption": "Pending approvals, threats blocked, personal data redacted and budget left. All numbers are mock data simulated on the device."
+    },
+    {
+      "id": "arrival",
+      "duration": 4.0,
+      "title": "An agent asks",
+      "chip": "Notification Kit",
+      "caption": "A simulated agent request arrives (mock data). The app posts a local notification and shows an in-app banner."
+    },
+    {
+      "id": "shade",
+      "duration": 4.2,
+      "title": "Open it from the shade",
+      "chip": "Notification Kit · WantAgent",
+      "caption": "Tapping the notification opens that exact request through a WantAgent deep link.",
+      "variants": {
+        "banner": {
+          "title": "Open the request",
+          "chip": "Notification Kit",
+          "caption": "The request is opened from the app's inbox."
+        }
+      }
+    },
+    {
+      "id": "risk",
+      "duration": 7.0,
+      "title": "Why a human is asked",
+      "chip": "On-device, rule-based",
+      "caption": "A 0-100 risk score with plain-language reasons, computed on the phone. The agent's own note is labelled untrusted and never scored."
+    },
+    {
+      "id": "request",
+      "duration": 4.0,
+      "title": "A $50 subscription",
+      "chip": "Role rules",
+      "caption": "This one needs an admin. Acting as Emily (admin); a sponsor can never approve their own agent's request."
+    },
+    {
+      "id": "stepup",
+      "duration": 6.2,
+      "title": "Step-up before approving",
+      "chip": "User Authentication Kit",
+      "caption": "Approve first asks for face, fingerprint or PIN. The emulator has no authenticator, so the app shows its labelled manual fallback.",
+      "variants": {
+        "sheet": {
+          "caption": "Approve first asks for face, fingerprint or PIN through the system authentication sheet. Cancelling approves nothing."
+        }
+      }
+    },
+    {
+      "id": "approved",
+      "duration": 4.0,
+      "title": "Decision recorded",
+      "chip": "Mock gateway",
+      "caption": "Approved after the manual confirmation; the pending count drops. Denying never asks for authentication.",
+      "variants": {
+        "sheet": {
+          "caption": "Authentication was cancelled, so nothing was approved. Denying never asks for authentication."
+        }
+      }
+    },
+    {
+      "id": "preview",
+      "duration": 7.4,
+      "title": "What data leaves",
+      "chip": "On-device redaction",
+      "caption": "Synthetic email, PESEL, IBAN and card number become [EMAIL_1], [PESEL_1]... placeholders, checked by checksum, on the phone.",
+      "variants": {
+        "sample": {
+          "caption": "The built-in synthetic sample: email, phone, PESEL, IBAN and card number become [EMAIL_1], [PESEL_1]... placeholders, on the phone."
+        }
+      }
+    },
+    {
+      "id": "widget",
+      "duration": 4.2,
+      "optional": true,
+      "title": "On the home screen",
+      "chip": "Form Kit service widget",
+      "caption": "The AI posture widget (MOCK badge) shows what is waiting, updated by the app."
+    }
+  ],
+  "sample_text": "Refund for anna.kowalska@example.com, PESEL 44051401359, IBAN PL61 1090 1014 0000 0712 1981 2874, card 4111 1111 1111 1111"
+}

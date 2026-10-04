@@ -1,7 +1,6 @@
 // Requested ✓ → Rule ✓ → approver slot(s) → Executed. Real data only (votes, execution, uses).
 // Owner: B18-dashboard-gov-approvals.
-import { motion } from 'framer-motion';
-import { Check, ChevronRight, FileCode, Play, Send, ShieldCheck, User, X } from 'lucide-react';
+import { Check, ChevronRight, FileCode, Play, Send, ShieldCheck, User, X } from '@/components/icons';
 import type { ReactNode } from 'react';
 import type { ApprovalRequest } from '@/api/types';
 import { cn } from '@/lib/utils';
@@ -13,21 +12,19 @@ type StepState = 'done' | 'active' | 'idle' | 'fail';
 
 function Step({ state, icon, children, i }: { state: StepState; icon: ReactNode; children: ReactNode; i: number }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -6 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: i * 0.05, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+    <div
+      data-step={i}
       className={cn(
-        'flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors duration-300',
+        'flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors duration-150',
         state === 'done' && 'border-allow/30 bg-allow/10 text-text-1',
-        state === 'active' && 'border-approval/40 bg-approval/10 text-text-1 shadow-[0_0_0_3px_rgba(139,92,246,.08)]',
+        state === 'active' && 'border-approval/40 bg-approval/10 text-text-1',
         state === 'idle' && 'border-border bg-surface-2 text-text-3',
         state === 'fail' && 'border-block/35 bg-block/10 text-block',
       )}
     >
       <span className={cn('grid size-4 place-items-center', state === 'done' ? 'text-allow' : state === 'active' ? 'text-approval' : '')}>{icon}</span>
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -65,7 +62,7 @@ export function RoutingSteps({ req, dir }: { req: ApprovalRequest; dir: Director
       if (v) {
         slots.push(
           <Step key={`s-${k}`} i={++i} state="done" icon={<Check className="size-3.5" />}>
-            {name(v.member_id)} ✓<span className="text-2xs text-text-3">{v.role}</span>
+            {name(v.member_id)}<span className="text-2xs text-text-3">{v.role}</span>
           </Step>,
         );
       } else if (deny && k === approvals.length) {

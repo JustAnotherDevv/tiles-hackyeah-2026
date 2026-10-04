@@ -1,7 +1,8 @@
 // Decision drawer (~640 px Sheet) + full-page container + DecisionLink (exported for other dashboards).
-import { Download, ExternalLink, FlaskConical, SearchX } from 'lucide-react';
+import { CloudOff, Download, ExternalLink, FlaskConical, RefreshCw, SearchX } from '@/components/icons';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
+import { isApiRequestError } from '@/api/client';
 import type { DecisionDetail, DecisionSummary } from '@/api/types';
 import { ActionBadge, EmptyState, MockBadge, TimeAgo } from '@/components/shell';
 import { Button } from '@/components/ui/button';
@@ -36,15 +37,15 @@ export function DecisionHeader({ d, isMock, right }: { d: DecisionSummary; isMoc
       <div className="flex flex-wrap items-center gap-2">
         <ActionBadge action={d.action} size="lg" />
         <SurfaceTag surface={d.surface} direction={d.direction} />
-        {d.tool_name ? <span className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2">{d.tool_name}</span> : null}
-        <span className="text-xs text-text-3">
+        {d.tool_name ? <span className="inline-flex h-5 max-w-full items-center truncate rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2">{d.tool_name}</span> : null}
+        <span className="whitespace-nowrap text-xs text-text-3">
           <TimeAgo ts={d.ts} />
         </span>
-        {d.dry_run ? <span className="rounded-full border border-border px-1.5 text-2xs text-text-3">dry run</span> : null}
+        {d.dry_run ? <span className="inline-flex h-5 items-center rounded-xs border border-border px-1.5 text-2xs text-text-3">Dry run</span> : null}
         {isMock ? <MockBadge /> : null}
         {right ? <div className="ml-auto flex items-center gap-1">{right}</div> : null}
       </div>
-      <div className="line-clamp-2 break-all font-mono text-[13px] leading-5 text-text-1" title={d.preview}>
+      <div className="line-clamp-3 font-mono text-[12.5px] leading-5 text-text-1 [overflow-wrap:anywhere] sm:line-clamp-2" title={d.preview}>
         {d.preview || title}
       </div>
     </div>
@@ -54,8 +55,8 @@ export function DecisionHeader({ d, isMock, right }: { d: DecisionSummary; isMoc
 export function DecisionFooter({ detail, onOpenPage }: { detail: DecisionDetail; onOpenPage?: () => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="inline-flex items-center gap-1 font-mono text-2xs text-text-3">
-        {detail.id}
+      <span className="inline-flex min-w-0 items-center gap-1 font-mono text-2xs text-text-3">
+        <span className="truncate">{detail.id}</span>
         <CopyButton value={detail.id} label="decision id" />
       </span>
       <span className="inline-flex items-center gap-1 font-mono text-2xs text-text-3">
@@ -129,19 +130,36 @@ export function DecisionView({
 
   const summary: DecisionSummary | null = detail ?? hint ?? null;
   if (!detail && !res.loading && res.error) {
+    // 404 → the id is unknown (or not yet indexed); anything else is a load failure we can retry. Never invent a detail.
+    const notFound = isApiRequestError(res.error) && res.error.status === 404;
     return (
-      <div className={cn(layout === 'drawer' && 'px-5 py-4')}>
+      <div className={cn(layout === 'drawer' && 'px-4 py-4 pr-12 sm:px-5 sm:pr-12')}>
         {summary ? <DecisionHeader d={summary} /> : null}
-        <EmptyState icon={SearchX} title="Decision not found or not yet indexed" hint={res.error.message} />
+        <EmptyState
+          icon={notFound ? SearchX : CloudOff}
+          title={notFound ? 'Decision not found' : 'Could not load this decision'}
+          hint={notFound ? `No decision with id ${decisionId}. It may belong to another gateway instance or a reset demo store.` : res.error.message}
+          action={
+            notFound ? (
+              <Button asChild variant="secondary" size="sm">
+                <Link to="/security/live">Open live decisions</Link>
+              </Button>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={() => void res.refresh()}>
+                <RefreshCw /> Retry
+              </Button>
+            )
+          }
+        />
       </div>
     );
   }
   return (
     <div className={cn('flex min-h-0 flex-col', layout === 'drawer' ? 'h-full' : '')}>
-      <div className={cn(layout === 'drawer' ? 'border-b border-border px-5 pb-3 pt-4 pr-12' : 'mb-4')}>
+      <div className={cn(layout === 'drawer' ? 'border-b border-border px-4 pb-3 pr-12 pt-4 sm:px-5 sm:pr-12' : 'mb-4')}>
         {summary ? <DecisionHeader d={summary} isMock={res.isMock} /> : <Skeleton className="h-12 w-full" />}
       </div>
-      <div className={cn(layout === 'drawer' ? 'min-h-0 flex-1 overflow-y-auto px-5 py-4' : '')}>
+      <div className={cn(layout === 'drawer' ? 'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5' : '')}>
         {detail ? (
           <DecisionTrace
             detail={detail}
@@ -158,7 +176,7 @@ export function DecisionView({
         )}
       </div>
       {detail ? (
-        <div className={cn(layout === 'drawer' ? 'border-t border-border bg-surface-1/60 px-5 py-3' : 'mt-6 border-t border-border pt-3')}>
+        <div className={cn(layout === 'drawer' ? 'border-t border-border bg-surface-1 px-4 py-2.5 sm:px-5' : 'mt-6 border-t border-border pt-3')}>
           <DecisionFooter detail={detail} onOpenPage={layout === 'drawer' ? onOpenPage : undefined} />
         </div>
       ) : null}
@@ -179,7 +197,7 @@ export function DecisionDrawer({
 }) {
   return (
     <Sheet open={open && Boolean(decisionId)} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-[680px] data-[side=right]:sm:max-w-[680px]">
+      <SheetContent side="right" className="w-full gap-0 p-0 data-[side=right]:w-full sm:max-w-[680px] data-[side=right]:sm:max-w-[680px] data-[side=right]:2xl:max-w-[760px]">
         <SheetTitle className="sr-only">Decision trace</SheetTitle>
         <SheetDescription className="sr-only">Why Aegis decided what it did for this request</SheetDescription>
         {decisionId ? <DecisionView decisionId={decisionId} hint={hint} layout="drawer" onOpenPage={() => onOpenChange(false)} /> : null}

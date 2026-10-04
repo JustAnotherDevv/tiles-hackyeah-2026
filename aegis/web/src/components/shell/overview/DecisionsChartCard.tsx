@@ -54,6 +54,9 @@ export function DecisionsChartCard({ d, className }: { d: OverviewData; classNam
         kind="bar"
         stacked
         height={232}
+        // No bar tween: the last bucket updates on every 2 s stats tick, and recharts' JavascriptAnimate could
+        // re-trigger itself under heavy CPU load ("Maximum update depth exceeded" crashed the overview).
+        animate={false}
         series={series}
         xFormat={tickFormat(v?.window ?? '24h')}
         tooltipLabel={(x) => new Date(x).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}

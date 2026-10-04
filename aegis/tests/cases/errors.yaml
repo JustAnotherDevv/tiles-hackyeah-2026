@@ -10,4 +10,4 @@ cases:
   - {id: ERR-APPROVAL-NOT-FOUND, expect: "error:404", method: GET, path: /api/approvals/apr_b22_does_not_exist, view_as: u_emily}
   - {id: ERR-GUARD-BAD-SURFACE, expect: "error:400", method: POST, path: /v1/guard, json: {interaction: {kind: model_call, surface: not.a.surface, text: hi}}, note: "invalid interaction -> 400 invalid_request"}
   - {id: ERR-KILLSWITCH-BAD-SCOPE, control: EXE-04, expect: "error:400", method: POST, path: /api/killswitch, view_as: u_marek, json: {scope: "planet:earth", active: true, reason: test}}
-  - {id: ERR-MCP-UNKNOWN-SERVER, control: MCP-01, via: mcp, polarity: error, expect: "error:-32001", tool: not-a-server.tool, hermetic_only: true, note: "needs an MCP upstream in the stack; skipped otherwise"}
+  - {id: ERR-MCP-UNKNOWN-SERVER, control: MCP-01, via: mcp, polarity: error, expect: "error:-32001", tool: not-a-server.tool, hermetic_only: true, note: "unregistered server: refused by the gateway itself, no MCP upstream needed"}

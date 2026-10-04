@@ -5,7 +5,7 @@
 
 /* keyframes used by plain classes below (also declared in @theme for animate-* utilities) */
 @keyframes ping-dot { 0% { transform: scale(0.6); opacity: 0.9; } 100% { transform: scale(1.9); opacity: 0; } }
-@keyframes row-in { 0% { background-color: rgba(99, 102, 241, 0.14); } 100% { background-color: transparent; } }
+@keyframes row-in { 0% { background-color: rgba(47, 111, 228, 0.12); } 100% { background-color: transparent; } }
 @keyframes row-in-block { 0% { background-color: rgba(242, 85, 111, 0.16); } 100% { background-color: transparent; } }
 
 /* ---------------------------------------------------------------- scrollbars */
@@ -23,44 +23,15 @@
 *::-webkit-scrollbar-thumb:hover { background: #2e333b; background-clip: padding-box; border: 3px solid transparent; }
 *::-webkit-scrollbar-track { background: transparent; }
 
-/* ---------------------------------------------------------------- canvas: faint grid + glow */
+/* ---------------------------------------------------------------- canvas (flat: no grid, no glow) */
 .aegis-canvas {
   position: relative;
   isolation: isolate;
 }
-.aegis-canvas::before {
-  /* 24 px grid at ~3 % opacity, masked radially from the top so it fades out */
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.028) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
-  background-size: 24px 24px;
-  -webkit-mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
-  mask-image: radial-gradient(ellipse 80% 55% at 50% 0%, #000 0%, transparent 75%);
-}
-.aegis-canvas::after {
-  /* very low-opacity indigo glow behind the page header */
-  content: "";
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-  top: -220px;
-  left: 50%;
-  width: min(1100px, 90%);
-  height: 420px;
-  transform: translateX(-50%);
-  background: radial-gradient(closest-side, rgba(99, 102, 241, 0.085), transparent);
-}
 
 .glass {
-  background: color-mix(in oklab, var(--surface-1) 82%, transparent);
-  -webkit-backdrop-filter: saturate(140%) blur(10px);
-  backdrop-filter: saturate(140%) blur(10px);
-  box-shadow: var(--shadow-card);
+  background: var(--surface-1);
+  box-shadow: none;
 }
 
 /* ---------------------------------------------------------------- live dot (only looping anim besides ticker) */
@@ -68,40 +39,40 @@
   position: relative;
   display: inline-block;
   flex-shrink: 0;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--allow);
   --ld: var(--allow);
 }
 .live-dot::after {
+  /* soft halo instead of a looping ping: static, reads as "on" without motion */
   content: "";
   position: absolute;
   inset: -3px;
   border-radius: 50%;
-  border: 1.5px solid var(--ld);
-  opacity: 0;
-  animation: ping-dot 1.8s var(--ease-out, cubic-bezier(0.16, 1, 0.3, 1)) infinite;
+  background: var(--ld);
+  opacity: 0.18;
 }
 .live-dot[data-tone="bad"] { background: var(--block); --ld: var(--block); }
 .live-dot[data-tone="warn"] { background: var(--redact); --ld: var(--redact); }
 .live-dot[data-tone="info"] { background: var(--accent-fg); --ld: var(--accent-fg); }
 .live-dot[data-paused="true"] { background: var(--text-3); }
-.live-dot[data-paused="true"]::after { animation: none; }
+.live-dot[data-paused="true"]::after { opacity: 0; }
 
 /* ---------------------------------------------------------------- flashes */
 .pill-flash { animation: pill-flash 1.4s cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes pill-flash {
-  0% { border-color: var(--accent-border); background: var(--accent-subtle); color: var(--text-1); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12); }
+  0% { border-color: var(--accent-border); background: var(--accent-subtle); color: var(--text-1); }
   100% {}
 }
 .value-bump { animation: value-bump 640ms cubic-bezier(0.16, 1, 0.3, 1); }
 @keyframes value-bump {
-  0% { color: var(--bump-color, var(--accent-fg)); text-shadow: 0 0 18px color-mix(in oklab, var(--bump-color, var(--accent-fg)) 45%, transparent); }
+  0% { color: var(--bump-color, var(--accent-fg)); }
   100% {}
 }
-.row-flash { animation: row-in 1.6s cubic-bezier(0.16, 1, 0.3, 1); }
-.row-flash-block { animation: row-in-block 1.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.row-flash { animation: row-in 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
+.row-flash-block { animation: row-in-block 1.2s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* ---------------------------------------------------------------- skeleton shimmer */
 .skel {
@@ -132,7 +103,7 @@
 .aegis-chart .recharts-surface { overflow: visible; }
 .aegis-chart .recharts-tooltip-cursor { fill: rgba(255, 255, 255, 0.025); }
 .aegis-chart:focus, .aegis-chart *:focus { outline: none; }
-.grow-x { transform-origin: left; animation: grow-x 640ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.grow-x { transform-origin: left; animation: grow-x 300ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes grow-x { from { transform: scaleX(0); } to { transform: none; } }
 
 /* ---------------------------------------------------------------- sonner toasts (DESIGN_TOKENS §6 Toast) */
@@ -143,7 +114,7 @@
   background: var(--surface-3) !important;
   border: 0 !important;
   box-shadow: var(--shadow-pop) !important;
-  border-radius: 12px !important;
+  border-radius: 8px !important;
   padding: 12px 14px !important;
   gap: 12px !important;
   align-items: flex-start !important;
@@ -151,10 +122,10 @@
   font-family: var(--font-sans);
 }
 [data-sonner-toast].aegis-toast [data-icon] {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   margin: 0;
-  border-radius: 8px;
+  border-radius: 6px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -171,12 +142,12 @@
 [data-sonner-toast].aegis-toast [data-button] {
   height: 24px;
   padding: 0 9px;
-  border-radius: 7px;
+  border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   background: var(--surface-4) !important;
   color: var(--text-1) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px var(--border-strong);
+  box-shadow: 0 0 0 1px var(--border-strong);
   align-self: center;
 }
 [data-sonner-toast].aegis-toast [data-close-button] {

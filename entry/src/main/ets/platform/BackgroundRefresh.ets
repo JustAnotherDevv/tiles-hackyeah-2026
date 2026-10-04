@@ -1,13 +1,13 @@
 import { workScheduler } from '@kit.BackgroundTasksKit';
-import { formInfo, formProvider } from '@kit.FormKit';
 import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { ApprovalItem, PostureStats } from '../model/Models';
 import { ApprovalsPage } from '../data/ApprovalsRepository';
 import { LiveRepository } from '../data/LiveRepository';
-import { AppSettings, PREFS_NAME, SettingsStore } from './SettingsStore';
+import { AppSettings, PocketPrefs, SettingsStore } from './SettingsStore';
 import { WidgetBridge, WidgetSnapshot } from './WidgetBridge';
+import { STORE_SHARED, markOffline, parseIdList } from './PocketPersist';
 import { NotificationService } from './NotificationService';
 import { Log } from '../common/Format';
 
@@ -29,7 +29,28 @@ const MAX_BG_NOTIFICATIONS: number = 3;
  *   last snapshot the app saved.
  */
 export class BackgroundRefresh {
+  /**
+   * Registers the repeating deferred task once. getWorkStatus resolves when the work id already exists
+   * and rejects (9700004, "work does not exist") otherwise; only then is startWork called, so a
+   * startWork error is a real failure (e.g. 9700005: limit of 10 works per uid, cycle < 20 min).
+   */
   static schedule(ctx: common.Context): void {
+    BackgroundRefresh.scheduleAsync(ctx).catch((e: Error) => {
+      Log.warn('Background refresh scheduling failed: ' + e.message);
+    });
+  }
+
+  private static async scheduleAsync(ctx: common.Context): Promise<void> {
+    try {
+      const existing: workScheduler.WorkInfo = await workScheduler.getWorkStatus(REFRESH_WORK_ID);
+      Log.info('Background refresh already registered (work ' + existing.workId + ')');
+      return;
+    } catch (e) {
+      const err: BusinessError = e as BusinessError;
+      if (err.code !== 9700004) {
+        Log.warn('Background refresh status unknown: ' + err.code + ' ' + err.message);
+      }
+    }
     const work: workScheduler.WorkInfo = {
       workId: REFRESH_WORK_ID,
       bundleName: ctx.applicationInfo.name,
@@ -44,15 +65,15 @@ export class BackgroundRefresh {
       Log.info('Background refresh scheduled every ' + (REFRESH_CYCLE_MS / 60000) + ' min');
     } catch (e) {
       const err: BusinessError = e as BusinessError;
-      // 9700004/9700005 are also returned when the same work id is already registered.
-      Log.info('Background refresh not (re)scheduled: ' + err.code + ' ' + err.message);
+      Log.warn('Background refresh not scheduled: ' + err.code + ' ' + err.message);
     }
   }
 
   /** Fetches the gateway (live mode) or reloads the last snapshot (mock mode) and pushes it to widgets. */
   static async refreshOnce(ctx: common.Context, notify: boolean): Promise<WidgetSnapshot> {
-    let snap: WidgetSnapshot = WidgetBridge.loadSnapshot(ctx);
     const settings: AppSettings = SettingsStore.load(ctx);
+    let snap: WidgetSnapshot = WidgetBridge.loadSnapshot(ctx, settings.mode);
+    let fresh: ApprovalItem[] | null = null;
     if (settings.mode === 'live') {
       try {
         const repo: LiveRepository = new LiveRepository(settings.baseUrl);
@@ -72,25 +93,31 @@ export class BackgroundRefresh {
         stats.source = 'live';
         snap = WidgetBridge.build(stats, page.pending, top);
         WidgetBridge.saveSnapshot(ctx, snap);
-        if (notify) {
-          await BackgroundRefresh.notifyUnseen(ctx, pending);
-        }
+        fresh = pending;
       } catch (e) {
-        Log.warn('Background live refresh failed, keeping the last snapshot');
+        // Keep the last good numbers but label them OFFLINE; never present them as a fresh LIVE count.
+        Log.warn('Background live refresh failed, widget marked OFFLINE');
+        snap = markOffline(snap);
+        WidgetBridge.saveSnapshot(ctx, snap);
       }
     }
-    await BackgroundRefresh.updateAllForms(snap);
+    await WidgetBridge.updateAll(snap);
+    if (notify && fresh !== null) {
+      try {
+        await BackgroundRefresh.notifyUnseen(ctx, fresh);
+      } catch (e) {
+        Log.warn('Background notify failed: ' + JSON.stringify(e));
+      }
+    }
     return snap;
   }
 
   /** The app records which pending ids the user already saw, so background runs only notify new ones. */
   static saveKnownPending(ctx: common.Context, ids: string[]): void {
     try {
-      const p: preferences.Preferences = preferences.getPreferencesSync(ctx, { name: PREFS_NAME });
+      const p: preferences.Preferences = PocketPrefs.open(ctx, STORE_SHARED, false);
       p.putSync(KNOWN_PENDING_KEY, ids.join(','));
-      p.flush().catch((e: Error) => {
-        Log.warn('known ids flush failed: ' + e.message);
-      });
+      PocketPrefs.commit(p, 'known ids');
     } catch (e) {
       Log.warn('known ids save failed: ' + JSON.stringify(e));
     }
@@ -98,10 +125,9 @@ export class BackgroundRefresh {
 
   private static loadKnownPending(ctx: common.Context): string[] {
     try {
-      preferences.removePreferencesFromCacheSync(ctx, PREFS_NAME);
-      const p: preferences.Preferences = preferences.getPreferencesSync(ctx, { name: PREFS_NAME });
-      const raw: string = p.getSync(KNOWN_PENDING_KEY, '') as string;
-      return raw.length > 0 ? raw.split(',') : [];
+      const p: preferences.Preferences = PocketPrefs.open(ctx, STORE_SHARED, true);
+      const raw: preferences.ValueType = p.getSync(KNOWN_PENDING_KEY, '');
+      return parseIdList(typeof raw === 'string' ? raw : '');
     } catch (e) {
       return [];
     }
@@ -121,23 +147,6 @@ export class BackgroundRefresh {
     BackgroundRefresh.saveKnownPending(ctx, ids);
     if (sent > 0) {
       Log.info('Background refresh notified ' + sent + ' new request(s)');
-    }
-  }
-
-  private static async updateAllForms(snap: WidgetSnapshot): Promise<void> {
-    try {
-      const forms: formInfo.RunningFormInfo[] = await formProvider.getPublishedRunningFormInfos();
-      for (const f of forms) {
-        try {
-          await formProvider.updateForm(f.formId, WidgetBridge.bindingData(snap));
-        } catch (e) {
-          const err: BusinessError = e as BusinessError;
-          Log.warn('updateForm ' + f.formId + ' failed: ' + err.code);
-        }
-      }
-    } catch (e) {
-      const err: BusinessError = e as BusinessError;
-      Log.warn('getPublishedRunningFormInfos failed: ' + err.code);
     }
   }
 }

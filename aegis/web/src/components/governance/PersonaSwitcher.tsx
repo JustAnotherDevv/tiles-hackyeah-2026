@@ -1,7 +1,6 @@
 // Compact "Viewing as ▾" switcher (useViewAs().setViewAs) + quick persona chips for the demo
 // (Piotr member · Emily admin · Katarzyna owner). Owner: B18-dashboard-gov-approvals.
-import { motion } from 'framer-motion';
-import { Eye } from 'lucide-react';
+import { Eye } from '@/components/icons';
 import type { Member } from '@/api/types';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ROLE_COLORS } from '@/lib/colors';
@@ -22,12 +21,12 @@ export function PersonaSwitcher({ chips = true, select = true, className, person
   const current = viewerId ? byId.get(viewerId) : undefined;
 
   return (
-    <div className={cn('flex flex-wrap items-center gap-2', className)}>
-      <span className="inline-flex items-center gap-1 text-xs text-text-3">
+    <div className={cn('flex min-w-0 max-w-full flex-wrap items-center gap-2', className)}>
+      <span className="inline-flex shrink-0 items-center gap-1 text-xs text-text-3">
         <Eye className="size-3.5" /> Viewing as
       </span>
       {chips ? (
-        <div className="relative flex items-center gap-0.5 rounded-lg border border-border bg-surface-1 p-0.5">
+        <div className="relative flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-border bg-surface-1 p-0.5">
           {personas.map((id) => {
             const m = byId.get(id);
             if (!m) return null;
@@ -38,19 +37,13 @@ export function PersonaSwitcher({ chips = true, select = true, className, person
                 type="button"
                 onClick={() => setViewAs(id)}
                 className={cn(
-                  'relative flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors',
+                  'relative flex h-9 shrink-0 items-center sm:h-8 gap-1.5 rounded-[5px] px-2 text-xs transition-colors',
                   active ? 'text-text-1' : 'text-text-3 hover:text-text-1',
                 )}
                 aria-pressed={active}
                 title={`View as ${m.name} (${m.role})`}
               >
-                {active ? (
-                  <motion.span
-                    layoutId="gov-persona-pill"
-                    className="absolute inset-0 rounded-md border border-border-strong bg-surface-3"
-                    transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-                  />
-                ) : null}
+                {active ? <span className="absolute inset-0 rounded-[5px] border border-border-strong bg-surface-3" /> : null}
                 <span className="relative flex items-center gap-1.5">
                   <MemberAvatar member={m} size="xs" />
                   <span className="font-medium">{firstName(m.name)}</span>
@@ -64,8 +57,8 @@ export function PersonaSwitcher({ chips = true, select = true, className, person
         </div>
       ) : null}
       {select ? (
-        <Select value={viewerId ?? undefined} onValueChange={(v) => setViewAs(v)}>
-          <SelectTrigger size="sm" className="min-w-[150px] bg-surface-1" aria-label="View as">
+        <Select value={viewerId ?? ''} onValueChange={(v) => setViewAs(v)}>
+          <SelectTrigger size="sm" className="hidden min-w-[150px] bg-surface-1 sm:flex" aria-label="View as">
             <SelectValue placeholder="Pick a person">
               {current ? (
                 <span className="flex items-center gap-1.5">

@@ -1,5 +1,5 @@
 // Row D (3) — explainable posture score: Gauge + factor checklist with points (tooltip per factor).
-import { CircleCheck, CircleDashed, CircleAlert } from 'lucide-react';
+import { CircleCheck, CircleDashed, CircleAlert } from '@/components/icons';
 import { Gauge } from '@/components/charts/Gauge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -15,7 +15,7 @@ export function PostureCard({ d, className }: { d: OverviewData; className?: str
         <div className="text-[12px] leading-[17px] text-text-3">
           {p.toReview > 0 ? (
             <>
-              <span className="font-medium text-text-1">{p.toReview}</span> factor{p.toReview > 1 ? 's' : ''} below max — hover a row for the rule.
+              <span className="font-medium text-text-1">{p.toReview}</span> factor{p.toReview > 1 ? 's' : ''} below max — hover or tap a row for the rule.
             </>
           ) : (
             'Every factor at full points.'

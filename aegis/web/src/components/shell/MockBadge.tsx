@@ -1,4 +1,4 @@
-import { FlaskConical } from 'lucide-react';
+import { FlaskConical } from '@/components/icons';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { isMockForced } from '@/lib/mockMode';
 

@@ -1,17 +1,18 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "./shadcn.css";
-@import "@fontsource-variable/geist";
-@import "@fontsource-variable/geist-mono";
-@import "@fontsource-variable/inter";
-@import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans/700.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 @import "./tokens.css";
 @import "./effects.css";
 
 /*
  * Aegis global styles (Tailwind v4 CSS-first). Owner: dashboard-shell (B16).
- * Fonts: Geist / Geist Mono as in DESIGN_TOKENS §3, with Inter / JetBrains Mono as bundled fallbacks
- * (all four via @fontsource-variable — offline, no CDN).
+ * Fonts: IBM Plex Sans / IBM Plex Mono (enterprise typeface), self-hosted via @fontsource — offline, no CDN.
  * Utilities this exposes for every dashboard page: bg-surface-1..4, text-text-1..4, border-border-strong,
  * text-allow | log | redact | approval | block (+ /10 /30 opacity), bg-chart-*, text-role-owner|admin|member|agent,
  * text-accent-fg, shadow-card | raised | pop | drawer, rounded-xs..xl, text-2xs..3xl, font-mono, tabular.
@@ -20,9 +21,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: "Geist Variable", "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-heading: var(--font-sans);
-  --font-mono: "Geist Mono Variable", "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -94,14 +95,14 @@
   --color-role-agent: var(--role-agent);
 
   /* radii (DESIGN_TOKENS §4) */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 20px;
-  --radius-3xl: 24px;
-  --radius-4xl: 28px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 8px;
+  --radius-2xl: 10px;
+  --radius-3xl: 12px;
+  --radius-4xl: 12px;
 
   /* type scale (DESIGN_TOKENS §3) */
   --text-2xs: 10.5px;
@@ -124,33 +125,34 @@
   --text-3xl--line-height: 48px;
 
   /* elevation (DESIGN_TOKENS §4) */
-  --shadow-card: inset 0 1px 0 0 rgba(255, 255, 255, 0.035), 0 1px 2px 0 rgba(0, 0, 0, 0.4), 0 6px 16px -8px rgba(0, 0, 0, 0.5);
-  --shadow-raised: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-  --shadow-pop: 0 0 0 1px #2a2f37, 0 16px 40px -12px rgba(0, 0, 0, 0.8), 0 4px 10px -2px rgba(0, 0, 0, 0.5);
-  --shadow-drawer: -1px 0 0 0 #2a2f37, -32px 0 80px -24px rgba(0, 0, 0, 0.85);
+  /* flat: borders carry the structure; shadows only for floating layers */
+  --shadow-card: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  --shadow-raised: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-pop: 0 0 0 1px #343941, 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  --shadow-drawer: -1px 0 0 0 #343941, -24px 0 48px -24px rgba(0, 0, 0, 0.7);
 
   /* motion (DESIGN_TOKENS §5) */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
-  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1); /* no overshoot */
   --animate-ping-dot: ping-dot 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-  --animate-page-in: page-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-row-in: row-in 1.6s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-row-in-block: row-in-block 1.6s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-banner-in: banner-in 360ms cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-bump: bump 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-page-in: page-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-row-in: row-in 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-row-in-block: row-in-block 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-banner-in: banner-in 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-bump: bump 400ms cubic-bezier(0.16, 1, 0.3, 1);
 
   @keyframes ping-dot {
     0% { transform: scale(0.6); opacity: 0.9; }
     100% { transform: scale(1.9); opacity: 0; }
   }
   @keyframes page-in {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: none; }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   @keyframes row-in {
-    0% { background-color: rgba(99, 102, 241, 0.14); }
+    0% { background-color: rgba(47, 111, 228, 0.12); }
     100% { background-color: transparent; }
   }
   @keyframes row-in-block {
@@ -158,11 +160,11 @@
     100% { background-color: transparent; }
   }
   @keyframes banner-in {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: none; }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   @keyframes bump {
-    0% { color: var(--accent-fg); transform: translateY(-1px); }
+    0% { color: var(--accent-fg); }
     100% { transform: none; }
   }
 }
@@ -180,11 +182,10 @@
     @apply bg-background text-foreground antialiased;
     font-size: 13.5px;
     line-height: 20px;
-    font-feature-settings: "ss01", "cv11";
     -moz-osx-font-smoothing: grayscale;
   }
   ::selection {
-    background: rgba(99, 102, 241, 0.35);
+    background: rgba(47, 111, 228, 0.35);
   }
   :focus-visible {
     outline: none;

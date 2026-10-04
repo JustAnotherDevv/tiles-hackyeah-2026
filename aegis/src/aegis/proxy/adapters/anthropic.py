@@ -10,13 +10,17 @@ Segment conventions (CONTRACTS 3.1/3.4 + plan 01 section 2.7):
 * `messages[i].content` string or `text` blocks -> role of the message (`user` / `assistant`);
 * `tool_result` blocks (string or text blocks) -> role `tool_result`, `trusted=False`;
 * `tool_use.input` string leaves -> role `tool_args`;
-* `thinking` -> `redactable=False` (signed); `redacted_thinking`, images, documents with base64,
-  tool definitions, `cache_control`, `metadata` and unknown fields are never segments and are
-  copied verbatim (`apply_segments` uses copy-on-write: untouched bytes stay identical).
+* `thinking` -> `redactable=False` (signed); `redacted_thinking`, base64 payloads (images, PDFs),
+  signatures, `cache_control`, tool definitions and `metadata` are never segments and are copied
+  verbatim (`apply_segments` uses copy-on-write: untouched bytes stay identical);
+* every other block (`document` incl. `source.type` text/content, `search_result`, server tool
+  results, `tool_result` sub-blocks, unknown types) and every other string field -> generic
+  `text_leaves` fallback, role `document`, `trusted=False` (R9: fail closed on unknown shapes).
 """
 
 from __future__ import annotations
 
+import re
 import time
 from collections.abc import Mapping
 from typing import Any, Literal
@@ -26,11 +30,15 @@ from aegis.proxy.adapters._common import (
     apply_segments as _apply_segments,
 )
 from aegis.proxy.adapters._common import (
+    as_list,
     claude_code_meta,
     dumps,
     estimate_tokens,
     is_claude_code,
+    opt_int,
+    safe_int,
     string_leaves,
+    text_leaves,
 )
 from aegis.proxy.adapters._common import error_body as _error_body
 from aegis.proxy.blocking import block_info
@@ -38,11 +46,67 @@ from aegis.proxy.streaming import anthropic_events
 
 __all__ = ["ADAPTERS", "AnthropicAdapter"]
 
+_TOOL_NAME = re.compile(r"^[A-Za-z0-9_\-:.]{1,128}$")
 _TOOL_USE_TYPES = {"tool_use", "server_tool_use", "mcp_tool_use"}
+# legacy / foreign top-level text fields a lenient upstream may still render to the model
+_EXTRA_TEXT_KEYS = ("prompt", "input", "instructions")
 
 
 class AnthropicAdapter:
     wire: Literal["anthropic"] = "anthropic"
+
+    # ------------------------------------------------------------------ blocks
+    @staticmethod
+    def _blocks(segs: list[TextSegment], blocks: list[Any], base: str, role: str,
+                trusted: bool = True) -> None:
+        """Segments for a content-block list. Known types map to their specific roles; every
+        other block (document, search_result, image, server tool results, unknown types) falls
+        back to `text_leaves` (R9: inspect everything model-visible, never skip silently)."""
+        for j, b in enumerate(blocks):
+            p = f"{base}[{j}]"
+            if isinstance(b, str):
+                if b:
+                    segs.append(TextSegment(path=p, text=b, role=role, trusted=trusted))
+                continue
+            if not isinstance(b, dict):
+                continue
+            t = b.get("type")
+            if t == "text" and isinstance(b.get("text"), str):
+                segs.append(TextSegment(path=f"{p}.text", text=b["text"], role=role,
+                                        trusted=trusted))
+                for lp, s in text_leaves(b, p, exclude={"text"}):
+                    segs.append(TextSegment(path=lp, text=s, role="document", trusted=False))
+            elif t == "tool_result":
+                tc = b.get("content")
+                if isinstance(tc, str):
+                    if tc:
+                        segs.append(TextSegment(path=f"{p}.content", text=tc,
+                                                role="tool_result", trusted=False))
+                elif isinstance(tc, list):
+                    AnthropicAdapter._blocks(segs, tc, f"{p}.content", "tool_result", False)
+                elif tc is not None:
+                    for lp, s in text_leaves(tc, f"{p}.content"):
+                        segs.append(TextSegment(path=lp, text=s, role="tool_result",
+                                                trusted=False))
+                for lp, s in text_leaves(b, p, exclude={"content"}):
+                    segs.append(TextSegment(path=lp, text=s, role="tool_result", trusted=False))
+            elif t in _TOOL_USE_TYPES:
+                for lp, s in string_leaves(b.get("input"), f"{p}.input"):
+                    segs.append(TextSegment(path=lp, text=s, role="tool_args"))
+                name = b.get("name")
+                skip = {"input", "name"} if isinstance(name, str) and _TOOL_NAME.match(name) \
+                    else {"input"}
+                for lp, s in text_leaves(b, p, exclude=skip):
+                    segs.append(TextSegment(path=lp, text=s, role="tool_args"))
+            elif t == "thinking":
+                if isinstance(b.get("thinking"), str):
+                    segs.append(TextSegment(path=f"{p}.thinking", text=b["thinking"],
+                                            role="assistant", redactable=False))
+            elif t == "redacted_thinking":
+                continue  # opaque, encrypted by the provider
+            else:
+                for lp, s in text_leaves(b, p):
+                    segs.append(TextSegment(path=lp, text=s, role="document", trusted=False))
 
     # ------------------------------------------------------------------ requests
     def parse_request(self, body: dict[str, Any], headers: Mapping[str, str]) -> Interaction:
@@ -54,63 +118,42 @@ class AnthropicAdapter:
                 segs.append(TextSegment(path="system", text=system, role="system",
                                         redactable=not cc))
         elif isinstance(system, list):
-            for j, b in enumerate(system):
-                if isinstance(b, dict) and b.get("type") == "text" and isinstance(b.get("text"), str):
-                    segs.append(TextSegment(path=f"system[{j}].text", text=b["text"],
-                                            role="system", redactable=not cc))
-        messages = body.get("messages") or []
+            sys_segs: list[TextSegment] = []
+            self._blocks(sys_segs, system, "system", "system")
+            for s in sys_segs:
+                if s.role == "system":
+                    s.redactable = not cc
+            segs.extend(sys_segs)
+        messages = as_list(body.get("messages"))
         for i, m in enumerate(messages):
             if not isinstance(m, dict):
                 continue
             role = "assistant" if m.get("role") == "assistant" else "user"
             content = m.get("content")
             if isinstance(content, str):
-                segs.append(TextSegment(path=f"messages[{i}].content", text=content, role=role))
-                continue
-            if not isinstance(content, list):
-                continue
-            for j, b in enumerate(content):
-                if not isinstance(b, dict):
-                    continue
-                base = f"messages[{i}].content[{j}]"
-                t = b.get("type")
-                if t == "text" and isinstance(b.get("text"), str):
-                    segs.append(TextSegment(path=f"{base}.text", text=b["text"], role=role))
-                elif t == "tool_result":
-                    tc = b.get("content")
-                    if isinstance(tc, str):
-                        segs.append(TextSegment(path=f"{base}.content", text=tc,
-                                                role="tool_result", trusted=False))
-                    elif isinstance(tc, list):
-                        for k, tb in enumerate(tc):
-                            if (isinstance(tb, dict) and tb.get("type") == "text"
-                                    and isinstance(tb.get("text"), str)):
-                                segs.append(TextSegment(path=f"{base}.content[{k}].text",
-                                                        text=tb["text"], role="tool_result",
-                                                        trusted=False))
-                elif t in _TOOL_USE_TYPES:
-                    for p, s in string_leaves(b.get("input"), f"{base}.input"):
-                        segs.append(TextSegment(path=p, text=s, role="tool_args"))
-                elif t == "thinking" and isinstance(b.get("thinking"), str):
-                    segs.append(TextSegment(path=f"{base}.thinking", text=b["thinking"],
-                                            role="assistant", redactable=False))
-                elif t == "document":
-                    src = b.get("source") or {}
-                    if src.get("type") == "text" and isinstance(src.get("data"), str):
-                        segs.append(TextSegment(path=f"{base}.source.data", text=src["data"],
-                                                role="document", trusted=False))
+                if content:
+                    segs.append(TextSegment(path=f"messages[{i}].content", text=content,
+                                            role=role))
+            elif isinstance(content, list):
+                self._blocks(segs, content, f"messages[{i}].content", role)
+            # any other model-visible field on the message (fail closed on unknown shapes)
+            for lp, s in text_leaves(m, f"messages[{i}]", exclude={"content"}):
+                segs.append(TextSegment(path=lp, text=s, role=role))
+        for key in _EXTRA_TEXT_KEYS:
+            if key in body:
+                for lp, s in text_leaves(body[key], key):
+                    segs.append(TextSegment(path=lp, text=s, role="user"))
         model = body.get("model")
         text = "\n".join(s.text for s in segs)
         tools = body.get("tools") or []
         est = estimate_tokens(text, model) + (len(dumps(tools)) // 4 if tools else 0)
-        max_out = body.get("max_tokens")
         return Interaction(
             kind="model_call",
             surface="model.request",
             direction="out",
             model=model if isinstance(model, str) else None,
             segments=segs,
-            max_output_tokens=int(max_out) if isinstance(max_out, (int, float)) else None,
+            max_output_tokens=opt_int(body.get("max_tokens")),
             est_input_tokens=est,
             meta={
                 "wire": "anthropic",
@@ -126,27 +169,16 @@ class AnthropicAdapter:
     # ------------------------------------------------------------------ responses
     def parse_response(self, body: dict[str, Any]) -> Interaction:
         segs: list[TextSegment] = []
-        for i, b in enumerate(body.get("content") or []):
-            if not isinstance(b, dict):
-                continue
-            t = b.get("type")
-            if t == "text" and isinstance(b.get("text"), str):
-                segs.append(TextSegment(path=f"content[{i}].text", text=b["text"],
-                                        role="assistant"))
-            elif t in _TOOL_USE_TYPES:
-                for p, s in string_leaves(b.get("input"), f"content[{i}].input"):
-                    segs.append(TextSegment(path=p, text=s, role="tool_args"))
-            elif t == "thinking" and isinstance(b.get("thinking"), str):
-                segs.append(TextSegment(path=f"content[{i}].thinking", text=b["thinking"],
-                                        role="assistant", redactable=False))
+        self._blocks(segs, as_list(body.get("content")), "content", "assistant")
         model = body.get("model")
+        stop = body.get("stop_reason")
         return Interaction(
             kind="model_call",
             surface="model.response",
             direction="in",
             model=model if isinstance(model, str) else None,
             segments=segs,
-            meta={"wire": "anthropic", "stop_reason": body.get("stop_reason")},
+            meta={"wire": "anthropic", "stop_reason": stop if isinstance(stop, str) else None},
         )
 
     def apply_segments(self, body: dict[str, Any], segments: list[TextSegment]) -> dict[str, Any]:
@@ -156,12 +188,12 @@ class AnthropicAdapter:
         u = body.get("usage") or {}
         if not isinstance(u, dict):
             return Usage()
-        inp = int(u.get("input_tokens") or 0)
-        cr = int(u.get("cache_read_input_tokens") or 0)
-        cw = int(u.get("cache_creation_input_tokens") or 0)
+        inp = safe_int(u.get("input_tokens"))
+        cr = safe_int(u.get("cache_read_input_tokens"))
+        cw = safe_int(u.get("cache_creation_input_tokens"))
         return Usage(
             input_tokens=inp + cr + cw,
-            output_tokens=int(u.get("output_tokens") or 0),
+            output_tokens=safe_int(u.get("output_tokens")),
             cache_read_tokens=cr,
             cache_write_tokens=cw,
             requests=1,

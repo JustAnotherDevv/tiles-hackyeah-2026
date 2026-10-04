@@ -2,7 +2,7 @@
 // Role changes, member active toggle and agent deactivate are gated on the viewer's role
 // (whoami.permissions / capabilities); admin-initiated role changes become owner approvals.
 // Owner: B18-dashboard-gov-approvals.
-import { Bot, Building, Scale, Users } from 'lucide-react';
+import { Bot, Building, Scale, Users } from '@/components/icons';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import type { Agent, Member } from '@/api/types';
@@ -15,6 +15,7 @@ import { RolesMatrix } from '@/components/governance/org/RolesMatrix';
 import { TeamCards } from '@/components/governance/org/TeamCards';
 import { PersonaSwitcher } from '@/components/governance/PersonaSwitcher';
 import { EmptyState, KpiTile, MockBadge, PageHeader, Panel, Segmented } from '@/components/shell';
+import { Button } from '@/components/ui/button';
 import type { PageMeta } from '@/lib/page';
 
 export const meta: PageMeta = {
@@ -107,7 +108,7 @@ export default function OrgPage() {
         title="Organization"
         icon="Building"
         badge={isMock ? <MockBadge /> : undefined}
-        subtitle={`${orgName} — people, the agents they sponsor, and who may approve what. Roles drive every approval route.`}
+        subtitle={`${orgName}: people, the agents they sponsor, and who may approve what. Roles drive every approval route.`}
         actions={<PersonaSwitcher />}
       />
 
@@ -125,6 +126,7 @@ export default function OrgPage() {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-3">
+        <div className="max-w-full overflow-x-auto">
         <Segmented<OrgTab>
           value={tab}
           onChange={setTab}
@@ -133,17 +135,18 @@ export default function OrgPage() {
             { value: 'teams', label: 'Teams' },
             { value: 'members', label: `Members · ${dir.members.length}` },
             { value: 'agents', label: `Agents · ${dir.agents.length}` },
-            { value: 'roles', label: 'Roles & permissions' },
+            { value: 'roles', label: 'Roles and permissions' },
           ]}
         />
+        </div>
         {!manageGate.ok && (tab === 'members' || tab === 'agents') ? (
-          <span className="text-xs text-text-3">Read-only for your role — changes are locked with the reason on hover.</span>
+          <span className="text-xs text-text-3">Read-only for your role. Locked actions show the reason on hover.</span>
         ) : null}
       </div>
 
       {org.error && !org.data && dir.members.length === 0 ? (
         <Panel>
-          <EmptyState icon="CloudOff" title="Could not load the organization" hint={org.error.message} />
+          <EmptyState icon="CloudOff" title="Could not load the organization" hint={org.error.message} action={<Button size="sm" variant="outline" onClick={() => { org.refresh(); dir.refresh(); }}>Retry</Button>} />
         </Panel>
       ) : tab === 'teams' ? (
         <TeamCards teams={org.data?.teams ?? []} members={dir.members} agents={dir.agents} viewerId={viewerId} />
@@ -169,7 +172,7 @@ export default function OrgPage() {
           <AgentsTable agents={dir.agents} memberById={dir.memberById} viewerId={viewerId} manageGate={manageGate} busyId={busyId} onActive={(a, v) => void setAgentActive(a, v)} />
         </Panel>
       ) : (
-        <Panel flush title="Roles & permissions" description="From the contract semantics; the last row is computed from the live approval rules." isMock={rules.isMock}>
+        <Panel flush title="Roles and permissions" description="From the contract semantics; the last row is computed from the live approval rules." isMock={rules.isMock}>
           <RolesMatrix viewerRole={role} rules={rules.all} />
         </Panel>
       )}

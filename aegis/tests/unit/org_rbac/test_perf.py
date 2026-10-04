@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+from tests.lib.perf import bound
+
 
 async def test_resolve_identity_perf(rt, helpers):
     headers = {
@@ -18,4 +20,4 @@ async def test_resolve_identity_perf(rt, helpers):
         ident = await resolve(headers)
     elapsed = time.perf_counter() - t0
     assert ident.authenticated and ident.agent_id == "trading-copilot@trading"
-    assert elapsed < 1.0, f"10k resolutions took {elapsed:.3f}s"
+    assert elapsed < bound(1.0), f"10k resolutions took {elapsed:.3f}s"

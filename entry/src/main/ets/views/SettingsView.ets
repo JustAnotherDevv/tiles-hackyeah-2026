@@ -5,6 +5,8 @@ import { ConnectionInfo } from '../data/ApprovalsRepository';
 import { DEFAULT_BASE_URL } from '../platform/SettingsStore';
 import { StepUpAuth } from '../platform/StepUpAuth';
 import { STEP_UP_USD } from '../data/Eligibility';
+import { NotificationService } from '../platform/NotificationService';
+import { common } from '@kit.AbilityKit';
 
 /** Data source (mock / live), gateway URL with connection test, persona, notifications, about. */
 @Component
@@ -17,6 +19,7 @@ export struct SettingsView {
   @State testResult: string = '';
   @State testOk: boolean = false;
   @State authTypes: string = '';
+  @State notifBusy: boolean = false;
 
   aboutToAppear(): void {
     this.urlDraft = this.baseUrl.length > 0 ? this.baseUrl : DEFAULT_BASE_URL;
@@ -128,14 +131,13 @@ export struct SettingsView {
             .layoutWeight(1)
 
             if (!this.notifEnabled) {
-              Button('Enable')
+              Button(this.notifBusy ? 'Opening…' : 'Enable')
                 .fontSize(Fonts.SMALL)
                 .fontColor(Color.White)
                 .backgroundColor(Colors.ACCENT)
                 .height(34)
-                .onClick(() => {
-                  PocketStore.get().requestNotifications();
-                })
+                .enabled(!this.notifBusy)
+                .onClick(() => this.enableNotifications())
             }
           }
           .padding(Space.LG)
@@ -246,6 +248,31 @@ export struct SettingsView {
   private validUrl(u: string): boolean {
     const t: string = u.trim();
     return (t.startsWith('http://') || t.startsWith('https://')) && t.length > 10;
+  }
+
+  /**
+   * Re-asks for notification permission. After an earlier denial the system dialog cannot be shown
+   * again, so NotificationService opens this app's notification settings sheet instead.
+   */
+  private enableNotifications(): void {
+    if (this.notifBusy) {
+      return;
+    }
+    this.notifBusy = true;
+    const ctx: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+    NotificationService.requestPermission(ctx, true).then((ok: boolean) => {
+      return PocketStore.get().syncNotificationState().then(() => ok);
+    }).then((ok: boolean) => {
+      this.notifBusy = false;
+      if (!ok) {
+        this.getUIContext().getPromptAction().showToast({
+          message: 'Notifications are still off. Allow them in this app\'s notification settings.',
+          duration: 2500
+        });
+      }
+    }).catch(() => {
+      this.notifBusy = false;
+    });
   }
 
   private test(): void {

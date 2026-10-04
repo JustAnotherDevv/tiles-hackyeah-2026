@@ -3,6 +3,7 @@ import { common, Want, wantAgent, WantAgent } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { ApprovalItem } from '../model/Models';
 import { Fmt, Log } from '../common/Format';
+import { NO_ERROR, shouldOpenSettings } from './NotificationPolicy';
 
 export const PARAM_APPROVAL_ID: string = 'aegisApprovalId';
 export const PARAM_TARGET: string = 'aegisTarget';
@@ -21,25 +22,46 @@ export class NotificationService {
     }
   }
 
-  /** Shows the system "Allow notifications?" dialog if they are not enabled yet. */
-  static async requestPermission(ctx: common.UIAbilityContext): Promise<boolean> {
+  /**
+   * Shows the system "Allow notifications?" dialog if they are not enabled yet. When the user has
+   * already denied it (error 1600004, the dialog cannot be shown again) and this call comes from a user
+   * tap (`userInitiated`), opens the app's notification settings sheet instead. Resolves to the
+   * enabled state read back afterwards.
+   */
+  static async requestPermission(ctx: common.UIAbilityContext, userInitiated: boolean = false): Promise<boolean> {
     try {
-      const enabled: boolean = await notificationManager.isNotificationEnabled();
-      if (enabled) {
+      if (await notificationManager.isNotificationEnabled()) {
         return true;
       }
-      await notificationManager.requestEnableNotification(ctx);
-      return await notificationManager.isNotificationEnabled();
     } catch (e) {
       const err: BusinessError = e as BusinessError;
-      Log.warn('requestEnableNotification failed: ' + err.code + ' ' + err.message);
+      Log.warn('isNotificationEnabled failed: ' + err.code + ' ' + err.message);
       return false;
     }
+    let code: number = NO_ERROR;
+    try {
+      await notificationManager.requestEnableNotification(ctx);
+    } catch (e) {
+      const err: BusinessError = e as BusinessError;
+      code = err.code;
+      Log.warn('requestEnableNotification failed: ' + err.code + ' ' + err.message);
+    }
+    let enabled: boolean = await NotificationService.isEnabled();
+    if (shouldOpenSettings(code, !enabled, userInitiated)) {
+      try {
+        await notificationManager.openNotificationSettings(ctx);
+      } catch (e) {
+        const err: BusinessError = e as BusinessError;
+        Log.warn('openNotificationSettings failed: ' + err.code + ' ' + err.message);
+      }
+      enabled = await NotificationService.isEnabled();
+    }
+    return enabled;
   }
 
   static async notifyApproval(ctx: common.Context, item: ApprovalItem): Promise<void> {
-    const id: number = NotificationService.idFor(item.id);
     try {
+      const id: number = NotificationService.idFor(item.id);
       const want: Want = {
         bundleName: ctx.applicationInfo.name,
         abilityName: 'EntryAbility',

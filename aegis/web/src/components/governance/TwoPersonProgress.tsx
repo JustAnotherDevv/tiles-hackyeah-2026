@@ -32,7 +32,7 @@ export function TwoPersonProgress({
               initial={false}
               animate={{ scaleX: i < n ? 1 : 0 }}
               style={{ originX: 0 }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
             />
           </span>
         ))}

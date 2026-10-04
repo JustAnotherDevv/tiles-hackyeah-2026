@@ -11,11 +11,11 @@ import {
   LogIn,
   Send,
   ShieldCheck,
-  Sparkles,
   UserCheck,
   Wand2,
+  Wrench,
   type LucideIcon,
-} from 'lucide-react';
+} from '@/components/icons';
 import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { Action, DecisionDetail, Finding } from '@/api/types';
@@ -40,11 +40,11 @@ export function ReasonCard({ detail, className }: { detail: Pick<DecisionDetail,
   const c = ACTION_COLORS[detail.action];
   const Icon = REASON_ICON[detail.action];
   return (
-    <div className={cn('flex gap-2.5 rounded-[10px] border px-3.5 py-3 text-[13px] leading-[19px]', className)} style={{ borderColor: c.border, background: `linear-gradient(0deg, ${c.bg}, ${c.bg}), var(--surface-2)` }}>
+    <div className={cn('flex gap-2.5 rounded-md border border-l-2 px-3.5 py-3 text-[13px] leading-[19px]', className)} style={{ borderColor: c.border, borderLeftColor: c.fg, background: `linear-gradient(0deg, ${c.bg}, ${c.bg}), var(--surface-1)` }}>
       <Icon className="mt-0.5 size-4 shrink-0" style={{ color: c.fg }} />
       <div className="min-w-0">
-        <div className="text-text-1">{detail.reason || (detail.action === 'allow' ? 'No control fired — request allowed.' : '—')}</div>
-        <div className="mt-1 font-mono text-[11.5px] text-text-3">
+        <div className="text-text-1 [overflow-wrap:anywhere]">{detail.reason || (detail.action === 'allow' ? 'No control fired — request allowed.' : '—')}</div>
+        <div className="mt-1 font-mono text-[11px] leading-4 text-text-3 [overflow-wrap:anywhere]">
           {detail.control_id ?? 'no control fired'}
           {detail.score !== null && detail.score !== undefined ? ` · score ${detail.score.toFixed(2)}${detail.threshold !== null && detail.threshold !== undefined ? ` vs ${detail.threshold}` : ''}` : ''} · policy v{detail.policy_version} · feed #{detail.feed_serial ?? '—'}
         </div>
@@ -55,11 +55,11 @@ export function ReasonCard({ detail, className }: { detail: Pick<DecisionDetail,
 
 export function MiniKpis({ items }: { items: [string, ReactNode][] }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border-subtle sm:grid-cols-4">
       {items.map(([l, v]) => (
-        <div key={l} className="rounded-lg border border-border bg-surface-1 px-3 py-2">
-          <div className="text-2xs text-text-3">{l}</div>
-          <div className="mt-0.5 text-[15px] font-semibold tabular text-text-1">{v}</div>
+        <div key={l} className="min-w-0 bg-surface-1 px-3 py-2">
+          <div className="truncate text-2xs font-medium uppercase tracking-[0.06em] text-text-3">{l}</div>
+          <div className="mt-0.5 truncate font-mono text-[14px] font-medium tabular text-text-1">{v}</div>
         </div>
       ))}
     </div>
@@ -69,11 +69,11 @@ export function MiniKpis({ items }: { items: [string, ReactNode][] }) {
 function Milestone({ icon: Icon, title, children, tone }: { icon: LucideIcon; title: string; children: ReactNode; tone?: string }) {
   return (
     <div className="grid grid-cols-[22px_1fr] items-start gap-3 border-b border-border-subtle py-2 last:border-0">
-      <span className="grid size-[22px] place-items-center rounded-[7px] border border-border bg-surface-2 text-text-3" style={tone ? { color: tone } : undefined}>
+      <span className="grid size-[22px] place-items-center rounded-xs border border-border bg-surface-2 text-text-3" style={tone ? { color: tone } : undefined}>
         <Icon className="size-3" />
       </span>
       <div className="min-w-0">
-        <div className="text-[12.5px] font-medium leading-4">{title}</div>
+        <div className="text-[12.5px] font-medium leading-4 text-text-1">{title}</div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-text-2">{children}</div>
       </div>
     </div>
@@ -85,9 +85,9 @@ function SliverBar({ aegisMs, upstreamMs }: { aegisMs: number; upstreamMs: numbe
   const pct = total > 0 ? (aegisMs / total) * 100 : 0;
   return (
     <div className="w-full">
-      <div className="flex h-2 overflow-hidden rounded-full bg-surface-3">
+      <div className="flex h-1.5 overflow-hidden rounded-xs bg-surface-3">
         <div className="h-full bg-accent-fg" style={{ width: `${Math.max(0.6, pct)}%` }} />
-        <div className="h-full flex-1 bg-sky-500/30" />
+        <div className="h-full flex-1 bg-text-4/40" />
       </div>
       <div className="mt-1 font-mono text-2xs text-text-3">
         Aegis {fmtMs(aegisMs)} of {fmtMs(total)} = {pct.toFixed(pct < 1 ? 2 : 1)} %
@@ -103,8 +103,8 @@ function allFindings(detail: DecisionDetail): Finding[] {
 export function FindingsTable({ findings }: { findings: Finding[] }) {
   if (!findings.length) return <div className="py-8 text-center text-xs text-text-3">No findings were recorded for this decision.</div>;
   return (
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-xs">
+    <div className="overflow-x-auto rounded-md border border-border">
+      <table className="w-full whitespace-nowrap text-xs">
         <thead>
           <tr className="border-b border-border bg-surface-2/50 text-left text-2xs uppercase tracking-wider text-text-3">
             <th className="px-3 py-2 font-medium">Control</th>
@@ -160,7 +160,7 @@ export function ServerTimingBox({ trace, detail }: { trace: TraceModel; detail: 
     serverTiming(trace, detail.latency_ms ?? 0, detail.upstream_ms),
   ].join('\n');
   return (
-    <div className="relative whitespace-pre-wrap break-all rounded-[10px] border border-border bg-background px-3 py-2.5 font-mono text-[11.5px] leading-[18px] text-text-2">
+    <div className="relative whitespace-pre-wrap rounded-md border border-border bg-background py-2.5 pl-3 pr-9 font-mono text-[11px] leading-[18px] text-text-2 [overflow-wrap:anywhere]">
       <span className="absolute right-1.5 top-1.5">
         <CopyButton value={text} label="headers" />
       </span>
@@ -190,9 +190,9 @@ function TraceBody({ detail, trace, current, reveal, animate }: { detail: Decisi
         <DestBadge dest={detail.destination} />
       </Milestone>
       {detail.action_type || detail.amount_usd !== null || detail.tool_name ? (
-        <Milestone icon={Sparkles} title="Enrich · governed action">
-          {detail.tool_name ? <span className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs">{detail.tool_name}</span> : null}
-          {detail.action_type ? <span className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs">{detail.action_type}</span> : null}
+        <Milestone icon={Wrench} title="Enrich · governed action">
+          {detail.tool_name ? <span className="rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs">{detail.tool_name}</span> : null}
+          {detail.action_type ? <span className="rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs">{detail.action_type}</span> : null}
           {detail.amount_usd !== null && detail.amount_usd !== undefined ? <span className="font-mono text-text-1">{fmtUsd(detail.amount_usd)}</span> : null}
         </Milestone>
       ) : null}
@@ -208,7 +208,7 @@ function TraceBody({ detail, trace, current, reveal, animate }: { detail: Decisi
           {trace.enforceRanked
             .filter((s) => s.action && s.action !== 'allow')
             .map((s) => (
-              <span key={s.key} className={cn('inline-flex items-center gap-1', s.primary && 'rounded-md bg-surface-3 px-1 py-0.5')}>
+              <span key={s.key} className={cn('inline-flex items-center gap-1', s.primary && 'rounded-xs bg-surface-3 px-1 py-0.5')}>
                 <ActionBadge action={s.action as Action} size="sm" />
                 <span className="font-mono text-2xs">{s.controlId}</span>
                 {s.primary ? <span className="text-2xs text-accent-fg">primary</span> : null}
@@ -241,13 +241,13 @@ function TraceBody({ detail, trace, current, reveal, animate }: { detail: Decisi
             <span className="text-text-3">no redactions</span>
           )}
           {routeMut ? (
-            <span className="inline-flex items-center gap-1 rounded-full border border-downgrade/40 bg-downgrade/10 px-2 text-2xs text-downgrade">
+            <span className="inline-flex items-center gap-1 rounded-xs border border-downgrade/40 bg-downgrade/10 px-1.5 text-2xs text-downgrade">
               <ArrowDownRight className="size-3" />
               downgraded → {String(routeMut.value ?? '')}
             </span>
           ) : null}
           {strips.slice(0, 6).map((m, i) => (
-            <span key={i} className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-3" title={m.reason ?? ''}>
+            <span key={i} className="rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-3" title={m.reason ?? ''}>
               {m.op === 'remove' ? '−' : '='} {m.target}:{m.path}
             </span>
           ))}
@@ -316,22 +316,23 @@ export function DecisionTrace({
         ]}
       />
       <Tabs value={tab} onValueChange={(v) => onTabChange(v as TraceTab)} className="gap-3">
-        <TabsList>
-          <TabsTrigger value="trace">
+        <TabsList className="max-w-full overflow-x-auto max-sm:h-10">
+          <TabsTrigger value="trace" className="max-sm:h-9">
             <CircleDot className="size-3.5" /> Trace
           </TabsTrigger>
-          <TabsTrigger value="wire">
+          <TabsTrigger value="wire" className="max-sm:h-9">
             <Fingerprint className="size-3.5" /> Wire{detail.redaction_count ? ` · ${detail.redaction_count}` : ''}
           </TabsTrigger>
-          <TabsTrigger value="findings">
+          <TabsTrigger value="findings" className="max-sm:h-9">
             <Database className="size-3.5" /> Findings{findings.length ? ` · ${findings.length}` : ''}
           </TabsTrigger>
-          <TabsTrigger value="raw">Raw</TabsTrigger>
+          <TabsTrigger value="raw" className="max-sm:h-9">Raw</TabsTrigger>
         </TabsList>
         <TabsContent value="trace">
           <TraceBody detail={detail} trace={trace} current={current} reveal={reveal} animate={animate} />
           <SectionLabel>Identifiers</SectionLabel>
           <KeyValue
+            wrap
             items={[
               ['Decision', <span key="d" className="inline-flex items-center gap-1">{detail.id}<CopyButton value={detail.id} label="decision id" /></span>],
               ['Request', <span key="r" className="inline-flex items-center gap-1">{detail.request_id}<CopyButton value={detail.request_id} label="request id" /></span>],

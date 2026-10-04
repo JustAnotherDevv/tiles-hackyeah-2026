@@ -2,7 +2,7 @@
 // DRAFT, listing cases whose verdict changes ("aws-key-blocked: block → allow") and failing
 // must-protect cases ("apply will be rejected"). Runs on demand (it executes the whole self-test
 // suite on the server). Owner: B19-dashboard-gov-policy.
-import { ArrowRight, FlaskConical, Loader2, ShieldAlert } from 'lucide-react';
+import { ArrowRight, FlaskConical, Loader2, ShieldAlert } from '@/components/icons';
 import { useState } from 'react';
 import type { SelfTestResult } from '@/api/types';
 import { ActionBadge } from '@/components/shell';
@@ -56,7 +56,7 @@ export function ImpactPreview({ d }: { d: PolicyDraft }) {
     <div className="space-y-2">
       <div className="flex items-center gap-2">
         <FlaskConical className="size-3.5 text-text-3" />
-        <span className="text-xs text-text-2">Impact preview — full self-test, active vs draft</span>
+        <span className="text-xs text-text-2">Full self-test, active vs draft</span>
         <Button size="xs" variant="secondary" className="ml-auto" disabled={!d.dirty || busy} onClick={() => void run()}>
           {busy ? <Loader2 className="size-3 animate-spin" /> : null}
           {impact && !stale ? 'Re-check' : 'Check impact'}
@@ -78,7 +78,7 @@ export function ImpactPreview({ d }: { d: PolicyDraft }) {
           {impact.flips.length ? (
             <ul className="space-y-1">
               {impact.flips.map((f) => (
-                <li key={f.name} className="flex flex-wrap items-center gap-1.5 rounded-md border border-approval/25 bg-approval/[0.05] px-2 py-1 text-xs">
+                <li key={f.name} className="flex flex-wrap items-center gap-1.5 rounded-sm border border-border bg-surface-1 px-2 py-1 text-xs">
                   <span className="font-mono text-text-1">{f.name}</span>
                   <ActionBadge action={f.before.got} size="sm" />
                   <ArrowRight className="size-3 text-text-3" />

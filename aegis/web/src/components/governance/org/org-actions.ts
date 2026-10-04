@@ -4,7 +4,7 @@
 import { toast } from 'sonner';
 import type { Member } from '@/api/types';
 import type { ViewRole } from '@/lib/page';
-import { errorTitle, parseApiError } from '../gov-api';
+import { assertApplied, errorTitle, parseApiError } from '../gov-api';
 
 export interface Gate {
   ok: boolean;
@@ -54,7 +54,7 @@ export interface MutationOpts {
 /** Run an org mutation and toast the real answer (403/409 are never mocked away). */
 export async function runOrgMutation<T>(fn: () => Promise<T>, opts: MutationOpts): Promise<T | null> {
   try {
-    const res = await fn();
+    const res = assertApplied(await fn());
     toast.success(opts.success, {
       id: opts.pendingId,
       description: opts.description,

@@ -16,13 +16,16 @@
 
 from __future__ import annotations
 
+import json
 import logging
+import math
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Body, Query, Request
+from fastapi import APIRouter, Body, Path, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
+from aegis.core.errors import AegisHTTPError
 from aegis.core.types import ApprovalDraft, ApprovalRequest, Identity
 
 log = logging.getLogger(__name__)
@@ -32,6 +35,16 @@ router = APIRouter(tags=["approvals"])
 
 STATUSES = ("pending", "approved", "denied", "expired", "cancelled")
 KINDS = ("action", "config_change", "budget_raise", "mcp_pin")
+
+# R13: bounds on request bodies (a 100 KB title or `amount_usd: NaN` used to be stored as-is).
+MAX_AMOUNT_USD = 1e9
+MAX_ID_LEN = 128
+MAX_SHORT = 200
+MAX_TITLE = 500
+MAX_TEXT = 4000
+MAX_LABELS = 50
+MAX_PAYLOAD_BYTES = 64_000
+ApprovalId = Annotated[str, Path(max_length=MAX_ID_LEN)]
 
 
 # ---------------------------------------------------------------- guarded core surfaces
@@ -67,6 +80,8 @@ async def _viewer(request: Request, rt: Any) -> Identity:
         return await core_viewer(request)
     except ImportError:
         pass
+    except AegisHTTPError:  # R5/R6: agent / anonymous viewer on a mutation -> 403, never swallow
+        raise
     except Exception:
         log.debug("core viewer dependency failed; falling back", exc_info=True)
     org = getattr(rt, "org", None)
@@ -81,7 +96,7 @@ async def _viewer(request: Request, rt: Any) -> Identity:
     cache = getattr(svc, "org", None)
     if member and cache is not None:
         return cache.identity_for(member)
-    return Identity(member_id=member or "u_katarzyna", role="owner" if not member else "member")
+    return Identity(role="viewer")  # least privilege when the viewer cannot be resolved
 
 
 def _svc(rt: Any) -> Any:
@@ -140,8 +155,8 @@ def _is_mine(req: ApprovalRequest, viewer: Identity) -> bool:
 @router.get("/api/approvals")
 async def list_approvals(
     request: Request,
-    status: str = Query("all"),
-    kind: str | None = Query(None),
+    status: str = Query("all", max_length=32),
+    kind: str | None = Query(None, max_length=32),
     mine: bool = Query(False),
     actionable: bool = Query(False),
     limit: int = Query(200, ge=1, le=1000),
@@ -182,20 +197,20 @@ async def approval_rules(request: Request) -> Any:
 class SimulateBody(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    kind: str = "action"
-    action_type: str = ""
-    amount_usd: float | None = None
-    resource: str | None = None
-    requester_member_id: str | None = None
-    requester_agent_id: str | None = None
+    kind: str = Field("action", max_length=32)
+    action_type: str = Field("", max_length=MAX_SHORT)
+    amount_usd: float | None = Field(None, ge=0, le=MAX_AMOUNT_USD, allow_inf_nan=False)
+    resource: str | None = Field(None, max_length=MAX_TEXT)
+    requester_member_id: str | None = Field(None, max_length=MAX_SHORT)
+    requester_agent_id: str | None = Field(None, max_length=MAX_SHORT)
     # extensions (dashboard rules simulator / budget raise preview)
-    labels: dict[str, Any] | None = None
-    profile: str | None = None
-    changes: list[dict[str, Any]] | None = None
-    scope: str | None = None
-    scope_type: str | None = None
-    increase_pct: float | None = None
-    control_id: str | None = None
+    labels: dict[str, Any] | None = Field(None, max_length=MAX_LABELS)
+    profile: str | None = Field(None, max_length=MAX_SHORT)
+    changes: list[dict[str, Any]] | None = Field(None, max_length=100)
+    scope: str | None = Field(None, max_length=MAX_SHORT)
+    scope_type: str | None = Field(None, max_length=32)
+    increase_pct: float | None = Field(None, ge=-100, le=1e9, allow_inf_nan=False)
+    control_id: str | None = Field(None, max_length=MAX_SHORT)
     loosening: bool | None = None
 
 
@@ -239,13 +254,43 @@ def _change_kinds() -> set[str]:
 
 
 # ---------------------------------------------------------------- manual requests
+def _draft_error(draft: ApprovalDraft) -> str | None:
+    """Bounds for a manual ApprovalDraft (the shared core model carries no limits)."""
+    for name, value, cap in (
+        ("action_type", draft.action_type, MAX_SHORT),
+        ("title", draft.title, MAX_TITLE),
+        ("summary", draft.summary, MAX_TEXT),
+        ("resource", draft.resource, MAX_TEXT),
+    ):
+        if value is not None and len(value) > cap:
+            return f"{name} too long (max {cap} characters)"
+    if not draft.title.strip():
+        return "title must not be empty"
+    amt = draft.amount_usd
+    if amt is not None and not (math.isfinite(amt) and 0 <= amt <= MAX_AMOUNT_USD):
+        return f"amount_usd must be a finite number between 0 and {MAX_AMOUNT_USD:g}"
+    if len(draft.labels) > MAX_LABELS or any(
+        len(k) > MAX_SHORT or len(v) > MAX_SHORT for k, v in draft.labels.items()
+    ):
+        return f"labels: at most {MAX_LABELS} entries of <= {MAX_SHORT} characters"
+    try:
+        size = len(json.dumps(draft.payload, allow_nan=False, default=str))
+    except ValueError:
+        return "payload must not contain NaN or Infinity"
+    if size > MAX_PAYLOAD_BYTES:
+        return f"payload too large (max {MAX_PAYLOAD_BYTES} bytes as JSON)"
+    return None
+
+
 @router.post("/api/approvals")
 async def create_manual(request: Request, draft: ApprovalDraft) -> Any:
     rt = _rt(request)
     svc = _svc(rt)
     if svc is None:
         return _error(503, "unavailable", "approvals unavailable")
-    viewer = await _viewer(request, rt)
+    viewer = await _viewer(request, rt)  # raises 403 for agent / anonymous viewers (R5/R6)
+    if err := _draft_error(draft):
+        return _error(422, "invalid_request", f"invalid request: {err}")
     if draft.kind in ("config_change", "mcp_pin"):
         return _error(
             400, "invalid_request",
@@ -267,7 +312,7 @@ async def create_manual(request: Request, draft: ApprovalDraft) -> Any:
 
 # ---------------------------------------------------------------- one request
 @router.get("/api/approvals/{approval_id}")
-async def get_approval(request: Request, approval_id: str) -> Any:
+async def get_approval(request: Request, approval_id: ApprovalId) -> Any:
     rt = _rt(request)
     svc = _svc(rt)
     req = await svc.get(approval_id) if svc is not None else None
@@ -279,7 +324,7 @@ async def get_approval(request: Request, approval_id: str) -> Any:
 
 @router.get("/api/approvals/{approval_id}/wait")
 async def wait_approval(
-    request: Request, approval_id: str, timeout_s: float = Query(25.0, ge=0, le=60)
+    request: Request, approval_id: ApprovalId, timeout_s: float = Query(25.0, ge=0, le=60)
 ) -> Any:
     rt = _rt(request)
     svc = _svc(rt)
@@ -297,7 +342,7 @@ async def wait_approval(
 
 
 @router.get("/api/approvals/{approval_id}/timeline")
-async def approval_timeline(request: Request, approval_id: str) -> Any:
+async def approval_timeline(request: Request, approval_id: ApprovalId) -> Any:
     rt = _rt(request)
     svc = _svc(rt)
     req = await svc.get(approval_id) if svc is not None else None
@@ -322,7 +367,7 @@ async def approval_timeline(request: Request, approval_id: str) -> Any:
 class VoteBody(BaseModel):
     model_config = ConfigDict(extra="allow")
 
-    comment: str | None = None
+    comment: str | None = Field(None, max_length=MAX_TEXT)
 
 
 async def _vote(request: Request, approval_id: str, decision: str, body: VoteBody | None) -> Any:
@@ -345,17 +390,17 @@ async def _vote(request: Request, approval_id: str, decision: str, body: VoteBod
 
 
 @router.post("/api/approvals/{approval_id}/approve")
-async def approve(request: Request, approval_id: str, body: Annotated[VoteBody | None, Body()] = None) -> Any:
+async def approve(request: Request, approval_id: ApprovalId, body: Annotated[VoteBody | None, Body()] = None) -> Any:
     return await _vote(request, approval_id, "approve", body)
 
 
 @router.post("/api/approvals/{approval_id}/deny")
-async def deny(request: Request, approval_id: str, body: Annotated[VoteBody | None, Body()] = None) -> Any:
+async def deny(request: Request, approval_id: ApprovalId, body: Annotated[VoteBody | None, Body()] = None) -> Any:
     return await _vote(request, approval_id, "deny", body)
 
 
 @router.post("/api/approvals/{approval_id}/cancel")
-async def cancel(request: Request, approval_id: str) -> Any:
+async def cancel(request: Request, approval_id: ApprovalId) -> Any:
     rt = _rt(request)
     svc = _svc(rt)
     if svc is None:

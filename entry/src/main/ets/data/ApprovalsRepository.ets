@@ -1,19 +1,29 @@
 import { ApprovalItem, PostureStats } from '../model/Models';
 
-/** Error raised by a repository; `code` is the HTTP status (0 = network/parse failure). */
+/**
+ * Error raised by a repository. `code` is the HTTP status (0 = no HTTP status: network/timeout, or a parse failure
+ * of a 2xx body). `kind` classifies the failure so callers can tell a definite refusal from an unknown outcome:
+ * - 'http'    the gateway answered with a non-2xx status (definite; `code` is that status)
+ * - 'network' the request did not complete (DNS/connect/reset); a POST may or may not have been applied
+ * - 'timeout' the request timed out; a POST may or may not have been applied
+ * - 'parse'   the gateway answered but the body was not the expected JSON (a 2xx POST was likely applied)
+ */
 export class RepoError extends Error {
   code: number;
+  kind: string;
 
-  constructor(message: string, code: number) {
+  constructor(message: string, code: number, kind?: string) {
     super(message);
     this.name = 'RepoError';
     this.code = code;
+    this.kind = kind ?? (code > 0 ? 'http' : 'network');
   }
 }
 
 export class ApprovalsPage {
   items: ApprovalItem[] = [];
   pending: number = 0;
+  skipped: number = 0; // malformed gateway entries dropped while parsing (live mode)
 }
 
 export class ConnectionInfo {

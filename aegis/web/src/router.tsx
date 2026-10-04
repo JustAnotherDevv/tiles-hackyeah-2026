@@ -32,9 +32,9 @@ function PageFrame({ page }: { page: PageEntry }) {
     <ErrorBoundary key={pathname} label={page.file.replace('../', 'web/src/')}>
       <motion.div
         key={meta.path}
-        initial={motionOk ? { opacity: 0, y: 6 } : false}
+        initial={motionOk ? { opacity: 0 } : false}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        transition={{ duration: 0.12, ease: 'easeOut' }}
       >
         <Component />
       </motion.div>

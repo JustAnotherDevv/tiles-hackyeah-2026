@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import difflib
 import fnmatch
-import re
+import math
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -186,13 +186,16 @@ def compile_re2(pattern: str) -> str | None:
     """None if OK, else the error message."""
     if not isinstance(pattern, str):
         return f"regex must be a string, got {type(pattern).__name__}"
+    if _re2 is None:  # pragma: no cover - google-re2 is a hard dependency
+        return (f"RE2 rejected pattern {pattern!r}: google-re2 unavailable "
+                "(policy regexes are RE2-only, no stdlib fallback)")
     try:
-        if _re2 is not None:
-            _re2.compile(pattern)
-        else:  # pragma: no cover
-            re.compile(pattern)
+        _re2.compile(pattern)
     except Exception as exc:
-        return f"invalid RE2 regex {pattern!r}: {exc}"
+        hint = (" (look-arounds/backreferences are not supported; RE2 runs in linear time)"
+                if any(t in pattern for t in ("(?=", "(?!", "(?<=", "(?<!", "(?P=", "\\1"))
+                else "")
+        return f"RE2 rejected pattern {pattern!r}: {exc}{hint}"
     return None
 
 
@@ -222,6 +225,14 @@ def _regex_params(cfg: ps.ControlConfig) -> list[tuple[tuple[Any, ...], str]]:
         for i, pat in enumerate(p.get("allowlist_patterns") or []):
             if isinstance(pat, str):
                 out.append((("params", "allowlist_patterns", i), pat))
+    elif cfg.id == "DLP-08":
+        for i, pat in enumerate(p.get("deny_command_patterns") or []):
+            if isinstance(pat, str):
+                out.append((("params", "deny_command_patterns", i), pat))
+    elif cfg.id == "MCP-02":
+        for i, pat in enumerate(p.get("extra_markers") or []):
+            if isinstance(pat, str):
+                out.append((("params", "extra_markers", i), pat))
     return out
 
 
@@ -338,8 +349,12 @@ def _semantic_checks(doc: PolicyDoc, raw: Any, index: LineIndex | None,
         if not set_dims:
             warn(base, f"budget limit {lim.scope}/{lim.window} sets no dimension (usd, tokens, ...)")
         for d in set_dims:
-            if getattr(lim, d) < 0:
-                err((*base, d), f"negative budget amount {d}={getattr(lim, d)}")
+            amount = getattr(lim, d)
+            if isinstance(amount, float) and not math.isfinite(amount):
+                err((*base, d), f"budget amount {d}={amount} must be a finite number "
+                    "(.inf/.nan would disable enforcement)")
+            elif amount < 0:
+                err((*base, d), f"negative budget amount {d}={amount}")
         if lim.on_hard == "require_approval" and not has_budget_rule and doc.approvals.defaults.default_approver == "deny":
             warn((*base, "on_hard"), "on_hard: require_approval but no approvals rule matches "
                  "kind budget_raise and default_approver is deny")

@@ -2,19 +2,10 @@ import { userAuth } from '@kit.UserAuthenticationKit';
 import { cryptoFramework } from '@kit.CryptoArchitectureKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { Log } from '../common/Format';
+import { StepUpCodes, StepUpOutcome } from './StepUpCodes';
 
-/** Outcome of a step-up attempt. */
-export class StepUpOutcome {
-  /** 'verified' | 'cancelled' | 'failed' | 'unavailable' */
-  status: string;
-  /** Human label of the method that verified the user ('face', 'fingerprint', 'PIN'), or the reason. */
-  detail: string;
-
-  constructor(status: string, detail: string) {
-    this.status = status;
-    this.detail = detail;
-  }
-}
+/** Gives up on the auth widget if it never reports a result (the promise must always settle). */
+const AUTH_TIMEOUT_MS: number = 90000;
 
 const TYPE_ORDER: userAuth.UserAuthType[] = [
   userAuth.UserAuthType.FACE,
@@ -27,13 +18,18 @@ const TYPE_ORDER: userAuth.UserAuthType[] = [
  *
  * Uses the system authentication widget (face / fingerprint / lock-screen PIN, ATL3) with a random
  * challenge. Requires ohos.permission.ACCESS_BIOMETRIC (system_grant, normal APL: ordinary apps).
- * When no credential is enrolled or the device has no authenticator (for example the DevEco
- * emulator, which cannot simulate biometrics), it returns 'unavailable' and the caller shows an
- * explicitly labelled manual-confirmation fallback.
+ * Only when the pre-check finds no enrolled authenticator at all (for example the DevEco emulator,
+ * which cannot simulate biometrics) does it return 'unavailable', and the caller shows an explicitly
+ * labelled manual-confirmation fallback. Any failure after that point fails closed.
  */
 export class StepUpAuth {
   /** Authentication types this device can use right now at ATL3 (empty on most emulators). */
   static availableTypes(): userAuth.UserAuthType[] {
+    return StepUpAuth.probe([]);
+  }
+
+  /** Checks each type at ATL3; usable types are returned, failure codes are appended to failCodes. */
+  private static probe(failCodes: number[]): userAuth.UserAuthType[] {
     const out: userAuth.UserAuthType[] = [];
     for (const t of TYPE_ORDER) {
       try {
@@ -41,6 +37,7 @@ export class StepUpAuth {
         out.push(t);
       } catch (e) {
         const err: BusinessError = e as BusinessError;
+        failCodes.push(err.code);
         Log.info('userAuth type ' + t + ' unavailable: ' + err.code);
       }
     }
@@ -73,21 +70,58 @@ export class StepUpAuth {
     return 'device credential';
   }
 
-  /** Shows the system authentication sheet. Never rejects; inspect StepUpOutcome.status. */
+  /**
+   * Shows the system authentication sheet. Never rejects; inspect StepUpOutcome.status.
+   * 'unavailable' is returned only when the pre-check finds no usable authenticator; after that every
+   * non-success result fails closed (see StepUpCodes).
+   */
   static authenticate(title: string): Promise<StepUpOutcome> {
     return new Promise<StepUpOutcome>((resolve: (o: StepUpOutcome) => void) => {
-      const types: userAuth.UserAuthType[] = StepUpAuth.availableTypes();
-      if (types.length === 0) {
-        resolve(new StepUpOutcome('unavailable', 'No face, fingerprint or PIN is available on this device'));
+      const failCodes: number[] = [];
+      const types: userAuth.UserAuthType[] = StepUpAuth.probe(failCodes);
+      const pre: StepUpOutcome | undefined = StepUpCodes.precheckOutcome(types.length, failCodes);
+      if (pre !== undefined) {
+        resolve(pre);
         return;
       }
       let settled: boolean = false;
+      let started: boolean = false;
+      let instance: userAuth.UserAuthInstance | undefined = undefined;
+      let timer: number = -1;
       const finish = (o: StepUpOutcome): void => {
-        if (!settled) {
-          settled = true;
-          resolve(o);
+        if (settled) {
+          return;
         }
+        settled = true;
+        if (timer !== -1) {
+          clearTimeout(timer);
+          timer = -1;
+        }
+        if (instance !== undefined) {
+          try {
+            instance.off('result');
+          } catch (e) {
+            // already unsubscribed
+          }
+        }
+        resolve(o);
       };
+      timer = setTimeout(() => {
+        timer = -1;
+        if (settled) {
+          return;
+        }
+        Log.warn('userAuth: no result after ' + AUTH_TIMEOUT_MS + ' ms, cancelling');
+        if (instance !== undefined && started) {
+          try {
+            instance.cancel(); // documented as valid only after start()
+          } catch (e) {
+            const err: BusinessError = e as BusinessError;
+            Log.warn('userAuth cancel failed: ' + err.code);
+          }
+        }
+        finish(new StepUpOutcome('failed', 'Authentication timed out'));
+      }, AUTH_TIMEOUT_MS);
       try {
         const authParam: userAuth.AuthParam = {
           challenge: StepUpAuth.challenge(),
@@ -97,47 +131,27 @@ export class StepUpAuth {
         const widgetParam: userAuth.WidgetParam = {
           title: title.length > 0 ? title.substring(0, 480) : 'Confirm approval'
         };
-        const instance: userAuth.UserAuthInstance = userAuth.getUserAuthInstance(authParam, widgetParam);
-        instance.on('result', {
+        const inst: userAuth.UserAuthInstance = userAuth.getUserAuthInstance(authParam, widgetParam);
+        instance = inst;
+        inst.on('result', {
           onResult: (result: userAuth.UserAuthResult) => {
-            try {
-              instance.off('result');
-            } catch (e) {
-              // already unsubscribed
-            }
             finish(StepUpAuth.outcomeOf(result.result, result.authType));
           }
         });
-        instance.start();
+        inst.start();
+        started = true;
       } catch (e) {
         const err: BusinessError = e as BusinessError;
         Log.warn('userAuth start failed: ' + err.code + ' ' + err.message);
+        // An authenticator exists (pre-check passed), so a thrown code fails closed: never 'unavailable'.
         finish(StepUpAuth.outcomeOf(err.code, undefined));
       }
     });
   }
 
-  /** Maps a UserAuthResultCode to an outcome. Exported for unit tests. */
+  /** Maps a UserAuthResultCode to an outcome (never 'unavailable'). Pure rules live in StepUpCodes. */
   static outcomeOf(code: number, authType: userAuth.UserAuthType | undefined): StepUpOutcome {
-    if (code === userAuth.UserAuthResultCode.SUCCESS) {
-      return new StepUpOutcome('verified', StepUpAuth.typeName(authType));
-    }
-    if (code === userAuth.UserAuthResultCode.CANCELED || code === userAuth.UserAuthResultCode.CANCELED_FROM_WIDGET) {
-      return new StepUpOutcome('cancelled', 'Authentication cancelled');
-    }
-    if (code === userAuth.UserAuthResultCode.TYPE_NOT_SUPPORT ||
-      code === userAuth.UserAuthResultCode.TRUST_LEVEL_NOT_SUPPORT ||
-      code === userAuth.UserAuthResultCode.NOT_ENROLLED ||
-      code === userAuth.UserAuthResultCode.GENERAL_ERROR) {
-      return new StepUpOutcome('unavailable', 'Device authentication unavailable (code ' + code + ')');
-    }
-    if (code === userAuth.UserAuthResultCode.LOCKED) {
-      return new StepUpOutcome('failed', 'Authentication locked: too many attempts');
-    }
-    if (code === userAuth.UserAuthResultCode.TIMEOUT) {
-      return new StepUpOutcome('failed', 'Authentication timed out');
-    }
-    return new StepUpOutcome('failed', 'Authentication failed (code ' + code + ')');
+    return StepUpCodes.outcomeOf(code, StepUpAuth.typeName(authType));
   }
 
   private static challenge(): Uint8Array {

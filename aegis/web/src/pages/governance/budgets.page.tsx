@@ -2,7 +2,7 @@
 // hierarchy with live usage bars (SSE budget.updated/threshold + 5 s polling), "Request increase" with
 // the live approval route → POST /api/budgets/raise → ApplyResult, kill switch per scope + global.
 // Owner: B19-dashboard-gov-policy.
-import { Activity, AlertTriangle, Cpu, LineChart, Power, Wallet } from 'lucide-react';
+import { AlertTriangle, Cpu, LineChart, Wallet } from '@/components/icons';
 import { useMemo, useState } from 'react';
 import { useApi } from '@/api/hooks';
 import type { BudgetDimension, BudgetScopeView, BudgetStatus, BudgetWindow, BudgetsResponse } from '@/api/types';
@@ -36,8 +36,8 @@ export const meta: PageMeta = {
 const DIMS: { value: BudgetDimension; label: string }[] = [
   { value: 'usd', label: 'USD' },
   { value: 'tokens', label: 'Tokens' },
-  { value: 'compute_s', label: 'Compute s' },
-  { value: 'spend_usd', label: 'Spend $' },
+  { value: 'compute_s', label: 'Compute' },
+  { value: 'spend_usd', label: 'Agent spend' },
 ];
 const WINDOWS: { value: BudgetWindow; label: string }[] = [
   { value: 'day', label: 'Day' },
@@ -46,7 +46,7 @@ const WINDOWS: { value: BudgetWindow; label: string }[] = [
 ];
 
 export default function BudgetsPage() {
-  const { viewerId, role, member } = useViewer();
+  const { viewerId, role } = useViewer();
   const who = useWhoAmI();
   const dir = useDirectory();
   const now = useNow(1000);
@@ -88,22 +88,20 @@ export default function BudgetsPage() {
       <PageHeader
         title="Budgets"
         icon={Wallet}
-        subtitle="Hierarchical limits enforced inline by BUD-01 — soft limit downgrades the model, hard limit answers 402, the kill switch answers 429."
+        subtitle="Hierarchical spend limits enforced inline. Soft limit downgrades the model, hard limit returns 402, kill switch returns 429."
         badge={res.isMock ? <MockBadge /> : null}
         actions={<PersonaSwitcher />}
       />
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <Segmented value={dimension} options={DIMS} onChange={setDimension} ariaLabel="Dimension" />
         <Segmented value={win} options={WINDOWS} onChange={setWin} ariaLabel="Window" />
-        <span className="text-xs text-text-3">
-          Viewing as <span className="text-text-1">{member?.name ?? '—'}</span> ({role}) · {canKill ? 'kill switch available' : 'kill switch locked for your role'}
-        </span>
-        {data ? <span className="ml-auto text-2xs text-text-4">pricing {data.pricing_version}</span> : null}
+        {!canKill ? <span className="basis-full text-xs text-text-3 sm:basis-auto">Kill switch locked for the {role} role</span> : null}
+        {data ? <span className="ml-auto hidden font-mono text-2xs text-text-4 sm:inline">pricing {data.pricing_version}</span> : null}
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <div className="col-span-2 flex items-center gap-4 rounded-xl border border-border bg-surface-1 p-4 lg:col-span-1">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="col-span-2 flex items-center gap-4 rounded-lg border border-border bg-card p-4 shadow-card lg:col-span-1">
           {orgDay ? (
             <Gauge
               value={Math.min(orgDay.pct, 100)}
@@ -112,15 +110,15 @@ export default function BudgetsPage() {
               sublabel="of limit"
               tone={orgDay.pct >= 100 ? 'bad' : orgDay.pct >= 80 ? 'warn' : 'neutral'}
               format={() => `${Math.round(orgDay.pct)}%`}
-              size={76}
+              size={72}
             />
           ) : (
-            <Skeleton className="size-[76px] rounded-full" />
+            <Skeleton className="size-[72px] rounded-full" />
           )}
           <div className="min-w-0">
-            <div className="text-2xs font-medium uppercase tracking-wider text-text-3">Org spend today</div>
+            <div className="text-xs text-text-3">Org spend today</div>
             <div className="mt-0.5 font-mono text-lg font-semibold text-text-1 tabular">{orgDay ? fmtDimension('usd', orgDay.used) : '—'}</div>
-            <div className="text-xs text-text-3 tabular">of {orgDay ? fmtDimension('usd', orgDay.limit) : '—'}</div>
+            <div className="text-xs text-text-3 tabular">of {orgDay ? fmtDimension('usd', orgDay.limit) : '—'} daily limit</div>
           </div>
         </div>
         <KpiTile
@@ -138,20 +136,13 @@ export default function BudgetsPage() {
           loading={!data}
         />
         <KpiTile
-          label="Scopes at soft / hard"
+          label="Scopes at soft / hard limit"
           icon={AlertTriangle}
           value={`${soft} / ${hard}`}
-          tone={hard > 0 ? 'bad' : soft > 0 ? 'warn' : 'good'}
-          hint={hard > 0 ? 'blocking with 402' : soft > 0 ? 'downgrading models' : 'all healthy'}
+          tone={hard > 0 ? 'bad' : soft > 0 ? 'warn' : 'neutral'}
+          hint={hard > 0 ? 'blocking with 402' : soft > 0 ? 'downgrading models' : 'all within limits'}
           loading={!data}
-        />
-        <KpiTile
-          label="Kill switch"
-          icon={Power}
-          value={ks?.global ? 'GLOBAL' : killedCount ? `${killedCount} killed` : 'off'}
-          tone={ks?.global || killedCount ? 'bad' : 'good'}
-          hint={ks ? [...ks.agents.map((a) => `agent:${a}`), ...ks.teams.map((t) => `team:${t}`)].slice(0, 2).join(', ') || 'nothing stopped' : undefined}
-          loading={!data}
+          className="col-span-2 sm:col-span-1"
         />
       </div>
 
@@ -161,17 +152,18 @@ export default function BudgetsPage() {
           perm={{ canEngage: canKill, canRelease: role === 'owner', reason: '' }}
           viewer={viewer}
           onDone={() => res.refresh()}
+          stoppedCount={killedCount}
         />
       ) : null}
 
       <Panel
         title="Budget hierarchy"
-        description="Org → team → member / agent. Bars move live; 80 % marks the soft limit, the bright mark the hard limit. Click a row for its burn-down."
+        description="Org → team → member / agent. Ticks mark the soft (80%) and hard (100%) limit. Select a row for its burn-down."
         isMock={res.isMock}
         flush
         actions={
           <span className="inline-flex items-center gap-1.5 text-2xs text-text-3">
-            <Activity className="size-3 text-allow" /> live
+            <span className="size-1.5 rounded-full bg-allow" aria-hidden /> Live
           </span>
         }
       >
@@ -209,7 +201,7 @@ export default function BudgetsPage() {
         <Panel
           title={
             <span className="flex items-center gap-2">
-              Burn-down · {sel.name} <span className="font-mono text-xs font-normal text-text-3">{sel.scope}</span>
+              Burn-down · {sel.name} <span className="hidden font-mono text-xs font-normal text-text-3 sm:inline">{sel.scope}</span>
             </span>
           }
           description={`${dimensionLabel(chartDim)} over the last 24 h with a linear forecast to the end of the day`}
@@ -220,13 +212,13 @@ export default function BudgetsPage() {
             <BudgetHistoryChart scope={sel.scope} dimension={chartDim} />
             {sel.limits.length > 0 ? (
               <div className="space-y-2">
-                <div className="text-2xs font-medium uppercase tracking-wider text-text-3">Limits on {scopeLabel(sel.scope)}</div>
+                <div className="text-xs font-medium text-text-2">Limits on {scopeLabel(sel.scope)}</div>
                 {sel.limits.map((l) => (
                   <button
                     type="button"
                     key={`${l.window}|${l.dimension}`}
                     onClick={() => setRaise({ scope: sel, limit: l })}
-                    className="flex w-full items-center justify-between rounded-md border border-border bg-surface-1 px-2.5 py-1.5 text-left text-xs hover:border-border-strong"
+                    className="flex min-h-9 w-full items-center justify-between gap-2 rounded-sm border border-border bg-surface-1 px-2.5 py-1.5 text-left text-xs transition-colors duration-100 hover:border-border-strong md:min-h-0"
                     title="Request a change to this limit"
                   >
                     <span className="text-text-2">

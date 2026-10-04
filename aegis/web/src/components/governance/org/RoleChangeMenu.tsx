@@ -1,7 +1,7 @@
 // Role badge that doubles as a "change role" menu (UIG-10). Every option stays visible; options the
 // viewer cannot pick are disabled with the reason inline. Admin-initiated role changes are sent as
 // owner approvals (rule org-privileged). Owner: B18-dashboard-gov-approvals.
-import { ChevronDown, Lock, Send } from 'lucide-react';
+import { ChevronDown, Lock, Send } from '@/components/icons';
 import type { Member } from '@/api/types';
 import { RoleBadge } from '@/components/shell';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';

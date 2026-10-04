@@ -9,6 +9,7 @@ import time
 import pytest
 
 from aegis.mcp.client import McpClientError, aegis_decision, result_text
+from tests.lib.perf import bound
 
 ERAS = ["auto", "legacy"]  # auto = modern (2026-07-28) first
 
@@ -265,11 +266,11 @@ async def test_overhead(stack):
         samples.append(aegis_ms)
     p50 = statistics.median(samples)
     print(f"governance p50={p50:.2f} ms")
-    assert p50 < 15, p50  # target < 3 ms on an idle machine; generous bound for a busy CI box
+    assert p50 < bound(15), p50  # target < 3 ms on an idle machine; generous bound for a busy CI box
     t0 = time.perf_counter()
     await c.list_tools()
     cached_ms = (time.perf_counter() - t0) * 1000
-    assert cached_ms < 200
+    assert cached_ms < bound(200), f"{cached_ms:.1f}ms"
 
 
 def _admin():

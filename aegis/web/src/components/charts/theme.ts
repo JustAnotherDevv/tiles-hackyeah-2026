@@ -2,15 +2,15 @@
 export const chartTheme = {
   grid: '#1A1E24',
   axis: '#2A2F37',
-  label: '#7A808C',
-  surface: '#0E1013',
+  label: '#808693',
+  surface: '#111317',
   crosshair: '#4B5160',
-  annotation: '#A5B4FC',
-  annotationLine: 'rgba(165,180,252,.55)',
+  annotation: '#8AB0F5',
+  annotationLine: 'rgba(138,176,245,.5)',
   forecast: '#7A808C',
   hardCap: '#C43350',
-  tick: { fill: '#7A808C', fontSize: 10.5 },
-  animationMs: 640,
+  tick: { fill: '#808693', fontSize: 10.5 },
+  animationMs: 300,
 } as const;
 
 export function fmtClockTick(v: string | number): string {

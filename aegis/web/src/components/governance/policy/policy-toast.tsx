@@ -1,7 +1,7 @@
 // "Policy v13 hot-reloaded in 184 ms" toast with the change summary and WHICH VERDICTS FLIPPED
 // (from the dry-run probes). sonner id `policy-v<version>` so a shell toast with the same id is
 // updated in place instead of duplicated. Owner: B19-dashboard-gov-policy.
-import { ArrowRight, FlaskConical, ShieldOff, Zap } from 'lucide-react';
+import { ArrowRight, FlaskConical, ShieldOff, Zap } from '@/components/icons';
 import { toast } from 'sonner';
 import type { ApplyResult, Identity, PolicyChange } from '@/api/types';
 import { eventHub } from '@/api/sse';

@@ -4,28 +4,62 @@ Owner: core-gateway (bundle B02). Implements `aegis.core.protocols.ProviderAdapt
 
 Segments: `messages[i].content` (string or `[{type: text}]` parts); roles `system`/`developer` ->
 `system`, `user`, `assistant`, `tool`/`function` -> `tool_result` (`trusted=False`);
-`tool_calls[k].function.arguments` (one JSON-string segment, role `tool_args`).
+`tool_calls[k].function.arguments` (one JSON-string segment, role `tool_args`). Every other
+model-visible string (non-text parts, `name`, `refusal`, `function_call`, top-level `prompt` /
+`input` / `instructions`) goes through the generic `text_leaves` fallback (R9: fail closed).
 Streaming requests get `stream_options.include_usage=true` (exact usage for budgets); the
 synthesized stream hides the usage chunk again when the client did not ask for it.
 """
 
 from __future__ import annotations
 
+import re
 import time
 from collections.abc import Mapping
 from typing import Any, Literal
 
 from aegis.core.types import Interaction, TextSegment, Usage, Verdict, new_id
 from aegis.proxy.adapters._common import apply_segments as _apply_segments
-from aegis.proxy.adapters._common import dumps, estimate_tokens, is_claude_code
+from aegis.proxy.adapters._common import (
+    as_dict,
+    as_list,
+    dumps,
+    estimate_tokens,
+    is_claude_code,
+    opt_int,
+    safe_int,
+    text_leaves,
+)
 from aegis.proxy.adapters._common import error_body as _error_body
 from aegis.proxy.blocking import block_info
+from aegis.proxy.jpath import join
 from aegis.proxy.streaming import openai_chunks
 
 __all__ = ["ADAPTERS", "OpenAIAdapter", "prepare_openai_request"]
 
 _ROLE = {"system": "system", "developer": "system", "user": "user", "assistant": "assistant",
          "tool": "tool_result", "function": "tool_result"}
+
+# Responses-API / legacy completions text fields a lenient upstream may still render (R9)
+_EXTRA_TEXT_KEYS = {"prompt": "user", "input": "user", "instructions": "system",
+                    "suffix": "user"}
+_FN_NAME = re.compile(r"^[A-Za-z0-9_\-:.]{1,128}$")
+
+
+def _tool_call_leaves(tc: dict[str, Any], base: str) -> list[tuple[str, str]]:
+    """String leaves of `tool_calls[k]` other than `function.arguments` (its own segment) and an
+    identifier-like `function.name` (never duplicate a path: apply_segments writes by path)."""
+    out: list[tuple[str, str]] = []
+    for k, v in tc.items():
+        p = join(base, str(k))
+        if k == "function" and isinstance(v, dict):
+            name = v.get("name")
+            skip = {"arguments", "name"} if isinstance(name, str) and _FN_NAME.match(name) \
+                else {"arguments"}
+            out.extend(text_leaves(v, p, exclude=skip))
+        else:
+            out.extend(text_leaves({k: v}, base))
+    return out
 
 
 def prepare_openai_request(body: dict[str, Any]) -> tuple[dict[str, Any], bool]:
@@ -46,27 +80,52 @@ class OpenAIAdapter:
 
     def parse_request(self, body: dict[str, Any], headers: Mapping[str, str]) -> Interaction:
         segs: list[TextSegment] = []
-        messages = body.get("messages") or []
+        messages = as_list(body.get("messages"))
         for i, m in enumerate(messages):
             if not isinstance(m, dict):
                 continue
             role = _ROLE.get(str(m.get("role")), "user")
             trusted = role != "tool_result"
+            base = f"messages[{i}]"
             content = m.get("content")
             if isinstance(content, str):
-                segs.append(TextSegment(path=f"messages[{i}].content", text=content, role=role,
-                                        trusted=trusted))
+                if content:
+                    segs.append(TextSegment(path=f"{base}.content", text=content, role=role,
+                                            trusted=trusted))
             elif isinstance(content, list):
                 for j, part in enumerate(content):
-                    if (isinstance(part, dict) and part.get("type") == "text"
-                            and isinstance(part.get("text"), str)):
-                        segs.append(TextSegment(path=f"messages[{i}].content[{j}].text",
-                                                text=part["text"], role=role, trusted=trusted))
-            for k, tc in enumerate(m.get("tool_calls") or []):
-                fn = (tc or {}).get("function") or {}
-                if isinstance(fn.get("arguments"), str):
-                    segs.append(TextSegment(path=f"messages[{i}].tool_calls[{k}].function.arguments",
+                    pp = f"{base}.content[{j}]"
+                    if isinstance(part, str):
+                        if part:
+                            segs.append(TextSegment(path=pp, text=part, role=role,
+                                                    trusted=trusted))
+                    elif isinstance(part, dict):
+                        if part.get("type") == "text" and isinstance(part.get("text"), str):
+                            segs.append(TextSegment(path=f"{pp}.text", text=part["text"],
+                                                    role=role, trusted=trusted))
+                            rest = text_leaves(part, pp, exclude={"text"})
+                        else:  # refusal, file, image_url, input_text, unknown parts (R9)
+                            rest = text_leaves(part, pp)
+                        for lp, t in rest:
+                            segs.append(TextSegment(path=lp, text=t, role=role,
+                                                    trusted=trusted))
+            for k, tc in enumerate(as_list(m.get("tool_calls"))):
+                tb = f"{base}.tool_calls[{k}]"
+                if not isinstance(tc, dict):
+                    continue
+                fn = tc.get("function")
+                if isinstance(fn, dict) and isinstance(fn.get("arguments"), str):
+                    segs.append(TextSegment(path=f"{tb}.function.arguments",
                                             text=fn["arguments"], role="tool_args"))
+                for lp, t in _tool_call_leaves(tc, tb):
+                    segs.append(TextSegment(path=lp, text=t, role="tool_args"))
+            # name, refusal, function_call, audio, unknown fields (fail closed on unknown shapes)
+            for lp, t in text_leaves(m, base, exclude={"content", "tool_calls"}):
+                segs.append(TextSegment(path=lp, text=t, role=role, trusted=trusted))
+        for key, role_ in _EXTRA_TEXT_KEYS.items():
+            if key in body:
+                for lp, t in text_leaves(body[key], key):
+                    segs.append(TextSegment(path=lp, text=t, role=role_))
         model = body.get("model")
         text = "\n".join(s.text for s in segs)
         tools = body.get("tools") or []
@@ -79,7 +138,7 @@ class OpenAIAdapter:
             direction="out",
             model=model if isinstance(model, str) else None,
             segments=segs,
-            max_output_tokens=int(max_out) if isinstance(max_out, (int, float)) else None,
+            max_output_tokens=opt_int(max_out),
             est_input_tokens=est,
             meta={
                 "wire": "openai",
@@ -93,16 +152,23 @@ class OpenAIAdapter:
 
     def parse_response(self, body: dict[str, Any]) -> Interaction:
         segs: list[TextSegment] = []
-        for i, ch in enumerate(body.get("choices") or []):
-            msg = (ch or {}).get("message") or {}
-            if isinstance(msg.get("content"), str):
-                segs.append(TextSegment(path=f"choices[{i}].message.content", text=msg["content"],
+        for i, ch in enumerate(as_list(body.get("choices"))):
+            msg = as_dict(as_dict(ch).get("message"))
+            base = f"choices[{i}].message"
+            content = msg.get("content")
+            if isinstance(content, str):
+                segs.append(TextSegment(path=f"{base}.content", text=content, role="assistant"))
+            elif isinstance(content, list):
+                for lp, t in text_leaves(content, f"{base}.content"):
+                    segs.append(TextSegment(path=lp, text=t, role="assistant"))
+            if isinstance(msg.get("refusal"), str) and msg["refusal"]:
+                segs.append(TextSegment(path=f"{base}.refusal", text=msg["refusal"],
                                         role="assistant"))
-            for k, tc in enumerate(msg.get("tool_calls") or []):
-                fn = (tc or {}).get("function") or {}
+            for k, tc in enumerate(as_list(msg.get("tool_calls"))):
+                fn = as_dict(as_dict(tc).get("function"))
                 if isinstance(fn.get("arguments"), str):
                     segs.append(TextSegment(
-                        path=f"choices[{i}].message.tool_calls[{k}].function.arguments",
+                        path=f"{base}.tool_calls[{k}].function.arguments",
                         text=fn["arguments"], role="tool_args"))
         model = body.get("model")
         return Interaction(
@@ -121,11 +187,11 @@ class OpenAIAdapter:
         u = body.get("usage") or {}
         if not isinstance(u, dict):
             return Usage()
-        details = u.get("prompt_tokens_details") or {}
+        details = as_dict(u.get("prompt_tokens_details"))
         return Usage(
-            input_tokens=int(u.get("prompt_tokens") or 0),
-            output_tokens=int(u.get("completion_tokens") or 0),
-            cache_read_tokens=int((details or {}).get("cached_tokens") or 0),
+            input_tokens=safe_int(u.get("prompt_tokens")),
+            output_tokens=safe_int(u.get("completion_tokens")),
+            cache_read_tokens=safe_int(details.get("cached_tokens")),
             requests=1,
             estimated=not bool(u),
         )

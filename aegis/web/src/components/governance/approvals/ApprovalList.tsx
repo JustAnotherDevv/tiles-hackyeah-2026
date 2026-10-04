@@ -1,6 +1,6 @@
 // Animated inbox list (new ids slide in, decided ones slide out). Owner: B18-dashboard-gov-approvals.
 import { AnimatePresence } from 'framer-motion';
-import { CheckCheck } from 'lucide-react';
+import { CheckCheck } from '@/components/icons';
 import type { ReactNode } from 'react';
 import type { ApprovalRequest } from '@/api/types';
 import { EmptyState } from '@/components/shell';

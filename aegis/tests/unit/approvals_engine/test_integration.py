@@ -5,7 +5,7 @@ the approved change is applied (policy version + 1) and the audit trail reads
 approval.created -> approval.decided -> approval.executed -> policy.applied.
 
 The policy file is copied into tmp_path so the repo's config/policy.yaml is never written.
-Skips (never fails) while another bundle is still on its Null fallback.
+Integration is complete: every step asserts, so an F4/F5 regression fails here (no skips).
 """
 
 from __future__ import annotations
@@ -13,12 +13,13 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import asgi_lifespan
+import httpx
 import pytest
 
-httpx = pytest.importorskip("httpx")
-asgi_lifespan = pytest.importorskip("asgi_lifespan")
-app_mod = pytest.importorskip("aegis.app")
-settings_mod = pytest.importorskip("aegis.settings")
+from aegis import app as app_mod
+from aegis import settings as settings_mod
+from aegis.approvals.service import ApprovalsService
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -28,17 +29,13 @@ async def live(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_TEST_MODE", "1")
     monkeypatch.setenv("AEGIS_SEMANTIC", "off")
     src = ROOT / "config" / "policy.yaml"
-    if not src.exists():
-        pytest.skip("config/policy.yaml not present yet")
+    assert src.exists(), "config/policy.yaml missing"
     cfg_dir = tmp_path / "config"
     cfg_dir.mkdir()
     policy = cfg_dir / "policy.yaml"
     shutil.copy(src, policy)
-    try:
-        settings = settings_mod.Settings(data_dir=tmp_path / "data", ui_dist=tmp_path / "dist",
-                                         policy=policy)
-    except Exception as exc:  # pragma: no cover - settings shape changed
-        pytest.skip(f"Settings not constructible: {exc}")
+    settings = settings_mod.Settings(data_dir=tmp_path / "data", ui_dist=tmp_path / "dist",
+                                     policy=policy)
     app = app_mod.create_app(settings)
     async with asgi_lifespan.LifespanManager(app, startup_timeout=60, shutdown_timeout=30):
         transport = httpx.ASGITransport(app=app)
@@ -56,23 +53,16 @@ def _limit(doc: dict, scope: str, window: str):
 async def test_f5_budget_raise_end_to_end(live):
     app, client = live
     rt = app.state.rt
-    from aegis.approvals.service import ApprovalsService
-
-    if not isinstance(getattr(rt, "approvals", None), ApprovalsService):
-        pytest.skip("rt.approvals is not the approvals engine")
-    if not hasattr(rt.policy, "propose"):
-        pytest.skip("policy engine has no propose() yet")
+    assert isinstance(getattr(rt, "approvals", None), ApprovalsService), rt.approvals
+    assert hasattr(rt.policy, "propose"), "policy engine has no propose()"
     v0 = rt.policy.snapshot().version
 
     r = await client.post("/api/budgets/raise", headers={"X-Aegis-View-As": "u_piotr"},
                           json={"scope": "team:trading", "window": "day", "dimension": "usd",
                                 "new_limit": 75})
-    if r.status_code == 404:
-        pytest.skip("/api/budgets/raise not mounted")
     assert r.status_code == 200, r.text
     out = r.json()
-    if out.get("status") != "pending_approval":
-        pytest.skip(f"policy propose did not route through GOV-05 yet: {out.get('status')}")
+    assert out.get("status") == "pending_approval", f"raise did not route through GOV-05: {out}"
     approval = out.get("approval") or {}
     apr_id = approval.get("id") or out.get("approval_id")
     assert apr_id, out
@@ -89,8 +79,9 @@ async def test_f5_budget_raise_end_to_end(live):
     assert rt.policy.snapshot().version == v0 + 1
 
     r = await client.get("/api/policy")
-    if r.status_code == 200 and isinstance(r.json().get("doc"), dict):
-        assert _limit(r.json()["doc"], "team:trading", "day") == 75
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json().get("doc"), dict), r.json()
+    assert _limit(r.json()["doc"], "team:trading", "day") == 75
 
     # the audit SQLite projection is write-behind (B15: lags the chain by up to ~20 ms, more
     # under load / right after a policy apply) -> poll briefly instead of a one-shot query
@@ -116,10 +107,7 @@ async def test_f4_guard_hold_approve_redeem(live):
     the identical retry is allowed ('approved by u_emily')."""
     app, client = live
     rt = app.state.rt
-    from aegis.approvals.service import ApprovalsService
-
-    if not isinstance(getattr(rt, "approvals", None), ApprovalsService):
-        pytest.skip("rt.approvals is not the approvals engine")
+    assert isinstance(getattr(rt, "approvals", None), ApprovalsService), rt.approvals
     body = {"interaction": {"kind": "mcp", "surface": "mcp.call",
                             "destination": {"name": "mcp:marketpulse", "dest_class": "third_party"},
                             "tool_name": "marketpulse.purchase_subscription",
@@ -127,14 +115,12 @@ async def test_f4_guard_hold_approve_redeem(live):
                                           "amount_usd": 50}},
             "identity": {"agent_id": "trading-copilot@trading"}}
     r = await client.post("/v1/guard", json=body)
-    if r.status_code == 404:
-        pytest.skip("/v1/guard not mounted")
     assert r.status_code == 200, r.text
     out = r.json()
     verdict = out.get("verdict") or {}
     approval = out.get("approval") or verdict.get("approval") or {}
-    if verdict.get("action") != "require_approval" or not approval.get("id"):
-        pytest.skip(f"guard did not hold for approval yet: {verdict.get('action')}")
+    assert verdict.get("action") == "require_approval", f"ACT-01 did not hold the $50 spend: {verdict}"
+    assert approval.get("id"), f"no approval created for the held call: {out}"
     apr_id = approval["id"]
     r = await client.post(f"/api/approvals/{apr_id}/approve", headers={"X-Aegis-View-As": "u_piotr"})
     assert r.status_code == 403

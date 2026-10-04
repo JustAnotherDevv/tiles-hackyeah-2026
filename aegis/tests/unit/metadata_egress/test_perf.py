@@ -8,6 +8,7 @@ import time
 from aegis.controls.egress.dlp03_metadata import CONTROLS
 from aegis.core.types import Destination, Interaction, TextSegment
 from aegis.egress import fixtures, identifiers
+from tests.lib.perf import bound
 from tests.unit.metadata_egress.helpers import make_cfg, make_ctx
 
 CTL = CONTROLS[0]
@@ -53,7 +54,7 @@ async def test_warm_p95_under_budget() -> None:
     # Plan target: warm p95 < 10 ms on an idle laptop. The shared 8 GB build box runs ~20 agents
     # (load avg > 40), so assert on best-of-20 (scheduler noise excluded) with headroom, and
     # keep p95 as a loose sanity bound.
-    assert times[0] < 25.0, f"best={times[0]:.2f} ms p95={p95:.2f} ms"
-    assert p95 < 500.0, f"p95={p95:.2f} ms"
-    assert time.perf_counter() - t_all < 10.0
+    assert times[0] < bound(25.0), f"best={times[0]:.2f} ms p95={p95:.2f} ms"
+    assert p95 < bound(500.0), f"p95={p95:.2f} ms"
+    assert time.perf_counter() - t_all < bound(10.0)
     identifiers.reset_local()

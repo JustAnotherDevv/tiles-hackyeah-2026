@@ -1,9 +1,13 @@
 // "View as" store (no React provider): read via useSyncExternalStore in api/hooks.ts and directly by
 // api/client.ts + api/sse.ts. Boot: ?view_as= (then removed from the URL) -> localStorage 'aegis.viewAs'
-// -> null (server default viewer, AEGIS_DEFAULT_VIEWER = u_katarzyna). Owner: dashboard-shell (B16).
+// -> DEFAULT_VIEWER (u_katarzyna). The header is always sent: the gateway treats requests without
+// X-Aegis-View-As as an anonymous read-only `viewer`. Owner: dashboard-shell (B16).
 import { readString, STORAGE_KEYS, writeString } from './storage';
 
 type Listener = () => void;
+
+/** must be declared before `boot()` runs at module init (TDZ) */
+export const DEFAULT_VIEWER = 'u_katarzyna';
 
 let current: string | null = boot();
 let epoch = 0;
@@ -22,7 +26,7 @@ function boot(): string | null {
   } catch {
     /* no window / bad URL */
   }
-  return readString(STORAGE_KEYS.viewAs);
+  return readString(STORAGE_KEYS.viewAs) ?? DEFAULT_VIEWER;
 }
 
 export function getViewer(): string | null {

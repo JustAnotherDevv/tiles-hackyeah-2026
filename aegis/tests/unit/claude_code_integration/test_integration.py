@@ -1,9 +1,8 @@
 """CC-V05: the hook route against the real app (create_app + lifespan, in-process ASGI).
 
-Hard guarantees (this bundle): always 200, malformed blocking events fail closed, decision id
-header, session bookkeeping, replay fixtures parse. Scene outcomes that depend on other bundles'
-controls (EXE-01/EXE-02/GOV-03/INJ-*) are asserted only when those controls actually decide, so a
-stub elsewhere never fails this suite; the observed outcome is printed (`pytest -s`).
+Hard guarantees: always 200, malformed blocking events fail closed, decision id header, session
+bookkeeping, replay fixtures parse, GOV-06 scenes block, DLP-08 rehydrates locally. Integration is
+complete, so nothing here skips on "not wired yet"; the observed outcome is printed (`pytest -s`).
 """
 
 from __future__ import annotations
@@ -12,12 +11,12 @@ import json
 import sys
 from pathlib import Path
 
+import asgi_lifespan
+import httpx
 import pytest
 
-httpx = pytest.importorskip("httpx")
-asgi_lifespan = pytest.importorskip("asgi_lifespan")
-app_mod = pytest.importorskip("aegis.app")
-settings_mod = pytest.importorskip("aegis.settings")
+from aegis import app as app_mod
+from aegis import settings as settings_mod
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / "demo" / "claude"))
@@ -31,10 +30,7 @@ HDR = {"X-Aegis-Agent": "claude-code@platform", "X-Aegis-Hook-Deadline": "12",
 async def live(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_TEST_MODE", "1")
     monkeypatch.setenv("AEGIS_SEMANTIC", "off")
-    try:
-        settings = settings_mod.Settings(data_dir=tmp_path / "data", ui_dist=tmp_path / "dist")
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"Settings not constructible: {exc}")
+    settings = settings_mod.Settings(data_dir=tmp_path / "data", ui_dist=tmp_path / "dist")
     app = app_mod.create_app(settings)
     async with asgi_lifespan.LifespanManager(app, startup_timeout=60, shutdown_timeout=30):
         transport = httpx.ASGITransport(app=app)
@@ -46,8 +42,6 @@ async def _send(client, event: str, payload: dict) -> tuple[dict, dict]:
     r = await client.post("/v1/hooks/claude-code", content=json.dumps(payload).encode(),
                           headers={**HDR, "X-Aegis-Hook-Event": event,
                                    "content-type": "application/json"})
-    if r.status_code == 404:
-        pytest.skip("hook route not mounted")
     assert r.status_code == 200, r.text
     return r.json(), dict(r.headers)
 
@@ -95,14 +89,12 @@ async def test_replay_scenes_in_process(live, capsys):
     st = await client.get("/v1/hooks/claude-code/status")
     assert st.status_code == 200
     assert any(s["session_id"] == "cc-v05-session" for s in st.json()["sessions"])
-    # scenes whose deciding control is implemented must match
-    controls = getattr(rt, "controls", None)
-    if controls is not None and controls.get("GOV-06") is not None:
-        snap = rt.policy.snapshot()
-        cfg = snap.controls.get("GOV-06")
-        if cfg is not None and cfg.enabled and cfg.mode == "enforce":
-            assert outcomes["edit_hook_settings"][0][2], outcomes["edit_hook_settings"]
-            assert outcomes["config_change"][0][2], outcomes["config_change"]
+    # GOV-06 (harness integrity) is loaded and enforcing in the shipped policy: its scenes match
+    assert rt.controls.get("GOV-06") is not None, "GOV-06 control not loaded"
+    cfg = rt.policy.snapshot().controls.get("GOV-06")
+    assert cfg is not None and cfg.enabled and cfg.mode == "enforce", cfg
+    assert outcomes["edit_hook_settings"][0][2], outcomes["edit_hook_settings"]
+    assert outcomes["config_change"][0][2], outcomes["config_change"]
     assert outcomes["read_readme"][0][0] in ("allow", "modify")
 
 
@@ -121,7 +113,6 @@ async def test_local_rehydration_round_trip(live, capsys):
     with capsys.disabled():
         print("\n  prompt ->", out, "\n  write  ->", json.dumps(out2)[:400])
     hso = out2.get("hookSpecificOutput") or {}
-    if "updatedInput" not in hso:
-        pytest.skip("DLP-08 did not request rehydration on this stack (vault/DLP-08 not wired)")
+    assert "updatedInput" in hso, f"DLP-08 did not request local rehydration: {out2}"
     assert "44051401359" in hso["updatedInput"]["content"]
     assert hso["permissionDecision"] == "allow" and "DLP-08" in hso["permissionDecisionReason"]

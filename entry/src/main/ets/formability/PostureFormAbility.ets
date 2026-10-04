@@ -6,7 +6,8 @@ import { Log } from '../common/Format';
 
 /**
  * Form Kit provider for the "AI posture" home-screen widgets (2x2 and 2x4).
- * - onAddForm: returns the last snapshot the app saved (mock defaults on first install).
+ * - onAddForm: returns the last snapshot saved for the current mode; with none (first install, corrupt
+ *   data, mode switched) the card shows "—" and "No data yet" under a MOCK/LIVE label, never sample numbers.
  * - onUpdateForm (every 30 min, `updateDuration: 1` in form_config.json): in live mode it polls the
  *   gateway (`/api/stats`, `/api/approvals`); otherwise it re-sends the last snapshot.
  * The app also pushes fresh data on every poll via formProvider.updateForm (WidgetBridge.push), and a

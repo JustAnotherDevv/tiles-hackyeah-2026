@@ -19,7 +19,7 @@ from aegis.org.service import create
         ({}, {"view_as": "u_piotr"}, "u_piotr", "member"),
         ({"cookie": "foo=1; aegis_view_as=marek"}, None, "u_marek", "admin"),
         ({"X-Aegis-View-As": "Emily"}, None, "u_emily", "admin"),
-        ({}, None, "u_katarzyna", "owner"),
+        ({"Sec-Fetch-Site": "same-origin"}, None, "u_katarzyna", "owner"),
         ({"X-Aegis-View-As": "u_tomasz"}, {"view_as": "u_piotr"}, "u_tomasz", "member"),
     ],
 )
@@ -38,7 +38,7 @@ async def test_unknown_view_as_is_anonymous_never_owner(rt, caplog, value):
     default viewer (the owner in the demo seed) - they get an anonymous, least-privilege viewer."""
     with caplog.at_level(logging.WARNING, logger="aegis.org.identity"):
         viewer = await rt.org.resolve_viewer({"X-Aegis-View-As": value})
-    assert viewer.member_id is None and viewer.role == "member" and not viewer.authenticated
+    assert viewer.member_id is None and viewer.role == "viewer" and not viewer.authenticated
     assert any("unknown view-as" in r.getMessage() for r in caplog.records) or value != "u_zz_nobody"
 
 
@@ -47,7 +47,8 @@ async def test_default_viewer_setting(make_rt):
     fake.settings.default_viewer = "u_marek"
     svc = create(fake)
     await svc.start()
-    assert (await svc.resolve_viewer({})).member_id == "u_marek"
+    browser = {"Sec-Fetch-Site": "same-origin"}
+    assert (await svc.resolve_viewer(browser)).member_id == "u_marek"
 
 
 async def test_non_demo_mode_requires_admin_token(make_rt):

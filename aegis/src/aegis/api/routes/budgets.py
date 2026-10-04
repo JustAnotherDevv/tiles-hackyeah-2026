@@ -10,6 +10,7 @@ GET /api/budgets/sessions.
 from __future__ import annotations
 
 import logging
+import math
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, Query
@@ -43,6 +44,19 @@ ADMIN = Depends(require_role("admin"))
 BODY = Body(default_factory=dict)
 
 WINDOWS = ("hour", "day", "week", "month", "session", "total")
+# R7: upper bounds for a budget limit / usage import, per dimension. Generous for a real org,
+# but rules out Infinity / 1e308 (which would silently disable enforcement in policy.yaml).
+MAX_AMOUNT: dict[str, float] = {
+    "usd": 1e6,
+    "spend_usd": 1e6,
+    "tokens": 1e12,
+    "compute_s": 1e8,
+    "requests": 1e9,
+    "tool_calls": 1e9,
+}
+MAX_SCOPE_LEN = 200
+MAX_REASON_LEN = 500
+MAX_QUERY_LEN = 200
 EMPTY_KS = {"global": False, "teams": [], "members": [], "agents": [], "sessions": []}
 
 
@@ -56,12 +70,49 @@ def _bad(message: str, **fields: Any) -> Any:
 
 
 def _validate_scope(scope: str, *, allow_glob: bool = True) -> str | None:
+    if len(scope or "") > MAX_SCOPE_LEN:
+        return f"scope too long (max {MAX_SCOPE_LEN} characters)"
     kind, _, ident = (scope or "").partition(":")
     if kind not in SCOPE_TYPES or not ident:
         return f"unknown scope {scope!r} (org:|team:|member:|agent:|session:|model:|tool:<id>)"
     if not allow_glob and any(c in ident for c in "*?["):
         return f"scope {scope!r} must be concrete"
     return None
+
+
+def _check_amount(
+    raw: Any, value: float, dimension: str, field: str, *, allow_negative: bool = False
+) -> str | None:
+    """R7: finite, sign-checked, bounded per dimension; JSON booleans are not amounts."""
+    if isinstance(raw, bool):
+        return f"{field} must be a number, not a boolean"
+    if not math.isfinite(value):
+        return f"{field} must be a finite number (got {raw!r})"
+    if allow_negative:
+        if value == 0:
+            return f"{field} must be non-zero"
+    elif value <= 0:
+        return f"{field} must be > 0"
+    cap = MAX_AMOUNT.get(dimension, 1e6)
+    if abs(value) > cap:
+        return f"{field} {value:g} exceeds the maximum of {cap:g} {dimension}"
+    return None
+
+
+def _check_reason(reason: str | None) -> str | None:
+    if reason is not None and len(reason) > MAX_REASON_LEN:
+        return f"reason too long (max {MAX_REASON_LEN} characters)"
+    return None
+
+
+def _check_raise(body: dict[str, Any], req: RaiseRequest) -> str | None:
+    return (
+        _validate_scope(req.scope)
+        or _check_amount(
+            (body or {}).get("new_limit"), req.new_limit, req.dimension, "new_limit"
+        )
+        or _check_reason(req.reason)
+    )
 
 
 def _dump(result: Any) -> dict[str, Any]:
@@ -176,9 +227,9 @@ async def get_budgets(rt: Any = RT, who: Identity = VIEWER) -> Any:
 
 @router.get("/api/budgets/history")
 async def get_history(
-    scope: str = Query(...),
-    dimension: str = Query("usd"),
-    window: str = Query("24h"),
+    scope: str = Query(..., max_length=MAX_SCOPE_LEN),
+    dimension: str = Query("usd", max_length=32),
+    window: str = Query("24h", max_length=16),
     rt: Any = RT,
     who: Identity = VIEWER,
 ) -> Any:
@@ -199,7 +250,7 @@ async def get_history(
 
 
 @router.get("/api/budgets/enforcement")
-async def get_enforcement(window: str = Query("24h"), rt: Any = RT, who: Identity = VIEWER) -> Any:
+async def get_enforcement(window: str = Query("24h", max_length=16), rt: Any = RT, who: Identity = VIEWER) -> Any:
     led = _ledger(rt)
     if led is None:
         return {
@@ -226,7 +277,7 @@ async def get_pricing(rt: Any = RT, who: Identity = VIEWER) -> Any:
 
 @router.get("/api/budgets/sessions")
 async def get_sessions(
-    agent_id: str | None = Query(None), rt: Any = RT, who: Identity = VIEWER
+    agent_id: str | None = Query(None, max_length=MAX_QUERY_LEN), rt: Any = RT, who: Identity = VIEWER
 ) -> Any:
     led = _ledger(rt)
     if led is None:
@@ -259,10 +310,8 @@ async def post_raise(body: dict[str, Any] = BODY, rt: Any = RT, who: Identity = 
     req, err = _parse(RaiseRequest, body)
     if err is not None:
         return err
-    if e := _validate_scope(req.scope):
+    if e := _check_raise(body, req):
         return _bad(e)
-    if req.new_limit <= 0:
-        return _bad("new_limit must be > 0")
     patch, change, _before = _raise_plan(rt, req)
     reason = req.reason or change.summary or f"raise {req.scope}"
     try:
@@ -285,10 +334,8 @@ async def post_raise_preview(
     req, err = _parse(RaiseRequest, body)
     if err is not None:
         return err
-    if e := _validate_scope(req.scope):
+    if e := _check_raise(body, req):
         return _bad(e)
-    if req.new_limit <= 0:
-        return _bad("new_limit must be > 0")
     patch, change, _before = _raise_plan(rt, req)
     route = None
     can_apply = False
@@ -320,6 +367,12 @@ async def post_killswitch(body: dict[str, Any] = BODY, rt: Any = RT, who: Identi
     req, err = _parse(KillSwitchRequest, body)
     if err is not None:
         return err
+    if e := (
+        (f"scope too long (max {MAX_SCOPE_LEN} characters)"
+         if len(req.scope) > MAX_SCOPE_LEN else None)
+        or _check_reason(req.reason)
+    ):
+        return _bad(e)
     try:
         ks_mod.parse_scope(req.scope)
     except ValueError as exc:
@@ -386,8 +439,11 @@ async def post_usage(body: dict[str, Any] = BODY, rt: Any = RT, who: Identity = 
         return err
     if e := _validate_scope(req.scope, allow_glob=scope_type(req.scope) in ("model", "tool")):
         return _bad(e)
-    if req.amount == 0:
-        return _bad("amount must be non-zero")
+    if e := (
+        _check_amount(body.get("amount"), req.amount, req.dimension, "amount", allow_negative=True)
+        or _check_reason(req.reason)
+    ):
+        return _bad(e)
     led = _ledger(rt)
     if led is None:
         return {"ok": False, "statuses": []}

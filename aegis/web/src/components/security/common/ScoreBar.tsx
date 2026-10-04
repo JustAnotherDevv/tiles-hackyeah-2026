@@ -44,7 +44,7 @@ export function ScoreBar({
           style={{ background: fill }}
           initial={animate && !reduce ? { width: 0 } : false}
           animate={{ width: `${w}%` }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: delay / 1000 }}
+          transition={{ duration: 0.3, ease: 'easeOut', delay: delay / 1000 }}
         />
         {th !== null ? (
           <span className="absolute -inset-y-1 w-0.5 rounded-sm bg-text-1" style={{ left: `calc(${th}% - 1px)` }} title={`threshold ${threshold}`} />

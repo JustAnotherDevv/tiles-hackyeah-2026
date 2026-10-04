@@ -63,7 +63,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -100,9 +100,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # hermetic boot failure is a real failure (never exit 0)
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -160,6 +160,10 @@ def _overrides(doc: dict) -> None:
     doc["models"]["routes"].insert(
         0, {"match": "mock-dead*", "provider": "dead-upstream", "wire": "anthropic"}
     )
+    # The golden chaos-agent limit asks for approval at the wall; this suite checks the 402 wire.
+    for lim in doc["budgets"]["limits"]:
+        if lim.get("scope") == "agent:chaos-agent@platform" and lim.get("window") == "day":
+            lim["on_hard"] = "block"
 
 
 SEEN: list[tuple[str, httpx.Response]] = []
@@ -278,7 +282,7 @@ def _seed_key(key_id: str) -> str:
     for k in seed.get("api_keys") or seed.get("keys") or []:
         if k.get("key_id") == key_id:
             return k["key"]
-    pytest.skip(f"seed key {key_id} not found")
+    pytest.fail(f"seed key {key_id} not found in config/org.seed.yaml", pytrace=False)
 
 
 @pytest.mark.aegis(suite="errors", control="GOV-01", polarity="attack")
@@ -341,14 +345,13 @@ def test_budget_stop_is_402_wire_error(stack: LocalStack) -> None:
         },
     )
     if r.status_code in (404, 405, 501):
-        pytest.skip("/api/budgets/usage not available")
+        pytest.fail("/api/budgets/usage not available", pytrace=False)
+    assert r.status_code == 200, r.text
     r = _msg(stack, **{"X-Aegis-Agent": "chaos-agent@platform"})
-    assert r.status_code in (402, 200), r.text[
-        :200
-    ]  # chaos on_hard: require_approval -> 200 pending
-    if r.status_code == 402:
-        assert envelope(r)["type"] == "budget_exceeded"
-        assert r.headers.get("x-should-retry") == "false"
+    assert r.status_code == 402, r.text[:200]
+    assert r.json().get("type") == "error", r.text[:200]  # Anthropic wire envelope
+    assert envelope(r)["type"] == "budget_exceeded"
+    assert r.headers.get("x-should-retry") == "false"
 
 
 def test_zz_no_traceback_in_any_error_seen() -> None:

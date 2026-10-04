@@ -1,6 +1,6 @@
 """INJ-V10 - end-to-end through /v1/guard on the real app (in-process, AEGIS_SEMANTIC=off).
 
-Skips when the app cannot boot in this checkout (integration not yet complete).
+Integration is complete: an app that cannot boot fails here (no skip).
 """
 
 from __future__ import annotations
@@ -9,7 +9,11 @@ from pathlib import Path
 
 import pytest
 import yaml
+from fastapi.testclient import TestClient
 
+from aegis.app import create_app
+from aegis.core import crypto
+from aegis.settings import Settings
 from tests.unit.injection_defense._helpers import FIXTURES
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -21,14 +25,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("AEGIS_SEMANTIC", "off")
     monkeypatch.setenv("AEGIS_FEED_URL", "disabled")
     monkeypatch.setenv("AEGIS_DATA_DIR", str(tmp_path / "data"))
-    try:
-        from fastapi.testclient import TestClient
-
-        from aegis.app import create_app
-        from aegis.core import crypto
-        from aegis.settings import Settings
-    except Exception as exc:  # pragma: no cover
-        pytest.skip(f"app unavailable: {exc}")
     snip = yaml.safe_load(
         (ROOT / "config/snippets/injection-defense.yaml").read_text(encoding="utf-8")
     )
@@ -52,8 +48,6 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         )
         with TestClient(app) as c:
             yield c
-    except Exception as exc:  # pragma: no cover - integration not ready
-        pytest.skip(f"app failed to boot: {exc}")
     finally:
         crypto.configure(data_dir=None)
         crypto.reset_key_cache()

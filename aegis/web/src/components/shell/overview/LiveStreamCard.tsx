@@ -1,6 +1,6 @@
 // Row C (4 cols) — 8 newest decisions sliding in with an action-tinted flash; "View all" → /security/live.
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from '@/components/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLiveDecisions } from '@/api/hooks';
 import type { DecisionSummary } from '@/api/types';
@@ -66,10 +66,10 @@ export function LiveStreamCard({ className }: { className?: string }) {
               <motion.div
                 key={d.id}
                 layout={motionOk ? 'position' : false}
-                initial={motionOk ? { opacity: 0, x: -12 } : false}
+                initial={motionOk ? { opacity: 0, y: -4 } : false}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
               >
                 <Row d={d} />
               </motion.div>

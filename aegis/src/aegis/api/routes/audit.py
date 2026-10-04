@@ -9,13 +9,44 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import StreamingResponse
 
 from aegis.audit.export import EXTENSIONS, MEDIA_TYPES, export_stream
+from aegis.audit.index import decode_cursor
 from aegis.core.types import AuditVerifyResult, utcnow
-from aegis.metrics.timing import iso_z
+from aegis.metrics.timing import iso_z, parse_since
 from aegis.metrics.web import api_error, forbidden, has_role, rt_of, viewer_of
 
 log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["audit"])
+
+# R8/R13: SQLite INTEGER is signed 64-bit; bound every int that reaches a query.
+MAX_SEQ = 2**63 - 1
+MAX_FILTER_LEN = 200
+
+
+def _bad(message: str) -> Any:
+    return api_error(400, "invalid_request", message)
+
+
+def _since_error(since: str | None) -> str | None:
+    """Unparseable / out-of-range `since` → message (was silently ignored = unfiltered)."""
+    if since is None or not since.strip():
+        return None
+    try:
+        ok = parse_since(since) is not None
+    except (ValueError, OverflowError, OSError):
+        ok = False
+    return None if ok else (
+        f"invalid since {since[:40]!r} (use 15m / 1h / 24h / 7d, an ISO timestamp or epoch)"
+    )
+
+
+def _cursor_error(cursor: str | None) -> str | None:
+    if not cursor:
+        return None
+    parts = decode_cursor(cursor)
+    if parts and parts[0].isdigit() and int(parts[0]) <= MAX_SEQ:
+        return None
+    return "invalid cursor (use next_cursor from a previous page)"
 
 
 def _audit(request: Request) -> Any:
@@ -26,13 +57,15 @@ def _audit(request: Request) -> Any:
 @router.get("/api/audit")
 async def list_audit(
     request: Request,
-    event_type: str | None = None,
-    since: str | None = None,
-    decision_id: str | None = None,
+    event_type: str | None = Query(None, max_length=MAX_FILTER_LEN),
+    since: str | None = Query(None, max_length=64),
+    decision_id: str | None = Query(None, max_length=MAX_FILTER_LEN),
     limit: int = Query(100, ge=1, le=1000),
-    cursor: str | None = None,
-    seq_from: int | None = Query(None, ge=1),
+    cursor: str | None = Query(None, max_length=256),
+    seq_from: int | None = Query(None, ge=1, le=MAX_SEQ),
 ) -> Any:
+    if err := _since_error(since) or _cursor_error(cursor):
+        return _bad(err)
     audit = _audit(request)
     if audit is None:
         return {"items": [], "next_cursor": None}
@@ -55,9 +88,9 @@ async def list_audit(
             "items": [e.model_dump(mode="json", by_alias=True) for e in events],
             "next_cursor": nxt,
         }
-    except Exception as exc:
+    except Exception as exc:  # never echo the raw exception text to the client
         log.exception("audit query failed")
-        return api_error(500, "internal_error", f"audit query failed: {exc}")
+        return api_error(500, "internal_error", f"audit query failed ({type(exc).__name__})")
 
 
 @router.get("/api/audit/verify")
@@ -73,12 +106,12 @@ async def verify_audit(request: Request) -> Any:
 async def export_audit(
     request: Request,
     format: str = Query("jsonl", pattern="^(jsonl|csv|ocsf)$"),
-    from_: str | None = Query(None, alias="from"),
-    to: str | None = None,
-    action: str | None = None,
-    control_id: str | None = None,
-    agent_id: str | None = None,
-    event_type: str | None = None,
+    from_: str | None = Query(None, alias="from", max_length=64),
+    to: str | None = Query(None, max_length=64),
+    action: str | None = Query(None, max_length=MAX_FILTER_LEN),
+    control_id: str | None = Query(None, max_length=MAX_FILTER_LEN),
+    agent_id: str | None = Query(None, max_length=MAX_FILTER_LEN),
+    event_type: str | None = Query(None, max_length=MAX_FILTER_LEN),
 ) -> Any:
     viewer = await viewer_of(request)
     if not has_role(viewer, "admin"):

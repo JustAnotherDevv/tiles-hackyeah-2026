@@ -1,14 +1,9 @@
-// Logomark: shield outline with an "A" monogram, white on the indigo gradient (the only gradient in the UI).
+// Logomark: shield outline with an "A" monogram, white on a flat brand-blue tile.
 export function BrandMark({ size = 28 }: { size?: number }) {
   return (
     <span
-      className="inline-grid shrink-0 place-items-center rounded-[8px] text-white"
-      style={{
-        width: size,
-        height: size,
-        background: 'linear-gradient(160deg, #818CF8 0%, #4F46E5 100%)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.6), 0 4px 14px -4px rgba(99,102,241,.55)',
-      }}
+      className="inline-grid shrink-0 place-items-center rounded-[6px] bg-brand text-white"
+      style={{ width: size, height: size }}
       aria-hidden
     >
       <svg width={size * 0.64} height={size * 0.64} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinejoin="round" strokeLinecap="round">
@@ -26,7 +21,7 @@ export function Brand({ collapsed = false }: { collapsed?: boolean }) {
       {!collapsed ? (
         <div className="min-w-0">
           <div className="text-[15px] font-semibold leading-5 tracking-[-0.01em] text-text-1">Aegis</div>
-          <div className="text-[10.5px] uppercase leading-3 tracking-[0.06em] text-text-3">AI Control Layer</div>
+          <div className="text-[11px] leading-3 text-text-3">Control layer</div>
         </div>
       ) : null}
     </div>

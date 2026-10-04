@@ -1,6 +1,6 @@
 // mm:ss countdown from expires_at (server clock is the truth; no client-side state transitions).
 // Rose under 60 s, "expired" at ≤ 0. Owner: B18-dashboard-gov-approvals.
-import { Clock } from 'lucide-react';
+import { Clock } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import { useNow } from './hooks';
 import { fmtCountdown } from './lib/format-gov';

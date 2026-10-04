@@ -1,5 +1,5 @@
 // Small shared atoms for the Security pages (plan 16 §2.1 common/).
-import { ArrowDownLeft, ArrowUpRight, Check, Copy, Lock } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Check, Copy, Lock } from '@/components/icons';
 import { useState, type MouseEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -14,7 +14,7 @@ export function SurfaceTag({ surface, direction, className }: { surface: Surface
   return (
     <span
       className={cn(
-        'inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2',
+        'inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2',
         className,
       )}
       title={direction ? `${surface} (${direction === 'in' ? 'inbound' : 'outbound'})` : String(surface)}
@@ -54,7 +54,7 @@ export function ControlChip({
     </>
   );
   const cls = cn(
-    'inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-[5px] border px-1.5 font-mono text-2xs transition-colors',
+    'inline-flex h-5 items-center gap-1 whitespace-nowrap rounded-xs border px-1.5 font-mono text-2xs transition-colors',
     active ? 'border-accent-fg/50 bg-brand/15 text-text-1' : 'border-border bg-surface-2 text-text-2 hover:border-border-strong hover:text-text-1',
     className,
   );
@@ -81,7 +81,7 @@ export function EntityChip({ entity, count, dataClass, className }: { entity: st
   const color = dataClassColor(dataClass ?? dataClassOf(entity));
   return (
     <span
-      className={cn('inline-flex h-[18px] items-center gap-1 rounded-[4px] px-1.5 font-mono text-2xs', className)}
+      className={cn('inline-flex h-[18px] items-center gap-1 rounded-xs px-1.5 font-mono text-2xs', className)}
       style={{ color, background: `color-mix(in srgb, ${color} 12%, transparent)`, boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${color} 35%, transparent)` }}
     >
       {entity}
@@ -92,7 +92,7 @@ export function EntityChip({ entity, count, dataClass, className }: { entity: st
 
 export function SeverityBadge({ severity }: { severity: Severity }) {
   const s = SEVERITY_TONE[severity] ?? SEVERITY_TONE.info;
-  return <span className={cn('inline-flex h-5 items-center rounded-full border px-2 text-2xs font-medium', s.className)}>{s.label}</span>;
+  return <span className={cn('inline-flex h-5 items-center rounded-xs border px-1.5 text-2xs font-medium', s.className)}>{s.label}</span>;
 }
 
 export function CopyButton({ value, label, className }: { value: string; label?: string; className?: string }) {
@@ -116,7 +116,7 @@ export function CopyButton({ value, label, className }: { value: string; label?:
     <button
       type="button"
       onClick={copy}
-      className={cn('inline-flex items-center gap-1 rounded-[5px] px-1 text-text-3 transition-colors hover:bg-surface-3 hover:text-text-1', className)}
+      className={cn("relative inline-flex items-center gap-1 rounded-xs px-1 text-text-3 transition-colors after:absolute after:-inset-2 after:content-[''] hover:bg-surface-3 hover:text-text-1", className)}
       title={label ? `Copy ${label}` : 'Copy'}
       aria-label={label ? `Copy ${label}` : 'Copy'}
     >
@@ -141,13 +141,14 @@ export function HashText({ hash, chars = 4, copy = true, className }: { hash: st
   );
 }
 
-export function KeyValue({ items, className }: { items: [ReactNode, ReactNode][]; className?: string }) {
+/** `wrap` lets long ids break instead of clipping (narrow screens). */
+export function KeyValue({ items, className, wrap }: { items: [ReactNode, ReactNode][]; className?: string; wrap?: boolean }) {
   return (
     <dl className={cn('grid grid-cols-[minmax(110px,auto)_1fr] gap-x-4 gap-y-1.5 text-xs', className)}>
       {items.map(([k, v], i) => (
         <div key={i} className="contents">
           <dt className="text-text-3">{k}</dt>
-          <dd className="min-w-0 truncate font-mono text-text-1">{v}</dd>
+          <dd className={cn('min-w-0 font-mono text-text-1', wrap ? '[overflow-wrap:anywhere]' : 'truncate')}>{v}</dd>
         </div>
       ))}
     </dl>

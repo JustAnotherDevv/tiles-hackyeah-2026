@@ -56,12 +56,12 @@ export function ensureEditorStyles(): void {
   const s = document.createElement('style');
   s.id = STYLE_ID;
   s.textContent = `
-.aegis-flash-line { background: rgba(99, 102, 241, 0.22); animation: aegis-flash 3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-@keyframes aegis-flash { 0% { background: rgba(99, 102, 241, 0.34); } 100% { background: rgba(99, 102, 241, 0); } }
+.aegis-flash-line { background: rgba(99, 102, 241, 0.18); animation: aegis-flash 3s ease-out forwards; }
+@keyframes aegis-flash { 0% { background: rgba(99, 102, 241, 0.26); } 100% { background: rgba(99, 102, 241, 0); } }
 .aegis-changed-gutter { background: #6366f1; width: 3px !important; margin-left: 3px; border-radius: 1px; }
 .aegis-error-gutter { background: #fb7185; width: 3px !important; margin-left: 3px; border-radius: 1px; }
-.aegis-probe-pulse { animation: aegis-probe-pulse 1s ease-in-out 3; }
-@keyframes aegis-probe-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(167, 139, 250, 0); } 50% { box-shadow: 0 0 0 3px rgba(167, 139, 250, 0.35); background: rgba(167, 139, 250, 0.08); } }
+.aegis-probe-pulse { animation: aegis-probe-pulse 3s ease-out 1; }
+@keyframes aegis-probe-pulse { 0% { background: rgba(167, 139, 250, 0.16); } 100% { background: rgba(167, 139, 250, 0.05); } }
 @media (prefers-reduced-motion: reduce) { .aegis-flash-line, .aegis-probe-pulse { animation: none; } }
 `;
   document.head.appendChild(s);

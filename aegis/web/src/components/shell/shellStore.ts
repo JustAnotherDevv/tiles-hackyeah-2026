@@ -11,6 +11,8 @@ export interface ShellState {
   killActor: string | null;
   paletteOpen: boolean;
   sidebarCollapsed: boolean;
+  /** < 768 px: sidebar is an off-canvas drawer */
+  navOpen: boolean;
 }
 
 let state: ShellState = {
@@ -20,6 +22,7 @@ let state: ShellState = {
   killActor: null,
   paletteOpen: false,
   sidebarCollapsed: false,
+  navOpen: false,
 };
 const listeners = new Set<() => void>();
 

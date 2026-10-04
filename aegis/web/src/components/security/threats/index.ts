@@ -1,1 +1,1 @@
-export { FeedBanner, FeedStatusStrip, FeedTimeline, FeedUpdateSteps, SerialFlip, SignatureHits, SignatureTable, type RejectInfo, type TimelineEvent } from './FeedViews';
+export { FeedBanner, FeedStatusStrip, FeedTimeline, FeedUpdateSteps, issueKind, SerialFlip, SignatureHits, SignatureTable, type FeedIssueKind, type RejectInfo, type TimelineEvent } from './FeedViews';

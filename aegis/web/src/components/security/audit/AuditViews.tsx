@@ -1,76 +1,126 @@
-// Audit views: Verify-chain card (animated walk), chain blocks, hash-chained event table, export dialog.
-import { motion, useReducedMotion } from 'framer-motion';
-import { ChevronRight, Download, Link2, ShieldCheck, ShieldX } from 'lucide-react';
-import { Fragment, useEffect, useMemo, useState } from 'react';
+// Audit views: chain-integrity card (verify walk), chain head blocks, hash-chained event table, export dialog.
+import { ChevronRight, Download, ShieldCheck, ShieldX, Link2 } from '@/components/icons';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { api, isApiRequestError } from '@/api/client';
 import type { Action, AuditEvent, AuditVerifyResult } from '@/api/types';
-import { ActionBadge, IdentityChip, JsonView, RoleGate } from '@/components/shell';
+import { ActionBadge, EmptyState, IdentityChip, JsonView, MockBadge, RoleGate } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { fmtDateTime, fmtNum, fmtTime } from '@/lib/format';
+import { fmtAgo, fmtDateTime, fmtNum, fmtTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { ControlChip, HashText, LockedAction, shortHash } from '../common/atoms';
+import { ControlChip, CopyButton, HashText, LockedAction, shortHash } from '../common/atoms';
 import { MiniSelect } from '../live/FeedFilters';
 
+const TH = 'whitespace-nowrap px-2 py-2 text-left text-2xs font-medium uppercase tracking-[0.06em] text-text-3';
+const TD = 'whitespace-nowrap px-2 py-1.5 align-middle max-md:py-2.5';
+
 // ------------------------------------------------------------------ verify
-export function ChainVerifyCard({ verify, isMock }: { verify: () => Promise<{ data: AuditVerifyResult; isMock: boolean }>; isMock?: boolean }) {
-  const reduce = useReducedMotion();
-  const [state, setState] = useState<{ phase: 'idle' | 'running' | 'done'; result: AuditVerifyResult | null; mock: boolean; error: string | null }>({ phase: 'idle', result: null, mock: false, error: null });
+type VerifyState = { phase: 'idle' | 'running' | 'done'; result: AuditVerifyResult | null; mock: boolean; error: string | null };
+
+function Stat({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('min-w-0', className)}>
+      <dt className="text-2xs text-text-3">{label}</dt>
+      <dd className="mt-0.5 truncate font-mono text-[13px] tabular text-text-1">{children}</dd>
+    </div>
+  );
+}
+
+/**
+ * Chain integrity: shows the last known verification (`last`, from GET /api/audit/verify) until the user
+ * runs "Verify chain", which re-walks the chain server-side and replaces it.
+ */
+export function ChainVerifyCard({
+  verify,
+  last,
+  isMock,
+}: {
+  verify: () => Promise<{ data: AuditVerifyResult; isMock: boolean }>;
+  last?: AuditVerifyResult;
+  isMock?: boolean;
+}) {
+  const [state, setState] = useState<VerifyState>({ phase: 'idle', result: null, mock: false, error: null });
   const run = async () => {
     setState({ phase: 'running', result: null, mock: false, error: null });
     const started = Date.now();
     try {
       const r = await verify();
-      const wait = Math.max(0, (reduce ? 0 : 900) - (Date.now() - started));
+      // keep the walk visible for a beat so the re-check registers on screen
+      const wait = Math.max(0, 600 - (Date.now() - started));
       setTimeout(() => setState({ phase: 'done', result: r.data, mock: r.isMock, error: null }), wait);
     } catch (e) {
-      setState({ phase: 'done', result: null, mock: false, error: isApiRequestError(e) ? e.message : 'verify failed' });
+      setState({ phase: 'done', result: null, mock: false, error: isApiRequestError(e) ? e.message : 'Verification request failed' });
     }
   };
-  const r = state.result;
+  const r = state.phase === 'running' ? null : (state.result ?? last ?? null);
+  const fresh = state.phase === 'done' && state.result !== null;
+  const status = state.phase === 'running' ? 'running' : !r ? 'unknown' : r.ok ? 'ok' : 'broken';
+  const Icon = status === 'ok' ? ShieldCheck : status === 'broken' ? ShieldX : Link2;
   return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-card">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="grid size-10 place-items-center rounded-xl border border-border bg-surface-2">
-          {r ? r.ok ? <ShieldCheck className="size-5 text-allow" /> : <ShieldX className="size-5 text-block" /> : <Link2 className="size-5 text-accent-fg" />}
-        </div>
+    <section className="rounded-lg border border-border bg-card shadow-card" aria-live="polite">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pt-3.5">
+        <Icon className={cn('size-4 shrink-0', status === 'ok' ? 'text-allow' : status === 'broken' ? 'text-block' : 'text-text-3')} />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-text-1">Hash-chained audit log</div>
-          <div className="text-xs text-text-3">Every record carries sha256(prev_hash ‖ record). Editing any line breaks every hash after it.</div>
+          <h2 className="text-[13px] font-[550] leading-[18px] text-text-1">Chain integrity</h2>
+          <p className="text-xs leading-4 text-text-3">Each record stores sha256(prev_hash ‖ record); editing any line breaks every hash after it.</p>
         </div>
-        <Button onClick={() => void run()} disabled={state.phase === 'running'}>
+        {state.mock || isMock ? <MockBadge /> : null}
+        <Button size="sm" onClick={() => void run()} disabled={state.phase === 'running'} className="max-md:h-9">
           <ShieldCheck /> {state.phase === 'running' ? 'Verifying…' : 'Verify chain'}
         </Button>
+      </header>
+      <div className="mx-4 mt-3 h-1 overflow-hidden rounded-full bg-surface-3">
+        <div
+          className={cn(
+            'h-full rounded-full transition-[width] ease-linear',
+            status === 'broken' ? 'bg-block' : status === 'ok' ? 'bg-allow' : status === 'running' ? 'bg-accent-fg' : 'bg-transparent',
+            state.phase === 'running' ? 'duration-500' : 'duration-150',
+          )}
+          style={{
+            width:
+              status === 'running' ? '85%' : status === 'broken' && r?.records ? `${Math.max(4, ((r.broken_at_seq ?? 0) / r.records) * 100)}%` : status === 'ok' ? '100%' : '0%',
+          }}
+        />
       </div>
-      {state.phase !== 'idle' ? (
-        <div className="mt-4">
-          <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-            <motion.div
-              className={cn('h-full rounded-full', r && !r.ok ? 'bg-block' : 'bg-allow')}
-              initial={{ width: '0%' }}
-              animate={{ width: state.phase === 'running' ? '82%' : r && !r.ok && r.records ? `${Math.max(4, ((r.broken_at_seq ?? 0) / r.records) * 100)}%` : '100%' }}
-              transition={{ duration: state.phase === 'running' ? 0.9 : 0.3, ease: [0.16, 1, 0.3, 1] }}
-            />
-          </div>
-          {state.phase === 'done' && r ? (
-            <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              {r.ok ? (
-                <span className="text-base font-semibold text-allow">
-                  Chain OK · {fmtNum(r.records)} records · {r.files} files · head <span className="font-mono">{shortHash(r.head_hash)}</span>
-                </span>
-              ) : (
-                <span className="text-base font-semibold text-block">Broken at seq {r.broken_at_seq}</span>
-              )}
-              <span className="text-xs text-text-3">{r.message}</span>
-              <span className="text-xs text-text-4">checked {fmtTime(r.checked_at, { seconds: true })}</span>
-              {state.mock || isMock ? <span className="text-2xs text-text-4">(demo data)</span> : null}
-            </motion.div>
-          ) : null}
-          {state.error ? <div className="mt-3 text-sm text-block">{state.error}</div> : null}
-        </div>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-3 px-4 pb-4 pt-3 sm:grid-cols-3 lg:grid-cols-5">
+        <Stat label="Status">
+          {status === 'running' ? (
+            <span className="text-text-2">verifying…</span>
+          ) : status === 'ok' ? (
+            <span className="font-sans font-medium text-allow">Intact</span>
+          ) : status === 'broken' ? (
+            <span className="font-sans font-medium text-block">Broken at seq {r?.broken_at_seq ?? '—'}</span>
+          ) : (
+            <span className="font-sans text-text-3">Not verified</span>
+          )}
+        </Stat>
+        <Stat label="Records">{r ? fmtNum(r.records) : '—'}</Stat>
+        <Stat label="Files">{r ? fmtNum(r.files) : '—'}</Stat>
+        <Stat label="Head hash">
+          {r ? (
+            <span className="inline-flex items-center gap-0.5" title={r.head_hash}>
+              {shortHash(r.head_hash, 6)}
+              <CopyButton value={r.head_hash} label="head hash" />
+            </span>
+          ) : (
+            '—'
+          )}
+        </Stat>
+        <Stat label={fresh ? 'Verified' : 'Last verified'} className="col-span-2 sm:col-span-1">
+          {r ? (
+            <span title={fmtDateTime(r.checked_at)}>
+              {fmtTime(r.checked_at, { seconds: true })} <span className="font-sans text-text-3">· {fmtAgo(r.checked_at)}</span>
+            </span>
+          ) : (
+            '—'
+          )}
+        </Stat>
+      </dl>
+      {r?.message || state.error ? (
+        <div className={cn('border-t border-border-subtle px-4 py-2 text-xs', state.error || (r && !r.ok) ? 'text-block' : 'text-text-3')}>{state.error ?? r?.message}</div>
       ) : null}
-    </div>
+    </section>
   );
 }
 
@@ -79,35 +129,36 @@ export function ChainBlocks({ events, brokenAt }: { events: AuditEvent[]; broken
   const last = useMemo(() => [...events].sort((a, b) => a.seq - b.seq).slice(-8), [events]);
   if (!last.length) return null;
   return (
-    <div className="flex items-stretch gap-0 overflow-x-auto pb-1">
+    <ol className="-mx-4 flex items-stretch overflow-x-auto px-4 pb-1" aria-label="Most recent chain records">
       {last.map((e, i) => {
         const broken = brokenAt !== null && e.seq === brokenAt;
         return (
           <Fragment key={e.seq}>
             {i > 0 ? (
-              <div className="flex shrink-0 items-center px-1">
-                <span className={cn('h-px w-5', broken ? 'bg-block' : 'bg-border-strong')} />
-                <ChevronRight className={cn('-ml-1.5 size-3', broken ? 'text-block' : 'text-text-4')} />
-              </div>
+              <li aria-hidden className="flex shrink-0 items-center px-0.5">
+                <span className={cn('h-px w-3', broken ? 'bg-block' : 'bg-border-strong')} />
+                <ChevronRight className={cn('-ml-1 size-3', broken ? 'text-block' : 'text-text-4')} />
+              </li>
             ) : null}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className={cn('w-[132px] shrink-0 rounded-lg border px-2.5 py-2', broken ? 'border-block/50 bg-block/10' : 'border-border bg-surface-1')}
-            >
-              <div className="flex items-center justify-between font-mono text-2xs">
+            <li className={cn('w-[124px] shrink-0 rounded-md border px-2.5 py-2', broken ? 'border-block/50 bg-block/10' : 'border-border bg-surface-1')}>
+              <div className="flex items-center justify-between gap-1 font-mono text-2xs tabular">
                 <span className="text-text-1">#{e.seq}</span>
                 {e.action ? <ActionBadge action={e.action} size="sm" /> : null}
               </div>
-              <div className="mt-1 truncate text-2xs text-text-2">{e.event_type}</div>
-              <div className="mt-1 font-mono text-[10px] text-text-4">{shortHash(e.prev_hash, 3)} →</div>
-              <div className={cn('font-mono text-[10px]', broken ? 'text-block' : 'text-text-2')}>{shortHash(e.hash, 3)}</div>
-            </motion.div>
+              <div className="mt-1 truncate font-mono text-2xs text-text-2" title={e.event_type}>
+                {e.event_type}
+              </div>
+              <div className="mt-1.5 font-mono text-[10px] leading-[14px] text-text-4" title={e.prev_hash}>
+                prev {shortHash(e.prev_hash, 3)}
+              </div>
+              <div className={cn('font-mono text-[10px] leading-[14px]', broken ? 'text-block' : 'text-text-2')} title={e.hash}>
+                hash {shortHash(e.hash, 3)}
+              </div>
+            </li>
           </Fragment>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
@@ -119,90 +170,121 @@ export function AuditTable({ events, highlightSeq, onOpenDecision }: { events: A
   const rows = useMemo(() => (type ? events.filter((e) => e.event_type === type) : events), [events, type]);
   useEffect(() => {
     if (highlightSeq === null) return;
-    const t = setTimeout(() => document.getElementById(`seq-${highlightSeq}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 250);
+    const t = setTimeout(() => document.getElementById(`seq-${highlightSeq}`)?.scrollIntoView({ block: 'center' }), 250);
     return () => clearTimeout(t);
   }, [highlightSeq, events.length]);
+  const seqs = rows.length ? [rows[rows.length - 1].seq, rows[0].seq].sort((a, b) => a - b) : null;
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 border-b border-border-subtle px-4 py-2.5">
-        <MiniSelect label="Event" value={type} onChange={setType} options={types.map((t) => ({ value: t, label: t }))} />
-        <span className="ml-auto text-xs text-text-3">{rows.length} records</span>
+        <MiniSelect label="Event" value={type} onChange={setType} options={types.map((t) => ({ value: t, label: t }))} className="max-md:h-9" />
+        {type ? (
+          <button type="button" onClick={() => setType('')} className="h-8 rounded-md px-2 text-xs text-text-3 hover:text-text-1 max-md:h-9">
+            Clear
+          </button>
+        ) : null}
+        <span className="ml-auto font-mono text-xs tabular text-text-3">
+          {fmtNum(rows.length)} records{seqs ? ` · seq ${seqs[0]}–${seqs[1]}` : ''}
+        </span>
       </div>
-      <div className="max-h-[560px] overflow-auto">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 z-[1] bg-surface-1/95 backdrop-blur">
-            <tr className="border-b border-border text-left text-2xs uppercase tracking-[0.08em] text-text-3">
-              <th className="px-4 py-2 font-medium">Seq</th>
-              <th className="px-2 py-2 font-medium">Time</th>
-              <th className="px-2 py-2 font-medium">Event</th>
-              <th className="px-2 py-2 font-medium">Actor</th>
-              <th className="px-2 py-2 font-medium">Action</th>
-              <th className="px-2 py-2 font-medium">Control</th>
-              <th className="px-2 py-2 font-medium">Decision</th>
-              <th className="px-2 py-2 font-medium">Version</th>
-              <th className="px-4 py-2 font-medium">Hash</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((e) => (
-              <Fragment key={e.seq}>
-                <tr
-                  id={`seq-${e.seq}`}
-                  onClick={() => setOpen((o) => (o === e.seq ? null : e.seq))}
-                  className={cn('cursor-pointer border-b border-border-subtle hover:bg-surface-2/60', highlightSeq === e.seq && 'bg-brand/10 shadow-[inset_2px_0_0_var(--accent-fg)]')}
-                >
-                  <td className="px-4 py-1.5 font-mono tabular text-text-1">
-                    <ChevronRight className={cn('mr-1 inline size-3 text-text-4 transition-transform', open === e.seq && 'rotate-90')} />
-                    {e.seq}
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-text-3" title={fmtDateTime(e.ts)}>
-                    {fmtTime(e.ts, { seconds: true })}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <span className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2">{e.event_type}</span>
-                  </td>
-                  <td className="max-w-[180px] truncate px-2 py-1.5">{e.actor ? <IdentityChip identity={e.actor} /> : <span className="text-text-4">system</span>}</td>
-                  <td className="px-2 py-1.5">{e.action ? <ActionBadge action={e.action as Action} size="sm" /> : <span className="text-text-4">—</span>}</td>
-                  <td className="px-2 py-1.5">{e.control_id ? <ControlChip id={e.control_id} /> : <span className="text-text-4">—</span>}</td>
-                  <td className="px-2 py-1.5">
-                    {e.decision_id ? (
-                      <button
-                        type="button"
-                        className="font-mono text-2xs text-accent-fg hover:underline"
-                        onClick={(ev) => {
-                          ev.stopPropagation();
-                          onOpenDecision(e.decision_id as string);
-                        }}
-                      >
-                        {e.decision_id.slice(0, 14)}…
-                      </button>
-                    ) : (
-                      <span className="text-text-4">—</span>
-                    )}
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-2xs text-text-3">
-                    v{e.policy_version ?? '—'} · #{e.feed_serial ?? '—'}
-                  </td>
-                  <td className="px-4 py-1.5">
-                    <HashText hash={e.hash} copy={false} />
-                  </td>
-                </tr>
-                {open === e.seq ? (
-                  <tr className="border-b border-border-subtle bg-background/60">
-                    <td colSpan={9} className="px-4 py-3">
-                      <div className="mb-2 flex flex-wrap gap-4 font-mono text-2xs text-text-3">
-                        <span>prev_hash {e.prev_hash}</span>
-                        <span>hash {e.hash}</span>
-                      </div>
-                      <JsonView value={e} collapsed={1} maxHeight={280} />
-                    </td>
-                  </tr>
-                ) : null}
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {rows.length === 0 ? (
+        <EmptyState
+          icon="ScrollText"
+          title={events.length ? 'No records match this filter' : 'No audit records yet'}
+          hint={events.length ? 'Clear the event filter to see the full chain.' : 'Decisions, policy changes, feed updates and approvals are appended here as they happen.'}
+        />
+      ) : (
+        <div className="max-h-[560px] overflow-auto overscroll-contain">
+          <table className="w-full min-w-[920px] text-xs">
+            <thead className="sticky top-0 z-[1] bg-surface-1">
+              <tr className="border-b border-border">
+                <th className={cn(TH, 'pl-4')}>Seq</th>
+                <th className={TH}>Time</th>
+                <th className={TH}>Event</th>
+                <th className={TH}>Actor</th>
+                <th className={TH}>Action</th>
+                <th className={TH}>Control</th>
+                <th className={TH}>Decision</th>
+                <th className={TH}>Policy · feed</th>
+                <th className={cn(TH, 'pr-4')}>Hash</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((e) => {
+                const isOpen = open === e.seq;
+                return (
+                  <Fragment key={e.seq}>
+                    <tr
+                      id={`seq-${e.seq}`}
+                      onClick={() => setOpen((o) => (o === e.seq ? null : e.seq))}
+                      aria-expanded={isOpen}
+                      className={cn(
+                        'cursor-pointer border-b border-border-subtle hover:bg-surface-2/60',
+                        isOpen && 'bg-surface-2/40',
+                        highlightSeq === e.seq && 'bg-accent-fg/10 shadow-[inset_2px_0_0_var(--accent-fg)]',
+                      )}
+                    >
+                      <td className={cn(TD, 'pl-4 font-mono tabular text-text-1')}>
+                        <ChevronRight className={cn('mr-1 inline size-3 text-text-4 transition-transform duration-150', isOpen && 'rotate-90')} />
+                        {e.seq}
+                      </td>
+                      <td className={cn(TD, 'font-mono tabular text-text-3')} title={fmtDateTime(e.ts)}>
+                        {fmtTime(e.ts, { seconds: true })}
+                      </td>
+                      <td className={TD}>
+                        <span className="rounded-[4px] border border-border bg-surface-2 px-1.5 py-px font-mono text-2xs text-text-2">{e.event_type}</span>
+                      </td>
+                      <td className={cn(TD, 'max-w-[180px] truncate')}>{e.actor ? <IdentityChip identity={e.actor} /> : <span className="text-text-4">system</span>}</td>
+                      <td className={TD}>{e.action ? <ActionBadge action={e.action as Action} size="sm" /> : <span className="text-text-4">—</span>}</td>
+                      <td className={TD}>{e.control_id ? <ControlChip id={e.control_id} /> : <span className="text-text-4">—</span>}</td>
+                      <td className={TD}>
+                        {e.decision_id ? (
+                          <button
+                            type="button"
+                            className="font-mono text-2xs text-accent-fg hover:underline"
+                            title={e.decision_id}
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              onOpenDecision(e.decision_id as string);
+                            }}
+                          >
+                            {e.decision_id.slice(0, 14)}…
+                          </button>
+                        ) : (
+                          <span className="text-text-4">—</span>
+                        )}
+                      </td>
+                      <td className={cn(TD, 'font-mono text-2xs tabular text-text-3')}>
+                        v{e.policy_version ?? '—'} · #{e.feed_serial ?? '—'}
+                      </td>
+                      <td className={cn(TD, 'pr-4')}>
+                        <HashText hash={e.hash} copy={false} />
+                      </td>
+                    </tr>
+                    {isOpen ? (
+                      <tr className="border-b border-border-subtle bg-background/60">
+                        <td colSpan={9} className="px-4 py-3">
+                          <dl className="mb-2 grid gap-1 font-mono text-2xs text-text-3 md:max-w-[880px]">
+                            <div className="flex gap-2">
+                              <dt className="w-16 shrink-0">prev_hash</dt>
+                              <dd className="break-all text-text-2">{e.prev_hash}</dd>
+                            </div>
+                            <div className="flex gap-2">
+                              <dt className="w-16 shrink-0">hash</dt>
+                              <dd className="break-all text-text-2">{e.hash}</dd>
+                            </div>
+                          </dl>
+                          <JsonView value={e} collapsed={1} maxHeight={280} />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -211,13 +293,15 @@ export function AuditTable({ events, highlightSeq, onOpenDecision }: { events: A
 const FORMATS = [
   { id: 'jsonl', label: 'JSONL', ext: 'jsonl', hint: 'One aegis.audit/1 record per line, hashes included' },
   { id: 'csv', label: 'CSV', ext: 'csv', hint: 'Flat columns for spreadsheets' },
-  { id: 'ocsf', label: 'OCSF', ext: 'json', hint: 'OCSF 1.9 · Detection Finding 2004 / API Activity 6003' },
+  { id: 'ocsf', label: 'OCSF', ext: 'json', hint: 'OCSF 1.9 · Detection Finding 2004, API Activity 6003' },
 ] as const;
 
 function toLocalInput(d: Date): string {
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
+const FIELD = 'h-9 w-full min-w-0 rounded-md border border-border bg-background px-2 font-mono text-xs tabular text-text-1 [color-scheme:dark]';
 
 export function ExportDialog({ open, onOpenChange, controls, agents }: { open: boolean; onOpenChange: (o: boolean) => void; controls: string[]; agents: string[] }) {
   const [format, setFormat] = useState<(typeof FORMATS)[number]['id']>('ocsf');
@@ -227,6 +311,7 @@ export function ExportDialog({ open, onOpenChange, controls, agents }: { open: b
   const [control, setControl] = useState('');
   const [agent, setAgent] = useState('');
   const [busy, setBusy] = useState(false);
+  const rangeInvalid = Boolean(from && to && new Date(from) > new Date(to));
   const run = async () => {
     const f = FORMATS.find((x) => x.id === format) ?? FORMATS[0];
     const q = new URLSearchParams({ format });
@@ -239,7 +324,7 @@ export function ExportDialog({ open, onOpenChange, controls, agents }: { open: b
     setBusy(true);
     try {
       await api.download(`/api/audit/export?${q.toString()}`, name);
-      toast.success(`Exported ${f.label} · ${name}`);
+      toast.success(`Exported ${f.label}: ${name}`);
       onOpenChange(false);
     } catch (e) {
       toast.error(isApiRequestError(e) ? e.message : 'Export failed');
@@ -249,47 +334,59 @@ export function ExportDialog({ open, onOpenChange, controls, agents }: { open: b
   };
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-[540px]">
         <DialogHeader>
           <DialogTitle>Export audit log</DialogTitle>
-          <DialogDescription>Signed-off evidence for auditors and your SIEM. Exports are themselves audited.</DialogDescription>
+          <DialogDescription>Evidence for auditors and SIEM ingestion. Every export is itself written to the audit log.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
-            {FORMATS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setFormat(f.id)}
-                className={cn('rounded-lg border px-3 py-2 text-left transition-colors', format === f.id ? 'border-accent-fg/60 bg-brand/10' : 'border-border hover:border-border-strong')}
-              >
-                <div className="text-sm font-semibold text-text-1">{f.label}</div>
-                <div className="mt-0.5 text-2xs leading-4 text-text-3">{f.hint}</div>
-              </button>
-            ))}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="flex flex-col gap-1 text-2xs uppercase tracking-[0.08em] text-text-3">
-              From
-              <input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs text-text-1 [color-scheme:dark]" />
+        <div className="space-y-4">
+          <fieldset>
+            <legend className="mb-1.5 text-xs text-text-3">Format</legend>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="radiogroup">
+              {FORMATS.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={format === f.id}
+                  onClick={() => setFormat(f.id)}
+                  className={cn(
+                    'rounded-md border px-3 py-2 text-left transition-colors duration-150',
+                    format === f.id ? 'border-accent-fg/70 bg-accent-fg/[.08]' : 'border-border hover:border-border-strong',
+                  )}
+                >
+                  <div className="font-mono text-[13px] font-medium text-text-1">{f.label}</div>
+                  <div className="mt-0.5 text-2xs leading-4 text-text-3">{f.hint}</div>
+                </button>
+              ))}
+            </div>
+          </fieldset>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="flex min-w-0 flex-col gap-1 text-xs text-text-3">
+              From (local time)
+              <input type="datetime-local" value={from} onChange={(e) => setFrom(e.target.value)} className={FIELD} />
             </label>
-            <label className="flex flex-col gap-1 text-2xs uppercase tracking-[0.08em] text-text-3">
-              To
-              <input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} className="h-8 rounded-md border border-border bg-background px-2 text-xs text-text-1 [color-scheme:dark]" />
+            <label className="flex min-w-0 flex-col gap-1 text-xs text-text-3">
+              To (local time)
+              <input type="datetime-local" value={to} onChange={(e) => setTo(e.target.value)} className={FIELD} />
             </label>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <MiniSelect label="Action" value={action} onChange={setAction} options={(['block', 'require_approval', 'redact', 'log', 'allow'] as const).map((a) => ({ value: a, label: a }))} />
-            <MiniSelect label="Control" value={control} onChange={setControl} options={controls.map((c) => ({ value: c, label: c }))} />
-            <MiniSelect label="Agent" value={agent} onChange={setAgent} options={agents.map((c) => ({ value: c, label: c }))} />
+          {rangeInvalid ? <p className="-mt-2 text-xs text-block">The start time is after the end time.</p> : null}
+          <div>
+            <div className="mb-1.5 text-xs text-text-3">Filters (optional)</div>
+            <div className="flex flex-wrap gap-2">
+              <MiniSelect label="Action" value={action} onChange={setAction} className="max-md:h-9" options={(['block', 'require_approval', 'redact', 'log', 'allow'] as const).map((a) => ({ value: a, label: a }))} />
+              <MiniSelect label="Control" value={control} onChange={setControl} className="max-md:h-9" options={controls.map((c) => ({ value: c, label: c }))} />
+              <MiniSelect label="Agent" value={agent} onChange={setAgent} className="max-md:h-9" options={agents.map((c) => ({ value: c, label: c }))} />
+            </div>
           </div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => void run()} disabled={busy}>
-            <Download /> {busy ? 'Exporting…' : 'Export'}
+          <Button onClick={() => void run()} disabled={busy || rangeInvalid}>
+            <Download /> {busy ? 'Exporting…' : `Export ${FORMATS.find((f) => f.id === format)?.label ?? ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -301,7 +398,7 @@ export function ExportButton({ controls, agents }: { controls: string[]; agents:
   const [open, setOpen] = useState(false);
   return (
     <RoleGate min="admin" fallback={<LockedAction label="Export needs admin — switch View as" compact />}>
-      <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>
+      <Button variant="secondary" size="sm" onClick={() => setOpen(true)} className="max-md:h-9">
         <Download /> Export
       </Button>
       <ExportDialog open={open} onOpenChange={setOpen} controls={controls} agents={agents} />

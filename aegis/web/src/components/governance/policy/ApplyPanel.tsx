@@ -3,7 +3,7 @@
 // "Request approval · needs owner" (violet) otherwise, locked when whoami says `no`. Invalid YAML can
 // still be applied (with a warning) so the rejection path is demoable. Real-data step strip.
 // Owner: B19-dashboard-gov-policy.
-import { Check, ChevronRight, Loader2, Minus, Send, X, Zap } from 'lucide-react';
+import { Check, ChevronRight, Loader2, Minus, Send, X, Zap } from '@/components/icons';
 import { useState } from 'react';
 import { ApproverBadge } from '@/components/governance/ApproverBadge';
 import { LockedAction } from '@/components/governance/LockedAction';
@@ -18,7 +18,7 @@ function Step({ label, state, detail }: { label: string; state: StepState; detai
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-2xs',
+        'inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-2xs',
         state === 'ok' && 'border-allow/30 bg-allow/10 text-allow',
         state === 'fail' && 'border-block/30 bg-block/10 text-block',
         state === 'run' && 'border-[var(--accent-border)] bg-[var(--accent-subtle)] text-accent-fg',
@@ -48,25 +48,25 @@ export function ApplyPanel({ d }: { d: PolicyDraft }) {
         <span className="text-text-3">Required</span>
         {level ? <ApproverBadge level={level} size="sm" /> : <span className="text-text-3">—</span>}
         {d.ruleId ? <span className="font-mono text-2xs text-text-3">{d.ruleId}</span> : null}
-        {d.requiredRoleIsEstimate && level ? <span className="rounded border border-border px-1 text-[10px] text-text-3">estimate</span> : null}
+        {d.requiredRoleIsEstimate && level ? <span className="rounded-sm border border-border px-1 text-2xs text-text-3">estimate</span> : null}
       </div>
       <div className="text-xs leading-relaxed text-text-3">
         {noChanges
           ? 'Edit the draft to see who has to approve it.'
           : level === 'auto'
-            ? 'Tightening only — applies automatically for any role.'
+            ? 'Tightening only; applies automatically for any role.'
             : direct
-              ? `You are ${d.role === 'owner' ? 'an owner' : d.role === 'admin' ? 'an admin' : 'a member'} — this hot-reloads immediately (validate → self-test → atomic swap).`
-              : `You are ${d.role === 'admin' ? 'an admin' : 'a member'}; this change needs ${level === 'owner' ? 'an owner' : `an ${level}`}. Applying parks the draft as an approval request (GOV-05).`}
+              ? `You are ${d.role === 'owner' ? 'an owner' : d.role === 'admin' ? 'an admin' : 'a member'} ; this hot-reloads immediately (validate, self-test, atomic swap).`
+              : `You are ${d.role === 'admin' ? 'an admin' : 'a member'}; this change needs ${level === 'owner' ? 'an owner' : `an ${level}`}. Applying parks the draft as an approval request.`}
       </div>
-      <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (goes to the audit log)" className="h-8 text-xs" />
-      {!noChanges && !d.valid && !d.checking ? <div className="text-2xs text-block">Draft has errors — the server will reject it (that's the safety net).</div> : null}
+      <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (recorded in the audit log)" className="h-9 text-xs md:h-8" />
+      {!noChanges && !d.valid && !d.checking ? <div className="text-2xs text-block">Draft has errors. The server will reject it and keep the active version.</div> : null}
       <LockedAction
         locked={locked}
         reason="Your role cannot change the policy"
         disabled={noChanges || d.applying}
         onClick={() => void d.apply(reason.trim())}
-        className={cn('w-full', !noChanges && !direct && 'bg-approval text-white hover:bg-approval/90')}
+        className={cn('w-full max-md:h-9', !noChanges && !direct && 'bg-approval text-white hover:bg-approval/90')}
         wrapperClassName="w-full"
         hint={!noChanges ? '⌘S' : undefined}
       >

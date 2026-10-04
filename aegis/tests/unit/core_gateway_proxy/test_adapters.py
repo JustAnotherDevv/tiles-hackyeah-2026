@@ -185,6 +185,8 @@ def test_openai_adapter() -> None:
     got = [(s.path, s.role, s.trusted) for s in i.segments]
     assert got == [("messages[0].content", "system", True),
                    ("messages[1].content[0].text", "user", True),
+                   # R9: non-text parts are inspected too (a URL can carry a secret)
+                   ("messages[1].content[1].image_url.url", "user", True),
                    ("messages[2].tool_calls[0].function.arguments", "tool_args", True),
                    ("messages[3].content", "tool_result", False)]
     assert i.max_output_tokens == 50 and i.meta["include_usage_requested"] is False

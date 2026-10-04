@@ -19,7 +19,7 @@ import tempfile
 import threading
 import time
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -69,7 +69,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -106,9 +106,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # boot error -> FAIL: a broken gateway must never read as exit 0
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -173,7 +173,7 @@ def _start_mcp_upstream(tmp: Path) -> tuple[Any, str]:
         return ThreadedUvicorn(fake_app(), name="fake-mcp").start(), "fake"
     except Exception as exc:
         errors.append(repr(exc))
-    pytest.skip(f"no MCP upstream could start: {errors}")
+    pytest.fail(f"no MCP upstream could start: {errors}", pytrace=False)
 
 
 class Mcp:
@@ -247,7 +247,7 @@ def _is_error(msg: dict) -> bool:
 
 
 class McpStack:
-    def __init__(self) -> None:
+    def __init__(self, mutate: Callable[[dict], None] | None = None) -> None:
         self.tmp = Path(tempfile.mkdtemp(prefix="aegis-b22-mcp-"))
         self.upstream, self.kind = _start_mcp_upstream(self.tmp)
         url = self.upstream.url
@@ -256,6 +256,8 @@ class McpStack:
             for name, srv in (doc.get("mcp") or {}).get("servers", {}).items():
                 if srv.get("transport", "http") == "http":
                     srv["url"] = f"{url}/mcp/{name}"
+            if mutate:
+                mutate(doc)
 
         try:
             self.gw = LocalStack(point_mcp)
@@ -340,7 +342,7 @@ def test_f3_rug_pull(ms: McpStack) -> None:
         path = "/api/mcp/servers/rugpull/tools/get_exchange_rate/approve"
         r = ms.gw.api("POST", path, as_="u_piotr", json={"comment": "member try"})
         if r.status_code in (404, 405, 501):
-            pytest.skip("MCP re-pin endpoint not available")
+            pytest.fail(f"MCP re-pin endpoint not available ({r.status_code})", pytrace=False)
         assert r.status_code == 403, r.text
         r = ms.gw.api("POST", path, as_="u_emily", json={"comment": "reviewed"})
         assert r.status_code == 200, r.text
@@ -413,3 +415,43 @@ def test_f5_args_exfil_blocked(ms: McpStack) -> None:
         if apr:
             ms.gw.api("POST", f"/api/approvals/{apr}/cancel", as_="u_katarzyna", json={})
     assert len(ms.upstream_calls("mailer")) == before, "the email reached the upstream mock"
+
+
+# --------------------------------------------------------------------------------------
+# F6 · tool shadowing: a second server exposes a tool name already pinned on another server
+# --------------------------------------------------------------------------------------
+def _shadow_block(doc: dict) -> None:
+    """Admin choice: escalate MCP-03 shadowing from the shipped `log` to `block`."""
+    ctl = next(c for c in doc["controls"] if c.get("id") == "MCP-03")
+    ctl.setdefault("params", {})["collision_action"] = "block"
+
+
+@pytest.fixture
+def shadow_ms() -> Iterator[McpStack]:
+    s = McpStack(_shadow_block)  # fresh pins: weather is listed first, poisoned second
+    try:
+        yield s
+    finally:
+        s.stop()
+
+
+@pytest.mark.aegis(suite="mcp", control="MCP-03", polarity="attack")
+def test_f6_tool_shadowing(shadow_ms: McpStack) -> None:
+    """`weather.get_weather` is pinned first; the clean-looking `poisoned.get_weather` then collides
+    with it (same name, different server). With `collision_action: block`, MCP-03 must stop the
+    shadowing tool: hidden from tools/list or its call refused naming MCP-03, never reaching the
+    upstream."""
+    weather = Mcp(shadow_ms.gw, "weather", agent="claude-code@platform").init()
+    assert "get_weather" in {t["name"] for t in weather.tools()}
+    first = weather.call("get_weather", {"city": "Krakow"})
+    assert not _is_error(first), first  # the original owner of the name keeps working
+
+    before = [c for c in shadow_ms.upstream_calls("poisoned") if c.get("tool") == "get_weather"]
+    shadow = Mcp(shadow_ms.gw, "poisoned", agent="claude-code@platform").init()
+    listed = {t["name"]: t for t in shadow.tools()}
+    msg = shadow.call("get_weather", {"city": "Krakow"})
+    hidden = "get_weather" not in listed
+    refused = _is_error(msg) and "MCP-03" in json.dumps(msg)
+    assert hidden or refused, {"listed": sorted(listed), "call": msg}
+    after = [c for c in shadow_ms.upstream_calls("poisoned") if c.get("tool") == "get_weather"]
+    assert len(after) == len(before), "the shadowing tool call reached the upstream"

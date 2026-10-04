@@ -1,5 +1,5 @@
 """META-V09 (in-process integration): the REAL app + Runtime + config/policy.yaml, upstream
-replaced by a MockTransport. No ports, no models. Skips if the app cannot boot yet."""
+replaced by a MockTransport. No ports, no models. Boot failures and policy regressions fail."""
 
 from __future__ import annotations
 
@@ -16,13 +16,10 @@ pytestmark = pytest.mark.slow
 @pytest.fixture
 async def stack(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_SEMANTIC", "off")
-    try:
-        from aegis.app import create_app
-        from aegis.settings import Settings
+    from aegis.app import create_app
+    from aegis.settings import Settings
 
-        app = create_app(Settings(data_dir=tmp_path / "data", test_mode=True, semantic="off"))
-    except Exception as e:  # pragma: no cover - integration not ready
-        pytest.skip(f"aegis.app not bootable: {e}")
+    app = create_app(Settings(data_dir=tmp_path / "data", test_mode=True, semantic="off"))
     seen: list[httpx.Request] = []
 
     def handler(req: httpx.Request) -> httpx.Response:
@@ -56,8 +53,7 @@ async def test_allowed_crm_headers_stripped_real_stack(stack) -> None:
                      json={"method": "GET", "url": "https://crm.saas.test/crm/contacts",
                            "headers": {"X-Forwarded-For": "10.1.2.3", "Cookie": "s=1",
                                        "x-stainless-os": "MacOS"}})
-    if r.status_code != 200:
-        pytest.skip(f"policy of the integrated stack does not allow this call: {r.text[:200]}")
+    assert r.status_code == 200, f"shipped policy must allow research-agent -> CRM: {r.text[:300]}"
     up = seen[-1]
     assert up.headers["host"] == "crm.saas.test"
     for h in ("x-forwarded-for", "cookie", "x-stainless-os"):

@@ -3,7 +3,7 @@
 // with the G2 extension fields; falls back to a client estimate labelled "estimate"), give a reason,
 // submit → POST /api/budgets/raise → ApplyResult (applied / pending_approval with Open / rejected /
 // conflict / noop). The server's ApplyResult is authoritative. Owner: B19-dashboard-gov-policy.
-import { ArrowRight, Loader2, Route, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { ArrowRight, Loader2, Route, TrendingDown, TrendingUp } from '@/components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import type { ApplyResult, ApproverLevel, BudgetScopeView, BudgetStatus, PolicyChange } from '@/api/types';
@@ -164,9 +164,7 @@ export function RaiseDialog({
     <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Wallet className="size-4 text-accent-fg" /> Request budget change
-          </DialogTitle>
+          <DialogTitle>Request budget change</DialogTitle>
           <DialogDescription className="text-text-2">
             {scope.name} <span className="font-mono text-text-3">· {scope.scope}</span>
           </DialogDescription>
@@ -174,7 +172,7 @@ export function RaiseDialog({
 
         <div className="space-y-4">
           <div>
-            <div className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-text-3">Limit</div>
+            <div className="mb-1.5 text-xs font-medium text-text-2">Limit</div>
             <div className="flex flex-wrap gap-1.5">
               {limits.map((l) => (
                 <button
@@ -185,7 +183,7 @@ export function RaiseDialog({
                     setValue(String(roundLimit(l.limit * 1.25, l.dimension)));
                   }}
                   className={cn(
-                    'rounded-md border px-2.5 py-1 text-xs transition-colors',
+                    'h-8 rounded-sm border px-2.5 text-xs transition-colors duration-100 md:h-7',
                     key(l) === sel ? 'border-[var(--accent-border)] bg-[var(--accent-subtle)] text-accent-fg' : 'border-border bg-surface-2 text-text-2 hover:border-border-strong',
                   )}
                 >
@@ -202,15 +200,15 @@ export function RaiseDialog({
           </div>
 
           <div>
-            <div className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-text-3">New limit</div>
-            <div className="flex items-center gap-2">
+            <div className="mb-1.5 text-xs font-medium text-text-2">New limit</div>
+            <div className="flex flex-wrap items-center gap-2">
               <div className="font-mono text-sm text-text-3 tabular">{cur ? fmtDimension(cur.dimension, cur.limit) : '—'}</div>
               <ArrowRight className="size-3.5 text-text-3" />
               <Input
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
                 inputMode="decimal"
-                className="h-8 w-32 font-mono tabular"
+                className="h-9 w-32 font-mono tabular md:h-8"
                 aria-label="New limit"
                 autoFocus
               />
@@ -229,7 +227,7 @@ export function RaiseDialog({
                   type="button"
                   disabled={!cur}
                   onClick={() => cur && setValue(String(roundLimit(cur.limit * c.f, cur.dimension)))}
-                  className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-xs text-text-2 transition-colors hover:border-border-strong hover:text-text-1"
+                  className="h-8 rounded-sm border border-border bg-surface-2 px-2.5 font-mono text-xs text-text-2 transition-colors duration-100 hover:border-border-strong hover:text-text-1 disabled:opacity-50 md:h-6"
                 >
                   {c.label}
                 </button>
@@ -237,10 +235,10 @@ export function RaiseDialog({
             </div>
           </div>
 
-          <div className="rounded-lg border border-border bg-surface-1 p-3">
-            <div className="mb-1.5 flex items-center gap-1.5 text-2xs font-medium uppercase tracking-wider text-text-3">
+          <div className="rounded-md border border-border bg-surface-1 p-3">
+            <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-text-2">
               <Route className="size-3" /> Approval route
-              {route?.estimate ? <span className="rounded border border-border px-1 text-[10px] normal-case tracking-normal text-text-3">estimate</span> : null}
+              {route?.estimate ? <span className="rounded-sm border border-border px-1 text-2xs font-normal text-text-3">estimate</span> : null}
               {routing ? <Loader2 className="size-3 animate-spin" /> : null}
             </div>
             {same || !validNum ? (
@@ -261,9 +259,9 @@ export function RaiseDialog({
                     ? 'No one can approve this change.'
                     : direct
                       ? route.level === 'auto'
-                        ? 'Applies automatically — no approval needed.'
-                        : `You are ${role === 'admin' ? 'an' : 'the'} ${role} → you can apply this directly.`
-                      : `You are a${role === 'admin' ? 'n' : ''} ${role} → this creates an approval request for ${route.level === 'self' ? 'the sponsor' : `an ${route.level}`}.`}
+                        ? 'Applies automatically; no approval needed.'
+                        : `As ${role === 'admin' ? 'an' : 'the'} ${role}, you can apply this directly.`
+                      : `As a${role === 'admin' ? 'n' : ''} ${role}, this creates an approval request for ${route.level === 'self' ? 'the sponsor' : `an ${route.level}`}.`}
                 </div>
               </div>
             ) : (
@@ -272,12 +270,12 @@ export function RaiseDialog({
           </div>
 
           <div>
-            <div className="mb-1.5 text-2xs font-medium uppercase tracking-wider text-text-3">Reason</div>
+            <div className="mb-1.5 text-xs font-medium text-text-2">Reason</div>
             <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={2}
-              placeholder="e.g. Earnings week — copilot traffic is 2× normal"
+              placeholder="e.g. Earnings week: copilot traffic is 2× normal"
               className="text-sm"
             />
           </div>

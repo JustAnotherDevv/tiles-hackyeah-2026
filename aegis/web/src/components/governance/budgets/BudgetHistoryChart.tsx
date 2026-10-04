@@ -61,7 +61,7 @@ export function BudgetHistoryChart({ scope, dimension, height = 180 }: { scope: 
         height={height}
         series={[
           { key: 'used', label: 'Used', color: '#4A7FE0' },
-          { key: 'forecast', label: 'Forecast (linear)', color: '#A78BFA', dashed: true },
+          { key: 'forecast', label: 'Forecast (linear)', color: '#7A808C', dashed: true },
         ]}
         referenceLines={limit > 0 ? [{ y: limit, label: `limit ${fmtDimension(dimension, limit)}`, color: '#E5446D', dashed: true }] : []}
         yFormat={(v) => fmtDimension(dimension, v)}
@@ -71,10 +71,10 @@ export function BudgetHistoryChart({ scope, dimension, height = 180 }: { scope: 
       <div className="mt-1 text-2xs text-text-3">
         {exceedsAt ? (
           <span className="text-redact">
-            Forecast hits the limit at {new Date(exceedsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — consider a raise or a downgrade.
+            Forecast reaches the limit at {new Date(exceedsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.
           </span>
         ) : (
-          'Forecast is a client-side linear projection of the last hours to the end of the day.'
+          'Forecast: linear projection of recent usage to end of day (UTC), computed client-side.'
         )}
       </div>
     </div>

@@ -18,9 +18,12 @@ import pytest
 from tests.lib.fakes.feed import TEST_TOKEN, make_test_signature
 from tests.lib.identities import ADMIN
 from tests.lib.matrix import RESULTS
+from tests.lib.perf import bound
 from tests.lib.stack import HermeticStack, StackError, is_live
 
 pytestmark = [pytest.mark.hermetic_only]
+
+FEED_ACTIVATION_MS_MAX = 2000.0
 
 
 @pytest.fixture(scope="module")
@@ -31,8 +34,8 @@ def feed_stack() -> Iterator[Any]:
         )
     try:
         st = HermeticStack(feed=True).start()
-    except StackError as exc:
-        pytest.skip(str(exc))
+    except StackError as exc:  # hermetic boot failure must fail, never read as exit 0
+        pytest.fail(f"hermetic feed stack failed to boot: {exc}", pytrace=False)
     try:
         yield st
     finally:
@@ -52,7 +55,7 @@ def _guard(st: Any, text: str) -> dict[str, Any]:
 def _refresh(st: Any) -> dict[str, Any]:
     r = st.gw.api("POST", "/api/feed/refresh", view_as=ADMIN, json={})
     if r.status_code in (404, 405, 501):
-        pytest.skip(f"/api/feed/refresh not available ({r.status_code})")
+        pytest.fail(f"/api/feed/refresh not available ({r.status_code})", pytrace=False)
     assert r.status_code == 200, r.text[:300]
     return r.json()
 
@@ -73,7 +76,7 @@ def test_e0_token_allowed_before_update(feed_stack: Any) -> None:
     st = feed_stack
     status = st.gw.feed_status()
     if status.get("status") in (None, "disabled"):
-        pytest.skip(f"feed manager not active: {status}")
+        pytest.fail(f"feed manager not active in the hermetic feed stack: {status}", pytrace=False)
     assert not _sig01(_guard(st, f"please say {TEST_TOKEN}"))
 
 
@@ -91,7 +94,11 @@ def test_e1_publish_then_block(feed_stack: Any) -> None:
         f"token not blocked by SIG-01 after update: {v.get('action')} {v.get('primary')}"
     )
     assert v.get("feed_serial") == status.get("serial")
-    assert RESULTS.perf["feed_activation_ms"] < 2000
+    budget = bound(FEED_ACTIVATION_MS_MAX)
+    assert RESULTS.perf["feed_activation_ms"] < budget, (
+        f"feed activation {RESULTS.perf['feed_activation_ms']} ms >= {budget:.0f} ms "
+        "(raise AEGIS_PERF_SLACK on a loaded machine)"
+    )
 
 
 @pytest.mark.aegis(suite="feed", control="SIG-01", polarity="attack", expect="block")

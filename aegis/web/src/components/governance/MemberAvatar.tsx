@@ -1,6 +1,6 @@
-// Initials avatar (meta.avatar_color) + optional name; agents render as a teal bot tile.
+// Flat initials avatar (tinted by meta.avatar_color) + optional name; agents render as a bot tile.
 // Owner: B18-dashboard-gov-approvals.
-import { Bot } from 'lucide-react';
+import { Bot } from '@/components/icons';
 import type { Member } from '@/api/types';
 import { ROLE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
@@ -42,8 +42,13 @@ export function MemberAvatar({ member, name, color, agent = false, size = 'sm', 
     </span>
   ) : (
     <span
-      className={cn('grid shrink-0 select-none place-items-center rounded-full font-semibold text-white/95 shadow-[inset_0_1px_0_rgba(255,255,255,.18)]', SIZES[size], dim && 'opacity-45 grayscale')}
-      style={{ background: `linear-gradient(160deg, ${bg}, color-mix(in oklab, ${bg} 55%, #000))`, boxShadow: ring ? `0 0 0 2px var(--background), 0 0 0 3.5px ${ring}` : undefined }}
+      className={cn('grid shrink-0 select-none place-items-center rounded-full border font-semibold tracking-[0.02em]', SIZES[size], dim && 'opacity-45 grayscale')}
+      style={{
+        background: `color-mix(in oklab, ${bg} 16%, var(--surface-2))`,
+        borderColor: `color-mix(in oklab, ${bg} 38%, var(--border))`,
+        color: `color-mix(in oklab, ${bg} 70%, var(--text-1))`,
+        boxShadow: ring ? `0 0 0 2px var(--background), 0 0 0 3px ${ring}` : undefined,
+      }}
       title={title ?? label}
     >
       {initials(label)}

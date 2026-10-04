@@ -3,7 +3,7 @@
 // control_id, changes) and show the level, matched rule (highlighted in the tables), TTL,
 // two-person and the eligible approvers (client-side, contract eligibility). Owner: B18.
 import { motion } from 'framer-motion';
-import { Ban, Loader2, Route, Sparkles, Users, Zap } from 'lucide-react';
+import { Ban, Loader2, Route, ShieldCheck, Users, Zap } from '@/components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import type { ApprovalKind, ApprovalRequest, ApprovalRoute, PolicyChange } from '@/api/types';
 import { Slider } from '@/components/ui/slider';
@@ -229,7 +229,7 @@ function buildRequest(f: SimForm, dir: Directory): ApprovalSimulateRequestExt {
 }
 
 const FIELD =
-  'h-8 w-full rounded-lg border border-border bg-surface-1 px-2.5 text-[12.5px] text-text-1 outline-none hover:border-border-strong focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40';
+  'h-9 w-full rounded-md border border-border bg-surface-1 px-2.5 text-[12.5px] text-text-1 outline-none hover:border-border-strong focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40';
 const LABEL = 'mb-1 block text-2xs font-medium uppercase tracking-wider text-text-3';
 
 export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewer: Viewer; onRoute: (route: (ApprovalRoute & { description?: string | null }) | null) => void }) {
@@ -334,7 +334,7 @@ export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewe
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
       <div className="space-y-3.5">
         <div>
-          <span className={LABEL}>Presets · SCENARIOS Appendix A</span>
+          <span className={LABEL}>Presets</span>
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((p) => (
               <button
@@ -342,7 +342,7 @@ export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewe
                 type="button"
                 onClick={() => applyPreset(p)}
                 className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors',
+                  'inline-flex h-9 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors sm:h-7',
                   preset === p.label ? 'border-approval/50 bg-approval/10 text-text-1' : 'border-border bg-surface-1 text-text-2 hover:border-border-strong hover:text-text-1',
                 )}
               >
@@ -539,9 +539,9 @@ export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewe
         ) : result ? (
           <motion.div
             key={`${result.required_role}-${result.rule_id}-${result.two_person}`}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12 }}
             className="space-y-3.5"
           >
             <div className="flex flex-wrap items-center gap-2">
@@ -550,21 +550,21 @@ export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewe
               ) : result.required_role === 'auto' ? (
                 <Zap className="size-5 text-log" />
               ) : (
-                <Sparkles className="size-5 text-approval" />
+                <ShieldCheck className="size-5 text-approval" />
               )}
               <span className="text-lg font-semibold tracking-[-0.01em] text-text-1">
                 {result.required_role === 'deny' ? 'Always denied' : result.required_role === 'auto' ? 'Auto-approved' : `Needs ${levelLabel(result.required_role).toLowerCase()}`}
               </span>
               <ApproverBadge level={result.required_role} />
               {result.two_person ? (
-                <span className="inline-flex h-5 items-center gap-1 rounded-full border border-accent-fg/30 bg-brand/10 px-2 text-xs text-accent-fg">
+                <span className="inline-flex h-5 items-center gap-1 rounded-sm border border-border bg-surface-2 px-1.5 text-2xs font-medium text-text-1">
                   <Users className="size-3" /> two-person
                 </span>
               ) : null}
             </div>
             <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-[12.5px]">
               <dt className="text-text-3">Matched rule</dt>
-              <dd className="font-mono text-approval">{result.rule_id ?? 'default route (no rule matched — fail closed)'}</dd>
+              <dd className="font-mono text-approval">{result.rule_id ?? 'default route (no rule matched; fail closed)'}</dd>
               <dt className="text-text-3">Requester</dt>
               <dd className="truncate text-text-2">
                 {requesterName}
@@ -601,14 +601,14 @@ export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewe
                       <span
                         key={m.id}
                         className={cn(
-                          'inline-flex h-7 items-center gap-1.5 rounded-full border px-1 pr-2.5 text-xs',
-                          me ? 'border-allow/40 bg-allow/10 text-text-1' : 'border-border bg-surface-2 text-text-2',
+                          'inline-flex h-7 items-center gap-1.5 rounded-md border px-1 pr-2.5 text-xs',
+                          me ? 'border-border-strong bg-surface-3 text-text-1' : 'border-border bg-surface-2 text-text-2',
                         )}
                       >
                         <MemberAvatar member={m} size="xs" />
                         {firstName(m.name)}
                         <span className="text-2xs text-text-3">{m.role}</span>
-                        {me ? <span className="text-2xs font-medium text-allow">you</span> : null}
+                        {me ? <span className="text-2xs font-medium text-text-2">(you)</span> : null}
                       </span>
                     );
                   })}
@@ -619,7 +619,7 @@ export function RouteSimulator({ dir, viewer, onRoute }: { dir: Directory; viewe
             )}
           </motion.div>
         ) : (
-          <div className="grid h-40 place-items-center text-xs text-text-3">Simulating…</div>
+          <div className="grid h-40 place-items-center text-xs text-text-3">Simulating</div>
         )}
       </div>
     </div>

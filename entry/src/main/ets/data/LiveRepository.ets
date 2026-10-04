@@ -1,16 +1,10 @@
 import { http } from '@kit.NetworkKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { ApprovalItem, CheckItem, KeyValue, PostureStats, VoteView } from '../model/Models';
-import {
-  VoteBody,
-  WireApprovalRequest,
-  WireApprovalsResponse,
-  WireErrorEnvelope,
-  WireStatsResponse,
-  WireWhoAmI
-} from '../model/Wire';
-import { Fmt, Log } from '../common/Format';
+import { ApprovalItem, PostureStats } from '../model/Models';
+import { VoteBody, WireMember, WireWhoAmI } from '../model/Wire';
+import { Log } from '../common/Format';
 import { ApprovalsPage, ApprovalsRepository, ConnectionInfo, RepoError } from './ApprovalsRepository';
+import { LiveMapping, NET_TIMEOUT } from './LiveMapping';
 
 const TIMEOUT_MS = 6000;
 
@@ -33,45 +27,34 @@ export class LiveRepository implements ApprovalsRepository {
 
   async listApprovals(viewAs: string): Promise<ApprovalsPage> {
     const body: string = await this.request(http.RequestMethod.GET, '/api/approvals?status=all&limit=100', viewAs, '');
-    const res: WireApprovalsResponse = JSON.parse(body) as WireApprovalsResponse;
-    const page: ApprovalsPage = new ApprovalsPage();
-    const items: WireApprovalRequest[] = res.items ?? [];
-    for (const w of items) {
-      const it: ApprovalItem = LiveRepository.map(w);
-      page.items.push(it);
-      if (it.status === 'pending') {
-        page.pending++;
+    try {
+      const page: ApprovalsPage = LiveMapping.parseApprovals(body);
+      if (page.skipped > 0) {
+        Log.warn('Skipped ' + page.skipped.toString() + ' malformed approval entries from the gateway');
       }
+      return page;
+    } catch (e) {
+      throw LiveRepository.noted(e as Error, 'approvals', body);
     }
-    page.items.sort((a: ApprovalItem, b: ApprovalItem) => b.createdAtMs - a.createdAtMs);
-    return page;
   }
 
   async getApproval(id: string, viewAs: string): Promise<ApprovalItem> {
     const body: string = await this.request(http.RequestMethod.GET, '/api/approvals/' + encodeURIComponent(id),
       viewAs, '');
-    return LiveRepository.map(JSON.parse(body) as WireApprovalRequest);
+    try {
+      return LiveMapping.mapChecked(LiveMapping.parse(body, 'approval'));
+    } catch (e) {
+      throw LiveRepository.noted(e as Error, 'approval', body);
+    }
   }
 
   async getStats(viewAs: string): Promise<PostureStats> {
     const body: string = await this.request(http.RequestMethod.GET, '/api/stats?window=24h', viewAs, '');
-    const res: WireStatsResponse = JSON.parse(body) as WireStatsResponse;
-    const s: PostureStats = new PostureStats();
-    if (res.kpis !== undefined && res.kpis !== null) {
-      s.requests = res.kpis.requests ?? 0;
-      s.blocked = res.kpis.blocked ?? 0;
-      s.redacted = res.kpis.redacted ?? 0;
-      s.approvalsPending = res.kpis.approvals_pending ?? 0;
-      s.spendTodayUsd = res.kpis.spend_today_usd ?? 0;
-      s.budgetUsedPct = res.kpis.org_budget_used_pct ?? 0;
-      s.activeAgents = res.kpis.active_agents ?? 0;
-      s.costAvoidedUsd = res.kpis.cost_avoided_usd ?? 0;
-      s.p50OverheadMs = res.kpis.p50_overhead_ms ?? 0;
-      s.degraded = res.kpis.degraded ?? false;
+    try {
+      return LiveMapping.parseStats(body);
+    } catch (e) {
+      throw LiveRepository.noted(e as Error, 'stats', body);
     }
-    s.updatedAtMs = Date.now();
-    s.source = 'live';
-    return s;
   }
 
   async vote(id: string, decision: string, viewAs: string, comment: string): Promise<ApprovalItem> {
@@ -79,25 +62,31 @@ export class LiveRepository implements ApprovalsRepository {
     vb.comment = comment.length > 0 ? comment : null;
     const path: string = '/api/approvals/' + encodeURIComponent(id) + '/' + (decision === 'deny' ? 'deny' : 'approve');
     const body: string = await this.request(http.RequestMethod.POST, path, viewAs, JSON.stringify(vb));
-    return LiveRepository.map(JSON.parse(body) as WireApprovalRequest);
+    // A 2xx whose body cannot be parsed/mapped throws RepoError kind 'parse': the vote was most likely applied.
+    try {
+      return LiveMapping.mapChecked(LiveMapping.parse(body, 'vote result'));
+    } catch (e) {
+      throw LiveRepository.noted(e as Error, 'vote result', body);
+    }
   }
 
   async testConnection(viewAs: string): Promise<ConnectionInfo> {
     try {
       const body: string = await this.request(http.RequestMethod.GET, '/api/whoami', viewAs, '');
-      const who: WireWhoAmI = JSON.parse(body) as WireWhoAmI;
+      const who: WireWhoAmI = LiveMapping.parse(body, 'whoami') as WireWhoAmI;
       let name: string = viewAs;
       let role: string = '?';
-      if (who.member !== null && who.member !== undefined) {
-        name = who.member.name;
-        role = who.member.role;
-      } else if (who.identity !== undefined && who.identity !== null) {
-        role = who.identity.role;
+      const member: WireMember | null = who.member;
+      if (member !== null && member !== undefined && LiveMapping.isObj(member)) {
+        name = LiveMapping.text(member.name, viewAs);
+        role = LiveMapping.text(member.role, '?');
+      } else if (LiveMapping.isObj(who.identity)) {
+        role = LiveMapping.text(who.identity.role, '?');
       }
       return new ConnectionInfo(true, 'Connected to ' + this.baseUrl + ' as ' + name + ' (' + role + ')');
     } catch (e) {
-      const err: RepoError = e as RepoError;
-      return new ConnectionInfo(false, err.message);
+      const msg: string = e instanceof RepoError ? (e as RepoError).message : 'Connection test failed';
+      return new ConnectionInfo(false, msg);
     }
   }
 
@@ -131,128 +120,25 @@ export class LiveRepository implements ApprovalsRepository {
       if (resp.responseCode >= 200 && resp.responseCode < 300) {
         return text;
       }
-      throw new RepoError(LiveRepository.errorMessage(text, resp.responseCode), resp.responseCode);
+      throw new RepoError(LiveMapping.errorMessage(text, resp.responseCode), resp.responseCode, 'http');
     } catch (e) {
       if (e instanceof RepoError) {
         throw e as RepoError;
       }
       const be: BusinessError = e as BusinessError;
-      Log.warn('HTTP ' + path + ' failed: ' + JSON.stringify(be));
-      throw new RepoError('Cannot reach the gateway at ' + this.baseUrl + ' (' + (be.message ?? 'network error') + ')', 0);
+      const code: number = (be !== undefined && be !== null && typeof be.code === 'number') ? be.code : -1;
+      Log.warn('HTTP ' + method + ' ' + path + ' failed: code=' + code.toString() + ' ' +
+        ((be !== undefined && be !== null) ? String(be.message) : ''));
+      throw new RepoError(LiveMapping.friendly(code, this.baseUrl), 0,
+        code === NET_TIMEOUT ? 'timeout' : 'network');
     } finally {
       req.destroy();
     }
   }
 
-  private static errorMessage(text: string, code: number): string {
-    try {
-      const env: WireErrorEnvelope = JSON.parse(text) as WireErrorEnvelope;
-      if (env.error !== undefined && env.error !== null && env.error.message !== undefined) {
-        return env.error.message;
-      }
-    } catch (e) {
-      // not an Aegis envelope
-    }
-    if (code === 403) {
-      return 'Not allowed for this persona';
-    }
-    if (code === 409) {
-      return 'Already decided';
-    }
-    if (code === 404) {
-      return 'Not found (is this the Aegis gateway?)';
-    }
-    return 'Gateway answered HTTP ' + code.toString();
-  }
-
-  // ------------------------------------------------------------------ mapping
-
-  static map(w: WireApprovalRequest): ApprovalItem {
-    const it: ApprovalItem = new ApprovalItem();
-    it.id = w.id;
-    it.kind = w.kind ?? 'action';
-    it.actionType = w.action_type ?? '';
-    it.title = w.title ?? w.action_type ?? w.id;
-    it.summary = w.summary ?? '';
-    if (w.requester !== undefined && w.requester !== null) {
-      it.requesterAgent = w.requester.agent_id ?? '';
-      it.requesterMember = w.requester.member_id ?? '';
-    }
-    it.teamId = w.team_id ?? '';
-    it.amountUsd = (w.amount_usd === null || w.amount_usd === undefined) ? -1 : w.amount_usd;
-    it.resource = w.resource ?? '';
-    it.requiredRole = w.required_role ?? 'admin';
-    it.twoPerson = w.two_person ?? false;
-    it.ruleId = w.rule_id ?? '';
-    it.controlId = w.control_id ?? '';
-    it.status = w.status ?? 'pending';
-    it.createdAtMs = Fmt.parseIso(w.created_at);
-    it.expiresAtMs = Fmt.parseIso(w.expires_at);
-    it.decidedAtMs = Fmt.parseIso(w.decided_at);
-    it.canVote = w.can_vote ?? false;
-    it.whyNot = w.why_not ?? '';
-    const votes: VoteView[] = [];
-    for (const v of (w.votes ?? [])) {
-      votes.push(new VoteView(v.member_id, v.role, v.decision, v.comment ?? '', Fmt.parseIso(v.ts)));
-    }
-    it.votes = votes;
-    LiveRepository.mapPayload(w, it);
-    return it;
-  }
-
-  private static mapPayload(w: WireApprovalRequest, it: ApprovalItem): void {
-    const payload: Record<string, Object> | undefined = w.payload;
-    if (payload === undefined || payload === null) {
-      return;
-    }
-    const facts: Record<string, Object> | undefined = payload['facts'] as Record<string, Object> | undefined;
-    if (facts !== undefined && facts !== null) {
-      for (const k of Object.keys(facts)) {
-        it.facts.push(new KeyValue(k, LiveRepository.str(facts[k])));
-      }
-    }
-    const checks: Object[] | undefined = payload['checks'] as Object[] | undefined;
-    if (checks !== undefined && checks !== null && Array.isArray(checks)) {
-      for (const c of checks) {
-        const rec: Record<string, Object> = c as Record<string, Object>;
-        const okVal: Object | undefined = rec['ok'];
-        it.checks.push(new CheckItem(LiveRepository.str(rec['name']), okVal === true,
-          LiveRepository.str(rec['detail'])));
-      }
-    }
-    const note: Object | undefined = payload['agent_note'];
-    if (note !== undefined && note !== null) {
-      it.agentNote = LiveRepository.str(note);
-    }
-    // Budget raise shapes (A-24): payload.before/after or payload.budget.{before,after}.
-    let budget: Record<string, Object> | undefined = payload['budget'] as Record<string, Object> | undefined;
-    if (budget === undefined || budget === null) {
-      budget = payload;
-    }
-    const before: Object | undefined = budget['before'];
-    const after: Object | undefined = budget['after'];
-    if (typeof before === 'number' && typeof after === 'number') {
-      it.budgetBefore = before as number;
-      it.budgetAfter = after as number;
-      it.budgetScope = LiveRepository.str(budget['scope']);
-    }
-    if (it.facts.length === 0 && w.labels !== undefined && w.labels !== null) {
-      for (const k of Object.keys(w.labels)) {
-        it.facts.push(new KeyValue(k, w.labels[k]));
-      }
-    }
-  }
-
-  private static str(v: Object | undefined | null): string {
-    if (v === undefined || v === null) {
-      return '';
-    }
-    if (typeof v === 'string') {
-      return v as string;
-    }
-    if (typeof v === 'number' || typeof v === 'boolean') {
-      return String(v);
-    }
-    return JSON.stringify(v);
+  /** Logs a decode failure (size only, never the body: it may hold payload data) and returns it for rethrow. */
+  private static noted(e: Error, what: string, body: string): Error {
+    Log.warn('Gateway ' + what + ' could not be decoded (' + body.length.toString() + ' bytes): ' + e.message);
+    return e;
   }
 }

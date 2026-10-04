@@ -68,7 +68,7 @@ when relevant `X-Aegis-Approval-Id`, `X-Aegis-Downgraded-From`, `X-Aegis-Budget-
 | stale policy `base_version` | — | 409 `conflict` |
 | upstream failure | 502 `upstream_error` | 502 |
 
-## Dashboard API (`/api/*`, add `-H 'X-Aegis-View-As: <member>'`)
+## Dashboard API (`/api/*`, add `-H 'X-Aegis-View-As: <member>'` — without it a script is an anonymous, read-only viewer; requests carrying agent credentials (`X-Aegis-Agent`, an `aegis_…` key) can never vote or change state, whatever view-as says)
 
 ```bash
 V='-H X-Aegis-View-As:u_emily'

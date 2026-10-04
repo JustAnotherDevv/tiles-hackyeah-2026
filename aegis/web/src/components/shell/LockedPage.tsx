@@ -1,6 +1,6 @@
 // Rendered instead of a page whose meta.minRole is above the current "view as" role. Locked pages stay in
 // the sidebar (with a lock) so judges see the RBAC model; one click switches to an eligible member.
-import { Lock } from 'lucide-react';
+import { Lock } from '@/components/icons';
 import { motion } from 'framer-motion';
 import { useViewAs } from '@/api/hooks';
 import { Button } from '@/components/ui/button';
@@ -15,10 +15,8 @@ export function LockedPage({ meta }: { meta: PageMeta }) {
   const eligible = members.filter((m) => m.active && VIEW_ROLE_RANK[m.role] >= VIEW_ROLE_RANK[need]).sort((a, b) => VIEW_ROLE_RANK[a.role] - VIEW_ROLE_RANK[b.role]);
   const pick = eligible[0];
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-auto mt-16 flex max-w-md flex-col items-center gap-3 rounded-xl border border-border bg-card px-8 py-10 text-center shadow-card">
-      <div className="grid size-11 place-items-center rounded-xl border border-border-strong bg-surface-2 text-text-2 shadow-raised">
-        <Lock className="size-5" />
-      </div>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mx-auto mt-16 flex max-w-md flex-col items-center gap-3 rounded-lg border border-border bg-card px-8 py-10 text-center max-md:px-5">
+      <Lock className="size-6 text-text-3" />
       <div className="text-lg font-semibold tracking-tight">{meta.title} is locked</div>
       <div className="text-sm text-text-2">
         Requires <RoleBadge role={need} icon={false} /> — you are viewing as <RoleBadge role={role} icon={false} />.

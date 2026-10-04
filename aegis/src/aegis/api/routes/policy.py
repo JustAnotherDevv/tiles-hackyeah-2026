@@ -28,9 +28,9 @@ import logging
 import os
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from aegis.core.deps import get_rt, require_role
 from aegis.core.errors import api_error
@@ -45,6 +45,11 @@ router = APIRouter(tags=["policy"])
 _member = require_role("member")
 _admin = require_role("admin")
 
+# R8: policy versions are small positive ints; anything beyond 32-bit is a typo or a probe and
+# must answer 422, not overflow SQLite (500).
+MAX_VERSION = 2**31 - 1
+MAX_REASON_LEN = 2000
+
 
 # ---------------------------------------------------------------- bodies
 class _Body(BaseModel):
@@ -58,18 +63,18 @@ class YamlBody(_Body):
 
 class ApplyBody(_Body):
     yaml: str
-    base_version: int | None = None
-    reason: str | None = None
+    base_version: int | None = Field(None, ge=0, le=MAX_VERSION)
+    reason: str | None = Field(None, max_length=MAX_REASON_LEN)
 
 
 class RollbackBody(_Body):
-    version: int
-    reason: str | None = None
+    version: int = Field(ge=1, le=MAX_VERSION)
+    reason: str | None = Field(None, max_length=MAX_REASON_LEN)
 
 
 class SelfTestBody(_Body):
-    which: str = "all"
-    profile: str | None = None
+    which: str = Field("all", max_length=16)
+    profile: str | None = Field(None, max_length=128)
 
 
 # ---------------------------------------------------------------- helpers
@@ -131,6 +136,9 @@ async def get_policy(rt: Any = Depends(get_rt), _v: Identity = Depends(_member))
         "source": snap.source,
         "profile": snap.doc.profile,
         "controls_count": len(snap.controls),
+        # additive: the parsed document (same content as `yaml`), for clients/tests that read
+        # structured values without a YAML parser
+        "doc": snap.doc.model_dump(mode="json", by_alias=True),
     }
 
 
@@ -215,7 +223,7 @@ async def policy_history(limit: int = Query(50, ge=1, le=1000), rt: Any = Depend
 
 
 @router.get("/api/policy/versions/{version}")
-async def policy_version(version: int, rt: Any = Depends(get_rt), _v: Identity = Depends(_member)) -> Any:
+async def policy_version(version: int = Path(ge=1, le=MAX_VERSION), rt: Any = Depends(get_rt), _v: Identity = Depends(_member)) -> Any:
     text = _store(rt).get_version_yaml(version)
     if text is None:
         return api_error(404, "not_found", f"policy version v{version} not found")
@@ -264,7 +272,7 @@ async def run_selftest(body: SelfTestBody | None = None, rt: Any = Depends(get_r
 
 
 @router.get("/api/policy/effective")
-async def effective(profile: str | None = Query(None), rt: Any = Depends(get_rt),
+async def effective(profile: str | None = Query(None, max_length=128), rt: Any = Depends(get_rt),
                     _v: Identity = Depends(_member)) -> Any:
     store = _store(rt)
     fn = getattr(store, "effective_controls", None)

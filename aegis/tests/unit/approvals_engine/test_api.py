@@ -9,6 +9,7 @@ import pytest
 from fastapi import FastAPI
 
 from aegis.api.routes.approvals import router
+from tests.lib.perf import bound
 
 
 @pytest.fixture
@@ -143,7 +144,8 @@ async def test_wait_returns_early_after_vote(client, svc, h) -> None:
     elapsed = loop.time() - t0
     await task
     assert r.status_code == 200 and r.json()["status"] == "approved"
-    assert elapsed < 3.0
+    # returned on the vote, not on the 10 s timeout (bound capped below it)
+    assert elapsed < bound(3.0, cap=8.0), f"{elapsed:.3f}s"
     r = await client.get("/api/approvals/apr_nope/wait", params={"timeout_s": 0})
     assert r.status_code == 404
 

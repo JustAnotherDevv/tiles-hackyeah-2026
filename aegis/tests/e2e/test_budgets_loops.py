@@ -66,7 +66,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -103,9 +103,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # hermetic boot failure is a real failure (never exit 0)
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -191,7 +191,7 @@ def _msg(
 def _usd_used(stack: LocalStack, scope: str = CHAOS_SCOPE) -> float:
     r = stack.api("GET", "/api/budgets", as_="u_katarzyna")
     if r.status_code in (404, 501):
-        pytest.skip("GET /api/budgets not available")
+        pytest.fail("GET /api/budgets not available", pytrace=False)
     for sc in r.json().get("scopes") or []:
         for lim in sc.get("limits") or []:
             if lim["scope"] == scope and lim["dimension"] == "usd" and lim["window"] == "day":
@@ -223,7 +223,7 @@ def _import_usage(stack: LocalStack, usd: float, scope: str = CHAOS_SCOPE) -> No
         },
     )
     if r.status_code in (404, 405, 501):
-        pytest.skip("POST /api/budgets/usage not available")
+        pytest.fail("POST /api/budgets/usage not available", pytrace=False)
     assert r.status_code == 200 and r.json().get("ok"), r.text
 
 
@@ -432,7 +432,7 @@ def test_b8_kill_switch() -> None:
             json={"scope": CHAOS_SCOPE, "active": True, "reason": "B22 self-test"},
         )
         if r.status_code in (404, 405, 501):
-            pytest.skip("POST /api/killswitch not available")
+            pytest.fail("POST /api/killswitch not available", pytrace=False)
         assert r.status_code == 200 and r.json()["status"] == "applied", r.text
 
         r = _msg(s, "are you there?", max_tokens=32)
@@ -523,3 +523,283 @@ def test_b9_lower_limit_below_spend() -> None:
         assert r.status_code == 402, (r.status_code, r.text[:300])
     finally:
         s.stop()
+
+
+# --------------------------------------------------------------------------------------
+# B10 · F6 runaway chain (mirrors demo/agents/runaway.py on the golden policy):
+# identical tool calls -> EXE-04 ladder (tool_error, then block) -> spend past the BUD-01
+# wall -> budget_raise approval routed to an admin -> approve as u_emily -> limit raised
+# (policy v+1) -> agent continues -> sponsor kill switch -> 429 killed, x-should-retry:
+# false -> another agent is unaffected.
+# --------------------------------------------------------------------------------------
+def _chain_fetch(stack: LocalStack, session: str) -> dict:
+    body = {
+        "interaction": {
+            "kind": "tool_call",
+            "surface": "tool.input",
+            "tool_name": "web.fetch_url",
+            "tool_args": {"url": "http://news.example/markets"},
+            "destination": {"name": "web", "dest_class": "third_party"},
+        },
+        "identity": {"agent_id": CHAOS},
+        "session_id": session,
+        "wait_s": 0,
+    }
+    r = stack.http.post("/v1/guard", json=body)
+    assert r.status_code == 200, r.text
+    out = r.json()
+    if out["verdict"]["action"] == "allow":
+        c = stack.http.post(
+            "/v1/guard/complete",
+            json={
+                "decision_id": out["decision_id"],
+                "status_code": 200,
+                "usage": {"tool_calls": 1},
+            },
+        )
+        assert c.status_code == 200, c.text
+    return out["verdict"]
+
+
+def _chaos_day_usd(stack: LocalStack) -> tuple[int, float | None]:
+    r = stack.api("GET", "/api/policy", as_="u_katarzyna")
+    assert r.status_code == 200, r.text
+    pol = r.json()
+    doc = yaml.safe_load(pol.get("yaml") or "") or {}
+    for lim in (doc.get("budgets") or {}).get("limits") or []:
+        if lim.get("scope") == CHAOS_SCOPE and lim.get("window") == "day":
+            return int(pol["version"]), lim.get("usd")
+    return int(pol["version"]), None
+
+
+@pytest.mark.aegis(suite="budgets", control="BUD-01", polarity="attack")
+def test_b10_runaway_chain() -> None:
+    s = LocalStack(None, llm=True)  # golden chaos limit: $0.50/day, on_hard: require_approval
+    try:
+        ses = f"ses_b22_f6_{uuid.uuid4().hex[:6]}"
+
+        # 1 · loop: EXE-04 answers tool_error first (a plain block), then the ladder's
+        #     cooldown block (429-class stop with Retry-After). Stop before the kill step.
+        verdicts = []
+        for _ in range(8):
+            v = _chain_fetch(s, ses)
+            verdicts.append(v)
+            if sum(1 for x in verdicts if x["action"] != "allow") >= 2:
+                break
+        stops = [v for v in verdicts if v["action"] != "allow"]
+        assert len(stops) == 2, [v["action"] for v in verdicts]
+        for v in stops:
+            assert v["action"] == "block", v
+            assert (v.get("primary") or {}).get("control_id") == "EXE-04", v.get("primary")
+        steps = [((v.get("primary") or {}).get("meta") or {}).get("step") for v in stops]
+        assert steps == ["tool_error", "block"], steps
+        assert (stops[1].get("primary") or {}).get("retry_after_s"), stops[1].get("primary")
+
+        # 2 · budget wall: fast-forward to the $0.50 limit, the next model call is held for
+        #     a budget_raise approval (never forwarded upstream).
+        v0, lim0 = _chaos_day_usd(s)
+        assert lim0 == 0.5, lim0
+        _import_usage(s, 0.5)
+        _llm_clear(s)
+        r = _msg(s, "[[LONG:2000]] write the intraday note for PKO", max_tokens=256, session=ses)
+        apr = r.headers.get("x-aegis-approval-id")
+        assert r.status_code == 200 and apr, (r.status_code, dict(r.headers), r.text[:300])
+        assert _llm_log(s) == [], "call past the budget wall reached the upstream"
+        req = s.api("GET", f"/api/approvals/{apr}", as_="u_emily").json()
+        assert req["kind"] == "budget_raise", req.get("kind")
+        assert req["required_role"] == "admin", req.get("required_role")
+        # the sponsor (member) and the agent itself cannot approve its own raise
+        for who in ("u_tomasz", CHAOS):
+            r = s.api("POST", f"/api/approvals/{apr}/approve", as_=who, json={})
+            assert 400 <= r.status_code < 500, (who, r.status_code, r.text[:200])
+        r = s.api("POST", f"/api/approvals/{apr}/approve", as_="u_emily", json={"comment": "F6"})
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert body["status"] == "approved", body
+        assert (body.get("execution") or {}).get("policy_version") == v0 + 1, body.get("execution")
+        v1, lim1 = _chaos_day_usd(s)
+        assert v1 == v0 + 1 and lim1 is not None and lim1 > 0.5, (v1, lim1)
+
+        r = _msg(s, "[[LONG:2000]] continue with the note for PZU", max_tokens=256, session=ses)
+        assert r.status_code == 200 and not r.headers.get("x-aegis-approval-id"), (
+            r.status_code,
+            r.text[:300],
+        )
+        assert _llm_log(s), "approved raise did not let the agent continue"
+
+        # 3 · kill switch: the sponsor kills his own agent (auto-applied), next call 429.
+        r = s.api(
+            "POST",
+            "/api/killswitch",
+            as_="u_tomasz",
+            json={"scope": CHAOS_SCOPE, "active": True, "reason": "F6 runaway"},
+        )
+        assert r.status_code == 200 and r.json()["status"] == "applied", r.text
+        r = _msg(s, "one more note please", max_tokens=32, session=ses)
+        assert r.status_code == 429, (r.status_code, r.text[:300])  # A-07: never 403
+        assert _err(r).get("type") == "killed", r.text[:300]
+        assert r.headers.get("x-should-retry") == "false", dict(r.headers)
+        v = _chain_fetch(s, f"ses_b22_f6_{uuid.uuid4().hex[:6]}")
+        assert v["action"] == "block" and (v.get("primary") or {}).get("control_id") == "EXE-04"
+
+        # another agent is unaffected
+        r = _msg(s, "hello", agent="trading-copilot@trading", max_tokens=32)
+        assert r.status_code == 200, (r.status_code, r.text[:300])
+    finally:
+        s.stop()
+
+
+# --------------------------------------------------------------------------------------
+# B11 · BUD-02 local compute & concurrency over the Ollama wire (fake local Ollama)
+# --------------------------------------------------------------------------------------
+LOCAL_AGENT = "research-agent@research"
+LOCAL_MODEL = "qwen3:0.6b"
+
+
+def _fake_ollama(delay_s: float, duration_ns: int):
+    """Minimal Ollama `/api/chat` (non-stream) that holds each inference for `delay_s`."""
+    import asyncio
+
+    from fastapi import FastAPI
+
+    app = FastAPI()
+
+    @app.post("/api/chat")
+    async def chat(body: dict) -> dict:
+        await asyncio.sleep(delay_s)
+        return {
+            "model": body.get("model"),
+            "created_at": "2026-10-04T00:00:00Z",
+            "message": {"role": "assistant", "content": "local answer"},
+            "done": True,
+            "done_reason": "stop",
+            "total_duration": duration_ns,
+            "prompt_eval_count": 12,
+            "eval_count": 4,
+        }
+
+    return app
+
+
+def _ollama_chat(
+    stack: LocalStack, text: str, session: str | None = None, num_predict: int | None = None
+) -> httpx.Response:
+    body: dict[str, Any] = {
+        "model": LOCAL_MODEL,
+        "stream": False,
+        "messages": [{"role": "user", "content": text}],
+    }
+    if num_predict is not None:
+        body["options"] = {"num_predict": num_predict}
+    return stack.http.post(
+        "/ollama/api/chat",
+        headers={
+            "X-Aegis-Agent": LOCAL_AGENT,
+            "X-Aegis-Session": session or f"ses_b22_loc_{uuid.uuid4().hex[:8]}",
+            "X-Aegis-Wait": "0",
+        },
+        json=body,
+    )
+
+
+def _decision_control(stack: LocalStack, decision_id: str) -> str | None:
+    import time
+
+    for _ in range(20):
+        d = stack.api("GET", f"/api/decisions/{decision_id}", as_="u_katarzyna")
+        if d.status_code == 200:
+            return d.json().get("control_id")
+        time.sleep(0.1)
+    raise AssertionError(f"decision {decision_id} not found")
+
+
+def _local_stack(fake_url: str, extra=None) -> LocalStack:
+    def mutate(doc: dict) -> None:
+        doc["providers"]["ollama"]["base_url"] = fake_url
+        for c in doc["controls"]:
+            if c.get("id") == "BUD-02":
+                c["params"].update({"max_concurrency": 1, "queue_wait_s": 0.3})
+        if extra:
+            extra(doc)
+
+    return LocalStack(mutate)
+
+
+@pytest.mark.aegis(suite="budgets", control="BUD-02", polarity="attack")
+def test_b11_local_compute_concurrency() -> None:
+    import threading
+    import time
+
+    from tests.lib.servers import ThreadedUvicorn
+
+    fake = ThreadedUvicorn(_fake_ollama(2.0, 2_000_000_000), name="fake-ollama").start()
+    s = None
+    try:
+        s = _local_stack(fake.url)
+        # baseline: one local inference goes through BUD-02 and reaches the fake Ollama
+        r = _ollama_chat(s, "Summarise in one sentence: banks rallied.")
+        assert r.status_code == 200, (r.status_code, r.text[:300])
+        assert (r.json().get("message") or {}).get("content") == "local answer"
+
+        # one slot (max_concurrency 1): a 2 s inference holds it, a parallel call waits
+        # queue_wait_s 0.3 s, then gets 429 from BUD-02 without reaching the upstream.
+        results: dict[str, httpx.Response] = {}
+        first = threading.Thread(
+            target=lambda: results.__setitem__("first", _ollama_chat(s, "first long inference"))
+        )
+        first.start()
+        time.sleep(0.6)
+        second = _ollama_chat(s, "second parallel inference")
+        first.join(timeout=30)
+        assert results["first"].status_code == 200, results["first"].text[:300]
+        assert second.status_code == 429, (second.status_code, second.text[:300])
+        assert second.headers.get("x-aegis-decision") == "block", dict(second.headers)
+        assert second.headers.get("retry-after"), dict(second.headers)
+        assert "BUD-02" in second.text, second.text[:300]
+        did = second.headers.get("x-aegis-decision-id")
+        assert did and _decision_control(s, did) == "BUD-02"
+
+        # the slot is released on completion: the next call runs again
+        r = _ollama_chat(s, "after the slot is free")
+        assert r.status_code == 200, (r.status_code, r.text[:300])
+    finally:
+        if s is not None:
+            s.stop()
+        fake.stop()
+
+
+@pytest.mark.aegis(suite="budgets", control="BUD-02", polarity="attack")
+def test_b11b_local_compute_seconds_exhausted() -> None:
+    """Local compute-seconds (Ollama durations, A-08) are metered per agent; past the limit the
+    next local call is stopped pre-flight. The compute_s limit is a ledger dimension, so the
+    stopping control is BUD-01 (the budgets ledger), metered from BUD-02's local wire."""
+    from tests.lib.servers import ThreadedUvicorn
+
+    def tiny_compute(doc: dict) -> None:
+        for lim in doc["budgets"]["limits"]:
+            if lim.get("scope") == f"agent:{LOCAL_AGENT}" and lim.get("window") == "day":
+                lim.update({"compute_s": 3, "on_hard": "block"})
+
+    fake = ThreadedUvicorn(_fake_ollama(0.05, 2_000_000_000), name="fake-ollama").start()
+    s = None
+    try:
+        s = _local_stack(fake.url, tiny_compute)
+        _reset(s)  # drop the warm-up ledger seed so only this test's compute counts
+        codes = []
+        last = None
+        for i in range(4):
+            # small num_predict keeps the pre-flight compute estimate well under 1 s
+            last = _ollama_chat(s, f"local research step {i}", num_predict=8)
+            codes.append(last.status_code)
+            if last.status_code != 200:
+                break
+        # 2 s per call against a 3 s budget: calls 1-2 run, call 3 is stopped pre-flight
+        assert codes == [200, 200, 402], (codes, last.text[:400] if last is not None else None)
+        assert "compute_s" in last.text, last.text[:300]
+        assert last.headers.get("x-aegis-decision") == "block", dict(last.headers)
+        did = last.headers.get("x-aegis-decision-id")
+        assert did and _decision_control(s, did) == "BUD-01", did
+    finally:
+        if s is not None:
+            s.stop()
+        fake.stop()

@@ -2,7 +2,7 @@
 // progress, live via SSE (approval.created/updated), ?id=apr_… deep link. Server can_vote/why_not
 // drive the locked/unlocked buttons; switching "view as" keeps the selection so the lock → unlock
 // transition is visible on stage. Owner: B18-dashboard-gov-approvals.
-import { CheckCheck, Clock, Info, Inbox, ListFilter, UserCheck } from 'lucide-react';
+import { CheckCheck, Clock, Info, ListFilter } from '@/components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { ApprovalRequest } from '@/api/types';
@@ -140,7 +140,7 @@ export default function ApprovalsPage() {
 
   const emptyText =
     tab === 'needs'
-      ? `Inbox zero for ${viewerFirst || 'you'} (${role})`
+      ? `Nothing needs a decision from ${viewerFirst || 'you'} (${role})`
       : tab === 'mine'
         ? 'You have not requested anything'
         : tab === 'history'
@@ -153,39 +153,41 @@ export default function ApprovalsPage() {
         title="Approvals"
         icon="Inbox"
         badge={list.isMock ? <MockBadge /> : undefined}
-        subtitle="Agent actions and config changes are routed to the role allowed to approve them — by action type, amount and scope. Every decision is audited."
+        subtitle="Agent actions and config changes, routed to the role allowed to approve them by action type, amount and scope. Every decision is audited."
         actions={<PersonaSwitcher />}
       />
 
       {role === 'member' ? (
-        <div className="mb-4 flex items-start gap-3 rounded-lg border border-role-admin/25 bg-role-admin/5 px-4 py-3">
-          <Info className="mt-0.5 size-4 shrink-0 text-role-admin" />
+        <div className="mb-4 flex items-start gap-2.5 rounded-md border border-border bg-surface-1 px-3 py-2.5 sm:px-4">
+          <Info className="mt-0.5 size-4 shrink-0 text-text-3" />
           <div className="text-[12.5px] leading-5">
-            <div className="font-medium text-text-1">You're viewing as a Member{member ? ` — ${member.name}` : ''}</div>
-            <div className="text-text-2">
-              You can self-approve your own agents' <span className="font-mono text-allow">self</span>-level items (e.g. spend ≤ $20). Admin- and owner-level items are shown{' '}
-              <span className="text-text-1">locked, with the reason</span> — separation of duties means you never approve your own agent's request.
-            </div>
+            <span className="font-medium text-text-1">Viewing as a member{member ? ` (${member.name})` : ''}.</span>{' '}
+            <span className="text-text-2">
+              Members self-approve their own agents' <span className="font-mono text-text-1">self</span>-level items (e.g. spend ≤ $20). Admin- and owner-level items stay locked with
+              the reason shown: separation of duties means a sponsor never approves their own agent's request.
+            </span>
           </div>
         </div>
       ) : null}
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-0.5 rounded-lg border border-border bg-surface-1 p-0.5">
+        <div className="flex max-w-full items-center gap-0.5 overflow-x-auto rounded-md border border-border bg-surface-1 p-0.5" role="tablist" aria-label="Inbox">
           {TABS.map((t) => (
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={tab === t.id}
               onClick={() => setTabChoice(t.id)}
               className={cn(
-                'flex h-7 items-center gap-1.5 rounded-md px-2.5 text-[12.5px] transition-colors',
+                'flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[5px] px-2.5 text-[12.5px] transition-colors sm:h-7',
                 tab === t.id ? 'bg-surface-3 text-text-1 shadow-[inset_0_0_0_1px_var(--border-strong)]' : 'text-text-3 hover:text-text-1',
               )}
             >
               {t.label}
               <span
                 className={cn(
-                  'rounded-full px-1.5 text-2xs tabular',
+                  'min-w-[18px] rounded-sm px-1 text-center text-2xs tabular',
                   t.id === 'needs' && counts.needs > 0 ? 'bg-approval/20 text-approval' : 'bg-surface-4 text-text-3',
                 )}
               >
@@ -199,7 +201,7 @@ export default function ApprovalsPage() {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as KindFilter)}
-            className="h-8 appearance-none rounded-lg border border-border bg-surface-1 pl-7 pr-3 text-[12.5px] text-text-2 hover:border-border-strong"
+            className="h-9 appearance-none rounded-md border border-border bg-surface-1 pl-7 pr-3 text-[12.5px] text-text-2 hover:border-border-strong sm:h-8"
             aria-label="Filter by kind"
           >
             {KINDS.map((k) => (
@@ -210,28 +212,20 @@ export default function ApprovalsPage() {
           </select>
         </label>
         <span className="grow" />
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-surface-1 px-2.5 text-text-2">
-            <Inbox className="size-3.5 text-text-3" />
-            <span className="tabular text-text-1">{pending.length}</span> pending
-          </span>
-          <span className={cn('inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5', needs.length > 0 ? 'border-approval/35 bg-approval/10 text-approval' : 'border-border bg-surface-1 text-text-2')}>
-            <UserCheck className="size-3.5" />
-            <span className="tabular">{needs.length}</span> you can approve
-          </span>
-          <span className={cn('inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5', expiringSoon > 0 ? 'border-block/30 bg-block/5 text-block' : 'border-border bg-surface-1 text-text-2')}>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-3">
+          <span className={cn('inline-flex items-center gap-1.5', expiringSoon > 0 && 'text-block')}>
             <Clock className="size-3.5" />
-            <span className="tabular">{expiringSoon}</span> expiring &lt; 5 min
+            <span className={cn('tabular', expiringSoon > 0 ? 'text-block' : 'text-text-1')}>{expiringSoon}</span> expiring within 5 min
           </span>
-          <span className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-surface-1 px-2.5 text-text-2">
-            <CheckCheck className="size-3.5 text-text-3" />
+          <span className="inline-flex items-center gap-1.5">
+            <CheckCheck className="size-3.5" />
             <span className="tabular text-text-1">{decidedToday}</span> decided today
           </span>
         </div>
       </div>
 
-      <div className="grid items-start gap-3 lg:grid-cols-[minmax(340px,440px)_minmax(0,1fr)]">
-        <section className="overflow-hidden rounded-lg border border-border bg-card shadow-card">
+      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]">
+        <section className="min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-card">
           <div className="flex items-center justify-between border-b border-border-subtle px-4 py-2 text-2xs uppercase tracking-wider text-text-3">
             <span>
               {TABS.find((t) => t.id === tab)?.label} · {visible.length}
@@ -243,7 +237,7 @@ export default function ApprovalsPage() {
               </span>
             </span>
           </div>
-          <div className="max-h-[calc(100vh-260px)] overflow-y-auto">
+          <div className="max-h-[50vh] overflow-y-auto lg:max-h-[calc(100vh-260px)]">
             <ApprovalList
               items={visible}
               votes={votes}
@@ -251,16 +245,23 @@ export default function ApprovalsPage() {
               freshIds={new Set(items.filter((r) => Date.parse(r.created_at) > mountedAt).map((r) => r.id))}
               dir={dir}
               loading={list.loading}
-              empty={emptyText}
+              empty={list.error && !list.data ? 'Approvals could not be loaded' : emptyText}
               onSelect={select}
             />
           </div>
           {list.error && !list.data ? (
-            <div className="border-t border-border-subtle px-4 py-2 text-xs text-block">Could not load approvals: {list.error.message}</div>
+            <div className="flex items-center gap-2 border-t border-border-subtle px-4 py-2 text-xs text-text-2">
+              <span className="min-w-0 flex-1 truncate" title={list.error.message}>
+                <span className="text-block">Could not load approvals.</span> {list.error.message}
+              </span>
+              <button type="button" onClick={() => list.refresh()} className="h-7 shrink-0 rounded-md border border-border bg-surface-2 px-2 text-text-1 hover:border-border-strong">
+                Retry
+              </button>
+            </div>
           ) : null}
         </section>
 
-        <section className="flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card lg:sticky lg:top-[calc(var(--topbar-h)+12px)] lg:max-h-[calc(100vh-var(--topbar-h)-24px)]">
+        <section className="flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-card lg:sticky lg:top-[calc(var(--topbar-h)+12px)] lg:max-h-[max(480px,calc(100vh-340px))]">
           <ApprovalDetail
             req={selected}
             vote={selectedVote}
@@ -270,7 +271,7 @@ export default function ApprovalsPage() {
             viewerName={viewerName}
             onDecide={(mode) => setDecide({ mode, open: true })}
             onChanged={() => list.refresh()}
-            emptyHint={tab === 'needs' ? `Nothing waiting for ${viewerFirst || 'you'}. Switch persona or open "All pending".` : undefined}
+            emptyHint={tab === 'needs' ? `Nothing is waiting for ${viewerFirst || 'you'}. Switch persona or open "All pending".` : undefined}
           />
         </section>
       </div>

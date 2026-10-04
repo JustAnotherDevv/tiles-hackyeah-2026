@@ -5,7 +5,21 @@
  * gateway's local-first redaction (aegis/docs/CONTRACTS.md §3.4): entity names EMAIL, PHONE,
  * PESEL, IBAN and PAN, placeholders `[ENTITY_N]` numbered per entity and stable per value
  * (the same e-mail twice gets the same placeholder), checksum validation where one exists.
+ *
+ * Performance: every pattern is anchored with an explicit look-behind so it is only attempted at
+ * the start of a token (not at every character of a long digit or letter run), all quantifiers
+ * are bounded, and overlap checks use an occupancy bitmap, so a call is linear in the input
+ * length. Boundaries are written as ASCII look-arounds instead of `\b`, which the ArkTS runtime
+ * evaluates inconsistently next to some non-ASCII characters (ArkTS runtime FAQ, "Inconsistent
+ * \b Handling"). The UI additionally caps the input at MAX_PREVIEW_CHARS and debounces typing.
+ *
+ * Known limitations: e-mail addresses are ASCII only (non-ASCII / internationalised local parts
+ * and domains are not detected); IBANs are matched case-insensitively but must use the standard
+ * grouping (no separators other than single spaces); phone numbers are a heuristic (9-15 digits).
  */
+
+/** Upper bound the preview UI accepts (characters, UTF-16 code units). */
+export const MAX_PREVIEW_CHARS: number = 20000;
 
 export class Finding {
   entity: string;
@@ -47,11 +61,13 @@ class Span {
 class Detector {
   entity: string;
   pattern: string;
+  flags: string;
   validate: (value: string) => boolean;
 
-  constructor(entity: string, pattern: string, validate: (value: string) => boolean) {
+  constructor(entity: string, pattern: string, flags: string, validate: (value: string) => boolean) {
     this.entity = entity;
     this.pattern = pattern;
+    this.flags = flags;
     this.validate = validate;
   }
 }
@@ -157,27 +173,47 @@ export class Checksums {
 
 /** Order matters: longer, checksummed entities first so a card number is not taken for a phone. */
 const DETECTORS: Detector[] = [
-  new Detector('EMAIL', '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}', (v: string): boolean => true),
-  new Detector('IBAN', '\\b[A-Z]{2}[0-9]{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?\\b', Checksums.iban),
-  new Detector('PAN', '\\b[0-9](?:[ -]?[0-9]){12,18}\\b', Checksums.luhn),
-  new Detector('PESEL', '\\b[0-9]{11}\\b', Checksums.pesel),
-  new Detector('PHONE', '(?:\\+[0-9]{1,3}[ -]?)?\\(?[0-9]{2,4}\\)?(?:[ -]?[0-9]{2,4}){2,4}\\b', Checksums.phone)
+  new Detector('EMAIL', '(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}', 'g',
+    (v: string): boolean => true),
+  new Detector('IBAN',
+    '(?<![A-Za-z0-9])[A-Z]{2}[0-9]{2}(?: ?[A-Z0-9]{4}){2,7}(?: ?[A-Z0-9]{1,4})?(?![A-Za-z0-9])', 'gi',
+    Checksums.iban),
+  new Detector('PAN', '(?<![0-9])[0-9](?:[ -]?[0-9]){12,18}(?![0-9])', 'g', Checksums.luhn),
+  new Detector('PESEL', '(?<![0-9])[0-9]{11}(?![0-9])', 'g', Checksums.pesel),
+  new Detector('PHONE',
+    '(?<![0-9+])(?:\\+[0-9]{1,3}[ -]?)?\\(?[0-9]{2,4}\\)?(?:[ -]?[0-9]{2,4}){2,4}(?![0-9])', 'g',
+    Checksums.phone)
 ];
 
 export class Redactor {
   static redact(input: string): RedactionResult {
     const spans: Span[] = [];
+    const result: RedactionResult = new RedactionResult();
+    if (input.length === 0) {
+      return result;
+    }
+    // occupied[i] === 1 when code unit i already belongs to an accepted span.
+    const occupied: Uint8Array = new Uint8Array(input.length);
     for (const det of DETECTORS) {
-      const re: RegExp = new RegExp(det.pattern, 'g');
+      const re: RegExp = new RegExp(det.pattern, det.flags);
       let m: RegExpExecArray | null = re.exec(input);
       while (m !== null) {
-        const value: string = m[0];
+        const matched: string = m[0];
         const start: number = m.index;
-        const end: number = start + value.length;
-        if (value.length > 0 && det.validate(value) && !Redactor.overlaps(spans, start, end)) {
-          spans.push(new Span(det.entity, start, end, value));
+        let value: string = matched;
+        if (value.length > 0 && !det.validate(value) && det.entity === 'IBAN') {
+          // The case-insensitive IBAN pattern can swallow a following 4-letter word
+          // ("... 2874 from"): retry shorter prefixes that end at a group boundary.
+          value = Redactor.validIbanPrefix(value, det.validate);
+        } else if (value.length > 0 && !det.validate(value)) {
+          value = '';
         }
-        if (value.length === 0) {
+        const end: number = start + value.length;
+        if (value.length > 0 && !Redactor.overlaps(occupied, start, end)) {
+          spans.push(new Span(det.entity, start, end, value));
+          occupied.fill(1, start, end);
+        }
+        if (matched.length === 0) {
           re.lastIndex++;
         }
         m = re.exec(input);
@@ -185,7 +221,6 @@ export class Redactor {
     }
     spans.sort((a: Span, b: Span) => a.start - b.start);
 
-    const result: RedactionResult = new RedactionResult();
     const placeholders: Map<string, string> = new Map<string, string>();
     let out: string = '';
     let cursor: number = 0;
@@ -207,9 +242,23 @@ export class Redactor {
     return result;
   }
 
-  private static overlaps(spans: Span[], start: number, end: number): boolean {
-    for (const s of spans) {
-      if (start < s.end && end > s.start) {
+  /** Longest prefix of `value` that ends before a space and passes `validate`, or ''. */
+  private static validIbanPrefix(value: string, validate: (v: string) => boolean): string {
+    let cut: number = value.lastIndexOf(' ');
+    while (cut > 0) {
+      const candidate: string = value.substring(0, cut);
+      if (validate(candidate)) {
+        return candidate;
+      }
+      cut = candidate.lastIndexOf(' ');
+    }
+    return '';
+  }
+
+  /** O(end - start): spans are short, so this replaces the former O(spans) scan per match. */
+  private static overlaps(occupied: Uint8Array, start: number, end: number): boolean {
+    for (let i = start; i < end; i++) {
+      if (occupied[i] === 1) {
         return true;
       }
     }

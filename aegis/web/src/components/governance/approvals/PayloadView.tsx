@@ -1,13 +1,13 @@
 // "Requested action" — rendered from the BOUND payload, never from agent prose (approvals.yaml
 // `display` rules). Tool calls → args table; config/budget → changes, patch ops, unified diff;
 // agent justification labelled untrusted; unknown shapes → JsonView. Owner: B18.
-import { ArrowRight, ShieldOff, TriangleAlert } from 'lucide-react';
+import { ArrowRight, ShieldOff, TriangleAlert } from '@/components/icons';
 import type { ReactNode } from 'react';
 import type { ApprovalRequest, PolicyChange } from '@/api/types';
 import { JsonView } from '@/components/shell';
 import { resolveIcon } from '@/lib/icons';
 import { cn } from '@/lib/utils';
-import { changeKindMeta, fmtMoney } from '../lib/format-gov';
+import { changeKindMeta, displayTitle, fmtMoney } from '../lib/format-gov';
 import { unifiedLineKind } from '../lib/line-diff';
 
 const KNOWN = new Set(['tool_name', 'tool_args', 'justification', 'changes', 'patch', 'unified', 'base_version', 'reason', 'before', 'after', 'description_before', 'description_after']);
@@ -79,8 +79,8 @@ export function ChangeRows({ changes }: { changes: PolicyChange[] }) {
             <Icon className={cn('mt-0.5 size-3.5 shrink-0', meta.loosening ? 'text-block' : meta.tone === 'tighten' ? 'text-allow' : 'text-text-3')} />
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 text-[12.5px]">
-                <span className="font-medium text-text-1">{c.summary || meta.label}</span>
-                {meta.loosening ? <span className="rounded-full border border-block/30 px-1.5 text-2xs text-block">loosening</span> : null}
+                <span className="font-medium text-text-1">{c.summary ? displayTitle(c.summary) : meta.label}</span>
+                {meta.loosening ? <span className="rounded-sm border border-block/30 px-1.5 text-2xs text-block">loosening</span> : null}
                 {c.increase_pct !== null && c.increase_pct !== undefined ? <span className="tabular text-2xs text-text-3">+{Math.round(c.increase_pct)}%</span> : null}
               </div>
               <div className="mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-2xs text-text-3">

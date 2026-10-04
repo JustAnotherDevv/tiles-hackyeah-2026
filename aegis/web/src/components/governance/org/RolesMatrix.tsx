@@ -1,7 +1,7 @@
 // Roles & permissions matrix (capability × owner/admin/member/agent) from CONTRACTS §3.5/§5.4 and
 // Addendum A-20/A-37, plus a live row of rule ids grouped by approver level from
 // /api/approvals/rules. The current "view as" column is highlighted. Owner: B18.
-import { Check, Minus, X } from 'lucide-react';
+import { Check, Minus, X } from '@/components/icons';
 import type { ApprovalRuleView, Role } from '@/api/types';
 import { RoleBadge } from '@/components/shell';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -122,7 +122,7 @@ function CellIcon({ cell }: { cell: Cell }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <span
-          className="mx-auto inline-flex h-5 cursor-help items-center gap-1 rounded-full border border-redact/30 bg-redact/10 px-1.5 text-2xs font-medium text-redact"
+          className="mx-auto inline-flex h-5 cursor-help items-center gap-1 rounded-sm border border-redact/30 bg-redact/10 px-1.5 text-2xs font-medium text-redact"
           tabIndex={0}
         >
           <Minus className="size-3" /> partial
@@ -154,7 +154,7 @@ export function RolesMatrix({ viewerRole, rules }: { viewerRole: ViewRole; rules
               <th key={c} className={cn('w-[150px] px-3 py-2.5 text-center', colCls(c))} style={c === viewerRole ? { boxShadow: `inset 0 2px 0 ${ROLE_COLORS[c].fg}` } : undefined}>
                 <div className="flex flex-col items-center gap-1">
                   <RoleBadge role={c} />
-                  {c === viewerRole ? <span className="text-2xs font-medium text-allow">viewing as</span> : <span className="text-2xs text-transparent">·</span>}
+                  {c === viewerRole ? <span className="text-2xs font-medium text-text-2">viewing as</span> : <span className="text-2xs text-transparent">·</span>}
                 </div>
               </th>
             ))}

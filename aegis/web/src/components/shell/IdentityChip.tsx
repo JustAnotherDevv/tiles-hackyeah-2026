@@ -1,4 +1,4 @@
-import { Bot } from 'lucide-react';
+import { Bot } from '@/components/icons';
 import { getMember } from '@/api/hooks';
 import type { Identity } from '@/api/types';
 import { avatarColor } from '@/lib/colors';

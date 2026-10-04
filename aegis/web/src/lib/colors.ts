@@ -27,10 +27,11 @@ export const ACTION_COLORS: Record<Action, ActionColor> = {
 /** Stack/legend order for decision charts (interventions last so they sit on top). */
 export const ACTION_CHART_ORDER: Action[] = ['allow', 'log', 'redact', 'require_approval', 'block'];
 
-export const ROLE_COLORS: Record<Role | ApproverLevel, { label: string; fg: string; icon: string; className: string }> = {
+export const ROLE_COLORS: Record<Role | ApproverLevel | 'viewer', { label: string; fg: string; icon: string; className: string }> = {
   owner: { label: 'Owner', fg: '#E879F9', icon: 'Crown', className: 'text-role-owner bg-role-owner/10 border-role-owner/30' },
   admin: { label: 'Admin', fg: '#38BDF8', icon: 'ShieldHalf', className: 'text-role-admin bg-role-admin/10 border-role-admin/30' },
   member: { label: 'Member', fg: '#A2A8B3', icon: 'User', className: 'text-role-member bg-surface-2 border-border-strong' },
+  viewer: { label: 'Viewer (read-only)', fg: '#8C93A0', icon: 'Eye', className: 'text-text-3 bg-surface-2 border-border-strong' },
   agent: { label: 'Agent', fg: '#2DD4BF', icon: 'Bot', className: 'text-role-agent bg-role-agent/10 border-role-agent/25' },
   self: { label: 'Self-approve', fg: '#3CCB7F', icon: 'UserCheck', className: 'text-allow bg-allow/10 border-allow/25' },
   auto: { label: 'Auto', fg: '#8C93A0', icon: 'Zap', className: 'text-log bg-log/10 border-log/25' },

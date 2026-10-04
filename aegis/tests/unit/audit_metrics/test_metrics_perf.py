@@ -12,6 +12,7 @@ from am_fakes import ctx, decision_event, interaction, verdict_for
 
 from aegis.core.types import AuditEvent, Finding, Redaction, Usage, new_id
 from aegis.metrics.cost import estimate, fallback_price
+from tests.lib.perf import bound
 
 
 async def test_metrics_exposition(am_rt, am_client):
@@ -235,4 +236,4 @@ async def test_record_hot_path_p95(am_rt):
     lat.sort()
     p95 = lat[int(0.95 * len(lat))]
     print(f"record() p50={lat[500]:.3f}ms p95={p95:.3f}ms")
-    assert p95 < 1.5
+    assert p95 < bound(1.5), f"p95={p95:.3f}ms"

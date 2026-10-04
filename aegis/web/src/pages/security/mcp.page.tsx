@@ -6,10 +6,12 @@ import { toast } from 'sonner';
 import { api, isApiRequestError } from '@/api/client';
 import { useApi, useEvents } from '@/api/hooks';
 import type { ApprovalsResponse, McpServerView, McpToolView } from '@/api/types';
-import { KpiTile, PageHeader, Panel } from '@/components/shell';
+import { EmptyState, KpiTile, PageHeader, Panel } from '@/components/shell';
+import { CloudOff, Server as ServerIcon } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { McpServerCard, McpToolTable, type ToolStatus } from '@/components/security/mcp';
 import type { McpToolDiff, McpToolViewX } from '@/components/security/types';
+import { isMockForced } from '@/components/security/env';
 import { mockMcpServers } from '@/mocks/security';
 import type { PageMeta } from '@/lib/page';
 
@@ -68,9 +70,16 @@ export default function McpPage() {
     return { id: a.id, diff: d };
   };
 
+  const clearOverride = (key: string) =>
+    setOverrides((o) => {
+      if (!(key in o)) return o;
+      const n = { ...o };
+      delete n[key];
+      return n;
+    });
+
   const act = async (srv: string, tool: string, kind: 'approve' | 'quarantine') => {
     const key = `${srv}.${tool}`;
-    const prevStatus = items.find((s) => s.name === srv)?.tools.find((t) => t.name === tool)?.status;
     let reason: string | null = null;
     if (kind === 'quarantine') {
       reason = window.prompt(`Quarantine ${key}? Optional reason:`, 'hidden instructions in description');
@@ -86,16 +95,21 @@ export default function McpPage() {
         return { ...(t as McpToolView), status: kind === 'approve' ? 'approved' : 'quarantined' };
       };
       const r = await api.post<McpToolView>(path, body, mockTool);
-      toast.success(kind === 'approve' ? `${key} re-pinned · calls allowed again` : `${key} quarantined · hidden from the model`, { description: r.isMock ? 'demo data' : undefined });
-      if (!r.isMock) void servers.refresh();
+      if (r.isMock && !isMockForced()) {
+        // Mock fallback outside demo mode means the gateway never received the change.
+        clearOverride(key);
+        toast.error('Not applied · gateway offline', { description: `${key} keeps its current pin status.` });
+        return;
+      }
+      toast.success(kind === 'approve' ? `${key} re-pinned · calls allowed again` : `${key} quarantined · hidden from the model`, { description: r.isMock ? 'Demo data' : undefined });
+      if (!r.isMock) {
+        // Reconcile with the server even if the mcp.tool SSE event is missed.
+        await servers.refresh();
+        clearOverride(key);
+      }
     } catch (e) {
-      setOverrides((o) => {
-        const n = { ...o };
-        if (prevStatus) n[key] = prevStatus;
-        else delete n[key];
-        return n;
-      });
-      toast.error(isApiRequestError(e) ? e.message : `${kind} failed`);
+      clearOverride(key);
+      toast.error(isApiRequestError(e) ? e.message : 'Not applied · gateway offline', { description: isApiRequestError(e) ? undefined : `${key} keeps its current pin status.` });
     } finally {
       setBusyKey(null);
     }
@@ -106,23 +120,27 @@ export default function McpPage() {
       <PageHeader
         title="MCP tools"
         icon="Plug"
-        subtitle="Every tools/list is hashed and pinned. Poisoned descriptions are stripped before the model sees them; a tool whose definition changes after approval (rug pull) is blocked until an admin re-pins it."
+        subtitle="Each tool definition is hashed and pinned on first use. Poisoned tools are hidden from the model; a tool whose definition changes after approval is blocked until an admin re-pins it."
       />
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <KpiTile label="Servers" value={items.length} icon="Server" />
-        <KpiTile label="Tools pinned" value={count('approved')} icon="Pin" tone="good" />
-        <KpiTile label="Pending review" value={count('pending')} icon="Clock" tone={count('pending') ? 'warn' : 'neutral'} />
-        <KpiTile label="Changed (rug pull)" value={count('changed')} icon="GitCompareArrows" tone={count('changed') ? 'bad' : 'neutral'} />
-        <KpiTile label="Quarantined" value={count('quarantined')} icon="ShieldBan" tone={count('quarantined') ? 'bad' : 'neutral'} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <KpiTile label="Servers" value={items.length} icon="Server" loading={!servers.data} />
+        <KpiTile label="Tools pinned" value={count('approved')} icon="Pin" loading={!servers.data} />
+        <KpiTile label="Pending review" value={count('pending')} icon="Clock" tone={count('pending') ? 'warn' : 'neutral'} loading={!servers.data} />
+        <KpiTile label="Changed since pin" value={count('changed')} icon="GitCompareArrows" tone={count('changed') ? 'bad' : 'neutral'} loading={!servers.data} />
+        <KpiTile label="Quarantined" value={count('quarantined')} icon="ShieldBan" tone={count('quarantined') ? 'bad' : 'neutral'} loading={!servers.data} className="col-span-2 sm:col-span-1" />
       </div>
-      {servers.data ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+      {servers.data && !items.length ? (
+        <Panel>
+          <EmptyState icon={ServerIcon} title="No MCP servers registered" hint="Servers appear here after their first tools/list passes through the gateway." />
+        </Panel>
+      ) : servers.data ? (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 2xl:grid-cols-5">
           {items.map((s) => (
             <McpServerCard
               key={s.name}
               server={s}
               active={s.name === selected}
-              onClick={() =>
+              onClick={() => {
                 setParams(
                   (p) => {
                     const n = new URLSearchParams(p);
@@ -131,30 +149,53 @@ export default function McpPage() {
                     return n;
                   },
                   { replace: true },
-                )
-              }
+                );
+                // Below md the tool table sits under the card list: bring it into view so the tap has a visible result.
+                if (window.matchMedia('(max-width: 767px)').matches)
+                  setTimeout(() => document.getElementById('mcp-server-detail')?.scrollIntoView({ block: 'start', behavior: 'smooth' }), 50);
+              }}
             />
           ))}
         </div>
+      ) : servers.error ? (
+        <Panel>
+          <EmptyState icon={CloudOff} title="MCP inventory unavailable" hint={servers.error.message} />
+        </Panel>
       ) : (
         <Skeleton className="h-28 w-full" />
       )}
       {server ? (
-        <Panel title={<span className="font-mono">{server.name}</span>} description={`${server.tools.length} tools · ${server.transport} · ${server.url ?? 'stdio'}`} flush isMock={servers.isMock}>
-          <div className="overflow-x-auto">
-            <McpToolTable
-              key={server.name}
-              server={server.name}
-              tools={server.tools as McpToolViewX[]}
-              flashKey={flashKey}
-              focusTool={server.name === params.get('server') ? focusTool : null}
-              busyKey={busyKey}
-              onApprove={(t) => void act(server.name, t, 'approve')}
-              onQuarantine={(t) => void act(server.name, t, 'quarantine')}
-              approvalFor={approvalFor(server.name)}
-            />
-          </div>
-        </Panel>
+        <div id="mcp-server-detail" className="scroll-mt-4">
+          <Panel
+            title={<span className="font-mono">{server.name}</span>}
+            description={`${server.tools.length} ${server.tools.length === 1 ? 'tool' : 'tools'} · ${server.transport}${server.url ? ` · ${server.url}` : ''}`}
+            flush
+            isMock={servers.isMock}
+          >
+            {!server.tools.length ? (
+              <EmptyState
+                icon={ServerIcon}
+                title={server.status === 'blocked' ? 'Server blocked' : 'No tools listed'}
+                hint={server.status === 'blocked' ? 'Calls to this server are refused by policy, so its tools are never offered to the model.' : 'This server has not returned a tools/list response through the gateway yet.'}
+                className="border-t border-border-subtle"
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <McpToolTable
+                  key={server.name}
+                  server={server.name}
+                  tools={server.tools as McpToolViewX[]}
+                  flashKey={flashKey}
+                  focusTool={server.name === params.get('server') ? focusTool : null}
+                  busyKey={busyKey}
+                  onApprove={(t) => void act(server.name, t, 'approve')}
+                  onQuarantine={(t) => void act(server.name, t, 'quarantine')}
+                  approvalFor={approvalFor(server.name)}
+                />
+              </div>
+            )}
+          </Panel>
+        </div>
       ) : null}
     </div>
   );

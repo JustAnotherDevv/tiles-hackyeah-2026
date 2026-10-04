@@ -1,6 +1,6 @@
 // Sidebar: brand, org chip, nav sections from the page registry (locked pages stay visible with a lock),
 // live badges (approvals · live · feed) and the health footer → /system/health. Collapses to a 64 px icon rail.
-import { ChevronsUpDown, Lock, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronsUpDown, Lock, PanelLeftClose, PanelLeftOpen } from '@/components/icons';
 import { NavLink } from 'react-router-dom';
 import { useApi, usePendingApprovals, useSseStatus, useStatsTick, useVersions } from '@/api/hooks';
 import type { AuditVerifyResult, OrgResponse } from '@/api/types';
@@ -26,7 +26,7 @@ function NavBadge({ kind, collapsed }: { kind: PageEntry['meta']['badge']; colla
       <span
         key={pending}
         className={cn(
-          'grid h-[18px] min-w-5 place-items-center rounded-full border border-approval/30 bg-approval/12 px-1.5 text-[11px] font-medium text-approval tabular animate-in zoom-in-75 duration-300',
+          'grid h-[18px] min-w-5 place-items-center rounded-full border border-approval/30 bg-approval/12 px-1.5 text-[11px] font-medium text-approval tabular',
           collapsed && 'absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]',
         )}
       >
@@ -65,9 +65,9 @@ function NavItem({ page, role, collapsed }: { page: PageEntry; role: ViewRole; c
       end={meta.path === '/'}
       className={({ isActive }) =>
         cn(
-          'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 [@media(max-height:940px)]:h-7 text-[13px] font-[450] text-text-2 transition-colors duration-150',
+          'group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 [@media(max-height:940px)]:h-7 max-md:h-9 text-[13px] font-[450] text-text-2 transition-colors duration-150',
           'hover:bg-surface-1 hover:text-text-1',
-          isActive && 'bg-surface-2 text-text-1 shadow-[inset_0_0_0_1px_var(--border-default)]',
+          isActive && 'bg-surface-2 text-text-1',
           locked && 'text-text-3',
           collapsed && 'justify-center px-0',
         )
@@ -133,22 +133,23 @@ function SideFooter() {
   );
 }
 
-export function Sidebar({ role, collapsed, onToggle }: { role: ViewRole; collapsed: boolean; onToggle: () => void }) {
+export function Sidebar({ role, collapsed, onToggle, mobile = false }: { role: ViewRole; collapsed: boolean; onToggle: () => void; mobile?: boolean }) {
   const org = useApi<OrgResponse>('/api/org', { mock: mockOrg });
   const name = org.data?.org.name ?? 'Acme Capital';
   const sections = navSections(role);
   return (
     <aside
       className={cn(
-        'no-print relative flex h-full shrink-0 flex-col border-r border-border-subtle bg-sidebar px-2.5 py-3 transition-[width] duration-300 ease-out',
+        'no-print relative flex h-full shrink-0 flex-col border-r border-border-subtle bg-sidebar px-2.5 py-3 transition-[width] duration-150 ease-out',
         collapsed ? 'w-[var(--sidebar-w-collapsed)]' : 'w-[var(--sidebar-w)]',
+        mobile && 'w-[min(280px,86vw)] shadow-pop',
       )}
       aria-label="Primary"
     >
       <Brand collapsed={collapsed} />
       {!collapsed ? (
         <div className="mb-3 flex w-full items-center gap-2.5 rounded-md border border-border bg-surface-1 px-2 py-[7px] text-left [@media(max-height:940px)]:hidden">
-          <span className="grid size-[22px] shrink-0 place-items-center rounded-[6px] bg-[#1B2B3F] text-[10px] font-bold tracking-[0.02em] text-[#9CC6FF]">
+          <span className="grid size-[22px] shrink-0 place-items-center rounded-[4px] bg-surface-3 text-[10px] font-semibold tracking-[0.02em] text-text-2">
             {name
               .split(/\s+/)
               .map((w) => w[0])
@@ -185,10 +186,10 @@ export function Sidebar({ role, collapsed, onToggle }: { role: ViewRole; collaps
         type="button"
         onClick={onToggle}
         className={cn('mt-2 flex h-7 items-center gap-2 rounded-md px-2 text-xs text-text-3 hover:bg-surface-1 hover:text-text-2', collapsed && 'justify-center px-0')}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        aria-label={mobile ? 'Close navigation' : collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
       >
         {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
-        {!collapsed ? 'Collapse' : null}
+        {!collapsed ? (mobile ? 'Close' : 'Collapse') : null}
       </button>
     </aside>
   );

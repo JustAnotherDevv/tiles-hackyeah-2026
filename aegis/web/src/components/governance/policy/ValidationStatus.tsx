@@ -1,6 +1,6 @@
 // Editor status bar: ✓ valid / ✕ N errors (first line:col — message), self-test n/m when known,
 // draft vs base version, line count, editor engine. Owner: B19-dashboard-gov-policy.
-import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, CircleDashed, Loader2, XCircle } from '@/components/icons';
 import type { ValidationIssue, ValidationReport } from '@/api/types';
 import { cn } from '@/lib/utils';
 
@@ -33,11 +33,11 @@ export function ValidationStatus({
     <div className="flex min-h-8 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border bg-surface-1 px-3 py-1.5 text-xs">
       {!dirty ? (
         <span className="inline-flex items-center gap-1.5 text-text-3">
-          <CircleDashed className="size-3.5" /> in sync with active v{baseVersion ?? '…'}
+          <CircleDashed className="size-3.5" /> In sync with active v{baseVersion ?? '…'}
         </span>
       ) : checking ? (
         <span className="inline-flex items-center gap-1.5 text-text-2">
-          <Loader2 className="size-3.5 animate-spin" /> validating on the server…
+          <Loader2 className="size-3.5 animate-spin" /> validating…
         </span>
       ) : errors.length ? (
         <button
@@ -57,7 +57,7 @@ export function ValidationStatus({
         </button>
       ) : (
         <span className="inline-flex items-center gap-1.5 text-allow">
-          <CheckCircle2 className="size-3.5" /> valid{warnings.length ? '' : ' · schema + semantic checks passed'}
+          <CheckCircle2 className="size-3.5" /> Valid<span className="hidden text-text-3 sm:inline">{warnings.length ? '' : ' · schema and semantic checks passed'}</span>
         </span>
       )}
       {dirty && !checking && warnings.length > 0 ? (
@@ -70,12 +70,12 @@ export function ValidationStatus({
           self-test {st.filter((t) => t.passed).length}/{st.length}
         </span>
       ) : null}
-      <span className="ml-auto flex items-center gap-3 text-text-3">
-        {isMock ? <span className="text-2xs uppercase tracking-wider">mock validator</span> : null}
-        <span>YAML · {lines} lines</span>
-        <span>{dirty ? <span className="text-accent-fg">draft · base v{baseVersion}</span> : `v${baseVersion ?? '…'}`}</span>
-        {engine ? <span className="text-2xs">{engine === 'monaco' ? 'Monaco · bundled' : 'plain editor (fallback)'}</span> : null}
-        <span className="hidden text-2xs lg:inline">
+      <span className="ml-auto flex items-center gap-3 text-2xs text-text-3">
+        {isMock ? <span className="font-medium text-redact">Mock validator</span> : null}
+        <span className="hidden tabular sm:inline">YAML · {lines} lines</span>
+        <span className="hidden sm:inline">{dirty ? <span className="text-accent-fg">draft · base v{baseVersion}</span> : `v${baseVersion ?? '…'}`}</span>
+        {engine ? <span className="hidden md:inline">{engine === 'monaco' ? 'Monaco' : 'Plain editor'}</span> : null}
+        <span className="hidden lg:inline">
           <kbd className="rounded border border-border-strong px-1 font-mono">⌘S</kbd> apply
         </span>
       </span>

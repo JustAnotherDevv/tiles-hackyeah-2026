@@ -3,7 +3,7 @@
 // Owner: B18-dashboard-gov-approvals.
 import { displayTitle } from '@/components/governance/lib/format-gov';
 import { motion } from 'framer-motion';
-import { Check, Copy, ExternalLink, Hash, Inbox, Lock, LockOpen, Undo2, Users, X } from 'lucide-react';
+import { Check, Copy, ExternalLink, Hash, Inbox, Lock, LockOpen, Undo2, Users, X } from '@/components/icons';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { ApproverBadge } from '../ApproverBadge';
 import { ExpiryCountdown } from '../ExpiryCountdown';
-import { errorTitle, govApi, parseApiError } from '../gov-api';
+import { assertApplied, errorTitle, govApi, isStaleApproval, parseApiError } from '../gov-api';
 import type { Directory } from '../hooks';
 import { approveLabel, roleSatisfies, type Viewer } from '../lib/eligibility';
 import { kindLabel, statusMeta } from '../lib/format-gov';
@@ -28,7 +28,7 @@ import { WhyRole } from './WhyRole';
 
 function Section({ title, children, className }: { title: string; children: ReactNode; className?: string }) {
   return (
-    <section className={cn('border-t border-border-subtle px-5 py-4', className)}>
+    <section className={cn('border-t border-border-subtle px-4 py-4 sm:px-5', className)}>
       <div className="mb-2.5 text-2xs font-medium uppercase tracking-wider text-text-3">{title}</div>
       {children}
     </section>
@@ -51,7 +51,8 @@ export interface ApprovalDetailProps {
   viewer: Viewer;
   viewerName: string;
   onDecide: (mode: 'approve' | 'deny') => void;
-  onChanged: (res: ApprovalRequest) => void;
+  /** Called with the server answer, or without one when the request turned out stale (404/409). */
+  onChanged: (res?: ApprovalRequest) => void;
   emptyHint?: ReactNode;
 }
 
@@ -60,7 +61,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
   if (!req || !vote) {
     return (
       <div className="grid min-h-[420px] place-items-center">
-        <EmptyState icon={Inbox} title="Inbox zero" hint={emptyHint ?? 'Nothing selected. New requests appear here in real time.'} />
+        <EmptyState icon={Inbox} title="No request selected" hint={emptyHint ?? 'New requests appear here as they arrive.'} />
       </div>
     );
   }
@@ -76,12 +77,13 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
     if (!req) return;
     setCancelling(true);
     try {
-      const res = await govApi.cancel(req.id, viewer.member_id);
+      const res = assertApplied(await govApi.cancel(req.id, viewer.member_id));
       toastDecision(res.data, 'cancel', viewerName);
       onChanged(res.data);
     } catch (e) {
       const p = parseApiError(e);
       toast.error(errorTitle(p), { id: `apr-${req.id}`, description: p.message });
+      if (isStaleApproval(p)) onChanged();
     } finally {
       setCancelling(false);
     }
@@ -89,19 +91,19 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-    <motion.div key={req.id} className="min-h-0 flex-1 overflow-y-auto" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
+    <motion.div key={req.id} className="min-h-0 flex-1 overflow-y-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.12, ease: 'easeOut' }}>
       {/* header */}
-      <div className="px-5 pb-4 pt-[18px]">
+      <div className="px-4 pb-4 pt-4 sm:px-5">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="inline-flex h-5 items-center rounded-sm border border-border bg-surface-2 px-1.5 text-2xs font-medium uppercase tracking-wide text-text-2">{kindLabel(req.kind)}</span>
           <span className="inline-flex h-5 items-center rounded-sm border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2">{req.action_type}</span>
           <ApproverBadge level={req.required_role} />
           {req.two_person ? (
-            <span className="inline-flex h-5 items-center gap-1 rounded-full border border-accent-fg/30 bg-brand/10 px-2 text-xs text-accent-fg">
+            <span className="inline-flex h-5 items-center gap-1 rounded-sm border border-border bg-surface-2 px-1.5 text-2xs font-medium text-text-1">
               <Users className="size-3" /> Two-person rule
             </span>
           ) : null}
-          {!pending ? <span className={cn('inline-flex h-5 items-center rounded-full border px-2 text-xs font-medium', st.tone === 'allow' ? 'border-allow/30 bg-allow/10 text-allow' : st.tone === 'block' ? 'border-block/30 bg-block/10 text-block' : 'border-log/30 bg-log/10 text-log')}>{st.label}</span> : null}
+          {!pending ? <span className={cn('inline-flex h-5 items-center rounded-sm border px-1.5 text-2xs font-medium', st.tone === 'allow' ? 'border-allow/30 bg-allow/10 text-allow' : st.tone === 'block' ? 'border-block/30 bg-block/10 text-block' : 'border-log/30 bg-log/10 text-log')}>{st.label}</span> : null}
           {labels.map(([k, v]) => (
             <span key={k} className={cn('inline-flex h-5 items-center rounded-sm border px-1.5 font-mono text-2xs', LABEL_TONE[v] ?? 'border-border bg-surface-2 text-text-3')}>
               {k}: {v}
@@ -110,7 +112,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
           <span className="grow" />
           <button
             type="button"
-            className="inline-flex items-center gap-1 font-mono text-2xs text-text-3 hover:text-text-1"
+            className="inline-flex min-w-0 max-w-full items-center gap-1 truncate font-mono text-2xs text-text-3 hover:text-text-1"
             title="Copy id"
             onClick={() => {
               void navigator.clipboard?.writeText(req.id).then(() => toast.success('Copied', { description: req.id, duration: 1500 }));
@@ -121,12 +123,12 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
             <Copy className="size-3" />
           </button>
         </div>
-        <h2 className="mb-1 mt-2.5 text-[17px] font-semibold leading-6 tracking-[-0.015em] text-text-1">{displayTitle(req.title)}</h2>
-        {req.summary ? <p className="mb-2 text-[12.5px] text-text-3">{req.summary}</p> : null}
+        <h2 className="mb-1 mt-2.5 break-words text-[16px] font-semibold leading-6 tracking-[-0.01em] text-text-1">{displayTitle(req.title)}</h2>
+        {req.summary ? <p className="mb-2 text-[12.5px] text-text-3">{displayTitle(req.summary)}</p> : null}
         <RequesterLine req={req} dir={dir} />
       </div>
 
-      <Section title="Requested action · bound parameters (what will actually run)">
+      <Section title="Bound parameters">
         <PayloadView req={req} hideActionLabel />
       </Section>
 
@@ -145,7 +147,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
       </Section>
 
       {req.votes.length > 0 || req.decided_at ? (
-        <Section title="Votes & audit trail">
+        <Section title="Votes and audit trail">
           <ol className="space-y-2">
             {req.votes.map((v) => {
               const m = dir.memberById.get(v.member_id);
@@ -188,7 +190,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
     </motion.div>
 
       {/* footer (pinned) */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-t border-border bg-surface-1 px-5 py-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-border bg-surface-1 px-4 py-3 sm:gap-2.5 sm:px-5">
         {pending ? (
           <>
             <ExpiryCountdown expiresAt={req.expires_at} prefix="Expires in" className="text-xs" />
@@ -199,14 +201,14 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
             ) : null}
             <span className="grow" />
             {decidedNoButtons ? null : (
-                <div key={vote.ok ? 'open' : 'locked'} className="flex items-center gap-2 duration-300 animate-in fade-in-0 zoom-in-95">
+                <div key={vote.ok ? 'open' : 'locked'} className="flex w-full flex-wrap items-center justify-end gap-2 duration-150 animate-in fade-in-0 sm:w-auto sm:flex-nowrap">
                   {vote.ok ? (
-                    <span className="hidden items-center gap-1 text-xs text-allow md:inline-flex">
-                      <LockOpen className="size-3.5" /> You can decide as {viewerName}
+                    <span className="mr-auto inline-flex items-center gap-1 text-xs text-allow sm:mr-0">
+                      <LockOpen className="size-3.5 shrink-0" /> You can decide as {viewerName}
                     </span>
                   ) : (
-                    <span className="hidden max-w-[300px] items-center gap-1 truncate text-xs text-text-3 md:inline-flex" title={vote.reason ?? undefined}>
-                      <Lock className="size-3.5 shrink-0" /> {vote.reason}
+                    <span className="mr-auto inline-flex min-w-0 basis-full items-start gap-1 text-xs text-text-2 sm:mr-0 sm:max-w-[320px] sm:basis-auto sm:items-center" title={vote.reason ?? undefined}>
+                      <Lock className="mt-0.5 size-3.5 shrink-0 sm:mt-0" /> <span className="sm:truncate">{vote.reason}</span>
                     </span>
                   )}
                   <LockedAction locked={!vote.ok} reason={vote.reason} variant="ghost" size="sm" className="text-block hover:bg-block/10 hover:text-block" onClick={() => onDecide('deny')}>
@@ -217,7 +219,7 @@ export function ApprovalDetail({ req, vote, rule, dir, viewer, viewerName, onDec
                     locked={!vote.ok}
                     reason={vote.reason}
                     size="sm"
-                    className={cn(vote.ok ? 'bg-emerald-600 text-white shadow-[0_0_0_3px_rgba(16,185,129,.15)] hover:bg-emerald-500' : 'bg-surface-3 text-text-3')}
+                    className={cn(vote.ok ? 'bg-emerald-600 text-white hover:bg-emerald-500' : 'bg-surface-3 text-text-3')}
                     onClick={() => onDecide('approve')}
                     hint="⌘/Ctrl+Enter in the dialog submits"
                   >

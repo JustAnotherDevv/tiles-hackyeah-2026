@@ -73,8 +73,9 @@ export function useApi<T>(path: string | null, opts: UseApiOptions<T> = {}): Use
   const viewer = useViewerId();
   const key = path === null ? null : `${viewer ?? ''}|${path}`;
   const cached = key ? cache.get(key) : undefined;
-  const [state, setState] = useState<{ key: string | null; data: T | undefined; error: Error | null; loading: boolean; isMock: boolean }>(() => ({
+  const [state, setState] = useState<{ key: string | null; path: string | null; data: T | undefined; error: Error | null; loading: boolean; isMock: boolean }>(() => ({
     key,
+    path,
     data: cached?.data as T | undefined,
     error: null,
     loading: path !== null && !cached,
@@ -94,7 +95,7 @@ export function useApi<T>(path: string | null, opts: UseApiOptions<T> = {}): Use
     try {
       const r = await fetchShared<T>(p, mockRef.current);
       if (!mounted.current || `${getViewer() ?? ''}|${pathRef.current}` !== myKey) return;
-      setState({ key: myKey, data: r.data, error: null, loading: false, isMock: r.isMock });
+      setState({ key: myKey, path: p, data: r.data, error: null, loading: false, isMock: r.isMock });
     } catch (e: unknown) {
       if (!mounted.current || `${getViewer() ?? ''}|${pathRef.current}` !== myKey) return;
       const error = e instanceof Error ? e : new Error(String(e));
@@ -110,18 +111,32 @@ export function useApi<T>(path: string | null, opts: UseApiOptions<T> = {}): Use
     };
   }, []);
 
-  // (re)load on path or viewer change; show cached data immediately (keep previous otherwise)
+  // (re)load on path or viewer change. Cached data shows immediately; otherwise a different PATH starts empty
+  // (never another path's data/error), while a viewer-only change keeps the previous data marked stale.
   useEffect(() => {
     if (key === null) return;
     const c = cache.get(key);
-    if (c) setState({ key, data: c.data as T, error: null, loading: true, isMock: c.isMock });
+    if (c) setState({ key, path, data: c.data as T, error: null, loading: true, isMock: c.isMock });
+    else setState((s) => (s.path === path ? { ...s, key, error: null, loading: true } : { key, path, data: undefined, error: null, loading: true, isMock: false }));
     void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- path is part of key
   }, [key, load]);
 
+  // polling pauses while the tab is hidden and catches up when it becomes visible again
   useEffect(() => {
     if (!opts.refreshMs || path === null) return;
-    const id = setInterval(() => void load(), Math.max(1000, opts.refreshMs));
-    return () => clearInterval(id);
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      void load();
+    }, Math.max(1000, opts.refreshMs));
+    const onVis = () => {
+      if (!document.hidden) void load();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [opts.refreshMs, path, load]);
 
   const refreshOnKey = (opts.refreshOn ?? []).join(',');
@@ -145,9 +160,10 @@ export function useApi<T>(path: string | null, opts: UseApiOptions<T> = {}): Use
   }, [refreshOnKey, path, load]);
 
   const sameKey = state.key === key;
+  const samePath = state.path === path;
   return {
-    data: sameKey || state.data !== undefined ? state.data : undefined,
-    error: state.error,
+    data: sameKey || samePath ? state.data : undefined,
+    error: sameKey ? state.error : null,
     loading: state.loading,
     isMock: state.isMock,
     refresh: load,
@@ -396,7 +412,10 @@ export function useViewAs(): { member: Member | null; role: ViewRole; members: M
     },
     [members],
   );
-  return { member, role: (member?.role ?? 'owner') as ViewRole, members, setViewAs };
+  // unknown roles (e.g. an anonymous read-only `viewer`) get the least privilege, never owner
+  const raw = member?.role ?? 'owner';
+  const role: ViewRole = raw === 'owner' || raw === 'admin' || raw === 'member' ? raw : 'member';
+  return { member, role, members, setViewAs };
 }
 
 // ---------------------------------------------------------------- approvals badge

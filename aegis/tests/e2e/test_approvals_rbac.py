@@ -64,7 +64,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -101,9 +101,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # hermetic boot failure is a real failure (never exit 0)
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -173,9 +173,10 @@ def _apr_id(out: dict) -> str | None:
     )
 
 
-def _skip_if_missing(r: httpx.Response, what: str) -> None:
+def _fail_if_missing(r: httpx.Response, what: str) -> None:
+    """Hermetic stack: a missing route is a regression, never a skip."""
     if r.status_code in (404, 405, 501):
-        pytest.skip(f"{what}: endpoint not available ({r.status_code})")
+        pytest.fail(f"{what}: endpoint not available ({r.status_code})", pytrace=False)
 
 
 def _err_type(r: httpx.Response) -> str | None:
@@ -247,7 +248,7 @@ def test_a1_member_cannot_approve_admin_level(stack: LocalStack) -> None:
     apr = _pending(stack, out)
 
     r = stack.api("GET", f"/api/approvals/{apr}", as_="u_piotr")
-    _skip_if_missing(r, "GET /api/approvals/{id}")
+    _fail_if_missing(r, "GET /api/approvals/{id}")
     body = r.json()
     assert body.get("required_role") == "admin"
     assert body.get("can_vote") is False and body.get("why_not"), body
@@ -353,13 +354,12 @@ def test_a4_separation_of_duties(stack: LocalStack) -> None:
         "labels": {"vendor_approved": "true", "recurring": "monthly"},
     }
     r = stack.api("POST", "/api/approvals", as_="u_marek", json=draft)
-    _skip_if_missing(r, "POST /api/approvals")
+    _fail_if_missing(r, "POST /api/approvals")
     assert r.status_code in (200, 201), r.text
     req = r.json()
-    if req.get("status") != "pending":
-        pytest.xfail(
-            f"manual draft not pending (status={req.get('status')}, role={req.get('required_role')})"
-        )
+    assert req.get("status") == "pending", {
+        k: req.get(k) for k in ("status", "required_role", "rule_id")
+    }
     assert req["required_role"] == "admin", req
     apr = req["id"]
     r = stack.api("POST", f"/api/approvals/{apr}/approve", as_="u_marek", json={})
@@ -458,10 +458,7 @@ def test_a7_grant_bound_to_exact_params_single_use(stack: LocalStack) -> None:
         approval_id=apr,
         session_id=f"ses_b22_{uuid.uuid4().hex[:8]}",
     )
-    if _action(out) == "allow":
-        pytest.xfail(
-            "single-use grant redeemed twice (redeem_window_s may count it as the same use)"
-        )
+    # redeem_window_s is 0.001 in this stack, so this is a genuine second redemption.
     assert _action(out) in ("require_approval", "block"), out.get("verdict")
 
 
@@ -505,7 +502,7 @@ def _limit(doc: dict, scope: str, window: str) -> Any:
 def _policy(stack: LocalStack) -> dict:
     """PolicyResponse (§5.5) + parsed `doc` for convenience."""
     r = stack.api("GET", "/api/policy", as_="u_katarzyna")
-    _skip_if_missing(r, "GET /api/policy")
+    _fail_if_missing(r, "GET /api/policy")
     out = r.json()
     out["doc"] = yaml.safe_load(out.get("yaml") or "") or {}
     return out
@@ -528,7 +525,7 @@ def test_a9_budget_raise_governed() -> None:
                 "reason": "B22 self-test",
             },
         )
-        _skip_if_missing(r, "POST /api/budgets/raise")
+        _fail_if_missing(r, "POST /api/budgets/raise")
         assert r.status_code == 200, r.text
         res = r.json()
         assert res["status"] == "pending_approval", res
@@ -565,8 +562,9 @@ def test_a9_budget_raise_governed() -> None:
         assert res["status"] == "pending_approval", res
         apr2 = (res.get("approval") or {}).get("id") or res.get("approval_id")
         req2 = s.api("GET", f"/api/approvals/{apr2}", as_="u_katarzyna").json()
-        if req2["required_role"] != "owner":
-            pytest.xfail(f"75->200 routed to {req2['required_role']} (expected owner)")
+        assert req2["required_role"] == "owner", {
+            k: req2.get(k) for k in ("required_role", "rule_id", "status")
+        }
         assert (
             s.api("POST", f"/api/approvals/{apr2}/approve", as_="u_emily", json={}).status_code
             == 403
@@ -598,7 +596,7 @@ def test_a9_disable_control_needs_owner_owner_applies_directly() -> None:
             as_="u_marek",
             json={"yaml": _disable_dlp02(text), "base_version": v0, "reason": "B22"},
         )
-        _skip_if_missing(r, "POST /api/policy/apply")
+        _fail_if_missing(r, "POST /api/policy/apply")
         assert r.status_code == 200, r.text
         res = r.json()
         assert res["status"] == "pending_approval", res
@@ -614,8 +612,6 @@ def test_a9_disable_control_needs_owner_owner_applies_directly() -> None:
         )
         assert r.status_code == 200, r.text
         res = r.json()
-        if res["status"] == "pending_approval":
-            pytest.xfail("owner disable of DLP-02 routed two-person (disable-control-strict?)")
         assert res["status"] == "applied", res
         assert _policy(s)["version"] == v0 + 1
     finally:
@@ -628,17 +624,17 @@ def test_a9_disable_control_needs_owner_owner_applies_directly() -> None:
 @pytest.mark.aegis(suite="approvals", control="GOV-05", polarity="attack")
 def test_a10_dashboard_rbac(stack: LocalStack) -> None:
     r = stack.api("POST", "/api/budgets/reset", as_="u_piotr", json={})
-    _skip_if_missing(r, "POST /api/budgets/reset")
+    _fail_if_missing(r, "POST /api/budgets/reset")
     assert r.status_code == 403 and _err_type(r) == "forbidden", r.text
 
     r = stack.api("GET", "/api/audit/export", as_="u_piotr", params={"format": "jsonl"})
-    _skip_if_missing(r, "GET /api/audit/export")
+    _fail_if_missing(r, "GET /api/audit/export")
     assert r.status_code == 403, r.text
     r = stack.api("GET", "/api/audit/export", as_="u_emily", params={"format": "jsonl"})
     assert r.status_code == 200, r.text
 
     r = stack.api("PATCH", "/api/members/u_james", as_="u_emily", json={"role": "owner"})
-    _skip_if_missing(r, "PATCH /api/members/{id}")
+    _fail_if_missing(r, "PATCH /api/members/{id}")
     if r.status_code == 200 and (r.json().get("status") == "pending_approval"):
         return  # routed to owner approval instead of a hard 403: still not applied
     assert r.status_code == 403, r.text
@@ -690,7 +686,7 @@ def test_a12_audit_trail_has_votes(stack: LocalStack) -> None:
     r = stack.api(
         "GET", "/api/audit", as_="u_emily", params={"event_type": "approval.decided", "limit": 1000}
     )
-    _skip_if_missing(r, "GET /api/audit")
+    _fail_if_missing(r, "GET /api/audit")
     assert r.status_code == 200, r.text
     items = r.json().get("items") or []
     mine = [e for e in items if (e.get("data") or {}).get("approval_id") == apr]

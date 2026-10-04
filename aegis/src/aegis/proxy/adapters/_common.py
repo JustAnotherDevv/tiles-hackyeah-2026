@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import json
 import logging
+import math
+import re
 import time
 from collections.abc import Iterator, Mapping
 from datetime import UTC
@@ -126,6 +128,156 @@ def string_leaves(obj: Any, base: str) -> Iterator[tuple[str, str]]:
     elif isinstance(obj, list):
         for i, v in enumerate(obj):
             yield from string_leaves(v, join(base, i))
+
+
+# ---------------------------------------------------------------- R9: generic text coverage
+# Keys whose string values are structural, never model-visible prose. Ids/types are skipped only
+# when they look like identifiers, so free text smuggled into them is still inspected.
+_IDENT_VAL = re.compile(r"^[A-Za-z0-9_\-:.]{1,128}$")
+_MIME_VAL = re.compile(r"^[a-z]+/[A-Za-z0-9.+\-]{1,100}$")
+_ID_KEYS = frozenset({"type", "id", "tool_use_id", "tool_call_id", "file_id", "format",
+                      "detail", "role"})
+_OPAQUE_KEYS = frozenset({"signature", "cache_control"})
+_MAX_LEAVES = 50_000
+
+
+def _is_data_uri(s: str) -> bool:
+    return s.startswith("data:") and ";base64," in s[:256]
+
+
+def text_leaves(obj: Any, base: str, *, exclude: frozenset[str] | set[str] = frozenset()
+                ) -> Iterator[tuple[str, str]]:
+    """(path, text) for every model-visible string leaf below `obj` (iterative, body order).
+
+    Generic fallback for content blocks / parts the adapters do not model explicitly (R9: unknown
+    shapes are inspected, never skipped). Skips: identifier-looking `type`/`id`/... values,
+    `signature`/`cache_control`, `encrypted_*` keys, base64 payloads (`{"type": "base64",
+    "data": ...}`, `input_audio.data`, `data:` URIs) and empty strings. `exclude` drops top-level
+    keys of `obj` the caller already turned into segments.
+    """
+    stack: list[tuple[str, Any, frozenset[str] | set[str]]] = [(base, obj, exclude)]
+    n = 0
+    while stack:
+        path, cur, excl = stack.pop()
+        if isinstance(cur, str):
+            if cur and not _is_data_uri(cur):
+                n += 1
+                if n > _MAX_LEAVES:
+                    raise ValueError("too many text leaves")
+                yield path, cur
+        elif isinstance(cur, dict):
+            binary = cur.get("type") == "base64" or "format" in cur
+            items: list[tuple[str, Any, frozenset[str]]] = []
+            for k, v in cur.items():
+                ks = str(k)
+                if ks in excl or ks in _OPAQUE_KEYS or ks.startswith("encrypted"):
+                    continue
+                if ks in _ID_KEYS and isinstance(v, str) and _IDENT_VAL.match(v):
+                    continue
+                if ks == "media_type" and isinstance(v, str) and _MIME_VAL.match(v):
+                    continue
+                if binary and ks == "data" and isinstance(v, str):
+                    continue
+                items.append((join(path, ks), v, frozenset()))
+            stack.extend(reversed(items))
+        elif isinstance(cur, list):
+            stack.extend(reversed([(join(path, i), v, frozenset()) for i, v in enumerate(cur)]))
+
+
+def safe_int(v: Any, *, cap: int = 10**12) -> int:
+    """Non-negative int from an untrusted JSON value (bad types / NaN / inf -> 0; capped)."""
+    if isinstance(v, bool):
+        return 0
+    if isinstance(v, int):
+        return max(0, min(v, cap))
+    if isinstance(v, float) and math.isfinite(v):
+        return max(0, min(int(v), cap))
+    if isinstance(v, str) and v.strip().isdigit():
+        return min(int(v.strip()[:16]), cap)
+    return 0
+
+
+def opt_int(v: Any) -> int | None:
+    """`max_tokens`-style optional int: None unless a finite non-bool number."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)):
+        return None
+    if isinstance(v, float) and not math.isfinite(v):
+        return None
+    return max(0, min(int(v), 10**12))
+
+
+def as_dict(v: Any) -> dict[str, Any]:
+    return v if isinstance(v, dict) else {}
+
+
+def as_list(v: Any) -> list[Any]:
+    return v if isinstance(v, list) else []
+
+
+def validate_messages_body(body: dict[str, Any], wire: str) -> str | None:
+    """R10: reject type-confused request bodies up front (400) instead of forwarding them with
+    partial inspection. Returns an error message or None. Only shapes the real APIs reject."""
+    if "messages" in body:
+        msgs = body["messages"]
+        if not isinstance(msgs, list):
+            return "`messages` must be an array"
+        for i, m in enumerate(msgs):
+            if not isinstance(m, dict):
+                return f"`messages[{i}]` must be an object"
+            if "role" in m and not isinstance(m["role"], str):
+                return f"`messages[{i}].role` must be a string"
+            c = m.get("content")
+            if c is not None and not isinstance(c, (str, list)):
+                return f"`messages[{i}].content` must be a string or an array"
+            if isinstance(c, list):
+                for j, part in enumerate(c):
+                    if not isinstance(part, dict):
+                        return f"`messages[{i}].content[{j}]` must be an object"
+            tcs = m.get("tool_calls")
+            if tcs is not None:
+                if not isinstance(tcs, list):
+                    return f"`messages[{i}].tool_calls` must be an array"
+                for k, tc in enumerate(tcs):
+                    if not isinstance(tc, dict) or not isinstance(tc.get("function", {}), dict):
+                        return f"`messages[{i}].tool_calls[{k}]` must be an object"
+    system = body.get("system")
+    if wire == "anthropic" and system is not None:
+        if not isinstance(system, (str, list)) or (
+                isinstance(system, list) and not all(isinstance(b, dict) for b in system)):
+            return "`system` must be a string or an array of content blocks"
+    return None
+
+
+def validate_response_body(body: dict[str, Any], wire: str) -> str | None:
+    """R10: upstream JSON whose text-bearing fields have the wrong type is rejected (-> 502)
+    instead of being relayed with partial output inspection. None = OK."""
+    if wire == "anthropic":
+        content = body.get("content")
+        if not isinstance(content, list) or not all(isinstance(b, dict) for b in content):
+            return "`content` is not an array of blocks"
+    elif wire == "openai":
+        choices = body.get("choices")
+        if not isinstance(choices, list):
+            return "`choices` is not an array"
+        for ch in choices:
+            if not isinstance(ch, dict):
+                return "`choices[]` is not an object"
+            msg = ch.get("message")
+            if msg is None:
+                continue
+            if not isinstance(msg, dict):
+                return "`choices[].message` is not an object"
+            c = msg.get("content")
+            if c is not None and not isinstance(c, (str, list)):
+                return "`choices[].message.content` has the wrong type"
+            tcs = msg.get("tool_calls")
+            if tcs is not None and (not isinstance(tcs, list) or not all(
+                    isinstance(tc, dict) and isinstance(tc.get("function", {}), dict)
+                    for tc in tcs)):
+                return "`choices[].message.tool_calls` has the wrong type"
+    if "usage" in body and body["usage"] is not None and not isinstance(body["usage"], dict):
+        return "`usage` is not an object"
+    return None
 
 
 def _cow(obj: Any, toks: list[Any], value: Any, remove: bool = False) -> Any:

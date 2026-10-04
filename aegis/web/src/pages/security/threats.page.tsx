@@ -1,19 +1,21 @@
 // /security/threats — signed threat-intel feed: serial, verified key, expiry, update pipeline, signatures, hits.
-// Reacts live to feed.updated (serial flip + new-row glow) and feed.rejected (red banner, failed verify step).
-import { ExternalLink, RefreshCw } from 'lucide-react';
+// Reacts live to feed.updated (serial change + new-row highlight) and feed.rejected (red banner, failed verify step).
+// Availability problems (feed server unreachable, bundle expired, updates disabled) get their own calmer banner and
+// are never reported as a rejected bundle.
+import { CloudOff, ExternalLink, RefreshCw } from '@/components/icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { api, isApiRequestError } from '@/api/client';
 import { useApi, useEvents, useLiveDecisions } from '@/api/hooks';
 import type { DecisionSummary, FeedSignatureView, FeedStatus, Page } from '@/api/types';
-import { PageHeader, Panel, RoleGate } from '@/components/shell';
+import { EmptyState, PageHeader, Panel, RoleGate } from '@/components/shell';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { LockedAction } from '@/components/security/common';
 import { DecisionDrawer } from '@/components/security/decision';
 import { deriveFeedSteps } from '@/components/security/lib/feedSteps';
-import { FeedBanner, FeedStatusStrip, FeedTimeline, FeedUpdateSteps, SignatureHits, SignatureTable, type RejectInfo, type TimelineEvent } from '@/components/security/threats';
+import { FeedBanner, FeedStatusStrip, FeedTimeline, FeedUpdateSteps, issueKind, SignatureHits, SignatureTable, type RejectInfo, type TimelineEvent } from '@/components/security/threats';
 import { mockFeedSignatures, mockFeedStatus, mockSignatureHits } from '@/mocks/security';
 import type { PageMeta } from '@/lib/page';
 
@@ -58,22 +60,35 @@ export default function ThreatsPage() {
       setSessionEvents((ev) => [{ key: `u${Date.now()}`, at: Date.now(), kind: 'applied' as const, title: `#${d.serial} verified & active`, detail: `${d.version ?? ''} · +${d.added} −${d.removed} ~${d.modified}` }, ...ev].slice(0, 20));
     } else {
       const d = data as { reason: string; serial_attempted: number | null; kept_serial: number | null };
-      setReject({ ...d, at: Date.now() });
+      const unreachable = /^unreachable/i.test(d.reason ?? '');
+      setReject({ ...d, at: Date.now(), kind: unreachable ? 'unreachable' : 'rejected' });
       setDismissedAt(null);
-      setSessionEvents((ev) => [{ key: `r${Date.now()}`, at: Date.now(), kind: 'rejected' as const, title: `#${d.serial_attempted ?? '?'} rejected`, detail: d.reason }, ...ev].slice(0, 20));
+      if (!unreachable)
+        setSessionEvents((ev) => [{ key: `r${Date.now()}`, at: Date.now(), kind: 'rejected' as const, title: `${d.serial_attempted !== null ? `#${d.serial_attempted}` : 'Bundle'} rejected`, detail: d.reason }, ...ev].slice(0, 20));
     }
   });
 
   const s = status.data;
-  const statusReject: RejectInfo | null =
-    s && (s.status === 'rejected' || s.status === 'unreachable' || s.last_error) && dismissedAt !== (s.last_error ?? s.status)
-      ? (() => {
-          const reason = s.last_error ?? s.status;
-          const unreachable = s.status === 'unreachable' || /^unreachable/i.test(reason);
-          return { reason, serial_attempted: unreachable ? null : s.serial !== null ? s.serial + 1 : null, kept_serial: s.serial, at: 0, unreachable };
-        })()
-      : null;
+  // Feed health from /api/feed/status. Only status === 'rejected' means a bundle failed verification; an
+  // `unreachable: …` error (status unreachable, or a failed poll while still ok) is an availability problem.
+  const statusReject: RejectInfo | null = (() => {
+    if (!s) return null;
+    const err = s.last_error ?? '';
+    const kind: RejectInfo['kind'] | null =
+      s.status === 'unreachable' || /^unreachable/i.test(err)
+        ? 'unreachable'
+        : s.status === 'rejected'
+          ? 'rejected'
+          : s.status === 'stale'
+            ? 'stale'
+            : s.status === 'disabled'
+              ? 'disabled'
+              : null;
+    if (!kind || dismissedAt === `${kind}:${err}`) return null;
+    return { reason: err, serial_attempted: null, kept_serial: s.serial, at: 0, kind };
+  })();
   const banner = reject ?? statusReject;
+  const issue = banner ? issueKind(banner) : null;
   const steps = useMemo(() => deriveFeedSteps(s ?? null, reject?.reason ?? null), [s, reject]);
   const newIds = useMemo(() => {
     if (!prevIds) return new Set<string>();
@@ -102,7 +117,9 @@ export default function ThreatsPage() {
   const timeline: TimelineEvent[] = useMemo(
     () => [
       ...sessionEvents,
-      ...(s?.history ?? []).map((h) => ({ key: `h${h.serial}`, at: h.applied_at, kind: 'applied' as const, title: `#${h.serial} applied`, detail: `${h.version} · +${h.added} −${h.removed} ~${h.modified}` })),
+      ...[...(s?.history ?? [])]
+        .sort((a, b) => (a.applied_at < b.applied_at ? 1 : -1))
+        .map((h) => ({ key: `h${h.serial}`, at: h.applied_at, kind: 'applied' as const, title: `#${h.serial} applied`, detail: `${h.version} · +${h.added} −${h.removed} ~${h.modified}` })),
     ],
     [sessionEvents, s],
   );
@@ -111,7 +128,10 @@ export default function ThreatsPage() {
     setChecking(true);
     try {
       const r = await api.post<FeedStatus>('/api/feed/refresh', {});
-      toast.success(`Feed checked · serial #${r.data.serial ?? '—'} (${r.data.status})`);
+      const st = r.data.status;
+      if (st === 'ok' || st === 'seed') toast.success(`Feed checked · active serial #${r.data.serial ?? '—'}`);
+      else if (st === 'unreachable' || /^unreachable/i.test(r.data.last_error ?? '')) toast.warning('Feed server unreachable', { description: `Still enforcing #${r.data.serial ?? '—'}` });
+      else toast.warning(`Feed checked · status ${st}`, { description: r.data.last_error ?? undefined });
       void status.refresh();
       void sigs.refresh();
     } catch (e) {
@@ -126,12 +146,12 @@ export default function ThreatsPage() {
       <PageHeader
         title="Threat feed"
         icon="Radar"
-        subtitle="Signed (ed25519) signature bundles — verified, self-tested and hot-swapped in-line, without a restart."
+        subtitle="Ed25519-signed signature bundles, verified and self-tested before they replace the active set. No restart required."
         actions={
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
               <a href={consoleUrl(s?.url)} target="_blank" rel="noreferrer">
-                <ExternalLink /> Feed console
+                <ExternalLink /> Publisher console
               </a>
             </Button>
             <RoleGate min="admin" fallback={<LockedAction label="Check now" />}>
@@ -147,23 +167,39 @@ export default function ThreatsPage() {
           info={banner}
           onDismiss={() => {
             setReject(null);
-            setDismissedAt(s?.last_error ?? s?.status ?? 'x');
+            setDismissedAt(statusReject ? `${statusReject.kind}:${statusReject.reason}` : null);
           }}
         />
       ) : null}
-      {s ? <FeedStatusStrip status={s} rejected={Boolean(banner)} /> : <Skeleton className="h-[92px] w-full" />}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <Panel title="Signatures" description={`${sigs.data?.items.length ?? 0} in the active bundle · hits over the last 24 h`} flush isMock={sigs.isMock}>
-          {sigs.data ? <SignatureTable items={sigs.data.items} newIds={newIds} highlight={highlight} /> : <Skeleton className="m-4 h-64" />}
+      {s ? (
+        <FeedStatusStrip status={s} issue={issue === 'disabled' ? null : issue} />
+      ) : status.error ? (
+        <EmptyState icon={CloudOff} title="Feed status unavailable" hint={status.error.message} className="rounded-lg border border-border bg-card py-6" />
+      ) : (
+        <Skeleton className="h-[92px] w-full" />
+      )}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <Panel title="Signatures" description={sigs.data ? `${sigs.data.items.length} in the active bundle` : 'Loading active bundle'} flush isMock={sigs.isMock}>
+          {sigs.data ? (
+            <SignatureTable items={sigs.data.items} newIds={newIds} highlight={highlight} />
+          ) : sigs.error ? (
+            <EmptyState icon={CloudOff} title="Signatures unavailable" hint={sigs.error.message} />
+          ) : (
+            <Skeleton className="m-4 h-64" />
+          )}
         </Panel>
-        <div className="space-y-4">
-          <Panel title="Update pipeline" description={banner ? 'Last bundle failed — later steps skipped' : 'Every bundle passes all six gates'} isMock={status.isMock}>
+        <div className="min-w-0 space-y-4">
+          <Panel
+            title="Update pipeline"
+            description={issue === 'rejected' ? 'Last bundle failed verification' : issue === 'unreachable' ? 'Fetch failed · no bundle received' : 'Checks run on every bundle before it is applied'}
+            isMock={status.isMock}
+          >
             <FeedUpdateSteps steps={steps} />
           </Panel>
-          <Panel title="Recent signature hits" description="SIG-01/02/03 decisions — click to open the trace" flush isMock={hitsRes.isMock}>
+          <Panel title="Recent signature hits" description="Decisions matched by feed signatures" flush isMock={hitsRes.isMock}>
             <SignatureHits hits={hits} onOpen={setOpenHit} />
           </Panel>
-          <Panel title="Feed history">
+          <Panel title="Bundle history" description={s?.history?.length ? `${s.history.length} bundles applied` : undefined}>
             <FeedTimeline events={timeline} />
           </Panel>
         </div>

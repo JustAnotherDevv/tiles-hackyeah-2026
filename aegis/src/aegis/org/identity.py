@@ -12,7 +12,7 @@ from datetime import datetime
 from http.cookies import CookieError, SimpleCookie
 from typing import Any
 
-from aegis.core.types import Agent, Identity, Member
+from aegis.core.types import Agent, Identity, Member, utcnow
 from aegis.org.models import OrgCache, ResolvedIdentity
 
 log = logging.getLogger(__name__)
@@ -298,9 +298,11 @@ def viewer_identity(
     cache: OrgCache, member_id: str | None, *, authenticated: bool = False
 ) -> Identity:
     if member_id is None or member_id not in cache.members:
+        # Least privilege (R6): role "viewer" ranks below "member" - reads only, no proposals,
+        # no votes (see aegis.core.deps.viewer / require_role).
         return Identity(
             org_id=cache.org.id,
-            role="member",
+            role="viewer",
             member_id=None,
             display_name="anonymous viewer",
             authenticated=False,
@@ -322,9 +324,22 @@ def resolve_viewer(
     query: Mapping[str, str] | None,
     *,
     configured_default: str | None,
+    admin_token: str | None = None,
+    hmac_fn: Callable[..., str] | None = None,
+    now: datetime | None = None,
 ) -> Identity:
-    """Dashboard viewer from view-as (member id, role alias or short name) or the default."""
-    value, _ = view_as_value(headers, query)
+    """Dashboard viewer from view-as (member id, role alias or short name) or the default.
+
+    * Any agent credential / identity signal (see `agent_signal`) -> agent identity, regardless
+      of view-as (R5: an agent must never borrow a human persona to vote or administer).
+    * Unknown view-as -> anonymous least-privilege viewer.
+    * No view-as at all -> the default viewer only for a same-origin browser request (the
+      dashboard on first load); scripts / curl without view-as get the anonymous viewer (R6).
+    """
+    h = lower_headers(headers)
+    if agent_signal(h, ignore=admin_token):
+        return agent_viewer(cache, h, hmac_fn=hmac_fn, now=now)
+    value, _ = view_as_value(h, query)
     member_id = resolve_alias(cache, value) if value else None
     if value and member_id is None:
         # Unknown ids and agent ids never fall back to the default viewer (an owner in the
@@ -334,16 +349,91 @@ def resolve_viewer(
             log.warning("unknown view-as value=%r; using anonymous viewer", value[:64])
         return viewer_identity(cache, None)
     if member_id is None:
+        if not is_browser_same_origin(h):
+            return viewer_identity(cache, None)
         member_id = default_viewer_id(cache, configured_default)
     return viewer_identity(cache, member_id)
 
 
+#: `Sec-Fetch-Site` values a browser sends for the dashboard's own fetches / navigations.
+_BROWSER_SITES = frozenset({"same-origin", "none"})
+UNIDENTIFIED_AGENT = "unidentified-agent"
+
+
+def is_browser_same_origin(h: Mapping[str, str]) -> bool:
+    """True for a browser request from the dashboard itself (fetch / EventSource / navigation).
+    Demo-mode convenience only: it decides whether a request WITHOUT view-as gets the default
+    viewer; it is not authentication (view-as itself is a demo switch)."""
+    return (h.get("sec-fetch-site") or "").strip().lower() in _BROWSER_SITES
+
+
+def agent_signal(h: Mapping[str, str], *, ignore: str | None = None) -> bool:
+    """Does a (lower-cased) header dict carry an agent credential or identity assertion?
+
+    `X-Aegis-Agent`, or an `aegis_…` key in Authorization: Bearer / x-api-key /
+    X-Aegis-Agent-Key / X-Aegis-Key. `ignore` (the configured admin token) is never an agent key.
+    """
+    if (h.get("x-aegis-agent") or "").strip():
+        return True
+    for name in KEY_HEADERS:
+        raw = h.get(name)
+        if not raw:
+            continue
+        value = str(raw).strip()
+        if name == "authorization":
+            scheme, _, rest = value.partition(" ")
+            if scheme.lower() != "bearer":
+                continue
+            value = rest.strip()
+        if value.startswith("aegis_") and not (ignore and value == ignore):
+            return True
+    return False
+
+
+def agent_viewer(
+    cache: OrgCache,
+    h: Mapping[str, str],
+    *,
+    hmac_fn: Callable[..., str] | None = None,
+    now: datetime | None = None,
+) -> Identity:
+    """The dashboard-viewer identity of a request carrying agent signals: role `agent`, never a
+    member id (so no sponsor / persona privileges), agent id resolved when possible."""
+    agent_id: str | None = None
+    team_id: str | None = None
+    if hmac_fn is not None:
+        ri = resolve(cache, h, None, now or utcnow(), hmac_fn)
+        if ri.agent_id and ri.agent_id != "anonymous":
+            agent_id, team_id = ri.agent_id, ri.team_id
+    if agent_id is None:
+        asserted = (h.get("x-aegis-agent") or "").strip()
+        resolved = resolve_agent_alias(cache, asserted) if asserted else None
+        if resolved:
+            agent_id, team_id = resolved, cache.agents[resolved].team_id
+        elif asserted:
+            agent_id = asserted[:MAX_ID_LEN]
+    agent_id = agent_id or UNIDENTIFIED_AGENT
+    return Identity(
+        org_id=cache.org.id,
+        team_id=team_id,
+        member_id=None,
+        agent_id=agent_id,
+        role="agent",
+        display_name=f"agent {agent_id}",
+        authenticated=False,
+    )
+
+
 __all__ = [
     "KEY_HEADERS",
+    "UNIDENTIFIED_AGENT",
+    "agent_signal",
+    "agent_viewer",
     "anonymous",
     "build_aliases",
     "default_viewer_id",
     "extract_aegis_key",
+    "is_browser_same_origin",
     "lower_headers",
     "parse_cookie",
     "resolve",

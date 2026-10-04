@@ -26,7 +26,7 @@ export function Panel({ title, description, actions, className, bodyClassName, f
   return (
     <section className={cn('relative flex min-w-0 flex-col rounded-lg border border-border bg-card shadow-card', className)}>
       {hasHeader ? (
-        <header className={cn('flex min-h-11 items-center gap-2.5 px-4 pt-3.5', bordered && 'border-b border-border-subtle pb-3')}>
+        <header className={cn('flex min-h-11 items-center gap-2.5 px-4 pt-3.5 max-sm:flex-wrap', bordered && 'border-b border-border-subtle pb-3')}>
           {leading}
           <div className="min-w-0 flex-1">
             {title ? <h2 className="truncate text-[13px] font-[550] leading-[18px] tracking-[-0.005em] text-text-1">{title}</h2> : null}

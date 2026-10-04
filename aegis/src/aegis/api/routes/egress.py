@@ -182,7 +182,7 @@ async def egress(request: Request) -> JSONResponse:
     try:
         data = await request.json()
     except Exception:
-        return _err(400, "invalid_request", "request body must be JSON")
+        return _err(400, "invalid_request", "request body must be a JSON object")
     try:
         req = EgressRequest.parse(data, max_body_bytes=_max_body(snap))
     except EgressValidationError as e:

@@ -21,8 +21,9 @@ ACTION_PRECEDENCE: dict[str, int] = {
 Kind = Literal["model_call", "tool_call", "mcp", "egress", "a2a", "config_change"]
 Direction = Literal["in", "out"]  # out = toward the destination (request/args); in = coming back
 DestClass = Literal["local", "remote", "third_party"]
-Role = Literal["owner", "admin", "member", "agent"]
-ROLE_RANK: dict[str, int] = {"agent": 0, "member": 1, "admin": 2, "owner": 3}
+# "viewer" = anonymous / unknown dashboard viewer (read-only, never a member role in the org).
+Role = Literal["owner", "admin", "member", "agent", "viewer"]
+ROLE_RANK: dict[str, int] = {"agent": 0, "viewer": 0, "member": 1, "admin": 2, "owner": 3}
 Severity = Literal["info", "low", "medium", "high", "critical"]
 DataClass = Literal["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED", "SECRET"]
 Mode = Literal["enforce", "monitor", "off"]

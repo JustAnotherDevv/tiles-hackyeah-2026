@@ -8,6 +8,7 @@ import time
 from aegis.controls.injection import inj01_signatures
 from aegis.injection.normalize import _normalize_cached
 from aegis.injection.signatures import _scan_text_cached
+from tests.lib.perf import bound
 from tests.unit.injection_defense._helpers import make_cfg, make_ctx, make_interaction
 
 CTL = inj01_signatures.CONTROLS[0]
@@ -32,9 +33,9 @@ async def test_inj01_2kb_prompt_latency(rt) -> None:
     p50 = statistics.median(runs)
     p95 = runs[int(len(runs) * 0.95) - 1]
     print(f"INJ-01 2KB p50={p50:.2f}ms p95={p95:.2f}ms")
-    assert (
-        p50 <= 25 and p95 <= 100
-    )  # target 1 / 3 ms on a quiet box; bound is load-tolerant (shared 8 GB host)
+    # target 1 / 3 ms on a quiet box; bound is load-tolerant (shared 8 GB host) x AEGIS_PERF_SLACK
+    assert p50 <= bound(25), f"p50={p50:.2f}ms"
+    assert p95 <= bound(100), f"p95={p95:.2f}ms"
 
 
 async def test_inj01_100kb_tool_output(rt) -> None:
@@ -42,7 +43,7 @@ async def test_inj01_100kb_tool_output(rt) -> None:
     await _once(text, "tool.output")
     ms = await _once(text + "x", "tool.output")
     print(f"INJ-01 100KB tool.output {ms:.1f}ms")
-    assert ms <= 400  # target 40 ms
+    assert ms <= bound(400), f"{ms:.1f}ms"  # target 40 ms
 
 
 async def test_cached_repeat(rt) -> None:
@@ -50,4 +51,4 @@ async def test_cached_repeat(rt) -> None:
     t = time.perf_counter()
     await CTL.evaluate(make_ctx(), make_interaction("prompt.user", PROMPT), CFG)
     ms = (time.perf_counter() - t) * 1000
-    assert ms <= 5  # target 0.2 ms
+    assert ms <= bound(5), f"{ms:.2f}ms"  # target 0.2 ms

@@ -103,8 +103,10 @@ def parse_event(body: dict[str, Any], event: str | None = None) -> HookBase:
     data["hook_event_name"] = name
     try:
         return model.model_validate(data)
-    except ValidationError as exc:  # pragma: no cover - lenient models rarely fail
-        raise ValueError(f"invalid {name} hook body: {exc.error_count()} errors") from exc
+    except ValidationError as exc:
+        raise ValueError(f"invalid {name} hook body: {exc.error_count()} errors") from None
+    except RecursionError:
+        raise ValueError(f"invalid {name} hook body: nested too deeply") from None
 
 
 __all__ = [

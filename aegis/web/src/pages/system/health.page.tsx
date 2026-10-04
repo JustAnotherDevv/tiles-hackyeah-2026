@@ -1,6 +1,6 @@
 // /system/health — overall status, /healthz components, versions, live-event stream status, threat feed,
 // local models, audit-chain verification, demo-data toggle and (UIS-20) admin token. Owner: B16.
-import { CheckCircle2, KeyRound, Loader2, ShieldCheck, TriangleAlert, XCircle } from 'lucide-react';
+import { CheckCircle2, KeyRound, Loader2, ShieldCheck, TriangleAlert, XCircle } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { api, isApiRequestError } from '@/api/client';
 import { eventHub } from '@/api/sse';
@@ -151,24 +151,26 @@ export default function HealthPage() {
     return () => clearInterval(t);
   }, []);
   const h = health.data;
-  const comps = Object.entries(h?.components ?? {});
+  // With semantic models off, an unreachable Ollama is expected (nothing depends on it): show it as "off".
+  const semanticOff = h?.components?.semantic === 'off';
+  const comps = Object.entries(h?.components ?? {}).map(([k, v]) => [k, semanticOff && k === 'ollama' && v === 'down' ? 'off' : v] as [string, keyof typeof COMP]);
   const down = comps.filter(([, v]) => v === 'down').length;
-  const ok = h?.status === 'ok' && down === 0;
+  const ok = Boolean(h) && down === 0 && (h?.status === 'ok' || comps.every(([, v]) => v === 'ok' || v === 'off'));
   const mockOn = isMockForced();
   return (
     <div className="flex flex-col gap-3">
-      <PageHeader title="System health" icon="HeartPulse" subtitle="Everything runs locally — gateway, policy engine, models, audit log and threat feed" />
+      <PageHeader title="System health" icon="HeartPulse" subtitle="Gateway, policy engine, local models, audit log and threat feed — all running on this host" />
 
       <div
         className={cn(
-          'flex items-center gap-3 rounded-lg border px-4 py-3',
-          !h ? 'border-border bg-card' : ok ? 'border-allow/25 bg-[linear-gradient(90deg,rgba(30,159,104,.12),rgba(30,159,104,.02))]' : 'border-redact/30 bg-[linear-gradient(90deg,rgba(201,133,0,.14),rgba(201,133,0,.02))]',
+          'flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border px-4 py-3',
+          !h ? 'border-border bg-card' : ok ? 'border-allow/25 bg-allow/[0.06]' : 'border-redact/30 bg-redact/[0.07]',
         )}
       >
         <StatusDot status={!h ? 'off' : ok ? 'ok' : down ? 'error' : 'warn'} pulse />
         <div className="text-[14px] font-semibold">{!h ? 'Checking…' : ok ? 'All systems operational' : down ? `${down} component${down > 1 ? 's' : ''} down — fail-safe defaults active` : 'Degraded — deterministic controls still enforce'}</div>
         {health.isMock ? <MockBadge /> : null}
-        <div className="ml-auto flex items-center gap-4 text-[12px] text-text-3">
+        <div className="ml-auto flex items-center gap-4 whitespace-nowrap text-[12px] text-text-3 max-md:ml-[19px] max-md:w-full">
           <span>
             gateway <span className="font-mono text-text-2">v{h?.version ?? '—'}</span>
           </span>
@@ -185,7 +187,7 @@ export default function HealthPage() {
               <div key={name} className="flex items-center gap-2.5 rounded-md border border-border bg-surface-2/50 px-3 py-2.5">
                 <StatusDot status={COMP[st]?.dot ?? 'off'} />
                 <span className="min-w-0 flex-1 truncate font-mono text-[12.5px] text-text-1">{name}</span>
-                <span className={cn('text-[11.5px]', st === 'ok' ? 'text-text-3' : st === 'down' ? 'text-block' : 'text-redact')}>{COMP[st]?.label ?? st}</span>
+                <span className={cn('text-[11.5px]', st === 'ok' || st === 'off' ? 'text-text-3' : st === 'down' ? 'text-block' : 'text-redact')}>{COMP[st]?.label ?? st}</span>
               </div>
             ))}
             {h && comps.length === 0 ? <div className="col-span-3 text-[12.5px] text-text-3">No components reported.</div> : null}

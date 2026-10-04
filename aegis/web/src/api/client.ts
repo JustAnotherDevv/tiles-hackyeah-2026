@@ -1,11 +1,11 @@
-// Typed API client with mock fallback (CONTRACTS §5.4, docs/plan/15 §2.5). Owner: dashboard-shell (B16).
+// Typed API client (CONTRACTS §5.4, docs/plan/15 §2.5). Owner: dashboard-shell (B16).
 //
 // api.get<T>(path, mock?) / api.post<T>(path, body?, mock?) / api.patch<T>(path, body?, mock?) return
-// ApiResult<T>. Mock fallback (only when a mock factory is passed): network error, 404/405/501, a 2xx that
-// is not JSON (static-server SPA fallback), or a 5xx without a JSON error envelope (Vite proxy page while the
-// gateway is down) -> {data: mock(), isMock: true}. Real policy answers (400/401/402/403/409/422/429, any JSON
-// error envelope) ALWAYS throw ApiRequestError. ?mock=1 / VITE_AEGIS_MOCK=1 skip the network for calls that
-// pass a mock. Every /api/* call carries X-Aegis-View-As: <viewer id>.
+// ApiResult<T>. Demo data is used ONLY when mocks are forced (?mock=1 / VITE_AEGIS_MOCK=1 / Health "Demo data"
+// switch) and the caller passed a mock factory; then the network is skipped and results carry isMock=true.
+// Against a live gateway every failure is real: network error -> TypeError ("Gateway unreachable"), timeout ->
+// ApiRequestError(type "timeout"), any non-2xx -> ApiRequestError (envelope when the gateway sent one). A
+// mutation can therefore never "succeed" against invented data. Every /api/* call carries X-Aegis-View-As.
 import { isMockForced } from '@/lib/mockMode';
 import { readString, STORAGE_KEYS } from '@/lib/storage';
 import { getViewer } from '@/lib/viewer';
@@ -18,7 +18,9 @@ export interface ApiResult<T> {
 
 export const API_BASE: string = (import.meta.env.VITE_AEGIS_API ?? '').replace(/\/$/, '');
 
-const MOCK_STATUSES = new Set([404, 405, 501]);
+/** Default request timeouts (the playground passes its own signal for its 30 s budget). */
+const TIMEOUT_GET_MS = 12_000;
+const TIMEOUT_MUTATION_MS = 20_000;
 
 export class ApiRequestError extends Error {
   readonly status: number;
@@ -74,36 +76,44 @@ function isEnvelope(v: unknown): v is ApiError {
   return typeof v === 'object' && v !== null && 'error' in v && typeof (v as ApiError).error === 'object' && (v as ApiError).error !== null;
 }
 
-const announced = new Set<string>();
-function mockResult<T>(path: string, mock: () => T, why: string): ApiResult<T> {
-  const key = path.split('?')[0];
-  if (!announced.has(key)) {
-    announced.add(key);
-    console.info(`[aegis] ${key}: ${why} — showing demo data`);
-  }
-  return { data: mock(), isMock: true };
+function timeoutError(path: string, ms: number): ApiRequestError {
+  return new ApiRequestError(408, { error: { type: 'timeout', message: `Gateway did not answer within ${Math.round(ms / 1000)} s (${path.split('?')[0]})` } });
 }
 
 export interface RequestOptions {
   signal?: AbortSignal;
+  /** override the default timeout (ms); 0 = none */
+  timeoutMs?: number;
 }
 
 export async function request<T>(method: string, path: string, body?: unknown, mock?: () => T, opts: RequestOptions = {}): Promise<ApiResult<T>> {
   if (mock && isMockForced()) return { data: mock(), isMock: true };
+  const ms = opts.timeoutMs ?? (method === 'GET' ? TIMEOUT_GET_MS : TIMEOUT_MUTATION_MS);
+  const ctl = new AbortController();
+  let timedOut = false;
+  const timer = ms > 0 ? setTimeout(() => {
+    timedOut = true;
+    ctl.abort();
+  }, ms) : null;
+  const onOuterAbort = () => ctl.abort();
+  opts.signal?.addEventListener('abort', onOuterAbort, { once: true });
   let res: Response;
+  let text: string;
   try {
     res = await fetch(apiUrl(path), {
       method,
       headers: headers(method, path, body !== undefined),
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: opts.signal,
+      signal: ctl.signal,
     });
+    text = await res.text();
   } catch (err) {
-    if (opts.signal?.aborted) throw err;
-    if (mock) return mockResult(path, mock, 'gateway unreachable');
+    if (timedOut) throw timeoutError(path, ms);
     throw err;
+  } finally {
+    if (timer) clearTimeout(timer);
+    opts.signal?.removeEventListener('abort', onOuterAbort);
   }
-  const text = await res.text();
   let parsed: unknown = null;
   let isJson = false;
   if (text) {
@@ -117,14 +127,10 @@ export async function request<T>(method: string, path: string, body?: unknown, m
     isJson = true; // empty body (204) is fine
   }
   if (res.ok) {
-    if (!isJson && mock) return mockResult(path, mock, 'non-JSON response (SPA fallback)');
+    if (!isJson) throw new ApiRequestError(res.status, null, `Unexpected non-JSON response from ${path.split('?')[0]} — is the gateway running behind this URL?`);
     return { data: parsed as T, isMock: false };
   }
   const envelope = isJson && isEnvelope(parsed) ? parsed : null;
-  // 404/405/501 = endpoint not there (yet) -> mock; 5xx -> mock only without a JSON envelope (proxy error page).
-  if (mock && (MOCK_STATUSES.has(res.status) || (res.status >= 500 && !envelope))) {
-    return mockResult(path, mock, `HTTP ${res.status}`);
-  }
   throw new ApiRequestError(res.status, envelope, envelope ? undefined : detailMessage(parsed, res.status));
 }
 

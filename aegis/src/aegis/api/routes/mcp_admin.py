@@ -52,7 +52,7 @@ async def _viewer(svc: McpService, request: Request) -> Identity:
         return await svc.rt.org.resolve_viewer(lower_headers(request), dict(request.query_params))
     except Exception:
         log.warning("viewer resolution failed; defaulting to anonymous member", exc_info=True)
-        return Identity(role="member")
+        return Identity(role="viewer")
 
 
 def _forbidden_role(viewer: Identity, min_role: str) -> JSONResponse | None:

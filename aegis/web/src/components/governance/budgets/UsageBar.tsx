@@ -1,5 +1,5 @@
 // Budget usage bar (UIG-03): used fill + striped reserved segment + soft (80 %) / hard (100 %) markers.
-// Width animates over 640 ms so live settles visibly MOVE; colours from BUDGET_STATE_COLORS.
+// Width eases over 300 ms so live settles are visible; colours from BUDGET_STATE_COLORS.
 // Over-limit usage extends into a 0–110 % track so "Blocking · 402" reads at a glance.
 // Owner: B19-dashboard-gov-policy.
 import type { BudgetState } from '@/api/types';
@@ -44,12 +44,12 @@ export function BudgetUsageBar({
       aria-label={`${Math.round(pct)}% used`}
     >
       <div
-        className="absolute inset-y-0 left-0 rounded-[4px] transition-[width,background-color] duration-[640ms] ease-out motion-reduce:transition-none"
-        style={{ width: `${w}%`, background: c.fill, boxShadow: state !== 'ok' ? `0 0 12px -2px ${c.fill}` : undefined }}
+        className="absolute inset-y-0 left-0 rounded-[4px] transition-[width,background-color] duration-300 ease-out motion-reduce:transition-none"
+        style={{ width: `${w}%`, background: c.fill }}
       />
       {rw > 0.2 ? (
         <div
-          className="absolute inset-y-0 transition-[left,width] duration-[640ms] ease-out motion-reduce:transition-none"
+          className="absolute inset-y-0 transition-[left,width] duration-300 ease-out motion-reduce:transition-none"
           title="reserved (in-flight requests)"
           style={{
             left: `${w}%`,
@@ -75,10 +75,10 @@ export function BudgetStatePill({ state, className }: { state: BudgetState; clas
   const c = BUDGET_STATE_COLORS[state];
   return (
     <span
-      className={cn('inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2 py-0.5 text-2xs font-medium', className)}
-      style={{ color: c.fg, borderColor: `${c.fill}55`, background: `${c.fill}18` }}
+      className={cn('inline-flex h-5 items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 text-2xs font-medium', className)}
+      style={{ color: c.fg, borderColor: `${c.fill}55`, background: `${c.fill}14` }}
     >
-      <span className={cn('size-1.5 rounded-full', state !== 'ok' && 'animate-pulse motion-reduce:animate-none')} style={{ background: c.fill }} />
+      <span className="size-1.5 rounded-full" style={{ background: c.fill }} />
       {STATE_TEXT[state]}
     </span>
   );

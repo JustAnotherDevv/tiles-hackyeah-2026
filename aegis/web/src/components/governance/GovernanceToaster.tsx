@@ -43,7 +43,9 @@ function ToasterInner() {
   }, [version, isMock]);
 
   // live reloads (editor, judge editing config/policy.yaml, approvals executing a change)
-  useEvents(['policy.applied'], (_name, payload) => {
+  useEvents(['policy.applied'], (_name, payload, meta) => {
+    // ring-buffer replays after (re)connect / persona switch are history, not news
+    if (meta.replay) return;
     const p = payload as SseEventMap['policy.applied'];
     void announcePolicyApplied(
       { version: p.version, previous_version: p.previous_version, source: p.source, actor: p.actor, changes: p.changes ?? [], latency_ms: p.latency_ms },

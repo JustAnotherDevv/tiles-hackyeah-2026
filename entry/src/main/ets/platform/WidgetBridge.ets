@@ -2,107 +2,116 @@ import { formBindingData, formInfo, formProvider } from '@kit.FormKit';
 import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { BusinessError } from '@kit.BasicServicesKit';
-import { PostureStats, budgetLeftPctOf } from '../model/Models';
+import { PostureStats } from '../model/Models';
 import { Fmt, Log } from '../common/Format';
-import { PREFS_NAME } from './SettingsStore';
+import { PocketPrefs, SettingsStore } from './SettingsStore';
+import {
+  STORE_SHARED,
+  WidgetSnapshot,
+  buildSnapshot,
+  emptySnapshot,
+  parseSnapshot,
+  shouldSaveSnapshot,
+  snapshotKey
+} from './PocketPersist';
 
-/**
- * Data bound to the home-screen service widgets. Field names must match the
- * @LocalStorageProp keys in widget/pages/PostureCard.ets and PostureWideCard.ets.
- */
-export class WidgetSnapshot {
-  pending: number = 3;
-  blocked: number = 37;
-  redacted: number = 212;
-  budgetLeftPct: number = 63;
-  spendToday: string = '$148';
-  topRequest: string = 'Buy MarketPulse Pro ($50)';
-  mode: string = 'MOCK';
-  updated: string = '--:--';
-}
+export { WidgetSnapshot };
+
+const SNAPSHOT_KEY: string = 'widgetSnapshot';
 
 /**
  * Form Kit bridge: keeps the latest posture snapshot in Preferences (shared with the
- * FormExtensionAbility process) and pushes it to every placed widget with formProvider.updateForm.
+ * FormExtensionAbility and WorkScheduler processes, see PocketPrefs) and pushes it to every placed
+ * widget with formProvider.updateForm. With no synced data the widget shows "—", never sample numbers.
  */
 export class WidgetBridge {
+  /** JSON of the last snapshot that reached every placed widget (or when none is placed). */
   private static lastJson: string = '';
+  private static lastSavedKey: string = '';
+  private static lastSavedMs: number = 0;
 
-  static build(stats: PostureStats, pending: number, topRequest: string): WidgetSnapshot {
-    const s: WidgetSnapshot = new WidgetSnapshot();
-    s.pending = pending;
-    s.blocked = stats.blocked;
-    s.redacted = stats.redacted;
-    s.budgetLeftPct = Math.round(budgetLeftPctOf(stats));
-    s.spendToday = Fmt.usd(stats.spendTodayUsd);
-    s.topRequest = topRequest.length > 0 ? topRequest : 'No pending requests';
-    s.mode = stats.source === 'live' ? 'LIVE' : 'MOCK';
-    const d: Date = new Date();
-    s.updated = Fmt.pad2(d.getHours()) + ':' + Fmt.pad2(d.getMinutes());
-    return s;
+  /** `failed`: the live fetch behind these stats failed, so the widget is labelled OFFLINE. */
+  static build(stats: PostureStats, pending: number, topRequest: string, failed: boolean = false): WidgetSnapshot {
+    return buildSnapshot(stats, pending, topRequest, Fmt.usd(stats.spendTodayUsd), failed, Date.now());
   }
 
   static saveSnapshot(ctx: common.Context, snap: WidgetSnapshot): void {
     try {
-      const p: preferences.Preferences = preferences.getPreferencesSync(ctx, { name: PREFS_NAME });
-      p.putSync('widgetSnapshot', JSON.stringify(snap));
-      p.flush().catch((e: Error) => {
-        Log.warn('snapshot flush failed: ' + e.message);
-      });
+      const p: preferences.Preferences = PocketPrefs.open(ctx, STORE_SHARED, false);
+      p.putSync(SNAPSHOT_KEY, JSON.stringify(snap));
+      PocketPrefs.commit(p, 'snapshot');
     } catch (e) {
       Log.warn('snapshot save failed: ' + JSON.stringify(e));
     }
   }
 
-  /** Reads the snapshot written by the app (fresh from disk, the extension runs in another process). */
-  static loadSnapshot(ctx: common.Context): WidgetSnapshot {
-    const out: WidgetSnapshot = new WidgetSnapshot();
+  /**
+   * Reads the snapshot written by any process (fresh from disk). Missing, corrupt or other-mode data
+   * yields the empty snapshot labelled with the current settings mode.
+   */
+  static loadSnapshot(ctx: common.Context, settingsMode: string = ''): WidgetSnapshot {
+    const mode: string = settingsMode.length > 0 ? settingsMode : SettingsStore.load(ctx).mode;
     try {
-      preferences.removePreferencesFromCacheSync(ctx, PREFS_NAME);
-      const p: preferences.Preferences = preferences.getPreferencesSync(ctx, { name: PREFS_NAME });
-      const json: string = p.getSync('widgetSnapshot', '') as string;
-      if (json.length > 0) {
-        const o: WidgetSnapshot = JSON.parse(json) as WidgetSnapshot;
-        out.pending = o.pending ?? out.pending;
-        out.blocked = o.blocked ?? out.blocked;
-        out.redacted = o.redacted ?? out.redacted;
-        out.budgetLeftPct = o.budgetLeftPct ?? out.budgetLeftPct;
-        out.spendToday = o.spendToday ?? out.spendToday;
-        out.topRequest = o.topRequest ?? out.topRequest;
-        out.mode = o.mode ?? out.mode;
-        out.updated = o.updated ?? out.updated;
-      }
+      const p: preferences.Preferences = PocketPrefs.open(ctx, STORE_SHARED, true);
+      const v: preferences.ValueType = p.getSync(SNAPSHOT_KEY, '');
+      return parseSnapshot(typeof v === 'string' ? v : '', mode);
     } catch (e) {
       Log.warn('snapshot load failed: ' + JSON.stringify(e));
     }
-    return out;
+    return emptySnapshot(mode);
   }
 
   static bindingData(snap: WidgetSnapshot): formBindingData.FormBindingData {
     return formBindingData.createFormBindingData(snap);
   }
 
-  /** Persists the snapshot and updates all placed widgets of this app (skips if unchanged). */
-  static async push(ctx: common.Context, snap: WidgetSnapshot): Promise<void> {
-    const json: string = JSON.stringify(snap);
-    if (json === WidgetBridge.lastJson) {
-      return;
-    }
-    WidgetBridge.lastJson = json;
-    WidgetBridge.saveSnapshot(ctx, snap);
+  /**
+   * Updates every placed widget of this app. Returns true when there is no widget or at least one
+   * update succeeded; false when nothing could be updated (the caller may retry with the same data).
+   */
+  static async updateAll(snap: WidgetSnapshot): Promise<boolean> {
     try {
       const forms: formInfo.RunningFormInfo[] = await formProvider.getPublishedRunningFormInfos();
+      if (forms.length === 0) {
+        return true;
+      }
+      let ok: number = 0;
       for (const f of forms) {
         try {
           await formProvider.updateForm(f.formId, WidgetBridge.bindingData(snap));
+          ok++;
         } catch (e) {
           const err: BusinessError = e as BusinessError;
           Log.warn('updateForm ' + f.formId + ' failed: ' + err.code);
         }
       }
+      return ok > 0;
     } catch (e) {
       const err: BusinessError = e as BusinessError;
       Log.warn('getPublishedRunningFormInfos failed: ' + err.code + ' ' + err.message);
+    }
+    return false;
+  }
+
+  /**
+   * App side: persists the snapshot (throttled: at once when pending/mode/top request change,
+   * otherwise at most once a minute) and updates all placed widgets (skipped if unchanged; a failed
+   * update is retried on the next call).
+   */
+  static async push(ctx: common.Context, snap: WidgetSnapshot): Promise<void> {
+    const json: string = JSON.stringify(snap);
+    if (json === WidgetBridge.lastJson) {
+      return;
+    }
+    const key: string = snapshotKey(snap);
+    const now: number = Date.now();
+    if (shouldSaveSnapshot(WidgetBridge.lastSavedKey, key, WidgetBridge.lastSavedMs, now)) {
+      WidgetBridge.lastSavedKey = key;
+      WidgetBridge.lastSavedMs = now;
+      WidgetBridge.saveSnapshot(ctx, snap);
+    }
+    if (await WidgetBridge.updateAll(snap)) {
+      WidgetBridge.lastJson = json;
     }
   }
 }

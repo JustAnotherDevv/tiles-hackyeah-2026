@@ -1,6 +1,6 @@
 // Members tab: avatar + name/email, role (RoleChangeMenu), teams, title, sponsored agents, pending
 // governed changes (meta.pending_changes, CONTRACTS A-37) and the active toggle. Owner: B18.
-import { Bot, Clock } from 'lucide-react';
+import { Bot, Clock } from '@/components/icons';
 import { Link } from 'react-router-dom';
 import type { Member } from '@/api/types';
 import { Switch } from '@/components/ui/switch';
@@ -71,7 +71,7 @@ export function MembersTable({
             return (
               <tr
                 key={m.id}
-                className={cn('border-b border-border-subtle/60 transition-colors last:border-0 hover:bg-surface-2/40', me && 'bg-allow/[0.04]', !m.active && 'opacity-55')}
+                className={cn('border-b border-border-subtle/60 transition-colors last:border-0 hover:bg-surface-2/40', me && 'bg-surface-2/50', !m.active && 'opacity-55')}
               >
                 <td className="py-2 pl-4 pr-3">
                   <div className="flex items-center gap-2.5">
@@ -79,7 +79,7 @@ export function MembersTable({
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 font-medium text-text-1">
                         {m.name}
-                        {me ? <span className="rounded-full bg-allow/15 px-1.5 text-2xs font-medium text-allow">you</span> : null}
+                        {me ? <span className="rounded-sm border border-border bg-surface-2 px-1 text-2xs font-medium text-text-2">you</span> : null}
                       </div>
                       <div className="truncate font-mono text-[11px] text-text-3">{m.email ?? m.id}</div>
                     </div>
@@ -100,7 +100,7 @@ export function MembersTable({
                       <Link
                         key={p.approval_id}
                         to={`/governance/approvals?id=${encodeURIComponent(p.approval_id)}`}
-                        className="inline-flex h-5 items-center gap-1 rounded-full border border-approval/35 bg-approval/10 px-1.5 text-2xs text-approval hover:bg-approval/20"
+                        className="inline-flex h-5 items-center gap-1 rounded-sm border border-approval/35 bg-approval/10 px-1.5 text-2xs text-approval hover:bg-approval/20"
                         title={`Pending ${p.op}${p.to ? ` → ${p.to}` : ''} · needs ${p.required_role} · open approval`}
                       >
                         <Clock className="size-2.5" />

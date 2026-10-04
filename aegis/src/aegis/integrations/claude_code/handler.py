@@ -128,7 +128,10 @@ def _parse_body(raw: bytes | str | None) -> dict[str, Any]:
         raise ValueError("empty body")
     if len(raw) > MAX_BODY_BYTES:
         raise ValueError("body too large")
-    body = json.loads(raw)
+    try:
+        body = json.loads(raw)  # invalid UTF-8 / bad JSON raise ValueError subclasses
+    except RecursionError:
+        raise ValueError("body nested too deeply") from None
     if not isinstance(body, dict):
         raise ValueError("body is not a JSON object")
     return body
@@ -654,6 +657,19 @@ async def handle_hook_ex(
         out = respond.fail_closed_output(hint, "malformed hook payload") if hint in BLOCKING_EVENTS else {}
         return out, {}
     event = str(body.get("hook_event_name") or hint or "unknown")
+    try:  # schema check up front: a wrong-typed body is a malformed payload, not an error
+        if not isinstance(body.get("hook_event_name") or "", str):
+            raise ValueError("hook_event_name is not a string")
+        if event in _HANDLERS:
+            parse_event(body, event)
+    except (ValueError, RecursionError) as exc:
+        log.warning("claude code hook payload rejected event=%s why=%s", event[:64],
+                    str(exc).splitlines()[0][:200] if str(exc) else type(exc).__name__)
+        _metric(rt, hint or "unknown", "malformed")
+        target = event if event in BLOCKING_EVENTS else hint
+        out = (respond.fail_closed_output(target, "malformed hook payload")
+               if target in BLOCKING_EVENTS else {})
+        return out, {}
     if rt is None:
         _metric(None, event, "no_runtime")
         return respond.fail_closed_output(event, "gateway runtime not started"), {}

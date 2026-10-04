@@ -4,37 +4,37 @@
  *   - decision colours (hue family from CONTRACTS, tone from the validated prototype set):
  *       allow emerald · log slate · redact amber · require_approval violet · block rose
  *   - role colours: owner fuchsia · admin sky · member slate · agent teal
- *   - brand iris -> indigo so violet stays unambiguous for require_approval
+ *   - brand: one restrained blue accent (focus, primary actions, links); violet stays require_approval only
  * Dark only: :root and .dark intentionally share the same values.
  * Owner: dashboard-shell (B16).
  */
 :root,
 .dark {
   color-scheme: dark;
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
   /* ---- neutrals (DESIGN_TOKENS §2.1) */
-  --bg: #07080a;
-  --bg-sidebar: #0a0b0e;
-  --surface-1: #0e1013;
-  --surface-2: #13161a;
-  --surface-3: #191c21;
-  --surface-4: #20242a;
-  --border-subtle: #15181c;
-  --border-default: #1e2228;
-  --border-strong: #2a2f37;
-  --text-1: #eceef1;
-  --text-2: #a2a8b3;
-  --text-3: #7a808c;
-  --text-4: #4b5160;
+  --bg: #0b0c0e;
+  --bg-sidebar: #0d0e11;
+  --surface-1: #111317;
+  --surface-2: #161a1f;
+  --surface-3: #1b1f25;
+  --surface-4: #23272e;
+  --border-subtle: #1c1f24;
+  --border-default: #262a31;
+  --border-strong: #343941;
+  --text-1: #e7e9ec;
+  --text-2: #a7adb7;
+  --text-3: #808693;
+  --text-4: #555b67;
 
   /* ---- brand (indigo, see header) */
-  --brand: #6366f1;
-  --brand-hover: #7c7ff5;
-  --brand-press: #4f46e5;
-  --accent-fg: #a5b4fc;
-  --accent-subtle: rgba(99, 102, 241, 0.12);
-  --accent-border: rgba(129, 140, 248, 0.34);
+  --brand: #2f6fe4;
+  --brand-hover: #3f7cea;
+  --brand-press: #2861cc;
+  --accent-fg: #8ab0f5;
+  --accent-subtle: rgba(47, 111, 228, 0.12);
+  --accent-border: rgba(86, 140, 236, 0.36);
 
   /* ---- shadcn semantic variables (DESIGN_TOKENS §8) */
   --background: var(--bg);
@@ -55,7 +55,7 @@
   --destructive-foreground: #ffffff;
   --border: var(--border-default);
   --input: var(--border-default);
-  --ring: #818cf8;
+  --ring: #5b8ef0;
   --chart-1: #3987e5;
   --chart-2: #db2777;
   --chart-3: #0891b2;
@@ -68,7 +68,7 @@
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: var(--text-1);
   --sidebar-border: var(--border-subtle);
-  --sidebar-ring: #818cf8;
+  --sidebar-ring: #5b8ef0;
 
   /* ---- decision semantics (CONTRACTS §3.4): UI fg (text/badges) · subtle bg · border · chart mark */
   --allow: #3ccb7f;
@@ -96,18 +96,18 @@
   --chart-block: #e5446d;
 
   /* ---- roles (CONTRACTS §3.4) */
-  --role-owner: #e879f9;
+  --role-owner: #d18bf0;
   --role-admin: #38bdf8;
   --role-member: #a2a8b3;
   --role-agent: #2dd4bf;
 
   /* ---- chart chrome (DESIGN_TOKENS §2.5) */
-  --chart-grid: #1a1e24;
-  --chart-axis: #2a2f37;
-  --chart-label: #7a808c;
+  --chart-grid: #1e2228;
+  --chart-axis: #30353d;
+  --chart-label: #808693;
 
   /* ---- budget meter (DESIGN_TOKENS §2.5) */
-  --meter-ok: #4a7fe0;
+  --meter-ok: #3b78e6;
   --meter-soft: #c98500;
   --meter-hard: #e5446d;
 
@@ -122,8 +122,9 @@
   --sidebar-w: 236px;
   --sidebar-w-collapsed: 64px;
   --topbar-h: 52px;
+  --gutter: 24px;
   --content-max: 1680px;
-  --ring-focus: 0 0 0 2px var(--bg), 0 0 0 4px rgba(129, 140, 248, 0.65);
+  --ring-focus: 0 0 0 2px var(--bg), 0 0 0 4px rgba(91, 142, 240, 0.6);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -133,4 +134,8 @@
     --dur-slow: 1ms;
     --dur-slower: 1ms;
   }
+}
+
+@media (max-width: 767px) {
+  :root { --gutter: 16px; }
 }

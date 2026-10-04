@@ -3,8 +3,9 @@
 `HermeticStack(overrides, feed=False, mcp=False, test_mode=True).start()` boots everything on
 ephemeral ports (never 8787/879x). One stack is alive at a time (`stop()` the previous one).
 `LiveStack()` wraps a running gateway at `AEGIS_LIVE_URL` with the same attributes.
-If the gateway cannot boot, `start()` raises `StackError` with the reason — e2e fixtures turn
-that into a skip, and the matrix shows the reason.
+If the gateway cannot boot, `start()` raises `StackError` with the reason. e2e fixtures turn
+that into a hard failure in hermetic mode (`make test` exits != 0 with a banner) and into a skip
+in live mode (`AEGIS_LIVE_URL`); the matrix shows the reason either way.
 """
 
 from __future__ import annotations

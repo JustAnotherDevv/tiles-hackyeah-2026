@@ -10,6 +10,7 @@ from datetime import timedelta
 import pytest
 
 from aegis.core.types import utcnow
+from tests.lib.perf import bound
 
 
 async def _spend(svc, h, agent="trading-copilot@trading", amount=50.0, **kw):
@@ -188,7 +189,9 @@ async def test_wait_wakes_fast_and_consumes_for_held_call(svc, h) -> None:
     got = await svc.wait(req.id, 5)
     elapsed = time.perf_counter() - t0
     await task
-    assert got.status == "approved" and elapsed < 0.5
+    assert got.status == "approved"
+    # woke on the vote, not on the 5 s timeout (bound capped below it)
+    assert elapsed < bound(0.5, cap=4.0), f"{elapsed:.3f}s"
     assert got.uses == 1  # the held call is the use
     # the MCP proxy seeing the same call within 30 s passes (one use)
     hit = await svc.find_preapproved(h.ctx(h.agent("trading-copilot@trading")), i)

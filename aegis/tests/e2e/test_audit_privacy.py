@@ -64,7 +64,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -101,9 +101,9 @@ class LocalStack:
             )
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # hermetic boot failure is a real failure (never exit 0)
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -233,7 +233,7 @@ def secrets(stack: LocalStack) -> dict[str, str]:
 def test_g1_chain_verifies(stack: LocalStack, secrets: dict[str, str]) -> None:
     r = stack.api("GET", "/api/audit/verify", as_=ADMIN)
     if r.status_code in (404, 501):
-        pytest.skip("GET /api/audit/verify not available")
+        pytest.fail("GET /api/audit/verify not available", pytrace=False)
     assert r.status_code == 200, r.text
     assert r.json().get("ok") is True, r.json()
 
@@ -243,7 +243,7 @@ def test_g1_chain_verifies(stack: LocalStack, secrets: dict[str, str]) -> None:
 def test_g2_exports_admin_only(stack: LocalStack, secrets: dict[str, str], fmt: str) -> None:
     r = stack.api("GET", "/api/audit/export", as_=MEMBER, params={"format": fmt})
     if r.status_code in (404, 501):
-        pytest.skip("GET /api/audit/export not available")
+        pytest.fail("GET /api/audit/export not available", pytrace=False)
     assert r.status_code == 403, r.text
     r = stack.api("GET", "/api/audit/export", as_=ADMIN, params={"format": fmt})
     assert r.status_code == 200, r.text
@@ -258,23 +258,21 @@ def test_g3_no_raw_sensitive_values_anywhere(stack: LocalStack, secrets: dict[st
     values = {v: k for k, v in secrets.items()}
     hits: list[Any] = []
     r = stack.api("GET", "/api/audit/export", as_=ADMIN, params={"format": "jsonl"})
-    if r.status_code == 200:
-        hits += privacy.scan_bytes(r.content, "audit export jsonl", values)
+    assert r.status_code == 200, r.text
+    hits += privacy.scan_bytes(r.content, "audit export jsonl", values)
     r = stack.api("GET", "/api/decisions", as_=ADMIN, params={"limit": 1000})
-    if r.status_code == 200:
-        hits += privacy.scan_bytes(r.content, "GET /api/decisions", values)
-        for item in (r.json().get("items") or [])[:60]:
-            d = stack.api("GET", f"/api/decisions/{item['id']}", as_=ADMIN)
-            if d.status_code == 200:
-                detail = d.json()
-                detail.pop(
-                    "wire", None
-                )  # live wire capture is in-memory by design (rt.pipeline.wire)
-                import json as _json
+    assert r.status_code == 200, r.text
+    hits += privacy.scan_bytes(r.content, "GET /api/decisions", values)
+    items = (r.json().get("items") or [])[:60]
+    assert items, "no decisions recorded for the privacy traffic"
+    import json as _json
 
-                hits += privacy.scan_bytes(
-                    _json.dumps(detail).encode(), f"decision {item['id']}", values
-                )
+    for item in items:
+        d = stack.api("GET", f"/api/decisions/{item['id']}", as_=ADMIN)
+        assert d.status_code == 200, (item["id"], d.text[:200])
+        detail = d.json()
+        detail.pop("wire", None)  # live wire capture is in-memory by design (rt.pipeline.wire)
+        hits += privacy.scan_bytes(_json.dumps(detail).encode(), f"decision {item['id']}", values)
     data_dir = stack.tmp / "data"
     files = [p for p in data_dir.rglob("*") if p.is_file()]
     assert files, "no data files written"
@@ -292,7 +290,7 @@ def test_g4_chain_break_detected(stack: LocalStack, secrets: dict[str, str]) -> 
     logs = sorted((stack.tmp / "data").rglob("*.jsonl"))
     logs = [p for p in logs if "audit" in str(p)] or logs
     if not logs:
-        pytest.skip("no audit jsonl file in the data dir")
+        pytest.fail("no audit jsonl file in the data dir", pytrace=False)
     path = logs[0]
     raw = bytearray(path.read_bytes())
     idx = raw.find(b'"reason"')
@@ -304,6 +302,4 @@ def test_g4_chain_break_detected(stack: LocalStack, secrets: dict[str, str]) -> 
     r = stack.api("GET", "/api/audit/verify", as_=ADMIN)
     assert r.status_code == 200, r.text
     body = r.json()
-    if body.get("ok") is True:
-        pytest.xfail("verify reads the SQLite copy / caches; file tamper not detected")
     assert body.get("ok") is False and body.get("broken_at_seq") is not None, body

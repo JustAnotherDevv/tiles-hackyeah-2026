@@ -2,9 +2,9 @@
 // C decisions chart + live stream · D spend burn / team spend / posture · E insights.
 // Widgets live in components/shell/overview/*. Owner: dashboard-shell (B16).
 import { motion } from 'framer-motion';
-import { Bot, Printer, UserCheck } from 'lucide-react';
+import { Bot, Printer, UserCheck } from '@/components/icons';
 import { Link } from 'react-router-dom';
-import { MockBadge, PageHeader } from '@/components/shell';
+import { MockBadge, PageHeader, PanelError } from '@/components/shell';
 import { Segmented } from '@/components/shell/Segmented';
 import { DecisionsChartCard } from '@/components/shell/overview/DecisionsChartCard';
 import { DataProtectedCard, DestinationsCard, TopAgentsCard, TopControlsCard } from '@/components/shell/overview/InsightCards';
@@ -49,9 +49,9 @@ function Row({ i, className, children }: { i: number; className?: string; childr
   const on = useMotionSafe();
   return (
     <motion.div
-      initial={on ? { opacity: 0, y: 10 } : false}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.12 + i * 0.06, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      initial={on ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={{ delay: i * 0.03, duration: 0.15, ease: 'easeOut' }}
       className={className}
     >
       {children}
@@ -71,7 +71,7 @@ export default function OverviewPage() {
         title="Command Center"
         icon="Gauge"
         badge={d.stats.isMock || d.budgets.isMock ? <MockBadge /> : null}
-        subtitle="Acme Capital · every model, tool, MCP and egress call through one policy decision point"
+        subtitle="Acme Capital · model, tool, MCP and egress traffic through one policy decision point"
         actions={
           <>
             {pending > 0 ? (
@@ -104,6 +104,10 @@ export default function OverviewPage() {
           </>
         }
       />
+      {(() => {
+        const failed = [d.stats, d.budgets, d.history].find((r) => !r.data && r.error);
+        return failed ? <PanelError title="Some overview data could not be loaded" error={failed.error} onRetry={() => void Promise.all([d.stats.refresh(), d.budgets.refresh(), d.history.refresh()])} /> : null;
+      })()}
       <KpiRow d={d} />
       <Row i={1}>
         <LiveTicker />

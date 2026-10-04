@@ -1,0 +1,175 @@
+{
+  "_about": [
+    "Shared golden cases for approval eligibility (CONTRACTS 3.5 + SF-01): who may cast an APPROVE vote right now.",
+    "Asserted by three implementations so they cannot drift:",
+    "  server    tests/unit/approvals_engine/test_eligibility_parity.py  (aegis.approvals.eligibility.can_vote / eligible_members)",
+    "  dashboard tests/unit/dashboard_governance/lib.test.mjs           (web/src/components/governance/lib/eligibility.ts canVote / eligibleApprovers)",
+    "  Pocket    entry/src/test/Eligibility.test.ets                    (copy of these cases as a TS const; ArkTS host tests cannot read this path)",
+    "`eligible` = active members who may approve (order irrelevant). Agents and inactive members are never eligible.",
+    "`codes` = dashboard VoteCheck.code for selected blocked viewers; the server check maps each code to a reason keyword.",
+    "No expiry-by-clock cases: the server expires requests via status (sweeper), the client also reads expires_at."
+  ],
+  "members": [
+    {"id": "u_katarzyna", "role": "owner", "active": true},
+    {"id": "u_marek", "role": "admin", "active": true},
+    {"id": "u_emily", "role": "admin", "active": true},
+    {"id": "u_piotr", "role": "member", "active": true},
+    {"id": "u_tomasz", "role": "member", "active": true},
+    {"id": "u_former", "role": "admin", "active": false}
+  ],
+  "agents": [
+    {"id": "trading-copilot@trading", "owner_member_id": "u_piotr"},
+    {"id": "claude-code@platform", "owner_member_id": "u_tomasz"},
+    {"id": "ops-bot@platform", "owner_member_id": "u_marek"}
+  ],
+  "cases": [
+    {
+      "id": "self-human-requester",
+      "why": "self level: the requester or any admin/owner",
+      "request": {"required_role": "self", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_marek", "u_emily", "u_piotr"],
+      "codes": {"u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "self-agent-sponsor",
+      "why": "self level on an agent request: the sponsor fills the self slot, the agent never votes",
+      "request": {"required_role": "self", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": "trading-copilot@trading", "role": "agent"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_marek", "u_emily", "u_piotr"],
+      "codes": {"u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "self-agent-sponsor-from-org",
+      "why": "agent request without member_id: the sponsor is resolved from the org's agent list",
+      "request": {"required_role": "self", "two_person": false, "status": "pending",
+                  "requester": {"member_id": null, "agent_id": "trading-copilot@trading", "role": "agent"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_marek", "u_emily", "u_piotr"],
+      "codes": {"u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "admin-member-requester",
+      "why": "admin level: any admin/owner except the requester",
+      "request": {"required_role": "admin", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_marek", "u_emily"],
+      "codes": {"u_piotr": "sod", "u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "admin-human-sod",
+      "why": "separation of duties: an admin cannot approve their own admin-level request",
+      "request": {"required_role": "admin", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_marek", "agent_id": null, "role": "admin"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_emily"],
+      "codes": {"u_marek": "sod", "u_piotr": "role_too_low"}
+    },
+    {
+      "id": "admin-agent-sponsor-sod",
+      "why": "separation of duties: an admin cannot approve the request of an agent they sponsor",
+      "request": {"required_role": "admin", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_marek", "agent_id": "ops-bot@platform", "role": "agent"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_emily"],
+      "codes": {"u_marek": "sod"}
+    },
+    {
+      "id": "owner-level",
+      "why": "owner level: only the owner; admins are too low",
+      "request": {"required_role": "owner", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": ["u_katarzyna"],
+      "codes": {"u_marek": "role_too_low", "u_piotr": "sod"}
+    },
+    {
+      "id": "owner-level-requested-by-owner",
+      "why": "owner level requested by the only owner: nobody can approve (SoD + admins too low)",
+      "request": {"required_role": "owner", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_katarzyna", "agent_id": null, "role": "owner"}, "votes": []},
+      "eligible": [],
+      "codes": {"u_katarzyna": "sod", "u_marek": "role_too_low"}
+    },
+    {
+      "id": "two-person-admin-fresh",
+      "why": "two-person admin: any two distinct admin+ approvers",
+      "request": {"required_role": "admin", "two_person": true, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_marek", "u_emily"],
+      "codes": {"u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "two-person-admin-one-vote",
+      "why": "two-person admin after one approval: the first approver cannot fill the second slot",
+      "request": {"required_role": "admin", "two_person": true, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"},
+                  "votes": [{"member_id": "u_marek", "role": "admin", "decision": "approve"}]},
+      "eligible": ["u_katarzyna", "u_emily"],
+      "codes": {"u_marek": "already_voted", "u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "two-person-owner-fresh",
+      "why": "two-person owner (SF-01): owner + a second admin; either may vote first",
+      "request": {"required_role": "owner", "two_person": true, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_marek", "u_emily"],
+      "codes": {"u_tomasz": "role_too_low"}
+    },
+    {
+      "id": "two-person-owner-admin-took-slot",
+      "why": "two-person owner after an admin approved: the remaining slot needs the owner",
+      "request": {"required_role": "owner", "two_person": true, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"},
+                  "votes": [{"member_id": "u_marek", "role": "admin", "decision": "approve"}]},
+      "eligible": ["u_katarzyna"],
+      "codes": {"u_emily": "second_slot_needs_level", "u_marek": "already_voted"}
+    },
+    {
+      "id": "two-person-owner-owner-approved",
+      "why": "two-person owner after the owner approved: any other admin completes it",
+      "request": {"required_role": "owner", "two_person": true, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"},
+                  "votes": [{"member_id": "u_katarzyna", "role": "owner", "decision": "approve"}]},
+      "eligible": ["u_marek", "u_emily"],
+      "codes": {"u_katarzyna": "already_voted"}
+    },
+    {
+      "id": "two-person-owner-agent-sponsor-sod",
+      "why": "two-person owner on an agent request: the sponsoring admin is excluded (SoD)",
+      "request": {"required_role": "owner", "two_person": true, "status": "pending",
+                  "requester": {"member_id": "u_marek", "agent_id": "ops-bot@platform", "role": "agent"}, "votes": []},
+      "eligible": ["u_katarzyna", "u_emily"],
+      "codes": {"u_marek": "sod"}
+    },
+    {
+      "id": "deny-rule",
+      "why": "deny level: nobody can approve",
+      "request": {"required_role": "deny", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": [],
+      "codes": {"u_katarzyna": "deny_rule"}
+    },
+    {
+      "id": "auto-rule",
+      "why": "auto level: nothing to vote on",
+      "request": {"required_role": "auto", "two_person": false, "status": "pending",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": [],
+      "codes": {"u_katarzyna": "auto_rule"}
+    },
+    {
+      "id": "already-approved",
+      "why": "a decided request accepts no more votes",
+      "request": {"required_role": "admin", "two_person": false, "status": "approved",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"},
+                  "votes": [{"member_id": "u_emily", "role": "admin", "decision": "approve"}]},
+      "eligible": [],
+      "codes": {"u_katarzyna": "not_pending"}
+    },
+    {
+      "id": "expired-status",
+      "why": "expired => closed (expired means denied)",
+      "request": {"required_role": "admin", "two_person": false, "status": "expired",
+                  "requester": {"member_id": "u_piotr", "agent_id": null, "role": "member"}, "votes": []},
+      "eligible": [],
+      "codes": {"u_marek": "not_pending"}
+    }
+  ]
+}

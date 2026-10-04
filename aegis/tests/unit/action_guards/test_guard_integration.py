@@ -1,7 +1,7 @@
 """ACT-16 / ACT-V06: F3/F4 through the REAL in-process pipeline via ``POST /v1/guard``.
 
 Uses the root contract fixtures (``client`` = in-process ASGI app on a temp data dir, test mode).
-Skips (with the reason) when the gateway cannot boot yet in this checkout.
+Integration is complete: a gateway that cannot boot fails here (no skip).
 """
 
 from __future__ import annotations
@@ -12,11 +12,8 @@ import pytest
 
 
 @pytest.fixture
-def gw(request: pytest.FixtureRequest) -> Any:
-    try:
-        return request.getfixturevalue("client")
-    except Exception as exc:  # TODO(integration): gateway not bootable in this checkout yet
-        pytest.skip(f"gateway app not bootable: {type(exc).__name__}: {exc}"[:300])
+def gw(client: Any) -> Any:
+    return client
 
 
 async def _guard(

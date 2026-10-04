@@ -1,18 +1,23 @@
-"""TEST-23 (could) · Real file-watch hot reload + guard latency smoke (marker `slow`).
+"""TEST-23 · Real file-watch hot reload (the judges' "edit config/policy.yaml" path) + latency smoke.
 
 A gateway with `test_mode=False` (so the policy watcher runs) on a temp policy file:
 - atomic rename-save and in-place truncate+write each bump the version within 1 s
   (`tests/cases/_harness.yaml` timeouts.reload_max_ms) and emit SSE `policy.applied`;
 - guard p95 over 200 calls stays under perf.guard_p95_ms_max (recorded as perf.guard_p95_ms).
 Semantic stays off; no models are loaded.
+
+The in-place write and broken-file tests run in `make test` (~1-2 s each); the rename-save timing
+budget and the 200-call latency smoke are wall-clock sensitive and stay marked `slow`.
 """
 
 from __future__ import annotations
 
 import contextlib
 import os
+import random
 import shutil
 import statistics
+import string
 import tempfile
 import time
 import uuid
@@ -27,7 +32,7 @@ yaml = pytest.importorskip("yaml")
 
 ROOT = Path(__file__).resolve().parents[2]
 
-pytestmark = [pytest.mark.e2e, pytest.mark.slow]
+pytestmark = [pytest.mark.e2e]
 
 
 # --------------------------------------------------------------------------------------
@@ -65,7 +70,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -107,9 +112,9 @@ class LocalStack:
             settings = Settings(**kw)
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # boot error -> FAIL: a broken gateway must never read as exit 0
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -150,6 +155,12 @@ class LocalStack:
         return r.json()
 
 
+def _gen_aws_key_id() -> str:
+    """AWS-shaped key id generated at runtime (never a committed literal)."""
+    alphabet = string.ascii_uppercase + "234567"
+    return "AK" + "IA" + "".join(random.choice(alphabet) for _ in range(16))
+
+
 def _harness() -> dict:
     p = ROOT / "tests" / "cases" / "_harness.yaml"
     return yaml.safe_load(p.read_text()) if p.exists() else {}
@@ -181,13 +192,14 @@ def stack() -> Iterator[LocalStack]:
     s = LocalStack(None, settings_extra={"test_mode": False, "warmup": "off"})
     try:
         if getattr(s.rt.policy, "watcher", None) is None:
-            pytest.skip("policy watcher not running (test_mode honoured from env?)")
+            pytest.fail("policy watcher not running (test_mode honoured from env?)", pytrace=False)
         time.sleep(0.5)  # let the watcher arm
         yield s
     finally:
         s.stop()
 
 
+@pytest.mark.slow
 @pytest.mark.aegis(suite="hot-reload", control="INJ-02", polarity="benign")
 def test_atomic_rename_save_reloads(stack: LocalStack) -> None:
     budget_ms = float((_harness().get("timeouts") or {}).get("reload_max_ms", 1000))
@@ -217,12 +229,32 @@ def test_in_place_write_reloads(stack: LocalStack) -> None:
 def test_broken_file_keeps_last_good(stack: LocalStack) -> None:
     v0 = _version(stack)
     good = stack.policy_path.read_text()
-    stack.policy_path.write_text(good + "\ncontrols: [unclosed\n")
-    time.sleep(1.2)
-    assert _version(stack) == v0, "a broken file must not be applied"
-    stack.policy_path.write_text(good)
+    try:
+        stack.policy_path.write_text(good + "\ncontrols: [unclosed\n")
+        time.sleep(1.2)
+        assert _version(stack) == v0, "a broken file must not be applied"
+        # last-good policy keeps governing traffic while the file on disk is broken
+        v = stack.guard(
+            {
+                "kind": "model_call",
+                "surface": "model.request",
+                "direction": "out",
+                "destination": {"name": "mock-anthropic", "dest_class": "remote"},
+                "model": "mock-echo",
+                "text": f"deploy with key {_gen_aws_key_id()} please",
+            },
+            agent="trading-copilot@trading",
+        )["verdict"]
+        dlp02 = next((d for d in v.get("decisions") or [] if d.get("control_id") == "DLP-02"), None)
+        assert v["action"] == "block" and dlp02 and dlp02.get("action") == "block", (
+            v["action"],
+            v.get("primary"),
+        )
+    finally:
+        stack.policy_path.write_text(good)
 
 
+@pytest.mark.slow
 def test_guard_latency_smoke(stack: LocalStack) -> None:
     limit = float((_harness().get("perf") or {}).get("guard_p95_ms_max", 50))
     body = {

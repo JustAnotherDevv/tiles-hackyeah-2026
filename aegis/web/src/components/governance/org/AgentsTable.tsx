@@ -1,7 +1,7 @@
 // Agents tab: service identities with their sponsor (who fills `self` approval slots), allowed
 // models, destination ceiling, status, spend today, last seen, and an admin-only Deactivate /
 // Reactivate action (PATCH /api/agents/{id}). Owner: B18-dashboard-gov-approvals.
-import { Bot, Code2, Plug, Power, PowerOff, Terminal, Workflow } from 'lucide-react';
+import { Bot, Code2, Plug, Power, PowerOff, Terminal, Workflow } from '@/components/icons';
 import type { Agent, Member } from '@/api/types';
 import { DestBadge, TimeAgo } from '@/components/shell';
 import { teamColor } from '@/lib/colors';
@@ -113,7 +113,7 @@ export function AgentsTable({
                       <div className="min-w-0">
                         <div className="truncate text-text-1">
                           {sponsor.name}
-                          {sponsor.id === viewerId ? <span className="ml-1 text-2xs font-medium text-allow">you</span> : null}
+                          {sponsor.id === viewerId ? <span className="ml-1 text-2xs font-medium text-text-3">(you)</span> : null}
                         </div>
                         <div className="text-2xs text-text-3">
                           fills <span className="font-mono text-allow">self</span> slots
@@ -140,7 +140,7 @@ export function AgentsTable({
                 </td>
                 <td className="px-3 py-2">{a.max_destination ? <DestBadge dest={a.max_destination} /> : <span className="text-text-4">—</span>}</td>
                 <td className="px-3 py-2">
-                  <span className={cn('inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-xs font-medium', s.cls)}>
+                  <span className={cn('inline-flex h-5 items-center gap-1.5 rounded-sm border px-1.5 text-2xs font-medium', s.cls)}>
                     <span className={cn('size-1.5 rounded-full', s.dot)} />
                     {s.label}
                   </span>

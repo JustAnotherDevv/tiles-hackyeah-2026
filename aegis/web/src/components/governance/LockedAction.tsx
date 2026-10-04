@@ -1,7 +1,7 @@
 // Permission-aware button: when `locked`, the button is disabled, shows a Lock icon and explains why
 // in a tooltip (span-wrapped so the tooltip fires on a disabled button). Never hidden — the role
 // switch must be visible in the demo. Owner: B18-dashboard-gov-approvals.
-import { Lock } from 'lucide-react';
+import { Lock } from '@/components/icons';
 import type { ComponentProps, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';

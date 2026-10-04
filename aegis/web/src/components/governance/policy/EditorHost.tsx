@@ -2,7 +2,7 @@
 // PlainYamlEditor / a unified-diff view, so the editor is never blank (venue Wi-Fi, worker hiccups).
 // Owner: B19-dashboard-gov-policy.
 import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@/components/icons';
 import { cn } from '@/lib/utils';
 import type { PolicyDiffProps, PolicyEditorHandle, PolicyEditorProps } from './editor-types';
 import { diffLines } from './line-ops';
@@ -37,9 +37,10 @@ function Loading({ label }: { label: string }) {
 
 const LOAD_TIMEOUT_MS = 10000; // cold dev-server loads of Monaco can take > 6 s
 
-export function EditorHost(props: PolicyEditorProps & { onEngine?: (kind: 'monaco' | 'plain') => void }) {
-  const { onReady, onEngine, ...rest } = props;
-  const [plain, setPlain] = useState(false);
+export function EditorHost(props: PolicyEditorProps & { onEngine?: (kind: 'monaco' | 'plain') => void; forcePlain?: boolean }) {
+  const { onReady, onEngine, forcePlain, ...rest } = props;
+  const [failed, setPlain] = useState(false);
+  const plain = failed || Boolean(forcePlain);
   const ready = useRef(false);
   const engineRef = useRef(onEngine);
   engineRef.current = onEngine;
@@ -65,7 +66,7 @@ export function EditorHost(props: PolicyEditorProps & { onEngine?: (kind: 'monac
   if (plain) return fallback;
   return (
     <Boundary fallback={fallback} onError={() => setPlain(true)}>
-      <Suspense fallback={<Loading label="Loading Monaco (bundled, offline)…" />}>
+      <Suspense fallback={<Loading label="Loading editor…" />}>
         <LazyPolicyEditor {...rest} onReady={handleReady} />
       </Suspense>
     </Boundary>
@@ -113,14 +114,15 @@ export function PlainDiff({ original, modified, className }: Pick<PolicyDiffProp
   );
 }
 
-export function DiffHost(props: PolicyDiffProps) {
-  const [plain, setPlain] = useState(false);
+export function DiffHost(props: PolicyDiffProps & { forcePlain?: boolean }) {
+  const [failed, setPlain] = useState(false);
+  const plain = failed || Boolean(props.forcePlain);
   const fallback = <PlainDiff original={props.original} modified={props.modified} className={cn('h-full min-h-[420px]', props.className)} />;
   if (plain) return fallback;
   return (
     <Boundary fallback={fallback} onError={() => setPlain(true)}>
       <Suspense fallback={<Loading label="Loading diff editor…" />}>
-        <LazyPolicyDiffView {...props} />
+        <LazyPolicyDiffView original={props.original} modified={props.modified} sideBySide={props.sideBySide} className={props.className} originalLabel={props.originalLabel} modifiedLabel={props.modifiedLabel} />
       </Suspense>
     </Boundary>
   );

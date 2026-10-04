@@ -1,6 +1,6 @@
 // /security/live — every model, tool, MCP and egress decision as it happens (SSE), URL-synced filters,
 // row → decision trace drawer (?d=<id>), pause buffer, keyboard j/k/Enter.
-import { History, Pause, Play, Radio } from 'lucide-react';
+import { ArrowUp, CloudOff, History, Pause, Play, Radio, RefreshCw } from '@/components/icons';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { DecisionSummary } from '@/api/types';
@@ -73,7 +73,7 @@ export default function LiveDecisionsPage() {
     if (id) setTimeout(() => (document.querySelector(`[data-id="${CSS.escape(id)}"]`) as HTMLElement | null)?.focus(), 50);
   }, [setParams, openId]);
 
-  // keyboard: j/k move, Enter opens, Esc handled by the drawer, space toggles pause
+  // keyboard: j/k move, Enter opens, Esc handled by the drawer
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (openId || isTyping() || e.metaKey || e.ctrlKey || e.altKey) return;
@@ -102,16 +102,17 @@ export default function LiveDecisionsPage() {
       <PageHeader
         title="Live decisions"
         icon="Activity"
-        subtitle="Every prompt, response, tool call, MCP message and egress request — decided in-line, explained, and hash-chained."
+        subtitle="Every prompt, response, tool call, MCP message and egress request, with the control that decided it."
         actions={
           <div className="flex items-center gap-2">
             {paused && feed.bufferedCount > 0 ? (
               <button
                 type="button"
                 onClick={() => setPaused(false)}
-                className="inline-flex h-7 items-center gap-1.5 rounded-full border border-accent-fg/40 bg-brand/15 px-3 text-xs font-medium text-text-1 shadow-raised"
+                className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-accent-fg/40 bg-brand/15 px-2.5 text-xs font-medium tabular text-text-1"
               >
-                {feed.bufferedCount} new ↑
+                <ArrowUp className="size-3.5" />
+                {feed.bufferedCount} new
               </button>
             ) : null}
             <Button variant={paused ? 'secondary' : 'ghost'} size="sm" onClick={() => setPaused(!paused)} aria-pressed={paused}>
@@ -141,7 +142,7 @@ export default function LiveDecisionsPage() {
             }
           />
         </div>
-        <div className="max-h-[calc(100vh-330px)] min-h-[360px] overflow-y-auto">
+        <div className="min-h-[240px] md:max-h-[calc(100dvh-330px)] md:min-h-[360px] md:overflow-y-auto">
           {feed.loading ? (
             <div className="space-y-1 p-4">
               {Array.from({ length: 10 }, (_, i) => (
@@ -155,25 +156,46 @@ export default function LiveDecisionsPage() {
               selectedId={selectedId}
               onOpen={open}
               empty={
-                <EmptyState
-                  icon={Radio}
-                  title={filtered ? 'No decisions match these filters' : 'Waiting for traffic…'}
-                  hint={filtered ? 'Clear a filter or search the history on the server.' : 'Send a request through the gateway, or run a preset in the Playground.'}
-                />
+                feed.error && !filtered ? (
+                  <EmptyState
+                    icon={CloudOff}
+                    title="Could not load decision history"
+                    hint={`${feed.error.message.replace(/\.$/, '')}. New decisions still appear here while the live stream is connected.`}
+                    action={
+                      <Button variant="secondary" size="sm" onClick={feed.retry}>
+                        <RefreshCw /> Retry
+                      </Button>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={Radio}
+                    title={filtered ? 'No decisions match these filters' : 'No decisions yet'}
+                    hint={filtered ? 'Clear a filter, or search the full history on the server.' : 'Decisions appear here as soon as traffic flows through the gateway. Run a Playground preset to generate one.'}
+                  />
+                )
               }
             />
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border-subtle bg-surface-1/60 px-4 py-2 text-xs text-text-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border-subtle bg-surface-1 px-4 py-2 text-xs text-text-3">
           <span>
             Showing <b className="font-medium text-text-2">{fmtNum(feed.rows.length)}</b> of {fmtNum(feed.total)}
             {feed.rows.length >= FEED_CAP ? ` (capped at ${FEED_CAP})` : ''}
           </span>
-          <StatusDot status={feed.connected ? 'ok' : 'error'} pulse={feed.connected && !paused} label={feed.connected ? (paused ? 'stream paused' : 'stream live') : 'offline — retrying'} />
+          <StatusDot status={feed.connected ? 'ok' : 'error'} pulse={feed.connected && !paused} label={feed.connected ? (paused ? 'Stream paused' : 'Stream live') : 'Offline, retrying'} />
           <AuditChainStatus />
+          {feed.error && feed.rows.length > 0 ? (
+            <span className="inline-flex items-center gap-1.5 text-redact" title={feed.error.message}>
+              History unavailable
+              <button type="button" className="underline-offset-2 hover:underline" onClick={feed.retry}>
+                Retry
+              </button>
+            </span>
+          ) : null}
           <span className="hidden text-text-4 lg:inline">j / k to move · Enter to open</span>
           {feed.nextCursor ? (
-            <Button variant="ghost" size="xs" className="ml-auto" onClick={() => void feed.loadOlder()} disabled={feed.loadingOlder}>
+            <Button variant="secondary" size="sm" className="ml-auto" onClick={() => void feed.loadOlder()} disabled={feed.loadingOlder}>
               {feed.loadingOlder ? 'Loading…' : 'Load older'}
             </Button>
           ) : null}

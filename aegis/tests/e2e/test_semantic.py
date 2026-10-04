@@ -67,7 +67,7 @@ class LocalStack:
             None,
         )
         if src is None:
-            pytest.skip("no policy (config/policy.golden.yaml missing)")
+            pytest.fail("no policy (config/policy.golden.yaml missing)", pytrace=False)
         doc = yaml.safe_load(src.read_text())
         doc.setdefault("approvals", {}).setdefault("defaults", {})["hold_s"] = {
             k: 0 for k in ("hook", "mcp", "egress", "guard", "proxy", "playground", "dashboard")
@@ -109,9 +109,9 @@ class LocalStack:
             settings = Settings(**kw)
             self.app = create_app(settings)
             self.server = ThreadedUvicorn(self.app, name="gateway").start(timeout=40)
-        except Exception as exc:  # boot error -> skip, never a red herring failure
+        except Exception as exc:  # boot error -> FAIL: a broken gateway must never read as exit 0
             self.stop()
-            pytest.skip(f"hermetic gateway failed to boot: {exc!r}")
+            pytest.fail(f"hermetic gateway failed to boot: {exc!r}", pytrace=False)
         self.url = self.server.url
         self.http = httpx.Client(base_url=self.url, timeout=30)
 
@@ -166,7 +166,9 @@ def stack() -> Iterator[LocalStack]:
     try:
         st = s.api("GET", "/api/semantic/status", as_="u_katarzyna")
         if st.status_code != 200:
-            pytest.skip(f"semantic: /api/semantic/status unavailable ({st.status_code})")
+            pytest.fail(
+                f"semantic: /api/semantic/status unavailable ({st.status_code})", pytrace=False
+            )
         body = st.json()
         if body.get("mode") in (None, "off") or body.get("degraded"):
             pytest.skip(

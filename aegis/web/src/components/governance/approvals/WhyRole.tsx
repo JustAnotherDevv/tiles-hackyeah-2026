@@ -1,6 +1,6 @@
 // "Why this role?" — matched rule + its condition, the explanation paragraph, eligible approvers
 // (viewer highlighted) and the server's why_not verbatim when locked. Owner: B18.
-import { Ban, FileCode, Lock, Users } from 'lucide-react';
+import { Ban, FileCode, Lock, Users } from '@/components/icons';
 import type { ApprovalRequest, ApprovalRuleView } from '@/api/types';
 import { cn } from '@/lib/utils';
 import { ApproverBadge } from '../ApproverBadge';
@@ -31,7 +31,7 @@ export function WhyRole({ req, rule, dir, viewerId, vote }: { req: ApprovalReque
         <span className="text-text-4">→</span>
         <ApproverBadge level={req.required_role} size="sm" />
         {req.two_person ? (
-          <span className="inline-flex h-[18px] items-center gap-1 rounded-full border border-accent-fg/30 bg-brand/10 px-1.5 text-2xs text-accent-fg">
+          <span className="inline-flex h-[18px] items-center gap-1 rounded-sm border border-border bg-surface-2 px-1.5 text-2xs text-text-1">
             <Users className="size-2.5" /> two-person
           </span>
         ) : null}
@@ -40,9 +40,9 @@ export function WhyRole({ req, rule, dir, viewerId, vote }: { req: ApprovalReque
       <p className="text-[13px] leading-5 text-text-2">{text}</p>
 
       {req.required_role === 'deny' ? (
-        <div className="flex items-center gap-2 rounded-lg border border-block/30 bg-block/5 px-3 py-2 text-[12.5px] text-block">
+        <div className="flex items-center gap-2 rounded-md border border-block/30 bg-block/5 px-3 py-2 text-[12.5px] text-block">
           <Ban className="size-4 shrink-0" />
-          No one can approve this — rule {req.rule_id ?? '(default)'} denies it. There are no buttons on purpose.
+          No one can approve this: rule {req.rule_id ?? '(default)'} denies it, so there are no decision buttons.
         </div>
       ) : eligible.length > 0 ? (
         <div>
@@ -54,22 +54,22 @@ export function WhyRole({ req, rule, dir, viewerId, vote }: { req: ApprovalReque
                 <span
                   key={m.id}
                   className={cn(
-                    'inline-flex h-7 items-center gap-1.5 rounded-full border px-1 pr-2.5 text-xs',
-                    me ? 'border-allow/40 bg-allow/10 text-text-1' : 'border-border bg-surface-2 text-text-2',
+                    'inline-flex h-7 items-center gap-1.5 rounded-md border px-1 pr-2.5 text-xs',
+                    me ? 'border-border-strong bg-surface-3 text-text-1' : 'border-border bg-surface-2 text-text-2',
                   )}
                   title={`${m.name} · ${m.role}${me ? ' · you' : ''}`}
                 >
                   <MemberAvatar member={m} size="xs" />
                   {firstName(m.name)}
                   <span className="text-2xs text-text-3">{m.role}</span>
-                  {me ? <span className="text-2xs font-medium text-allow">you</span> : null}
+                  {me ? <span className="text-2xs font-medium text-text-2">(you)</span> : null}
                 </span>
               );
             })}
             {req.votes
               .filter((v) => !eligible.some((m) => m.id === v.member_id) && voted.has(v.member_id))
               .map((v) => (
-                <span key={`v-${v.member_id}`} className="inline-flex h-7 items-center gap-1.5 rounded-full border border-allow/30 bg-allow/5 px-1 pr-2.5 text-xs text-text-3 line-through decoration-text-4">
+                <span key={`v-${v.member_id}`} className="inline-flex h-7 items-center gap-1.5 rounded-md border border-allow/30 bg-allow/5 px-1 pr-2.5 text-xs text-text-3 line-through decoration-text-4">
                   <MemberAvatar member={dir.memberById.get(v.member_id)} name={v.member_id} size="xs" />
                   {firstName(dir.memberById.get(v.member_id)?.name ?? v.member_id)} voted
                 </span>

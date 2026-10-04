@@ -206,8 +206,13 @@ def _upstream_text(req: dict[str, Any]) -> str:
     )
 
 
-def _complete(stack: Any, data: dict[str, Any], dry_run: bool) -> None:
-    """Report the outcome of an allowed guard check (releases reservations, e.g. BUD-02 slots)."""
+def _complete(
+    stack: Any, data: dict[str, Any], dry_run: bool, usage: dict[str, Any] | None = None
+) -> None:
+    """Report the outcome of an allowed guard check (releases reservations, e.g. BUD-02 slots).
+
+    A step may carry `usage: {compute_s: 650, input_tokens: ...}`: reported like a real SDK client
+    would after the call ran, so multi-step cases can exhaust a ledger dimension."""
     v = data.get("verdict") or {}
     if dry_run or v.get("action") not in ("allow", "log", "redact"):
         return
@@ -216,7 +221,11 @@ def _complete(stack: Any, data: dict[str, Any], dry_run: bool) -> None:
         stack.gw.request(
             "POST",
             "/v1/guard/complete",
-            json={"decision_id": did, "status_code": 200, "usage": {"requests": 1}},
+            json={
+                "decision_id": did,
+                "status_code": 200,
+                "usage": {"requests": 1, **(usage or {})},
+            },
         )
 
 
@@ -239,7 +248,7 @@ def run_guard(case: Case, stack: Any, dry_run: bool = False) -> Observation:
                 obs.reason = r.text[:300]
                 return obs
             data = r.json()
-            _complete(stack, data, dry_run)
+            _complete(stack, data, dry_run, (step or {}).get("usage"))
     v = data.get("verdict") or {}
     _from_verdict(obs, v)
     obs.decision_id = data.get("decision_id") or v.get("id")
@@ -376,12 +385,30 @@ def run_hook(case: Case, stack: Any) -> Observation:
     return obs
 
 
+def _registered_mcp_servers(stack: Any) -> set[str] | None:
+    """`mcp.servers` of the hermetic stack's policy file (None if unreadable)."""
+    path = getattr(stack, "policy_path", None)
+    try:
+        import yaml
+
+        doc = yaml.safe_load(Path(path).read_text()) if path else None
+    except Exception:
+        return None
+    servers = ((doc or {}).get("mcp") or {}).get("servers")
+    return set(servers) if isinstance(servers, dict) else None
+
+
 def run_mcp(case: Case, stack: Any) -> Observation:
     obs = Observation()
-    if not stack.mcp_url and stack.mode == "hermetic":
-        obs.skip = "via mcp unavailable (no MCP upstream in this stack)"
-        return obs
     server, _, tool = (case.tool or "").partition(".")
+    if not stack.mcp_url and stack.mode == "hermetic":
+        # An unregistered server is refused by the gateway itself (MCP-01, -32001) before any
+        # upstream is contacted, so those cases run without an MCP upstream. A registered server
+        # would be proxied to its configured URL, so skip rather than reach a real port.
+        registered = _registered_mcp_servers(stack)
+        if registered is None or server in registered:
+            obs.skip = "via mcp unavailable (no MCP upstream in this stack)"
+            return obs
     mc = McpClient(stack.gw, server, who=case.as_, session=_session(case))
     init = mc.initialize()
     obs.status = init["status"]

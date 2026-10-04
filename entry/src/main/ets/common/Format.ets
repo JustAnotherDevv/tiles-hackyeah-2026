@@ -19,8 +19,9 @@ export class Log {
 }
 
 export class Fmt {
+  /** "$50", "$12.50", "$1.2k"; "-" for negative (no amount), NaN, Infinity or a non-number that slipped through. */
   static usd(v: number): string {
-    if (v < 0) {
+    if (typeof v !== 'number' || !isFinite(v) || v < 0) {
       return '-';
     }
     if (v >= 1000) {
@@ -33,6 +34,9 @@ export class Fmt {
   }
 
   static num(v: number): string {
+    if (typeof v !== 'number' || !isFinite(v)) {
+      return '-';
+    }
     if (v >= 1000000) {
       return (v / 1000000).toFixed(1) + 'M';
     }

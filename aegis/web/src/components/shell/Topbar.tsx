@@ -1,6 +1,7 @@
 // Topbar: crumbs · ⌘K search · version pill (flashes on policy/feed change) · connection pill · kill switch
 // (admin) · "View as" (Owner/Admin/Member quick picks + member dropdown). Sticky glass bar.
-import { GitCommitHorizontal, Search } from 'lucide-react';
+import { List as Menu } from '@phosphor-icons/react';
+import { GitCommitHorizontal, Search } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { eventHub, type SseStatus } from '@/api/sse';
@@ -74,7 +75,7 @@ export function ConnectionPill() {
           type="button"
           onClick={() => status === 'offline' && eventHub.retryNow()}
           className={cn(
-            'inline-flex h-[26px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2.5 text-[11.5px] font-medium',
+            'inline-flex h-[26px] shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2.5 text-[11.5px] font-medium max-md:h-9 max-sm:w-9 max-sm:justify-center max-sm:px-0',
             c.tone === 'good' && 'border-allow/25 bg-allow/[0.06] text-allow',
             c.tone === 'warn' && 'border-redact/25 bg-redact/[0.06] text-redact',
             c.tone === 'bad' && 'border-block/30 bg-block/[0.08] text-block',
@@ -82,7 +83,7 @@ export function ConnectionPill() {
           )}
         >
           <LiveDot tone={c.tone} paused={c.paused} />
-          {c.label}
+          <span className="max-sm:sr-only">{c.label}</span>
         </button>
       </TooltipTrigger>
       <TooltipContent>
@@ -102,8 +103,9 @@ export function ViewAsSwitcher() {
   const quick = VIEW_AS_QUICK.map((q) => ({ ...q, id: members.find((m) => m.id === q.id) ? q.id : (members.find((m) => m.role === q.role)?.id ?? q.id) }));
   return (
     <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-      <span className="text-[11.5px] text-text-3 max-[1280px]:hidden">View as</span>
+      <span className="text-[11.5px] text-text-3 max-[1536px]:hidden">View as</span>
       <Segmented
+        className="max-lg:hidden"
         ariaLabel="View as role"
         value={role}
         onChange={(r) => {
@@ -116,7 +118,7 @@ export function ViewAsSwitcher() {
         <DropdownMenuTrigger asChild>
           <button type="button" className="flex items-center gap-2 rounded-md py-1 pl-1.5 pr-2 text-left hover:bg-surface-1" aria-label="Choose member to view as">
             <Avatar name={member?.name ?? '?'} size={26} />
-            <span className="min-w-0 max-[1180px]:hidden">
+            <span className="min-w-0 max-[1400px]:hidden">
               <span className="block max-w-[150px] truncate text-[12.5px] font-medium leading-[15px] text-text-1">{member?.name ?? 'Default viewer'}</span>
               <span className="block max-w-[150px] truncate text-[11px] leading-[13px] text-text-3">{member?.title ?? ROLE_COLORS[role].label}</span>
             </span>
@@ -151,13 +153,13 @@ function Crumbs() {
   const { pathname } = useLocation();
   const page = findPage(pathname);
   return (
-    <div className="flex min-w-[190px] shrink items-center gap-2 whitespace-nowrap text-[13px] text-text-3">
+    <div className="flex min-w-[190px] shrink items-center gap-2 whitespace-nowrap text-[13px] text-text-3 max-md:min-w-0 max-md:flex-1">
       <span className="max-[1600px]:hidden">Acme Capital</span>
       <span className="text-text-4 max-[1600px]:hidden">/</span>
       {page && page.meta.section !== 'Overview' ? (
         <>
-          <span>{page.meta.section}</span>
-          <span className="text-text-4">/</span>
+          <span className="max-md:hidden">{page.meta.section}</span>
+          <span className="text-text-4 max-md:hidden">/</span>
         </>
       ) : null}
       <b className="truncate font-medium text-text-1">{page?.meta.title ?? 'Not found'}</b>
@@ -171,22 +173,33 @@ export function Topbar() {
     setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
   }, []);
   return (
-    <header className="no-print relative z-20 flex h-[var(--topbar-h)] shrink-0 items-center gap-3 border-b border-border-subtle bg-[rgba(7,8,10,0.86)] pl-6 pr-5 backdrop-blur-[10px] backdrop-saturate-[1.4]">
+    <header className="no-print relative z-20 flex h-[var(--topbar-h)] shrink-0 items-center gap-3 border-b border-border-subtle bg-bg pl-[var(--gutter)] pr-5 max-md:gap-2 max-md:pr-3">
+      <button
+        type="button"
+        onClick={() => setShellState({ navOpen: true })}
+        className="-ml-1.5 hidden size-9 shrink-0 place-items-center rounded-md text-text-2 hover:bg-surface-2 hover:text-text-1 max-md:grid"
+        aria-label="Open navigation"
+      >
+        <Menu className="size-5" />
+      </button>
       <Crumbs />
       <div className="min-w-0 flex-1" />
       <button
         type="button"
         onClick={() => setShellState({ paletteOpen: true })}
-        className="flex h-[30px] w-[260px] min-w-[120px] shrink-[4] items-center gap-2 rounded-md border border-border bg-surface-1 pl-2.5 pr-2 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:bg-surface-2 hover:text-text-2 max-[1700px]:w-[190px]"
+        aria-label="Search or jump to"
+        className="flex h-[30px] w-[260px] min-w-[120px] shrink-[4] items-center gap-2 rounded-md border border-border bg-surface-1 pl-2.5 pr-2 text-[12.5px] text-text-3 transition-colors hover:border-border-strong hover:bg-surface-2 hover:text-text-2 max-[1700px]:w-[190px] max-md:size-9 max-md:min-w-0 max-md:justify-center max-md:p-0"
       >
-        <Search className="size-3.5 shrink-0" />
-        <span className="truncate">Search or jump to…</span>
-        <Kbd className="ml-auto">{mac ? '⌘K' : 'Ctrl K'}</Kbd>
+        <Search className="size-3.5 shrink-0 max-md:size-4" />
+        <span className="truncate max-md:hidden">Search or jump to…</span>
+        <Kbd className="ml-auto max-md:hidden pointer-coarse:hidden">{mac ? '⌘K' : 'Ctrl K'}</Kbd>
       </button>
-      <VersionPill />
+      <span className="max-lg:hidden">
+        <VersionPill />
+      </span>
       <ConnectionPill />
       <KillSwitchButton />
-      <div className="h-[18px] w-px shrink-0 bg-border" />
+      <div className="h-[18px] w-px shrink-0 bg-border max-md:hidden" />
       <ViewAsSwitcher />
     </header>
   );

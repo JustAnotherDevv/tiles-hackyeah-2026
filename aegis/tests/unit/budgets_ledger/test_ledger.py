@@ -13,6 +13,7 @@ import pytest
 from aegis.budgets.events import UpdateCoalescer
 from aegis.budgets.ledger import Ledger
 from aegis.core.types import BudgetDenial, Reservation, Usage
+from tests.lib.perf import bound
 from tests.unit.budgets_ledger.conftest import agent, ctx, make_snapshot, snippet_doc
 
 RESEARCH = agent("research-agent@research", "research")
@@ -151,4 +152,4 @@ async def test_perf_reserve_settle(rt, clock) -> None:
     led.coalescer.cancel()
     p95 = statistics.quantiles(lat, n=20)[18]
     print(f"reserve+settle p95={p95:.3f} ms median={statistics.median(lat):.3f} ms")
-    assert p95 < 1.0
+    assert p95 < bound(1.0), f"p95={p95:.3f} ms"

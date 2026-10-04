@@ -1,20 +1,19 @@
 """ORG-V13: org-rbac wired into the real app (create_app + lifespan, in-process ASGI).
 
-Skips when the gateway app (or asgi_lifespan) is not importable yet. Steps that depend on
-other bundles (guard pipeline, approvals engine) skip individually when those are still
-running on Null fallbacks, so this test never fails because of another bundle's progress.
+Integration is complete: every step asserts (no "not wired yet" skips), so a regression in
+the guard pipeline, org service or approvals engine fails here instead of being hidden.
 """
 
 from __future__ import annotations
 
 import asyncio
 
+import asgi_lifespan
+import httpx
 import pytest
 
-httpx = pytest.importorskip("httpx")
-asgi_lifespan = pytest.importorskip("asgi_lifespan")
-app_mod = pytest.importorskip("aegis.app")
-settings_mod = pytest.importorskip("aegis.settings")
+from aegis import app as app_mod
+from aegis import settings as settings_mod
 
 REVOKED_KEY = "aegis_demo_revoked_key_0000000000000099_NOT_A_SECRET"
 
@@ -23,10 +22,7 @@ REVOKED_KEY = "aegis_demo_revoked_key_0000000000000099_NOT_A_SECRET"
 async def live(tmp_path, monkeypatch):
     monkeypatch.setenv("AEGIS_TEST_MODE", "1")
     monkeypatch.setenv("AEGIS_SEMANTIC", "off")
-    try:
-        settings = settings_mod.Settings(data_dir=tmp_path / "data", ui_dist=tmp_path / "dist")
-    except Exception as exc:  # pragma: no cover - settings shape changed
-        pytest.skip(f"Settings not constructible: {exc}")
+    settings = settings_mod.Settings(data_dir=tmp_path / "data", ui_dist=tmp_path / "dist")
     app = app_mod.create_app(settings)
     async with asgi_lifespan.LifespanManager(app, startup_timeout=60, shutdown_timeout=30):
         transport = httpx.ASGITransport(app=app)
@@ -36,8 +32,6 @@ async def live(tmp_path, monkeypatch):
 
 async def _guard(client, body: dict, headers: dict | None = None):
     r = await client.post("/v1/guard", json=body, headers=headers or {})
-    if r.status_code == 404:
-        pytest.skip("/v1/guard not mounted yet")
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -45,8 +39,9 @@ async def _guard(client, body: dict, headers: dict | None = None):
 async def test_org_rbac_end_to_end(live):
     app, client = live
     rt = app.state.rt
-    if rt is None or getattr(rt, "org", None) is None or not hasattr(rt.org, "cache"):
-        pytest.skip("rt.org is not the org-rbac service (Null fallback)")
+    assert rt is not None and hasattr(getattr(rt, "org", None), "cache"), (
+        "rt.org is not the org-rbac service (Null fallback)"
+    )
 
     # (a) view-as role alias resolves to the first member with that role
     r = await client.get("/api/whoami", headers={"X-Aegis-View-As": "member"})
@@ -65,8 +60,7 @@ async def test_org_rbac_end_to_end(live):
     }
     out = await _guard(client, body, {"Authorization": f"Bearer {REVOKED_KEY}"})
     verdict = out["verdict"]
-    if not verdict.get("decisions"):
-        pytest.skip("guard pipeline has no controls loaded yet")
+    assert verdict.get("decisions"), "guard pipeline has no controls loaded"
     assert verdict["action"] == "block", verdict
     assert verdict["primary"]["control_id"] == "GOV-01"
     assert REVOKED_KEY not in str(out)
@@ -97,8 +91,6 @@ async def test_org_rbac_end_to_end(live):
         json={"comment": "ok"},
         headers={"X-Aegis-View-As": "u_katarzyna"},
     )
-    if r.status_code in (404, 503):
-        pytest.skip("approvals engine not available")
     assert r.status_code == 200, r.text
     role = None
     for _ in range(50):  # executor may run asynchronously

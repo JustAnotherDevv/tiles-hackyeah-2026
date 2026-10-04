@@ -4,7 +4,7 @@
 // Locked with a reason tooltip when the viewer may not use it (never hidden). Sponsors may always
 // pull the brake on their own agent (approvals rule `killswitch-own-agent`, SF-16).
 // Owner: B19-dashboard-gov-policy.
-import { Loader2, Power, PowerOff, ShieldAlert } from 'lucide-react';
+import { Loader2, Power, PowerOff, ShieldAlert } from '@/components/icons';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { ApplyResult } from '@/api/types';
@@ -62,7 +62,7 @@ function KillConfirmDialog({
     setBusy(true);
     try {
       const r = await policyApi.killswitch({ scope, active, reason: reason.trim() }, viewer);
-      const what = `Kill switch ${active ? 'ON' : 'off'} · ${scope}`;
+      const what = `Kill switch ${active ? 'engaged' : 'released'} · ${scope}`;
       if (r.data.status === 'applied') {
         toast[active ? 'error' : 'success'](`${what}`, {
           id: `kill-${scope}`,
@@ -90,19 +90,19 @@ function KillConfirmDialog({
           </DialogTitle>
           <DialogDescription className="text-text-2">
             {scope === 'global' ? 'Every agent in the organization' : scopeLabel(scope)}
-            {active ? ' — in-flight calls finish, every new call answers 429 killed.' : ' — traffic resumes immediately.'}
+            {active ? '. In-flight calls finish; every new call returns 429 killed.' : '. Traffic resumes immediately.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
-          <div className="text-2xs font-medium uppercase tracking-wider text-text-3">Reason (required, goes to the audit log)</div>
-          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} autoFocus placeholder="Why?" className="text-sm" />
+          <div className="text-xs font-medium text-text-2">Reason <span className="font-normal text-text-3">· required, recorded in the audit log</span></div>
+          <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} autoFocus placeholder="Why is this scope being stopped?" className="text-sm" />
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => setReason(p)}
-                className="rounded-full border border-border bg-surface-2 px-2.5 py-0.5 text-xs text-text-2 hover:border-border-strong hover:text-text-1"
+                className="h-8 rounded-sm border border-border bg-surface-2 px-2.5 text-xs text-text-2 transition-colors duration-100 hover:border-border-strong hover:text-text-1 md:h-6"
               >
                 {p}
               </button>
@@ -143,7 +143,7 @@ export function KillSwitchControl({
   const [open, setOpen] = useState(false);
   const next = !killed;
   if (killed && inheritedFrom) {
-    return <span className="whitespace-nowrap text-2xs text-block/80">killed via {inheritedFrom === 'global' ? 'global switch' : inheritedFrom}</span>;
+    return <span className="whitespace-nowrap text-2xs text-block">killed via {inheritedFrom === 'global' ? 'global switch' : inheritedFrom}</span>;
   }
   const locked = next ? !perm.canEngage : !perm.canRelease;
   return (
@@ -153,6 +153,7 @@ export function KillSwitchControl({
         reason={perm.reason}
         size="xs"
         variant={killed ? 'success' : 'danger-ghost'}
+        className="max-md:h-9 max-md:px-3"
         onClick={() => setOpen(true)}
         hint={killed ? 'Release the kill switch' : 'Stop this scope now (429 killed)'}
       >
@@ -165,26 +166,44 @@ export function KillSwitchControl({
 }
 
 /** Global kill switch danger panel (admin+). */
-export function GlobalKillPanel({ active, perm, viewer, onDone }: { active: boolean; perm: KillPermission; viewer: MockViewer; onDone?: (r: ApplyResult) => void }) {
+export function GlobalKillPanel({
+  active,
+  perm,
+  viewer,
+  onDone,
+  stoppedCount = 0,
+}: {
+  active: boolean;
+  perm: KillPermission;
+  viewer: MockViewer;
+  onDone?: (r: ApplyResult) => void;
+  /** scopes stopped individually (teams / members / agents / sessions) */
+  stoppedCount?: number;
+}) {
   const [open, setOpen] = useState(false);
   const locked = active ? !perm.canRelease : !perm.canEngage;
   return (
-    <div
-      className={cn(
-        'flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3',
-        active ? 'border-block/50 bg-block/10' : 'border-block/20 bg-[linear-gradient(90deg,rgba(229,68,109,0.06),transparent_60%)]',
-      )}
-    >
-      <div className={cn('grid size-9 place-items-center rounded-lg', active ? 'bg-block text-white' : 'bg-block/10 text-block')}>
-        <ShieldAlert className="size-4.5" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-sm font-medium text-text-1">
-          Global kill switch{' '}
-          <span className={cn('ml-1 rounded-full px-2 py-0.5 text-2xs font-medium', active ? 'bg-block text-white' : 'bg-surface-3 text-text-3')}>{active ? 'ENGAGED' : 'off'}</span>
+    <div className={cn('flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border px-4 py-3', active ? 'border-block/50 bg-block/10' : 'border-border bg-card')}>
+      <ShieldAlert className={cn('size-5 shrink-0', active ? 'text-block' : 'text-text-3')} aria-hidden />
+      <div className="min-w-0 flex-1 basis-56">
+        <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-text-1">
+          Global kill switch
+          <span
+            className={cn(
+              'inline-flex h-5 items-center rounded-sm border px-1.5 text-2xs font-medium',
+              active ? 'border-block/50 bg-block/15 text-block' : 'border-border bg-surface-2 text-text-3',
+            )}
+          >
+            {active ? 'Engaged' : 'Off'}
+          </span>
+          {stoppedCount > 0 ? (
+            <span className="inline-flex h-5 items-center rounded-sm border border-block/30 bg-block/10 px-1.5 text-2xs font-medium text-block tabular">
+              {stoppedCount} scope{stoppedCount === 1 ? '' : 's'} stopped
+            </span>
+          ) : null}
         </div>
-        <div className="text-xs text-text-3">
-          {active ? 'Every agent call answers 429 killed until an owner releases it.' : 'Stops every agent in the org within one request. Requires admin; releasing requires owner.'}
+        <div className="mt-0.5 text-xs text-text-3">
+          {active ? 'Every agent call returns 429 killed until an owner releases it.' : 'Stops every agent in the organization on the next request. Engage: admin. Release: owner.'}
         </div>
       </div>
       <LockedAction
@@ -192,10 +211,11 @@ export function GlobalKillPanel({ active, perm, viewer, onDone }: { active: bool
         reason={active ? 'Releasing the global kill switch requires an owner' : 'Requires admin'}
         variant={active ? 'success' : 'danger'}
         size="sm"
+        className="max-md:h-9"
         onClick={() => setOpen(true)}
       >
         {!locked ? active ? <Power className="size-3.5" /> : <PowerOff className="size-3.5" /> : null}
-        {active ? 'Release' : 'Kill everything'}
+        {active ? 'Release' : 'Stop all agents'}
       </LockedAction>
       <KillConfirmDialog scope="global" active={!active} open={open} onOpenChange={setOpen} viewer={viewer} onDone={onDone} />
     </div>

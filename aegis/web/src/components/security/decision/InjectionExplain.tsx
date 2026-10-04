@@ -1,7 +1,7 @@
 // Renders `Decision.meta.inj` (injection-defense explainability, A-45 / plan 05 Appendix B):
 // score vs threshold (+ review band), cascade stages (signature → classifier → guard …),
 // normalization flags/layers and segment trust. Plain JSON in, nothing raw (excerpts are masked server-side).
-import { ScanSearch } from 'lucide-react';
+import { ScanSearch } from '@/components/icons';
 import type { Decision } from '@/api/types';
 import { cn } from '@/lib/utils';
 import { ControlChip, SectionLabel } from '../common/atoms';
@@ -93,7 +93,7 @@ export function InjectionExplain({ decisions }: { decisions: Decision[] | undefi
           const hidden = inj.normalization?.hidden ?? [];
           const signals = (inj.signals ?? []).slice(0, 12);
           return (
-            <div key={`${controlId}-${i}`} className="rounded-[10px] border border-border bg-surface-1 px-3 py-2.5">
+            <div key={`${controlId}-${i}`} className="rounded-md border border-border bg-surface-1 px-3 py-2.5">
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <ScanSearch className="size-3.5 text-text-3" />
                 <ControlChip id={controlId} />
@@ -101,10 +101,10 @@ export function InjectionExplain({ decisions }: { decisions: Decision[] | undefi
                   score <span className="text-text-1">{n2(inj.score)}</span> vs threshold <span className="text-text-1">{n2(inj.threshold)}</span>
                   {typeof inj.review_threshold === 'number' ? <span className="text-text-3"> · review ≥ {n2(inj.review_threshold)}</span> : null}
                 </span>
-                <span className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2">{inj.outcome ?? action}</span>
-                {inj.trust ? <span className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-3">{inj.trust}</span> : null}
+                <span className="rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-2">{inj.outcome ?? action}</span>
+                {inj.trust ? <span className="rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-2xs text-text-3">{inj.trust}</span> : null}
                 {inj.degraded ? (
-                  <span className="rounded-[5px] border border-amber-500/40 bg-amber-500/10 px-1.5 font-mono text-2xs text-amber-300" title="semantic models off / unavailable — deterministic heuristic score">
+                  <span className="rounded-xs border border-amber-500/40 bg-amber-500/10 px-1.5 font-mono text-2xs text-amber-300" title="semantic models off / unavailable — deterministic heuristic score">
                     heuristic (degraded)
                   </span>
                 ) : null}
@@ -132,17 +132,17 @@ export function InjectionExplain({ decisions }: { decisions: Decision[] | undefi
                 <div className="mt-2 flex flex-wrap items-center gap-1 text-2xs">
                   <span className="mr-1 text-text-3">Normalization</span>
                   {flags.map((f) => (
-                    <span key={f} className="rounded-[5px] border border-border bg-surface-2 px-1.5 font-mono text-text-2">
+                    <span key={f} className="rounded-xs border border-border bg-surface-2 px-1.5 font-mono text-text-2">
                       {f}
                     </span>
                   ))}
                   {layers.map((l, k) => (
-                    <span key={`l${k}`} className="rounded-[5px] border border-sky-500/30 bg-sky-500/10 px-1.5 font-mono text-sky-300">
+                    <span key={`l${k}`} className="rounded-xs border border-sky-500/30 bg-sky-500/10 px-1.5 font-mono text-sky-300">
                       {l.kind}@{l.depth}
                     </span>
                   ))}
                   {hidden.map((h, k) => (
-                    <span key={`h${k}`} className="rounded-[5px] border border-rose-500/30 bg-rose-500/10 px-1.5 font-mono text-rose-300">
+                    <span key={`h${k}`} className="rounded-xs border border-rose-500/30 bg-rose-500/10 px-1.5 font-mono text-rose-300">
                       hidden {h.kind} ({h.len})
                     </span>
                   ))}

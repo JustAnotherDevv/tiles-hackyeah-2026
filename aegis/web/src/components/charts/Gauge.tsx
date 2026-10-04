@@ -13,7 +13,7 @@ export interface GaugeProps {
   stroke?: number;
 }
 
-const TONES = { good: '#1E9F68', warn: '#C98500', bad: '#E5446D', neutral: '#6366F1' } as const;
+const TONES = { good: '#1E9F68', warn: '#C98500', bad: '#E5446D', neutral: '#2F6FE4' } as const;
 
 export function Gauge({ value, max, label, sublabel, tone = 'auto', size = 72, format, stroke }: GaugeProps) {
   const reduce = useReducedMotion();
@@ -25,7 +25,7 @@ export function Gauge({ value, max, label, sublabel, tone = 'auto', size = 72, f
   return (
     <div className="relative inline-grid shrink-0 place-items-center" style={{ width: size, height: size }} role="img" aria-label={`${label}: ${value} of ${max}`}>
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
-        <circle cx={c} cy={c} r={r} fill="none" stroke="#191C21" strokeWidth={sw} />
+        <circle cx={c} cy={c} r={r} fill="none" stroke="#23272E" strokeWidth={sw} />
         <motion.circle
           cx={c}
           cy={c}
@@ -36,8 +36,7 @@ export function Gauge({ value, max, label, sublabel, tone = 'auto', size = 72, f
           strokeLinecap="round"
           initial={reduce ? false : { pathLength: 0 }}
           animate={{ pathLength: ratio }}
-          transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-          style={{ filter: `drop-shadow(0 0 6px ${TONES[t]}55)` }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center text-center">

@@ -1,5 +1,6 @@
 import { workScheduler, WorkSchedulerExtensionAbility } from '@kit.BackgroundTasksKit';
 import { BackgroundRefresh } from '../platform/BackgroundRefresh';
+import { PocketPrefs } from '../platform/SettingsStore';
 import { Log } from '../common/Format';
 
 /**
@@ -16,6 +17,9 @@ export default class RefreshWorkAbility extends WorkSchedulerExtensionAbility {
       Log.info('RefreshWorkAbility done');
     }).catch((e: Error) => {
       Log.warn('RefreshWorkAbility failed: ' + e.message);
+    }).finally(() => {
+      // GSKV: release the cached instance before this short-lived process exits (ArkData recommendation).
+      PocketPrefs.release(this.context);
     });
   }
 

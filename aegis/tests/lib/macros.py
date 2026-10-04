@@ -6,6 +6,9 @@ Generators (valid shapes, random per run, registered in the privacy registry):
 Encoders (applied to the already-expanded inner text, innermost first):
   {{b64:T}} {{b64url:T}} {{hex:T}} {{tags:T}} (Unicode tag chars) {{zw:T}} (zero-width joiners)
   {{repeat:N:T}}
+Samples (benign model artifacts generated at run time by `aegis.feed.samples`, base64-encoded):
+  {{sample:<name>}}  e.g. {{sample:weights.bin}} (off-allowlist pickle) or
+  {{sample:model.safetensors}}; send it as `meta: {artifact_b64: "{{sample:...}}", filename: ...}`
 Values are cached per run, so the same macro yields the same value within one session (useful
 for `assert.upstream_must_not_contain: ["{{gen:aws_access_key_id}}"]`).
 """
@@ -90,6 +93,18 @@ def gen(name: str) -> str:
     return _CACHE[name]
 
 
+def sample(name: str) -> str:
+    """base64 of a generated SIG-02 sample (`aegis.feed.samples.SAMPLES[name]`); never committed."""
+    from aegis.feed.samples import SAMPLES
+
+    key = f"sample:{name}"
+    if key not in _CACHE:
+        if name not in SAMPLES:
+            raise KeyError(f"unknown sample {{{{sample:{name}}}}} (known: {', '.join(SAMPLES)})")
+        _CACHE[key] = base64.b64encode(SAMPLES[name][0]()).decode()
+    return _CACHE[key]
+
+
 def _tags(text: str) -> str:
     return "".join(chr(0xE0000 + ord(c)) if 0x20 <= ord(c) < 0x7F else c for c in text)
 
@@ -107,7 +122,8 @@ ENCODERS = {
 }
 
 # innermost macro first: no nested "{{" inside the argument
-_INNER = re.compile(r"\{\{(gen|b64|b64url|hex|tags|zw|repeat):((?:(?!\{\{|\}\}).)*)\}\}", re.S)
+_KINDS = "gen|sample|b64|b64url|hex|tags|zw|repeat"
+_INNER = re.compile(r"\{\{(" + _KINDS + r"):((?:(?!\{\{|\}\}).)*)\}\}", re.S)
 
 
 def expand(text: str) -> str:
@@ -121,6 +137,8 @@ def expand(text: str) -> str:
         kind, arg = m.group(1), m.group(2)
         if kind == "gen":
             val = gen(arg.strip())
+        elif kind == "sample":
+            val = sample(arg.strip())
         elif kind == "repeat":
             n, _, body = arg.partition(":")
             val = body * max(0, min(int(n), 100_000))
@@ -144,4 +162,4 @@ def has_macro(text: str) -> bool:
     return bool(isinstance(text, str) and _INNER.search(text))
 
 
-__all__ = ["ENCODERS", "GENERATORS", "expand", "expand_obj", "gen", "has_macro"]
+__all__ = ["ENCODERS", "GENERATORS", "expand", "expand_obj", "gen", "has_macro", "sample"]
