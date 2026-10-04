@@ -144,8 +144,8 @@
       <ul class="b"><li>Injection classifier · Qwen3Guard · multilingual NER</li><li>Per-control <code>fail_mode</code>: model down → deterministic-only + <b>degraded</b> flag, never silent pass</li><li>Screens tool results, MCP descriptions, fetched pages, not just the prompt</li><li>Never authorizes anything: tools, budgets, approvals stay deterministic</li></ul></div>
   </div>
   <div class="grid g3" style="flex:none;margin-top:26px">
-    <div class="card"><div class="kpi num">92.4 %</div><div class="kpi-l">attack detection · held-out 89.6 %</div></div>
-    <div class="card"><div class="kpi num">5.1 %</div><div class="kpi-l">false positives (balanced, 510 benign)</div></div>
+    <div class="card"><div class="kpi num">92.4 %</div><div class="kpi-l">attack detection, optional local models on · held-out 89.6 % · deterministic only 66.6 %</div></div>
+    <div class="card"><div class="kpi num">5.1 %</div><div class="kpi-l">false positives, models on (510 benign) · deterministic only 0.4 %</div></div>
     <div class="card"><div class="kpi num" style="font-size:40px">LLM 9/10 · ASI 10/10 · MCP 10/10</div><div class="kpi-l">OWASP coverage (live)</div></div>
   </div>
   <div class="foot"><span>INJ-01..05 · DLP-02/04/06 · EXE-01..03 · MCP-01..04 · SIG-01..03</span><span>5 / 10</span></div>
@@ -189,7 +189,7 @@
   <h2>Edit it live and it stays safe</h2>
   <div class="grid g2">
     <div class="card"><h3>One YAML file: <code>config/policy.yaml</code></h3>
-      <ul class="b"><li>Controls, mode, action, <b>threshold</b>, <b>adherence %</b>, allowed models, budgets, approval rules</li><li>Strictness profiles: permissive · <b>balanced</b> · strict · paranoid</li><li>Save → validate → <b>self-test gate</b> → atomic swap; version stamped on every decision</li><li>Bad YAML → rejected with line/col, last-good keeps serving · reload p95 <b class="num">584 ms</b></li></ul>
+      <ul class="b"><li>Controls, mode, action, <b>threshold</b>, <b>adherence %</b>, allowed models, budgets, approval rules</li><li>Strictness profiles: permissive · <b>balanced</b> · strict · paranoid</li><li>Save → validate → <b>self-test gate</b> → atomic swap; version stamped on every decision</li><li>Bad YAML → rejected with line/col, last-good keeps serving · reload p95 <b class="num">1107 ms</b></li></ul>
       <div class="wire" style="margin-top:18px;background:var(--surface-3);border-radius:12px;padding:16px 20px">- id: INJ-02
   threshold: <span class="gone">0.80</span> <span class="tok">0.50</span>   # Borderline (0.62): allow → block</div></div>
     <div class="card"><h3>External threat feed <span class="mono" style="color:var(--text-3);font-size:22px">:8790</span></h3>
@@ -218,7 +218,7 @@
   <div class="kicker">Self-testing · performance</div>
   <h2>One command proves every control</h2>
   <div class="grid g4" style="flex:none">
-    <div class="card"><div class="kpi num">1,045</div><div class="kpi-l">test cases · <code>make test</code></div></div>
+    <div class="card"><div class="kpi num">1,045</div><div class="kpi-l">black-box cases · <code>make test</code> (+ unit tests: 2,006 pass)</div></div>
     <div class="card"><div class="kpi num">0</div><div class="kpi-l">failed</div></div>
     <div class="card"><div class="kpi num">2.40 / 3.82</div><div class="kpi-l">overhead p50 / p95 ms</div></div>
     <div class="card"><div class="kpi num">320</div><div class="kpi-l">requests / s · <code>make bench</code></div></div>

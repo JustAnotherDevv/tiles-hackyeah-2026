@@ -77,8 +77,8 @@ Useful extras: `make demo` (stack + warm-up traffic + preflight), `make demo-pre
 reset between judges), `make selftest` (policy self-test), `make verify-audit`, `make eval`, `make bench`,
 `make reset` (wipe `data/`, restore the golden policy), `make help` (all targets).
 
-Optional local models (semantic controls). **Everything above works without them:** the same controls run
-on a deterministic heuristic and show a `degraded` badge, never a silent pass. To run with them:
+Optional local models (semantic controls). **Everything above works without them, and the demo runs that way by
+default:** the same controls run on a deterministic heuristic and show a `degraded` badge, never a silent pass. To run with them:
 
 ```bash
 make models                  # DOWNLOADS what is missing: ~0.8 GB of ONNX into models/ (gitignored) and, if
@@ -257,15 +257,20 @@ reports/           test matrix, eval and bench results (generated)
 ## Measured results
 
 Filled from `reports/` after the final `make test`, `make eval` and `make bench`. Numbers that were not
-measured stay as placeholders; we never publish an unmeasured number.
+measured stay as placeholders; we never publish an unmeasured number. **Models are optional.** `make test` always runs
+deterministic-only, and the demo is deterministic by default: `make setup` installs no models, so `make up`
+runs the deterministic path (or force it with `make up ARGS='--semantic off'`). The "with the optional semantic
+models" rows were measured with the local models loaded (`make models` + Ollama); the deterministic row is what
+you get without them.
 
 | Metric | Value | Source |
 |---|---|---|
-| Test cases / failures | 1,045 / 0 | `reports/results.json` |
+| `make test`: pytest tests passed / failed / xfailed | 2,006 / 0 / 20 | `make test` summary line (2026-10-04) |
+| `make test`: black-box control matrix cases / failures | 1,045 / 0 | `reports/results.json`, `reports/matrix.md` |
 | Gateway overhead p50 / p95 (deterministic path) | 2.40 / 3.82 ms | `reports/bench.json` |
-| Attack detection, all 724 attack rows / held-out public sets only (balanced, with semantic models) | 92.4 % [90.2–94.1 %] / held-out 89.6 % [86.0–92.3 %] | `reports/eval.json` |
-| False-positive rate, 510 benign rows / held-out only (balanced, with semantic models) | 5.1 % [3.5–7.4 %] / held-out 6.7 % | `reports/eval.json` |
-| Same corpus, deterministic only (`AEGIS_SEMANTIC=off`): detection / held-out / FPR | 66.6 % / 38.9 % / 0.4 % | `reports/eval.json` |
+| Attack detection, all 724 attack rows / held-out public sets only (balanced, with the optional semantic models) | 92.4 % [90.2–94.1 %] / held-out 89.6 % [86.0–92.3 %] | `reports/eval.json` |
+| False-positive rate, 510 benign rows / held-out only (balanced, with the optional semantic models) | 5.1 % [3.5–7.4 %] / held-out 6.7 % | `reports/eval.json` |
+| Same corpus, deterministic only (no models; the default, `AEGIS_SEMANTIC=off`): detection / held-out / FPR | 66.6 % / 38.9 % / 0.4 % | `reports/eval.json` |
 | Gateway overhead p50 / p95 with the injection classifier + embeddings loaded (Qwen3Guard escalations add ≈ 0.3–0.5 s per guard call, see `semantic_status` in `reports/eval.json`) | 13.6 / 45.1 ms | `reports/bench.json` |
 | Redaction leak rate on validated entity types (fixture set) | 0 % | `reports/dlp-metrics.json` |
 | Audit chain verify | 1,273 records | `GET /api/audit/verify` |

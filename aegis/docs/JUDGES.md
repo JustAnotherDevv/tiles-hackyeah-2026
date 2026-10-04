@@ -20,7 +20,8 @@ service by +1000 (gateway :9787, feed :9790), and `uv run --frozen python -m aeg
 `export AEGIS_URL=… AEGIS_FEED_URL=…` line for a second terminal; the demo scripts also take
 `--url http://127.0.0.1:<gateway port>`. Replace `8787` / `8790` below with your ports.
 
-**Models are optional.** Nothing in this guide needs them: without models the semantic controls run on a
+**Models are optional.** Nothing in this guide needs them, and the demo runs deterministic-only by default
+(`make setup` installs no models; `make up ARGS='--semantic off'` forces it): without models the semantic controls run on a
 deterministic heuristic and decisions show `degraded: true`. `make models` *downloads* about 2 GB (ONNX
 into `models/` plus two small Ollama GGUFs); `make models ARGS=--verify` only checks what is already there.
 
@@ -34,7 +35,7 @@ into `models/` plus two small Ollama GGUFs); `make models ARGS=--verify` only ch
 | `make test-live` | the same cases against the **running** gateway and your **current** `config/policy.yaml` (so your edits change the results) | same reports |
 | `make test-sem` | semantic cases (needs Ollama / ONNX models; skipped with a reason, never silently passed) | |
 | `make selftest` | the policy self-test gate: every control's inline `tests:` in `config/policy.yaml` | pass/fail per test |
-| `make eval` | red-team corpora: detection rate and false-positive rate with confidence intervals per profile and language | `reports/eval.json` |
+| `make eval` | red-team corpora: detection rate and false-positive rate with confidence intervals per profile and language. The committed `reports/eval.json` was measured with the optional models on; without models you reproduce the deterministic-only row of the README's [Measured results](../README.md#measured-results) | `reports/eval.json` |
 | `make bench` | gateway overhead p50/p95 per control (deterministic vs semantic) | `reports/bench.json` (also on the Perf page) |
 | `make verify-audit` | re-walks the hash-chained audit log | "chain OK (N records)" |
 
@@ -48,7 +49,8 @@ generated and gitignored, so a run leaves the checkout clean.
 
 Every case asserts **which control decided**, not just "something blocked", and every control needs at
 least one allowed and one blocked case (`tests/test_coverage.py` prints `UNTESTED` otherwise).
-Latest measured totals: 1,045 cases, 0 failures (filled from `reports/` after the final run).
+Latest measured totals (final run, 2026-10-04, deterministic, no models): 2,006 pytest tests passed, 0 failed,
+20 xfailed; the black-box matrix in `reports/matrix.md` is 1,045 cases, 0 failures.
 
 ## 2. Try ad-hoc prompts (Playground)
 

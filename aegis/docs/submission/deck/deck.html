@@ -144,8 +144,8 @@
       <ul class="b"><li>Injection classifier · Qwen3Guard · multilingual NER</li><li>Per-control <code>fail_mode</code>: model down → deterministic-only + <b>degraded</b> flag, never silent pass</li><li>Screens tool results, MCP descriptions, fetched pages, not just the prompt</li><li>Never authorizes anything: tools, budgets, approvals stay deterministic</li></ul></div>
   </div>
   <div class="grid g3" style="flex:none;margin-top:26px">
-    <div class="card"><div class="kpi num">{{TBD: eval.detection_rate}}</div><div class="kpi-l">attack detection · held-out {{TBD: eval.heldout_detection}}</div></div>
-    <div class="card"><div class="kpi num">{{TBD: eval.fpr}}</div><div class="kpi-l">false positives (balanced, 510 benign)</div></div>
+    <div class="card"><div class="kpi num">{{TBD: eval.detection_rate}}</div><div class="kpi-l">attack detection, optional local models on · held-out {{TBD: eval.heldout_detection}} · deterministic only {{TBD: eval.det_detection_rate}}</div></div>
+    <div class="card"><div class="kpi num">{{TBD: eval.fpr}}</div><div class="kpi-l">false positives, models on (510 benign) · deterministic only {{TBD: eval.det_fpr}}</div></div>
     <div class="card"><div class="kpi num" style="font-size:40px">LLM {{TBD: coverage.llm}} · ASI {{TBD: coverage.asi}} · MCP {{TBD: coverage.mcp}}</div><div class="kpi-l">OWASP coverage (live)</div></div>
   </div>
   <div class="foot"><span>INJ-01..05 · DLP-02/04/06 · EXE-01..03 · MCP-01..04 · SIG-01..03</span><span>5 / 10</span></div>
@@ -218,7 +218,7 @@
   <div class="kicker">Self-testing · performance</div>
   <h2>One command proves every control</h2>
   <div class="grid g4" style="flex:none">
-    <div class="card"><div class="kpi num">{{TBD: tests.total}}</div><div class="kpi-l">test cases · <code>make test</code></div></div>
+    <div class="card"><div class="kpi num">{{TBD: tests.total}}</div><div class="kpi-l">black-box cases · <code>make test</code> (+ unit tests: 2,006 pass)</div></div>
     <div class="card"><div class="kpi num">{{TBD: tests.failed}}</div><div class="kpi-l">failed</div></div>
     <div class="card"><div class="kpi num">{{TBD: perf.overhead_p50_ms}} / {{TBD: perf.overhead_p95_ms}}</div><div class="kpi-l">overhead p50 / p95 ms</div></div>
     <div class="card"><div class="kpi num">{{TBD: perf.rps}}</div><div class="kpi-l">requests / s · <code>make bench</code></div></div>

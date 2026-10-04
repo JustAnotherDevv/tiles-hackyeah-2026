@@ -343,6 +343,12 @@ def collect(url: str | None) -> dict[str, dict[str, Any]]:
     collect_dlp(n)
     if url:
         collect_live(n, url)
+    else:
+        # No live gateway this time: keep the previously collected live values (they carry their own
+        # source URL and collected_at), instead of silently dropping them from numbers.json.
+        for key, item in load_numbers().items():
+            if key not in n.items and str(item.get("source", "")).startswith("http"):
+                n.items[key] = item
     doc = {
         "generated_at": _now(),
         "reports_dir": str(REPORTS.relative_to(ROOT))

@@ -80,8 +80,9 @@ precision high, NER catches names, placeholders keep the model useful, real valu
 - Semantic (local models, escalation only): injection classifier, Qwen3Guard, multilingual NER. Per-control
   `fail_mode`; model down → deterministic-only + `degraded` flag, never silent pass-through.
 - Screens untrusted content too: tool results, MCP descriptions, fetched pages.
-- Red-team eval (balanced, with semantic models): detection 92.4 % [90.2–94.1 %], held-out public sets
-  89.6 %, at 5.1 % false positives; deterministic only 66.6 % at 0.4 %.
+- Red-team eval (balanced, measured with semantic models, which are optional): detection 92.4 % [90.2–94.1 %], held-out public sets
+  89.6 %, at 5.1 % false positives; deterministic only (the no-model default) 66.6 %
+  (held-out 38.9 %) at 0.4 %.
 - OWASP coverage (live from the catalog): LLM 9/10 · ASI 10/10 · MCP 10/10.
 
 *Notes (30 s):* "Judges will attack the gaps: a tool result, an MCP description, a base64 payload. We
@@ -104,7 +105,7 @@ approve a $50 subscription; doubling the team budget needs the owner."
 
 - One YAML file: controls, mode, action, threshold, adherence %, models, budgets, approval rules, 4 profiles.
 - Save → validate → **self-test gate** → atomic swap → version stamped on every decision; bad YAML →
-  rejected, last-good keeps serving. Reload p95 584 ms.
+  rejected, last-good keeps serving. Reload p95 1107 ms.
 - External threat feed (:8790): Ed25519-signed, monotonic serial, anti-rollback, inline test vectors;
   tampered bundle → rejected.
 - Visual: threshold 0.80 → 0.50 → toast → verdict flips; feed serial N → N+1 (`screens/policy.png`).
@@ -124,7 +125,8 @@ straight into a SIEM."
 
 ## Slide 9: One command proves every control
 
-- `make test`: 1,045 cases · 0 failed · 179 s; no model needed;
+- `make test`: 2,006 pytest tests pass, 0 fail, 20 xfail; its black-box matrix is 1,045 cases ·
+  0 failed · 134 s; no model needed;
   semantic cases skipped with a reason when models are absent.
 - Per-control matrix: must-block / must-allow / must-redact; asserts *which* control decided; UNTESTED fails the run.
 - False-positive wall: "kill switch", "execute the order", "egzekucja zlecenia" must pass.

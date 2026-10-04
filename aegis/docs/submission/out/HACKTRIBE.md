@@ -50,11 +50,11 @@ Organization governance. Owners, admins, members, and agents as service identiti
 
 Claude Code. Model traffic via ANTHROPIC_BASE_URL, tool calls via a fail-closed PreToolUse hook, MCP servers via our proxy, all from one demo settings profile with no machine-wide changes.
 
-Tech. Python 3.13, FastAPI, SQLite, RE2, ONNX Runtime, Ollama; React dashboard. Runs offline on an 8 GB laptop; remote models optional.
+Tech. Python 3.13, FastAPI, SQLite, RE2, ONNX Runtime, Ollama; React dashboard. Runs offline on an 8 GB laptop; all models optional.
 
-Measured (make eval, 1,234 labelled prompts incl. public held-out sets): 92.4 % attack detection (89.6 % on held-out sets) at 5.1 % false positives; gateway overhead p50 2.40 ms deterministic.
+Measured on 1,234 labelled prompts (make eval): with the optional local models 92.4 % attack detection (89.6 % held-out) at 5.1 % false positives; deterministic only (default) 66.6 % at 0.4 %. make test: 2,006 tests pass. Overhead p50 2.40 ms.
 
-How judges test it. Code: https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis. In aegis/: make setup, make up, open http://127.0.0.1:8787/ui, then make test. Type anything into the Playground, edit config/policy.yaml and watch the next decision change, or publish a feed signature and replay the exploit. Guide: aegis/docs/JUDGES.md.
+How judges test it. Code: https://github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis. In aegis/: make setup, make up, open http://127.0.0.1:8787/ui, then make test. Try the Playground, edit config/policy.yaml and watch the next decision change, or publish a feed signature and replay the exploit. Guide: aegis/docs/JUDGES.md.
 
 Team: JustAnotherDevv
 ```
@@ -132,11 +132,11 @@ Before pasting: repo public; README one-command start works from a clean clone; 
 
 <!-- opening:start -->
 ```text
-Requirements: macOS or Linux, uv (installs Python 3.13), Node 20+ to build the dashboard, optional Ollama for the semantic controls.
+Requirements: macOS or Linux, uv (installs Python 3.13), Node 20.19+ or 22.12+ to build the dashboard. Models are optional: without them the demo runs deterministic-only (the default); make models + Ollama add the semantic controls.
 1. git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026 && cd tiles-hackyeah-2026/aegis
 2. make setup && make web && make up     # gateway :8787, threat feed :8790, mocks :8791-8794
 3. Open http://127.0.0.1:8787/ui and use the view-as switcher (owner u_katarzyna / admin u_emily / member u_piotr)
-4. make test                             # deterministic suite, no model needed
+4. make test                             # deterministic suite, no model needed (2,006 tests + 1,045-case control matrix)
 5. Try to break it: Playground page; edit config/policy.yaml and resend; publish a signature in the feed editor at http://127.0.0.1:8790. Full guide: aegis/docs/JUDGES.md
 Optional: make claude (Claude Code routed through Aegis with a demo settings profile; nothing machine-wide)
 ```
