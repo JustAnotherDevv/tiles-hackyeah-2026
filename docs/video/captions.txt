@@ -1,0 +1,11 @@
+  0.0-  3.6s  [title] Aegis Pocket: Approve AI agents, safely, from your pocket.
+  3.6-  8.6s  [home] Posture at a glance: Pending approvals, threats blocked, personal data redacted and budget left. All numbers are mock data simulated on the device.
+  8.6- 12.6s  [arrival] An agent asks: A simulated agent request arrives (mock data). The app posts a local notification and shows an in-app banner.
+ 12.6- 16.8s  [shade] Open it from the shade: Tapping the notification opens that exact request through a WantAgent deep link.
+ 16.8- 23.8s  [risk] Why a human is asked: A 0-100 risk score with plain-language reasons, computed on the phone. The agent's own note is labelled untrusted and never scored.
+ 23.8- 27.8s  [request] A $50 subscription: This one needs an admin. Acting as Emily (admin); a sponsor can never approve their own agent's request.
+ 27.8- 34.0s  [stepup] Step-up before approving: Approve first asks for face, fingerprint or PIN. The emulator has no authenticator, so the app shows its labelled manual fallback.
+ 34.0- 38.0s  [approved] Decision recorded: Approved after the manual confirmation; the pending count drops. Denying never asks for authentication.
+ 38.0- 45.4s  [preview] What data leaves: The built-in synthetic sample: email, phone, PESEL, IBAN and card number become [EMAIL_1], [PESEL_1]... placeholders, on the phone.
+ 45.4- 49.6s  [widget] On the home screen: The AI posture widget (MOCK badge) shows what is waiting, updated by the app.
+ 49.6- 54.0s  [end] github.com/JustAnotherDevv/tiles-hackyeah-2026: Recorded on the DevEco HarmonyOS emulator. Requests, agents and numbers are mock data simulated on the device.

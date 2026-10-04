@@ -22,6 +22,8 @@ This project uses AI-assisted development. Keep this document current and public
 | DevEco Studio toolchain (hvigor, ohpm, hdc, HarmonyOS SDK 6.1.1(24), CodeLinter) | DevEco Studio 6.1.1.280 for macOS ARM | Driven from the command line by `devecocli` / hvigor: build, lint, local unit tests. The SDK's `.d.ts` files were the ground truth for API signatures |
 | Claude Code "Aegis Pocket implementer" sub-agent | Claude Opus 5.5, launched by the lead session | Implemented the Aegis Pocket app (data layer, UI, Notification Kit, Form Kit widgets, on-device redactor), unit tests, README and this log |
 | Claude Code "platform depth" sub-agent (POCKET2) | Claude Opus 5.5, launched by the lead session in parallel with other agents | Added User Authentication Kit step-up, Sensor Service Kit haptics, Background Tasks Kit WorkScheduler refresh, accessibility labels, the on-device risk explainer, tests, README / HackTribe docs |
+| Claude Code "device verification" sub-agent (POCKET-DEVICE) | Claude Opus 5.5, launched by the lead session | Ran the app on the DevEco HarmonyOS 6.1.1 emulator via `hdc` / `uitest`, fixed a Detail refresh bug found there, captured screenshots and the demo video, updated docs |
+| `oniro-app` CLI + OpenHarmony 6.1 public SDK (API 23) | Installed locally in `.toolchain/` (git-ignored), see `.toolchain/README.md` | No-Huawei-ID build and debug signing of the `.hap` (`scripts/build-ohos-signed.sh`) |
 | DevEco local documentation (`devecocli docs search` / `docs read`) | Bundled with DevEco Studio 6.1.1 (mostly Chinese-language pages, translated by the agent) | Grounding for the User Authentication Kit and WorkScheduler development guides and their constraints |
 
 ## Important prompts and instructions
@@ -47,6 +49,7 @@ This project uses AI-assisted development. Keep this document current and public
 | 2026-10-03 | Claude Code sub-agent (Claude Opus 5.5) | macOS equivalent of the organizers' Windows-only `INSTALLATION_PROMPT.md`, scoped to this project | Installed the 9 organizers' skills into `.claude/skills/`; installed and patched DevEco CLI 1.3.4; added the Hackathon Template files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `HACKATHON_BRIEF.md`, this file, `hackathon-resources/`); set SDK versions (compatible API 20, compile API 23, target API 24); added `scripts/set-deveco-region-cn.sh` and `scripts/install-deveco-templates.sh`; updated README setup | Skill copies and template files diffed byte-for-byte against the organizers' repo; patcher reported the patches applied and `devecocli -V` = 1.3.4. Scripts not run yet (DevEco Studio not installed) |
 | 2026-10-03/04 | Claude Code sub-agent (Claude Opus 5.5) + skills `ohos-app-dev`, `hmos-arkui-develop-skill`, `hmos-arkts-knowledge-retriever`, `hmos-arkui-mvvm-pattern`; `devecocli` | Implement Aegis Pocket (brief above) | `entry/src/main/ets/**` (EntryAbility, Index page, 5 views, shared components, mock/live repositories, eligibility rules, store, NotificationService, WidgetBridge, SettingsStore, FormExtensionAbility, two widget cards, redactor), `module.json5` (form extension, INTERNET permission), `form_config.json`, strings/colors, bundle name `com.hackyeah.aegispocket`, `compileSdkVersion` to the installed `6.1.1(24)`, 10 local unit tests, README rewrite | `devecocli build --modules entry --build-mode debug`: exit 0, unsigned `.hap`. `devecocli check lint`: 0 errors, 7 performance warnings (justified in README). hvigor `test`: 10/10 pass. Redactor regexes also cross-checked in Node. **Not yet run on an emulator/device** (none available); human review of the diff pending |
 | 2026-10-04 | Claude Code sub-agent POCKET2 (Claude Opus 5.5) + skills `ohos-app-dev`, `hmos-arkui-develop-skill`, `hmos-arkts-knowledge-retriever`; `devecocli` | Strengthen platform-capability depth (brief below) | `platform/StepUpAuth.ets`, `platform/Haptics.ets`, `platform/BackgroundRefresh.ets`, `workscheduler/RefreshWorkAbility.ets`, `data/RiskExplainer.ets`, step-up rule in `data/Eligibility.ets`, DetailView risk card + step-up flow + fallback dialog, accessibility attributes across views, Settings "Security & background" section, `module.json5` (ACCESS_BIOMETRIC, VIBRATE, workScheduler extension), 7 new unit tests, README (two-submission note, capability table, demo shot list), `docs/HACKTRIBE_POCKET.md` | Every new API checked against the installed SDK `.d.ts` (`@since`, permissions, error codes) and DevEco's local guides; permissions checked in the SDK's `PermissionDefinitions.json` (all `system_grant`, normal APL). `devecocli build`: exit 0. Lint: 0 errors, the same 7 pre-existing performance hints. Unit tests: 17/17 pass. **Not run on an emulator/device** (none attached); human review of the diff pending |
+| 2026-10-04 | Claude Code sub-agent POCKET-DEVICE (Claude Opus 5.5); `hdc`, `uitest`, `oniro-app` | Verify Aegis Pocket on the DevEco HarmonyOS 6.1.1 (API 24) emulator; screenshots, deck, demo video, docs | Drove the app with `uitest` (dumpLayout + click/swipe) and `snapshot_display`: notification permission, Home, Inbox, Detail risk card, Approve on admin-level requests (User Authentication Kit returned 12500010 = not enrolled for face/fingerprint/PIN, so the labelled manual fallback appeared; confirmed it approves only after the explicit tap), Deny, simulated request + system notification + tap-to-open, Preview with the built-in synthetic sample (email, PESEL, IBAN, card), Settings, widget added via long-press > Widgets. Found and fixed a real bug: the Detail page kept showing "pending" and the Approve/Deny buttons after a successful vote (`@Builder` by-value parameter is not reactive) - now keyed `ForEach` in `views/DetailView.ets`; fallback button label shortened to "Confirm" (was truncated). Saved 8 screenshots to `docs/screenshots/`, rebuilt the deck, recorded the video with `scripts/pocket-video/record.sh` (driver updated to the real labels; typing skipped because the emulator keyboard opens its own terms dialog, which the agent must not accept). Added `scripts/build-ohos-signed.sh` (no-Huawei-ID OpenHarmony debug signing) | Each screen checked by the agent in the pulled screenshots and layout dumps; rebuilt + reinstalled after the fix and re-verified the approve path on the device. Live mode also verified: local gateway, app at `http://10.0.2.2:8787`, the trading copilot's $50 request approved on the phone and the agent completed (gateway recorded the manual step-up marker). Real biometric sheet, haptics and WorkScheduler remain unverified |
 
 ### Platform-depth brief (lead session to POCKET2, summarized)
 
@@ -85,7 +88,9 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 - Lint: `devecocli check lint --format json <project>`; one state-in-loop warning fixed, the custom-component performance
   hints kept on purpose.
 - Tests: hvigor `test` task, results in `entry/.test/default/intermediates/test/coverage_data/test_result.txt` (10 pass).
-- Device/emulator: not available during implementation, so install, launch, notifications and widgets are unverified.
+- Device/emulator: not available during implementation. Later (2026-10-04) verified on the DevEco HarmonyOS 6.1.1
+  emulator with `hdc`/`uitest` and screenshots (see the work log); the OpenHarmony-SDK build signed with the SDK debug
+  keystore installs there without a Huawei ID.
 
 ## Unsuccessful approaches
 
@@ -101,8 +106,8 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 
 ## Known limitations
 
-- Not yet verified on an emulator or device (see README "Known limitations"), including step-up authentication,
-  haptics and the WorkScheduler background task.
+- Verified on the DevEco HarmonyOS emulator except a real biometric/PIN sheet, haptics and the WorkScheduler background
+  task (see README "Known limitations").
 - The DevEco emulator cannot simulate biometrics or vibration; the app falls back to the lock-screen PIN or a labelled
   manual confirmation, and skips haptics.
 - The background task runs at most about every 2 hours, as scheduled by the system; it is a safety net, not real-time.
@@ -118,6 +123,8 @@ Parallel sub-agents: the lead Claude Code session gives each sub-agent a self-co
 
 - Check which SDK DevEco actually bundles before pinning `compileSdkVersion`.
 - For HarmonyOS Kit APIs, the installed SDK's `.d.ts` files are the fastest reliable source (signatures, `@since`, deprecations).
+- ArkUI `@Builder` parameters passed by value do not re-render when the state they came from changes; key the subtree
+  (for example a one-element `ForEach` with a key of the mutable fields) or read state directly. Only an on-device run showed it.
 - Keep view code free of class methods on objects that pass through `AppStorage` / `@Prop` copies; use free helper functions.
 
 ## AI feature disclosure

@@ -170,16 +170,16 @@ Team: [YOUR FIRST NAME SURNAME — EMAIL]
 | Upload | File | Status |
 |---|---|---|
 | 1 (cover) | `docs/cover.png` (1600×900) | ⏳ exists locally (regenerated 04:06), **not yet committed or pushed** |
-| optional | emulator screenshots (Home, Detail with the risk card, step-up sheet, widget) | ⏳ none yet. The app has not run on an emulator or device |
+| optional 2–10 | `docs/screenshots/01-home.jpeg` … `09-live-gateway-approved.jpeg` (1320×2856, DevEco HarmonyOS 6.1.1 emulator, mock data) | ✅ captured 06:16 on the emulator; not yet committed |
 
 ### B5. Presentation (PDF, ≤ 10 slides)
 
-`docs/deck/AegisPocket_HackYeah2026_Huawei.pdf`: ⏳ exists locally, 10 pages (regenerated 04:05). **Not yet committed or pushed.** Open it and check it before uploading.
+`docs/deck/AegisPocket_HackYeah2026_Huawei.pdf`: ✅ 10 pages, regenerated 06:17 with real emulator screenshots on slide 8. **Not yet committed or pushed.** Open it and check it before uploading.
 
 ### B6. Video URL (≤ 60 s; the Huawei rules require a recorded demo)
 
-`docs/video/aegis-pocket-demo-60s.mp4`: ⏳ **does not exist yet**. It needs the emulator (shot list: `docs/HACKTRIBE_POCKET.md`
-"Demo video script"). Upload it to YouTube as Unlisted and paste the URL. Raw-file fallback, once it is pushed:
+`docs/video/aegis-pocket-demo-60s.mp4`: ✅ recorded on the DevEco HarmonyOS 6.1.1 emulator (mock mode, captions label
+mock data), 54.0 s, 1920×1080 H.264, 3.5 MB, silent track, burned-in captions. Cover: `docs/video/cover.png`. Not yet committed. Upload it to YouTube as Unlisted and paste the URL. Raw-file fallback, once it is pushed:
 
 ```text
 https://github.com/JustAnotherDevv/tiles-hackyeah-2026/raw/main/docs/video/aegis-pocket-demo-60s.mp4
@@ -201,7 +201,7 @@ https://github.com/JustAnotherDevv/tiles-hackyeah-2026
 Requirements: macOS on Apple Silicon, DevEco Studio 6.1.1 (bundles HarmonyOS SDK 6.1.1(24), hvigor, ohpm, hdc and the phone emulator), Node 22+, devecocli 1.3.4. Full steps: README.md sections 2-8.
 1. git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026 && cd tiles-hackyeah-2026   (Aegis Pocket is the repository root; aegis/ is a separate entry)
 2. Build: DEVECO_CLI_DISABLE_TELEMETRY=1 devecocli build --modules entry --build-mode debug   -> entry/build/default/outputs/default/entry-default-unsigned.hap
-3. Sign with your own Huawei ID (DevEco: File > Project Structure > Signing Configs > Automatically generate signature), rebuild, then install on a running phone emulator (API 20+): hdc install -r entry/build/default/outputs/default/entry-default-signed.hap
+3. Fastest: install the prebuilt debug-signed .hap from the GitHub Release (or release/ in the repo) on a running DevEco phone emulator: hdc install -r aegis-pocket-debug-signed.hap  (built with the OpenHarmony SDK and its debug keystore, no Huawei ID; rebuild it with: source .toolchain/env.sh && scripts/build-ohos-signed.sh, README §4.1). Or sign with your own Huawei ID in DevEco (README §4.2), rebuild and install entry/build/default/outputs/default/entry-default-signed.hap
 4. Launch: hdc shell aa start -a EntryAbility -b com.hackyeah.aegispocket   (allow notifications on first start)
 5. Try it: the app starts in MOCK mode (labelled; a new simulated agent request every 20-30 s). Open a request, switch persona in the Inbox (Piotr member / Emily admin / Katarzyna owner) to see role rules, Approve to trigger the face/fingerprint/PIN step-up (labelled manual fallback on the emulator), and paste text with an email or PESEL into the Preview tab. Add the "AI posture" service widget from the home screen.
 Optional LIVE mode: run the Aegis gateway (cd aegis && make setup && make up), then Settings > gateway URL http://10.0.2.2:8787 > Live gateway.
@@ -214,15 +214,15 @@ Status as of Sun 4 Oct ~04:15: ✅ = done and pushed (`origin/main` = `6cb94c8`)
 | # | Deliverable | Status | Evidence / what is missing |
 |---|---|---|---|
 | 1 | Public source repository | ✅ | `github.com/JustAnotherDevv/tiles-hackyeah-2026` is PUBLIC; local `HEAD` = `origin/main` |
-| 2 | Setup, build, install and launch instructions | ✅ written / ⏳ install+launch not yet exercised | `README.md` §2–8. The build is verified (devecocli exit 0, lint 0 errors, 17/17 unit tests). `hdc install` / `aa start` have never run (no target) |
-| 3 | Working `.hap` | ⏳ | Built locally: `entry/build/default/outputs/default/entry-default-unsigned.hap` (HarmonyOS, unsigned, gitignored). Also `.toolchain/oniro-build/aegis-pocket/entry/build/default/outputs/default/entry-default-signed.hap` (OpenHarmony SDK debug key, gitignored). **No GitHub Release exists** (`gh release list` is empty), but README §4 says one does. **To do:** sign with a Huawei ID, install on an emulator, then attach the `.hap`(s) to a GitHub Release |
-| 4 | Recorded demonstration | ⏳ | `docs/video/aegis-pocket-demo-60s.mp4` is missing (needs the emulator) |
+| 2 | Setup, build, install and launch instructions | ✅ | `README.md` §2–8. Build verified (devecocli exit 0, lint 0 errors, unit tests); `hdc install` + `aa start` verified on the DevEco HarmonyOS 6.1.1 emulator (06:14) with the no-Huawei-ID build (§4.1, `scripts/build-ohos-signed.sh`) |
+| 3 | Working `.hap` | ✅ runs / ⏳ release | **`release/aegis-pocket-debug-signed.hap`** (OpenHarmony SDK debug keystore, no Huawei ID) installs and runs on the DevEco HarmonyOS 6.1.1 emulator. `*.hap` is git-ignored: attach it to a GitHub Release (or `git add -f`). Older notes: | Built locally: `entry/build/default/outputs/default/entry-default-unsigned.hap` (HarmonyOS, unsigned, gitignored). Also `.toolchain/oniro-build/aegis-pocket/entry/build/default/outputs/default/entry-default-signed.hap` (OpenHarmony SDK debug key, gitignored). **No GitHub Release exists** (`gh release list` is empty), but README §4 says one does. **To do:** sign with a Huawei ID, install on an emulator, then attach the `.hap`(s) to a GitHub Release |
+| 4 | Recorded demonstration | ✅ | `docs/video/aegis-pocket-demo-60s.mp4` (54.0 s, 1920×1080 H.264, 3.5 MB, silent track, burned-in captions), recorded on the emulator; upload unlisted |
 | 5 | Architecture and implementation description | ✅ | `README.md` §9 (mermaid diagram plus data-flow notes) and the "Platform capabilities used" table |
 | 6 | `AI_WORKFLOW.md` | ✅ | `AI_WORKFLOW.md` (tools, prompts, work log, limitations), pushed |
 | 7 | Extra AI documentation for AI-integrated features | ✅ (N/A, declared) | `AI_WORKFLOW.md` "AI feature disclosure": no AI model in the app, and the risk card is rule-based |
 | – | API 20+ minimum | ✅ | `build-profile.json5`: compatible 6.0.0(20), compile/target 6.1.1(24). OpenHarmony build: minAPIVersion 20 (`docs/ONIRO_RUN.md`) |
-| – | Runs on an emulator or device | ⏳ **blocker** | Not yet. README "Known limitations" and `docs/ONIRO_RUN.md` (the Oniro emulator did not finish booting) |
-| – | Demonstrates platform capabilities | ✅ in code / ⏳ on device | User Authentication, Notification, Form, Background Tasks, Sensor, Network Kits and ArkData (README table). None has been exercised on a target yet |
+| – | Runs on an emulator or device | ✅ | DevEco HarmonyOS 6.1.1 (API 24) phone emulator `AegisPhone`, 06:11–06:20; screenshots in `docs/screenshots/` |
+| – | Demonstrates platform capabilities | ✅ | On the emulator: Notification Kit (permission, post, WantAgent tap-to-open), Form Kit widget, User Authentication Kit (availability check → labelled fallback; no authenticator enrolled), ArkData persistence. Network Kit live mode against the real gateway (06:22: trading copilot's $50 request approved on the phone, agent completed; vote recorded as `[step-up: manual (no device authentication)]`). Not exercised on a target: real biometric sheet, Sensor (vibration unsupported), WorkScheduler |
 
 ---
 
@@ -258,7 +258,7 @@ claims.
 
 | Claim | Status | Suggestion |
 |---|---|---|
-| Notification, widget, step-up, haptics, background task "work" | Unverified on a target | Top priority: get one emulator run with screenshots and the video. If that is impossible, add to the description: "Verified by build and unit tests; not yet run on a device." |
+| Notification, widget, step-up, haptics, background task "work" | Notification, widget and step-up fallback ✅ verified on the emulator (06:20); haptics, WorkScheduler and a real biometric sheet still unverified | Top priority: get one emulator run with screenshots and the video. If that is impossible, add to the description: "Verified by build and unit tests; not yet run on a device." |
 | "a stolen or unlocked phone cannot approve a $480 purchase" (original draft) | **Contradicted** by the labelled manual fallback when no authenticator is enrolled | Already replaced in B3 |
 | "Screen-reader labels and font scaling make it usable for everyone" (original draft) | Code only, never tested with a screen reader | Softened in B3 |
 | README §4: "A signed debug build … is attached to the GitHub Release" | **False right now.** No release exists | Create the release (see checklist) or edit the README |

@@ -29,6 +29,15 @@ Experiences** angle (on-device risk explanation for AI agent requests). Organize
 | Bundle name | `com.hackyeah.aegispocket` |
 | Build system | hvigor + ohpm (driven by `devecocli`) |
 
+> **Verified on:** the DevEco **HarmonyOS 6.1.1 phone emulator (API 24)**, 2026-10-04: install, launch, notification
+> permission, Home, Inbox, Detail with the risk card, step-up (labelled manual fallback, because the emulator has no
+> authenticator), Approve, Deny, a simulated request with its system notification and tap-to-open, the "What data
+> leaves" preview and the home-screen widget; **live mode** too: the app reached the Aegis gateway at
+> `http://10.0.2.2:8787`, and approving the trading copilot's real $50 request on the phone (as Emily) let the paused agent
+> finish (`subscription active`). The verified `.hap` was built with the **OpenHarmony SDK** (API 23
+> compile/target, minimum API 20) and signed with the SDK's **debug keystore, no Huawei ID** (section 4).
+> Screenshots: [section Screenshots](#screenshots).
+
 > Compile SDK note: DevEco Studio 6.1.1 bundles only the `6.1.1(24)` SDK, so `compileSdkVersion` is `6.1.1(24)`
 > (with `6.1.0(23)` hvigor fails with "SDK component missing"). The minimum stays API 20.
 
@@ -270,7 +279,26 @@ Installing a `.hap` on the emulator or a device needs a debug signature. An unsi
 3. **Do not commit that block.** Before committing, check `git diff build-profile.json5` and revert
    `signingConfigs` to `[]` (or use `git add -p`). `*.p12`, `*.cer`, `*.p7b` and similar files are git-ignored.
 
-To reproduce from a clean checkout, sign with **your own** Huawei ID (step 1) and build; the signed debug `.hap` only
+### 4.1 Without a Huawei ID (what we used)
+
+We could not complete Huawei real-name verification, so the `.hap` we tested and ship is built against the
+**OpenHarmony 6.1 public SDK (API 23)** and signed with that SDK's **built-in debug keystore**, with no Huawei ID. The
+DevEco HarmonyOS 6.1.1 emulator accepts it.
+
+```bash
+source .toolchain/env.sh             # no-login OpenHarmony SDK + command-line tools + oniro-app (git-ignored; .toolchain/README.md)
+scripts/build-ohos-signed.sh         # -> release/aegis-pocket-debug-signed.hap
+```
+
+The script copies the sources to `.toolchain/oniro-build/aegis-pocket/` (git-ignored) and changes only that copy:
+`runtimeOS: "OpenHarmony"`, compile/target API 23, minimum API 20, `deviceTypes: ["default"]`, no dev dependencies.
+Then `oniro-app sign` writes debug keys and `signingConfigs` into the copy (needs `java`), and `oniro-app build --no-deps`
+builds it. The repository's own `build-profile.json5` stays a HarmonyOS project with `signingConfigs: []`. No keys,
+certificates, profiles or passwords are committed.
+
+### 4.2 With a Huawei ID
+
+To reproduce from a clean checkout with DevEco signing, sign with **your own** Huawei ID (step 1) and build; the signed debug `.hap` only
 installs on emulators/devices covered by that profile. A signed debug build from the team is attached to the GitHub
 Release for convenience (debug profiles expire after about 14 days, see the organizers' FAQ "Signing").
 
@@ -303,8 +331,12 @@ Lint: `devecocli check lint --format json "$(pwd)"` (0 errors; the remaining war
 ```bash
 HDC=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/toolchains/hdc
 $HDC list targets                                  # the emulator/device must be listed
+$HDC install -r release/aegis-pocket-debug-signed.hap   # the OpenHarmony-debug-signed build (section 4.1), verified
+# or, after DevEco signing with a Huawei ID (section 4.2):
 $HDC install -r entry/build/default/outputs/default/entry-default-signed.hap
 ```
+
+`release/aegis-pocket-debug-signed.hap` is also attached to the GitHub Release, if one has been published.
 
 Or `devecocli run --skip-build --module entry --device <name>`. An unsigned `.hap` builds but does not install;
 see section 4 for the debug signature. The emulator must be created and running first (section 3.1 step 4).
@@ -429,9 +461,12 @@ used AI tools; see [AI_WORKFLOW.md](AI_WORKFLOW.md).
 
 ## Known limitations
 
-- Install, launch, notifications, widgets, step-up authentication, haptics and the WorkScheduler task have **not yet
-  been verified on an emulator or device** (no target was available when this version was built). Build, lint and
-  unit tests pass.
+- Verified on the DevEco HarmonyOS 6.1.1 (API 24) emulator: install, launch, notifications (permission, post,
+  tap-to-open), Home, Inbox, Detail, step-up fallback, Approve, Deny, Preview, Settings and adding the widget.
+  **Not verified on a target:** a real face/fingerprint/PIN sheet (the emulator has no authenticator enrolled: User
+  Authentication Kit reports 12500010 for every type, so the labelled manual fallback is shown; any other error or a
+  cancel approves nothing), haptics (vibration not supported: 14600101) and the WorkScheduler background task. Live
+  mode was verified once against a local gateway (`AEGIS_SEMANTIC=off make up`, URL `http://10.0.2.2:8787`). `getPublishedRunningFormInfos` logs 16500100 on the emulator; the widget still renders.
 - The DevEco emulator cannot simulate biometrics or vibration (organizers' FAQ). On it, step-up uses the lock-screen
   PIN if one is set, otherwise the labelled manual fallback; haptics are silently skipped.
 - In-app polling only runs while the app is alive. While it is closed, the WorkScheduler task refreshes the widget and
@@ -458,7 +493,22 @@ The OpenHarmony runtime uses integer API levels. The HarmonyOS runtime uses rele
 API 24 behaviour there.
 Only `@ohos.*` / OpenHarmony APIs are available there. HarmonyOS-only Kits are not.
 
+## Screenshots
+
+Captured on the DevEco HarmonyOS 6.1.1 (API 24) emulator, mock mode (all requests, agents and numbers are simulated
+on the device; the names are fictional personas).
+
+| | | | |
+|---|---|---|---|
+| ![Home](docs/screenshots/01-home.jpeg) Home + in-app banner | ![Risk card](docs/screenshots/02-risk-card.jpeg) Detail, "Why a human is asked" | ![Step-up fallback](docs/screenshots/03-step-up-fallback.jpeg) Step-up: labelled emulator fallback | ![What data leaves](docs/screenshots/04-what-data-leaves.jpeg) On-device redaction preview |
+| ![Inbox](docs/screenshots/05-inbox.jpeg) Inbox, roles, LOCKED reason | ![Notification](docs/screenshots/06-notification.jpeg) System notification | ![Approved](docs/screenshots/07-approved.jpeg) Approved after confirmation | ![Widget](docs/screenshots/08-home-widget.jpeg) Home-screen widget (MOCK) |
+| ![Live](docs/screenshots/09-live-gateway-approved.jpeg) LIVE: real gateway request approved | | | |
+
 ## Demo (≤60 s)
+
+Video: [`docs/video/aegis-pocket-demo-60s.mp4`](docs/video/aegis-pocket-demo-60s.mp4), recorded on the emulator with
+`scripts/pocket-video/record.sh` (see [`docs/video/README.md`](docs/video/README.md)). Planned shot list:
+
 
 Recorded on the DevEco phone emulator in mock mode (label visible), widget already placed on the home screen.
 
@@ -483,9 +533,9 @@ Judging weights: Originality 20, Usefulness 20, Technical execution 20, Platform
 They prefer a **narrow, working** solution over a broad concept.
 
 - [ ] **Public repository**, with commit history that shows progress (small, frequent commits)
-- [ ] **Reproducible instructions** for setup, build, install and launch (sections 3 to 7; build verified, install/launch still to verify on the emulator)
-- [ ] **Working `.hap`**, API 20+, running on an OpenHarmony/HarmonyOS emulator or device (attach it to a GitHub Release)
-- [ ] **Short recorded demo** of the app running on an emulator/device (link here: TODO)
+- [ ] **Reproducible instructions** for setup, build, install and launch (sections 3 to 7; build, install and launch verified on the emulator)
+- [x] **Working `.hap`**, API 20+, running on the DevEco HarmonyOS 6.1.1 emulator: `release/aegis-pocket-debug-signed.hap` (attach it to a GitHub Release)
+- [x] **Short recorded demo** of the app running on the emulator: `docs/video/aegis-pocket-demo-60s.mp4` (upload link: TODO)
 - [x] **Architecture description** (section 9)
 - [ ] **`AI_WORKFLOW.md`**: models, agents, MCP servers, main prompts, workflow, validation, lessons learned
 - [x] **AI feature docs**, if the app has AI features (section 10: not applicable)

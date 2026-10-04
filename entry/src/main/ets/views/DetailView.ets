@@ -72,7 +72,12 @@ export struct DetailView {
         .width('100%')
         .padding(Space.XL)
       } else {
-        this.content(this.item() as ApprovalItem)
+        // @Builder parameters passed by value are not reactive: key the subtree on the fields a vote, refresh or
+        // persona switch can change so the page re-renders when the store publishes a new copy of this request.
+        ForEach([this.item() as ApprovalItem], (it: ApprovalItem) => {
+          this.content(it)
+        }, (it: ApprovalItem) => it.id + '|' + it.status + '|' + it.votes.length + '|' + it.syncing + '|' +
+          it.canVote + '|' + it.whyNot + '|' + it.expiresAtMs + '|' + it.decidedAtMs)
       }
     }
     .title('Request')
@@ -714,7 +719,7 @@ export struct DetailView {
         'PIN is set.\n\nFALLBACK (not biometric): confirm manually to approve "' + it.title + '".',
       buttons: [
         { text: 'Cancel', color: Colors.TEXT_DIM },
-        { text: 'Approve without biometrics', color: Colors.WARN }
+        { text: 'Confirm', color: Colors.WARN }
       ]
     }).then((r: promptAction.ShowDialogSuccessResponse) => {
       if (r.index === 1) {

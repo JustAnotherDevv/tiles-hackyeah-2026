@@ -56,9 +56,10 @@ example a lock script on a low-memory machine).
    4. request detail scrolled to the "Why a human is asked" risk card and the untrusted agent note
    5. Inbox → the seeded $50 MarketPulse Pro request
    6. Approve → step-up: on the emulator, the app's labelled "Device authentication unavailable" fallback dialog
-   7. "Approve without biometrics" → toast → back to the inbox
-   8. Preview tab: synthetic email, PESEL, IBAN and card number typed in (`shots.json` → `sample_text`), scrolled to
-      the redacted result; falls back to the built-in synthetic sample if typing fails
+   7. the fallback dialog's "Confirm" → toast → back to the inbox
+   8. Preview tab: "Load sample" (the built-in synthetic text: email, phone, PESEL, IBAN, card number), scrolled to the
+      redacted result. Typing is not used: on the emulator the first keyboard use opens the IME's own terms dialog,
+      which the script must not accept
    9. Home key → the widget, if placed
 3. **Capture**: a background thread runs `hdc shell snapshot_display -f` in a loop (the DevEco emulator does not
    support screen recording) and labels every frame with the active beat. Frames are pulled at the end.
@@ -84,5 +85,6 @@ example a lock script on a low-memory machine).
 - No voice-over. The voice-over script is in `docs/HACKTRIBE_POCKET.md`.
 - Screenshots come at a few frames per second, so motion is shown as a fast slideshow, not real-time video.
 - The driver's text matching assumes the emulator UI is in English (the permission dialog also accepts "允许").
-- Status: dry-run assembly (placeholder frames) verified; the device path has not been run yet, because the emulator
-  was not running when the pipeline was written. Review the first real output before publishing.
+- Status: run on the DevEco HarmonyOS 6.1.1 (API 24) emulator on 2026-10-04 (`--no-install`, app built and signed with
+  `scripts/build-ohos-signed.sh`). Remove old Aegis notifications from the shade before a run: mock mode re-seeds on
+  start, so a stale notification would open "Request not found".

@@ -374,12 +374,12 @@ def main() -> int:
     cap.set_beat("stepup")
     ui.tap("Approve", exact=True)
     # Only the app's own fallback dialog has these strings; anything else is the system sheet.
-    hit = ui.wait_for(["Device authentication unavailable", "Approve without biometrics"], timeout=10)
+    hit = ui.wait_for(["Device authentication unavailable"], timeout=10)
     hold(2.2)
     cap.set_beat("approved")
     if hit is not None:
         variants["stepup"] = variants["approved"] = "default"
-        ui.tap("Approve without biometrics")
+        ui.tap("Confirm", exact=True)  # the fallback dialog's labelled manual-confirmation button
     else:
         log("system authentication sheet (or nothing) shown: cancelling, nothing is approved")
         variants["stepup"] = variants["approved"] = "sheet"
@@ -392,22 +392,12 @@ def main() -> int:
     cap.set_beat("preview")
     ui.tap("Preview", exact=True)
     hold(1.0)
-    area = ui.find("Type or paste") or ui.find("", node_type="TextArea")
-    text = shots["sample_text"]
-    variants["preview"] = "default"
-    if area is not None:
-        ui.click(*area.center)
-        hold(0.8)
-        ui.type_text(text, *area.center)
-        hold(1.2)
-    else:
-        log("TextArea not found")
-    if ui.find("[PESEL_1]", on_screen=False) is None:
-        log("typed text not detected; using the built-in synthetic sample")
-        variants["preview"] = "sample"
-        ui.tap("Clear", exact=True, timeout=2)
-        ui.tap("Load sample", exact=True)
-        hold(1.0)
+    # Typing is skipped: on the emulator the first keyboard use opens the IME's own terms dialog, which this script
+    # must not accept. The built-in synthetic sample has the same identifiers (email, phone, PESEL, IBAN, card).
+    variants["preview"] = "sample"
+    ui.tap("Clear", exact=True, timeout=2)
+    ui.tap("Load sample", exact=True)
+    hold(1.0)
     hold(1.0)
     # No Back key here: with the keyboard already hidden it would leave the app.
     ui.scroll_into_view("WHAT WOULD LEAVE THE DEVICE", target_frac=0.2, exact=True)
