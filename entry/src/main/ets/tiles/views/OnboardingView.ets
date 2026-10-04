@@ -794,6 +794,8 @@ export struct OnboardingView {
           .fontColor(this.pal().accent)
       }
       .height(48)
+      .width(`calc(100% - ${STAGE_PAD_X * 2}vp)`)
+      .justifyContent(FlexAlign.Center)
       .padding({ left: 16, right: 16 })
       .borderRadius(TilesTheme.LL_RADIUS_PILL)
       .backgroundColor(this.pal().surface)
@@ -876,10 +878,13 @@ export struct OnboardingView {
         Text(c.line)
           .fontFamily(LL_FONT_FAMILY)
           .fontSize(15)
+          // One line, shrink-to-fit: a 2-line wrap left single orphan words ("aloud", "approves", "targets").
+          .maxFontSize(15)
+          .minFontSize(11)
           .lineHeight(19)
           .fontColor(TilesTheme.tile(c.color, false, this.dark).on)
           .opacity(0.85)
-          .maxLines(2)
+          .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)

@@ -34,11 +34,16 @@ export class Speech {
       Speech.stop();
     }, ms);
 
+    // The UI shows its own speaking state; keep the toast to one short line and never cover the Guardian call
+    // screen (its hang-up button sits where toasts appear).
+    const quiet: boolean = tileId.indexOf('guardian') >= 0;
     if (Speech.screenReaderOn()) {
       Speech.announce(t);
-      TilesPlatform.toast('Reading aloud');
-    } else {
-      TilesPlatform.toast('Speaking… "' + Speech.short(t) + '" (voice needs the screen reader)');
+      if (!quiet) {
+        TilesPlatform.toast('Reading aloud');
+      }
+    } else if (!quiet) {
+      TilesPlatform.toast('Reading aloud · voice needs the screen reader');
     }
   }
 

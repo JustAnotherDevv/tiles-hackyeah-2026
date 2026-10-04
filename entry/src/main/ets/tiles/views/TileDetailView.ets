@@ -464,8 +464,8 @@ export struct TileDetailView {
           this.sep()
           this.listRow({
             icon: $r('sys.symbol.wand_and_stars'),
-            label: 'Ask Tiles to change this',
-            sub: 'Bigger, simpler, another time…',
+            label: 'Change with Tiles',
+            sub: 'Bigger, simpler, new time',
             iconBg: this.pal().surface2,
             iconFg: this.pal().accent,
             fg: this.pal().ink,
@@ -556,11 +556,12 @@ export struct TileDetailView {
           .height(360)
           .linearGradient({
             angle: 180,
-            colors: [[withAlpha(this.colors(this.cur()).bg2, this.dark ? 0.22 : 0.38), 0.0],
+            // Ramps in from transparent: the window is not full screen, so a wash that starts at full strength
+            // draws a hard edge against the plain status bar.
+            colors: [[withAlpha(this.colors(this.cur()).bg2, 0.0), 0.0],
+              [withAlpha(this.colors(this.cur()).bg2, this.dark ? 0.22 : 0.38), 0.4],
               [withAlpha(this.colors(this.cur()).bg1, 0.0), 1.0]]
           })
-          // Wash continues under the status bar (no hard band at the top edge).
-          .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
           .hitTestBehavior(HitTestMode.Transparent)
 
         Column() {

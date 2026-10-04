@@ -148,7 +148,7 @@ export struct GuardianView {
   @State samples: GuardianSample[] = Guardian.samples();
   @State sample: GuardianSample = Guardian.samples()[0];
   @State verdict: GuardianVerdict = new GuardianVerdict();
-  @State phase: string = 'listening'; // ring | listening | done
+  @State @Watch('onPhase') phase: string = 'listening'; // ring | listening | done
   @State lines: ShownLine[] = [];
   @State flagsShown: RedFlag[] = [];
   @State meter: number = 0; // animated bar 0..100
@@ -190,6 +190,42 @@ export struct GuardianView {
   aboutToDisappear(): void {
     this.alive = false;
     this.clearTimers();
+    this.styleBars(false);
+  }
+
+  onPhase(): void {
+    this.styleBars(this.phase === 'ring');
+  }
+
+  /**
+   * The window is not laid out full screen, so the status / navigation bars keep their own color. While the dark
+   * incoming-call screen is up they take the call gradient's colors (no light band above it); afterwards they go
+   * back to the app's bar colors (same values as pages/Index.ets).
+   */
+  private styleBars(call: boolean): void {
+    try {
+      const ctx: common.UIAbilityContext = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      const dark: boolean = this.dark;
+      const ink: string = dark ? '#F3F5FF' : '#1D2140';
+      window.getLastWindow(ctx).then((win: window.Window) => {
+        win.setWindowSystemBarProperties(call ? {
+          statusBarColor: '#1D2140',
+          statusBarContentColor: '#F3F5FF',
+          navigationBarColor: '#2E3466',
+          navigationBarContentColor: '#F3F5FF'
+        } : {
+          statusBarColor: dark ? '#1A1D38' : '#EDF1FC',
+          statusBarContentColor: ink,
+          navigationBarColor: dark ? '#1E1A30' : '#FFF3EA',
+          navigationBarContentColor: ink
+        }).catch(() => {
+          // System bar styling is cosmetic.
+        });
+      }).catch(() => {
+      });
+    } catch (e) {
+      // no window (preview)
+    }
   }
 
   private loadProfile(): Profile {
