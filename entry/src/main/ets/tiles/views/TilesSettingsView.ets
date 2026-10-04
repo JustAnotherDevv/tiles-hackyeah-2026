@@ -217,9 +217,7 @@ export struct TilesSettingsView {
                   p.readAloud = on;
                 });
               })
-            this.toggleRow('Dark mode', 'Warm dark background', 'moon_fill', this.dark, (on: boolean) => {
-              applyDarkMode(on);
-            })
+            this.darkRow()
           }
           .padding(TilesTheme.SPACE_L)
           .borderRadius(TilesTheme.RADIUS_TILE)
@@ -402,6 +400,37 @@ export struct TilesSettingsView {
         .selectedColor(this.pal().success)
         .onChange((on: boolean) => onChange(on))
         .accessibilityText(title)
+    }
+    .width('100%')
+    .constraintSize({ minHeight: TilesTheme.tapTarget(this.profile) })
+  }
+
+  /** Dark-mode row reads this.dark directly (a by-value @Builder param does not re-render the switch). */
+  @Builder
+  darkRow() {
+    Row({ space: 12 }) {
+      SymbolGlyph(this.glyph('moon_fill'))
+        .fontSize(24)
+        .fontColor([this.pal().text])
+      Column({ space: 2 }) {
+        Text('Dark mode')
+          .fontSize(this.ty().body)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.pal().text)
+        Text('Warm dark background')
+          .fontSize(this.ty().caption)
+          .fontColor(this.pal().textMuted)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      Toggle({ type: ToggleType.Switch, isOn: this.dark })
+        .selectedColor(this.pal().success)
+        .onChange((on: boolean) => {
+          if (on !== this.dark) {
+            applyDarkMode(on);
+          }
+        })
+        .accessibilityText('Dark mode')
     }
     .width('100%')
     .constraintSize({ minHeight: TilesTheme.tapTarget(this.profile) })

@@ -1,3 +1,4 @@
+import { clockLabel } from '../platform/Clock';
 import { Profile, TileAction, TileSpec } from '../model/Tile';
 import { K_LIST, K_PROFILE, TileStore } from '../data/TileStore';
 import { TileColors, ThemePalette, TilesTheme, TypeScale, withAlpha } from '../theme/TilesTheme';
@@ -31,9 +32,7 @@ function timeLabel(ms: number): string {
     return '';
   }
   const d: Date = new Date(ms);
-  const mm: number = d.getMinutes();
-  return 'Added ' + d.getDate().toString() + '.' + (d.getMonth() + 1).toString() + ' at ' + d.getHours().toString() +
-    ':' + (mm < 10 ? '0' + mm.toString() : mm.toString());
+  return 'Added ' + d.getDate().toString() + '.' + (d.getMonth() + 1).toString() + ' at ' + clockLabel(d);
 }
 
 /**

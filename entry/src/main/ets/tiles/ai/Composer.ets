@@ -544,13 +544,15 @@ export class Composer {
     }
     const time = s.times.length > 0 ? s.times[0] : '18:00';
     const day = s.day.length > 0 ? dayLabel(s.day, s.lang) : L(s, 'Today', 'Dziś');
-    const title = short(what, 22) + ' ' + hm(time);
-    d.tiles.push(f.make('reminder', title, day + ' · ' + hm(time), 'bell_fill', 'sun', sz(p, '2x1'), [
-      bigBlock(hm(time), day),
-      textBlock(short(what, 80)),
-      buttonsBlock([act(L(s, 'Done', 'Zrobione'), 'done', 'reminder'),
-        act(L(s, 'Snooze 1 h', 'Później (1 h)'), 'remind', '60')])
-    ], L(s, 'Reminder ', 'Przypomnienie ') + day + ' ' + hm(time) + ': ' + what + '.'));
+    // The time is shown once (big value); title = what, subtitle = day. Full text only when the title truncates it.
+    const title = short(what, 22);
+    const blocks: TileBlock[] = [bigBlock(hm(time), '')];
+    if (title !== what) {
+      blocks.push(textBlock(short(what, 80)));
+    }
+    blocks.push(buttonsBlock([act(L(s, 'Done', 'Zrobione'), 'done', 'reminder'),
+      act(L(s, 'Snooze 1 h', 'Później (1 h)'), 'remind', '60')]));
+    d.tiles.push(f.make('reminder', title, day, 'bell_fill', 'sun', sz(p, '2x1'), blocks, L(s, 'Reminder ', 'Przypomnienie ') + day + ' ' + hm(time) + ': ' + what + '.'));
     d.replies.push(L(s, 'I will remind you ' + (s.day.length > 0 && s.day !== 'today' && s.day !== 'tomorrow' ? 'on ' + day :
       day.toLowerCase()) + ' at ' + hm(time) + '.',
       'Przypomnę ' + day.toLowerCase() + ' o ' + hm(time) + '.'));

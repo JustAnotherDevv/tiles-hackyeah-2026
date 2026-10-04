@@ -1,3 +1,4 @@
+import { clockLabel } from './Clock';
 import { Profile, TileAction, TileBlock, TileSpec } from '../model/Tile';
 import { cloneTile, TileStore } from '../data/TileStore';
 import { Calls } from './Calls';
@@ -10,13 +11,8 @@ import { PlatformKeys, TilesPlatform, TLog } from './TilesPlatform';
 /** In-app routes accepted by a 'navigate' action (anything else is treated as a place for directions). */
 const ROUTES: string[] = ['guardian', 'caregiver', 'settings', 'onboarding', 'assistant'];
 
-function pad2(v: number): string {
-  return v < 10 ? '0' + v.toString() : v.toString();
-}
-
 function nowHHMM(): string {
-  const d: Date = new Date();
-  return d.getHours().toString() + ':' + pad2(d.getMinutes());
+  return clockLabel(new Date());
 }
 
 /**
