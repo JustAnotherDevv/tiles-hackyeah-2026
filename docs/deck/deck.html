@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920">
+<title>Aegis Pocket: Approve AI Agents</title>
+<!--
+  10 print-ready 1920x1080 slides: HackTribe PDF for the Huawei "Imagine What's Next" entry.
+  Build: docs/deck/build.sh  (headless Chrome -> AegisPocket_HackYeah2026_Huawei.pdf + docs/cover.png)
+  Screenshots: drop real emulator/device PNGs into docs/screenshots/ and re-run build.sh.
+  build.sh writes shots.js (window.SHOTS = [...]); without it slide 8 shows a placeholder frame.
+  Style follows aegis/docs/submission/deck/deck.html; colours from entry/src/main/ets/common/Theme.ets.
+-->
+<link rel="stylesheet" href="deck.css">
+<script src="shots.js" onerror="window.SHOTS=[]"></script>
+</head>
+<body>
+
+<!-- 1 Title -->
+<section class="slide" id="s1">
+  <div class="title-grid">
+    <div>
+      <div class="logo">
+        <svg width="84" height="96" viewBox="0 0 48 55" aria-hidden="true"><path d="M24 2 L44 9 V26 C44 39 35 48 24 53 C13 48 4 39 4 26 V9 Z" fill="none" stroke="#4F8CFF" stroke-width="3.5"/><path d="M15 27 L22 34 L34 20" fill="none" stroke="#2FD08A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="kicker">HackYeah 2026 · Huawei · Imagine What's Next</div>
+      </div>
+      <h1 style="font-size:118px;margin-top:44px">Aegis Pocket</h1>
+      <div class="sub" style="font-size:46px;color:var(--text-1);margin-top:10px">Approve AI Agents</div>
+      <div class="sub" style="margin-top:30px;max-width:900px">A native HarmonyOS app that puts a human back in the loop when an AI agent wants to do something risky.</div>
+      <div style="margin-top:44px">
+        <span class="pill p-accent">ArkTS + ArkUI</span><span class="pill p-good">API 20+ · target API 24</span><span class="pill p-violet">Human-Centric</span><span class="pill p-sky">Intelligent</span>
+      </div>
+    </div>
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="ph-status"><span>9:41</span><span class="ph-badge">MOCK</span></div>
+        <div class="ph-notif">
+          <div class="ph-app"><span class="dot"></span>Aegis Pocket · now</div>
+          <div class="ph-t">Approval needed: requires admin</div>
+          <div class="ph-b">trading-copilot wants to: Buy MarketPulse Pro (mp-pro-monthly) ($50.00)</div>
+        </div>
+        <div class="ph-card">
+          <div class="ph-h">Why a human is asked</div>
+          <div class="ph-score"><span class="big">33</span><span>/100 · medium</span></div>
+          <div class="ph-bar"><i style="width:33%"></i></div>
+          <ul><li>ACT-01 Spend guard</li><li>Moves money: $50</li><li>Needs an admin, not the agent's sponsor</li><li>Agent note: untrusted, not scored</li></ul>
+        </div>
+        <div class="ph-actions"><span class="deny">Deny</span><span class="ok">Approve · Face / PIN</span></div>
+      </div>
+      <div class="illus">Illustration in HTML/CSS, not an app screenshot</div>
+    </div>
+  </div>
+  <div class="foot"><span>Team: JustAnotherDevv</span><span class="mono">github.com/JustAnotherDevv/tiles-hackyeah-2026</span></div>
+</section>
+
+<!-- 2 Problem -->
+<section class="slide" id="s2">
+  <div class="kicker">The problem</div>
+  <h2>Agents act for us. Humans are out of the loop.</h2>
+  <div class="sub">AI agents now buy subscriptions, read company databases, deploy code and email customers. When one wants to do something risky, someone has to say yes or no, quickly and safely, and that person is rarely at a desk.</div>
+  <div class="grid g4">
+    <div class="card"><h3 style="color:var(--warn)">Spend</h3><p>"Research agent wants to spend $50 on a SaaS subscription." Who approves it, and on what evidence?</p></div>
+    <div class="card"><h3 style="color:var(--bad)">Data</h3><p>"Read the customers table (contains PII)." Personal data can leave the organisation in one tool call.</p></div>
+    <div class="card"><h3 style="color:var(--violet)">Authority</h3><p>The agent's sponsor should not approve its own large spend. Roles and separation of duties live in a web console nobody watches.</p></div>
+    <div class="card"><h3 style="color:var(--sky)">Manipulation</h3><p>The agent explains itself, but that text can be prompt-injected. Approvers need facts, not the agent's sales pitch.</p></div>
+  </div>
+  <div class="needs">
+    <div class="kpi-l">What an approver needs</div>
+    <div class="nrow"><span><b>Reach</b> where they are: the phone</span><span><b>Context</b> facts, not the agent's pitch</span><span><b>Authority</b> the right role decides</span><span><b>Assurance</b> it is really them</span></div>
+  </div>
+  <div class="note">Result: approvals either block the agent for hours or get rubber-stamped. Neither is human oversight.</div>
+  <div class="foot"><span>Aegis Pocket · Approve AI Agents</span><span>2 / 10</span></div>
+</section>
+
+<!-- 3 Solution -->
+<section class="slide" id="s3">
+  <div class="kicker">The solution</div>
+  <h2>The approval desk moves to your phone</h2>
+  <div class="sub">Aegis Pocket is the human-in-the-loop front end for the Aegis gateway (our separate AI guardrails project). The gateway decides <i>that</i> a human must be asked; the phone makes asking fast, informed and safe.</div>
+  <div class="grid g3">
+    <div class="card"><div class="step">1</div><h3>Reach the right person</h3><p>A <b>notification</b> the moment a request needs a human; tap it and the request opens. A <b>home-screen widget</b> shows pending count, blocked threats, redacted personal data and budget left.</p></div>
+    <div class="card"><div class="step">2</div><h3>Decide with facts</h3><p>Who asked, which sponsor is responsible, amount, failed policy checks, expiry countdown, and a <b>"Why a human is asked"</b> risk score computed on the device.</p></div>
+    <div class="card"><div class="step">3</div><h3>Approve safely</h3><p>Buttons follow your <b>role</b> (member / admin / owner, two-person rule). Risky approvals need <b>face, fingerprint or PIN</b>. Deny never does: fail-safe direction.</p></div>
+  </div>
+  <div class="strip">
+    <div class="st"><b>Agent asks</b>tool call, spend or data access</div><div class="ar">→</div>
+    <div class="st"><b>Gateway</b>policy: <code>require_approval</code></div><div class="ar">→</div>
+    <div class="st ph"><b>Phone</b>notification + widget</div><div class="ar">→</div>
+    <div class="st ph"><b>Human</b>risk card, role check, face / PIN</div><div class="ar">→</div>
+    <div class="st"><b>Gateway</b>approved or denied; agent continues or stops</div>
+  </div>
+  <div class="note"><b>Mock mode</b> (default, labelled <span class="pill p-warn sm">MOCK</span> in the header) simulates the gateway on the device, so the app demos without a server. <b>Live mode</b> talks to the real gateway over HTTP.</div>
+  <div class="foot"><span>Lead theme: Human-Centric Technology · angle: Intelligent Experiences</span><span>3 / 10</span></div>
+</section>
+
+<!-- 4 Key flows -->
+<section class="slide" id="s4">
+  <div class="kicker">Key flows</div>
+  <h2>Three things the phone does better than a console</h2>
+  <div class="grid g3">
+    <div class="card flow">
+      <h3 style="color:var(--accent)">Notification → step-up approve</h3>
+      <ol>
+        <li>New pending request → <b>Notification Kit</b> notification + in-app banner + haptic cue.</li>
+        <li>Tap → WantAgent deep link → <code>onNewWant</code> opens the request detail.</li>
+        <li><b>Approve</b> on admin / owner / two-person requests or anything ≥ $100 → system face / fingerprint / PIN sheet (ATL3, 32-byte random challenge).</li>
+        <li>No authenticator (e.g. emulator) → dialog <i>"Device authentication unavailable"</i> with a labelled manual fallback.</li>
+      </ol>
+    </div>
+    <div class="card flow">
+      <h3 style="color:var(--violet)">Role-locked approvals</h3>
+      <ol>
+        <li>Personas: Piotr (member), Emily / Marek (admin), Katarzyna (owner).</li>
+        <li>$50 subscription needs an admin; $480 seats need owner + admin; budget raise $60 → $150 needs the owner; reading the PII table needs an admin.</li>
+        <li>Otherwise Approve shows <b>LOCKED</b> with the reason: <i>"Requires owner (you are admin)"</i>, <i>"Separation of duties"</i>.</li>
+        <li>Optimistic vote; rolled back with the gateway's reason on 403 / 409.</li>
+      </ol>
+    </div>
+    <div class="card flow">
+      <h3 style="color:var(--warn)">Risk explainer</h3>
+      <ol>
+        <li>Deterministic 0-100 score from the gateway's policy data: control that fired, amount, budget increase, required role, production, sensitive data, data egress, failed checks.</li>
+        <li>Plain-language reasons; levels low / medium (≥ 30) / high (≥ 60).</li>
+        <li>The agent's own note is shown, labelled <b>agent-supplied, untrusted</b>, and <b>never scored</b>.</li>
+        <li>Rule-based on the device: no model, no network.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="foot"><span><code>data/Eligibility.ets</code> · <code>data/RiskExplainer.ets</code> · <code>views/DetailView.ets</code></span><span>4 / 10</span></div>
+</section>
+
+<!-- 5 Platform capabilities -->
+<section class="slide" id="s5">
+  <div class="kicker">Use of platform capabilities</div>
+  <h2>Built on HarmonyOS Kits, not a web view</h2>
+  <table class="cap">
+    <thead><tr><th>Capability</th><th>Kit / API</th><th>Where in code (<span class="mono">entry/src/main/ets/</span>)</th></tr></thead>
+    <tbody>
+      <tr><td>Notifications + tap-to-open</td><td>Notification Kit <code>publish</code>, <code>requestEnableNotification</code>; Ability Kit <code>wantAgent</code></td><td class="mono">platform/NotificationService.ets · entryability/EntryAbility.ets</td></tr>
+      <tr><td>Service widgets 2x2 and 2x4</td><td>Form Kit <code>FormExtensionAbility</code>, <code>formProvider.updateForm</code>, <code>postCardAction</code></td><td class="mono">formability/PostureFormAbility.ets · widget/pages/* · platform/WidgetBridge.ets</td></tr>
+      <tr><td>Step-up before risky approvals</td><td>User Authentication Kit <code>getAvailableStatus</code>, <code>getUserAuthInstance</code> (face / fingerprint / PIN, ATL3); Crypto <code>createRandom</code></td><td class="mono">platform/StepUpAuth.ets · views/DetailView.ets</td></tr>
+      <tr><td>Haptics on approve / deny / new request</td><td>Sensor Service Kit <code>vibrator.startVibration</code> (preset <code>haptic.notice.*</code>)</td><td class="mono">platform/Haptics.ets</td></tr>
+      <tr><td>Background refresh while closed</td><td>Background Tasks Kit <code>workScheduler.startWork</code>, <code>WorkSchedulerExtensionAbility</code> (network-gated, ~2 h)</td><td class="mono">platform/BackgroundRefresh.ets · workscheduler/RefreshWorkAbility.ets</td></tr>
+      <tr><td>Live mode to the gateway</td><td>Network Kit <code>http.createHttp().request</code>, header <code>X-Aegis-View-As</code></td><td class="mono">data/LiveRepository.ets</td></tr>
+      <tr><td>Settings shared with the widget</td><td>ArkData Preferences</td><td class="mono">platform/SettingsStore.ets · platform/WidgetBridge.ets</td></tr>
+      <tr><td>UI + accessibility</td><td>ArkUI <code>Navigation</code>, <code>Tabs</code>, animations; <code>accessibilityText</code>, <code>fp</code> fonts, <code>minHeight</code> buttons</td><td class="mono">pages/Index.ets · views/* · components/Common.ets</td></tr>
+    </tbody>
+  </table>
+  <div class="note sm">Permissions: <code>INTERNET</code>, <code>ACCESS_BIOMETRIC</code>, <code>VIBRATE</code> (all <code>system_grant</code>, normal APL: an ordinary app, no system privileges).</div>
+  <div class="foot"><span>Stage model: UIAbility + FormExtensionAbility + WorkSchedulerExtensionAbility</span><span>5 / 10</span></div>
+</section>
+
+<!-- 6 Privacy -->
+<section class="slide" id="s6">
+  <div class="kicker">On-device privacy · "What data leaves"</div>
+  <h2>See what an AI model would receive, before it is sent</h2>
+  <div class="grid g2" style="grid-template-rows:auto 1fr;flex:none">
+    <div class="card"><h3>What you typed</h3><div class="wire">Hi, please summarise the complaint from Anna Kowalska (<span class="gone">anna.kowalska@example.com</span>, tel. <span class="gone">+48 601 234 567</span>). Her PESEL is <span class="gone">44051401359</span> and the refund should go to <span class="gone">PL61 1090 1014 0000 0712 1981 2874</span>. She paid with card <span class="gone">4111 1111 1111 1111</span>.</div></div>
+    <div class="card" style="border-color:var(--accent)"><h3 style="color:var(--accent)">What leaves the device</h3><div class="wire">Hi, please summarise the complaint from Anna Kowalska (<span class="tok">[EMAIL_1]</span>, tel. <span class="tok">[PHONE_1]</span>). Her PESEL is <span class="tok">[PESEL_1]</span> and the refund should go to <span class="tok">[IBAN_1]</span>. She paid with card <span class="tok">[PAN_1]</span>.</div></div>
+  </div>
+  <ul class="b" style="margin-top:30px">
+    <li><b>Validators, not bare regex:</b> PESEL weights 1-3-7-9 + control digit, Luhn for card numbers, IBAN mod-97. Invalid numbers are left alone.</li>
+    <li><b>Runs in ArkTS on the device:</b> no network, nothing stored; logs never contain payloads. Findings list shows masked values only (card: first 6 / last 4).</li>
+    <li><b>Same contract as the gateway:</b> entity names and stable <code>[ENTITY_N]</code> placeholders mirror Aegis's local-first redaction. Names are not detected (no NER model on the phone).</li>
+  </ul>
+  <div class="foot"><span>Fictional sample; identifiers are synthetic test values that pass the checksums · <code>redaction/Redactor.ets</code></span><span>6 / 10</span></div>
+</section>
+
+<!-- 7 Architecture -->
+<section class="slide" id="s7">
+  <div class="kicker">Architecture</div>
+  <h2>Agents → gateway → phone, and back</h2>
+  <div class="arch">
+    <div class="col agents">
+      <div class="lbl">AI agents</div>
+      <div class="box">Claude Code</div>
+      <div class="box">Local Ollama agent</div>
+      <div class="box">Research / ops agents</div>
+    </div>
+    <div class="arrow"><span>tool call · spend · data access</span><i></i><span class="dim">policy says <b>require_approval</b></span></div>
+    <div class="col gw">
+      <div class="lbl">Aegis gateway :8787</div>
+      <div class="box big">Policy · budgets · roles<br>approvals queue · redaction<br><span class="dim">separate project, <span class="mono">aegis/</span></span></div>
+      <div class="api mono">GET /api/approvals<br>POST /api/approvals/{id}/approve|deny<br>GET /api/stats · GET /api/whoami</div>
+    </div>
+    <div class="arrow both"><span>HTTP polling every 4 s (live mode)</span><i></i><span class="dim">403 / 409 → rollback + reason</span></div>
+    <div class="col phone-col">
+      <div class="lbl">HarmonyOS phone · Aegis Pocket</div>
+      <div class="layer"><b>ArkUI views</b> Home · Inbox · Detail · Preview · Settings <span class="sep"></span> <b>Widget cards</b> 2x2 · 2x4</div>
+      <div class="layer"><b>PocketStore</b> state, polling, optimistic votes → <b>AppStorage</b> (<code>@StorageProp</code>)</div>
+      <div class="layer split"><div><b>ApprovalsRepository</b></div><div class="mini">MockRepository<br><span class="dim">on-device simulation</span></div><div class="mini">LiveRepository<br><span class="dim">Network Kit</span></div></div>
+      <div class="layer chips">
+        <span>NotificationService</span><span>WidgetBridge + FormExtension</span><span>StepUpAuth</span><span>Haptics</span><span>RefreshWorkAbility</span><span>Redactor</span><span>RiskExplainer</span><span>Preferences</span>
+      </div>
+    </div>
+  </div>
+  <div class="note sm">Views never see the wire format: gateway types (<code>model/Wire.ets</code>) are mapped to UI models in <code>LiveRepository.map</code>. Widgets read a Preferences snapshot pushed by the app, by their own 30-min update, and by the WorkScheduler task while the app is closed.</div>
+  <div class="foot"><span>MVVM-style layering · full mermaid diagram in README section 9</span><span>7 / 10</span></div>
+</section>
+
+<!-- 8 Demo -->
+<section class="slide" id="s8">
+  <div class="kicker">Demo</div>
+  <h2>60 seconds on the emulator</h2>
+  <div class="demo">
+    <div id="shots" class="shots"></div>
+    <div class="script">
+      <ol>
+        <li><b>Widget</b> on the home screen (MOCK badge); tap opens the app.</li>
+        <li><b>Home</b>: pending count, threats blocked, data redacted, budget left.</li>
+        <li>Simulated request arrives: <b>notification</b> + banner; tap it.</li>
+        <li><b>Detail</b>: "Why a human is asked" score, facts, checks, untrusted agent note.</li>
+        <li><b>Inbox</b>: switch Emily (admin) → Piotr (member); Approve becomes <b>LOCKED</b>.</li>
+        <li>As Emily: <b>Approve</b> → step-up sheet (or labelled fallback on the emulator) → approved.</li>
+        <li><b>Preview</b>: <code>[EMAIL_1]</code>, <code>[PESEL_1]</code> placeholders.</li>
+      </ol>
+      <div class="note sm" style="margin-top:18px">Recorded in <b>mock mode</b> (label visible). The DevEco emulator cannot simulate biometrics or vibration, so the video shows the PIN or the labelled fallback, and no haptics.</div>
+    </div>
+  </div>
+  <div class="foot"><span>Demo video link: see the HackTribe entry and README</span><span>8 / 10</span></div>
+</section>
+
+<!-- 9 Reproducibility -->
+<section class="slide" id="s9">
+  <div class="kicker">Reproducibility</div>
+  <h2>From a clean checkout to a running app</h2>
+  <div class="grid g64" style="flex:none">
+    <div class="card"><div class="wire small">git clone https://github.com/JustAnotherDevv/tiles-hackyeah-2026
+cd tiles-hackyeah-2026 &amp;&amp; ohpm install
+
+<span class="c"># build (DevEco Studio 6.1.1, devecocli 1.3.4)</span>
+devecocli build --modules entry --build-mode debug
+
+<span class="c"># sign: DevEco &gt; Project Structure &gt; Signing Configs</span>
+<span class="c">#       (your own Huawei ID; keys stay outside the repo)</span>
+HAP=entry/build/default/outputs/default/entry-default-signed.hap
+hdc install -r $HAP
+hdc shell aa start -a EntryAbility -b com.hackyeah.aegispocket
+hdc hilog | grep AegisPocket
+
+<span class="c"># 17 local unit tests: redactor, eligibility,</span>
+<span class="c"># step-up rule, risk explainer (README section 8)</span>
+hvigorw --mode module -p module=entry@default test</div></div>
+    <div>
+      <ul class="b">
+        <li><b>No server needed:</b> mock mode is the default; live mode needs only the gateway URL in Settings (<code>http://10.0.2.2:8787</code> on the emulator).</li>
+        <li><b>Checked by us:</b> build exit 0, lint 0 errors, 17 / 17 unit tests pass. The same source also builds against the <b>OpenHarmony 6.1 SDK</b> (API 23) with no stubs.</li>
+        <li><b>Honest limits:</b> biometrics and vibration need a real device; background refresh is system-scheduled (~2 h), a safety net, not real-time. See README "Known limitations".</li>
+        <li><b>Public-safe:</b> empty <code>signingConfigs</code>, no keys or tokens; all mock people and amounts are fictional.</li>
+        <li><b>AI disclosure:</b> built with Claude Code (Opus 5.5) and the organizers' HarmonyOS skills; logged in <code>AI_WORKFLOW.md</code>. The app itself contains no AI model.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Full steps: README sections 3-8 · OpenHarmony build: docs/ONIRO_RUN.md</span><span>9 / 10</span></div>
+</section>
+
+<!-- 10 Close -->
+<section class="slide" id="s10">
+  <div class="kicker">Why it matters</div>
+  <h2>Autonomy for agents. Authority for people.</h2>
+  <div class="grid g3" style="flex:none;margin-top:40px">
+    <div class="card"><h3 style="color:var(--violet)">Human-Centric</h3><p>Oversight of autonomous AI where people actually are: on the phone, with role rules, separation of duties and accessible controls.</p></div>
+    <div class="card"><h3 style="color:var(--sky)">Intelligent</h3><p>On-device risk explanation that refuses to trust the agent's own words, plus local PII detection with checksums.</p></div>
+    <div class="card"><h3 style="color:var(--good)">Native</h3><p>Notification Kit, Form Kit, User Authentication Kit, vibrator, WorkScheduler, Network Kit, ArkData, ArkUI. Not portable as-is to another OS.</p></div>
+  </div>
+  <div class="card" style="margin-top:28px"><h3>Next</h3><p>Push Kit or SSE for instant delivery while closed · wearable target for approve-from-the-wrist · verification on a physical device with biometrics.</p></div>
+  <div class="close">
+    <div><div class="kpi-l">Repository</div><div class="mono big2">github.com/JustAnotherDevv/tiles-hackyeah-2026</div></div>
+    <div><div class="kpi-l">Team</div><div class="big2">JustAnotherDevv</div></div>
+  </div>
+  <div class="foot"><span>Aegis Pocket · HackYeah 2026 · Huawei "Imagine What's Next"</span><span>10 / 10</span></div>
+</section>
+
+<script>
+(function () {
+  var host = document.getElementById('shots');
+  var shots = (window.SHOTS || []).slice(0, 4);
+  if (!shots.length) {
+    host.className = 'shots empty';
+    host.innerHTML = '<div class="frame"><div class="frame-in"><div class="frame-t">Live demo on HarmonyOS 6.1.1 (API 24) emulator</div>' +
+      '<div class="frame-s">see video</div><div class="frame-n">Screenshot slot: add PNGs to docs/screenshots/ and run docs/deck/build.sh</div></div></div>';
+    return;
+  }
+  host.className = 'shots n' + shots.length;
+  shots.forEach(function (s) {
+    var fig = document.createElement('figure');
+    var img = document.createElement('img');
+    img.src = s.src; img.alt = s.caption;
+    var cap = document.createElement('figcaption');
+    cap.textContent = s.caption;
+    fig.appendChild(img); fig.appendChild(cap); host.appendChild(fig);
+  });
+})();
+</script>
+</body>
+</html>
