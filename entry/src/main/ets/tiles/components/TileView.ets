@@ -369,7 +369,7 @@ export struct TileView {
       // ONE key value; tiny tiles only take a short hero value (no controls).
       for (let i = 0; i < all.length; i++) {
         const k: string = all[i].kind;
-        if (this.tiny() ? (k === 'big' || k === 'weather') : KEY_KINDS.indexOf(k) >= 0) {
+        if (this.tiny() ? (k === 'big' || k === 'weather' || k === 'timer') : KEY_KINDS.indexOf(k) >= 0) {
           picked.push(i);
           break;
         }
@@ -492,6 +492,18 @@ export struct TileView {
       return;
     }
     if (visible.length <= 1) {
+      // A lone action row that does not fit goes away (the whole tile stays tappable -> detail with the actions),
+      // like the prototype's 1x1 'Call Kasia' tile; content blocks keep the soft fade as a last resort.
+      if (visible.length === 1 && (visible[0].block.kind === 'buttons' || visible[0].block.kind === 'chips')) {
+        const only: number[] = this.dropped.slice();
+        only.push(visible[0].index);
+        this.bottoms.delete(visible[0].index);
+        this.dropped = only;
+        if (this.overflowFade) {
+          this.overflowFade = false;
+        }
+        return;
+      }
       this.overflowFade = true;
       return;
     }
