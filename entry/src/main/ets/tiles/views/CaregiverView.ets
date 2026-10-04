@@ -75,7 +75,7 @@ export struct CaregiverView {
 
   /** Extra top padding only when the page really lays out under the status bar. */
   private topPad(): number {
-    return Math.max(0, this.sysTop - this.rootY);
+    return Math.min(this.sysTop, Math.max(0, this.sysTop - this.rootY));
   }
 
   private pal(): ThemePalette {
@@ -122,6 +122,21 @@ export struct CaregiverView {
     return m !== null ? m[0] : '';
   }
 
+  /** ' · 2 calls blocked' from the guardian tile's subtitle or text ("On · 2 calls blocked"), else ''. */
+  private guardianDetail(t: TileSpec): string {
+    const texts: string[] = [t.subtitle];
+    for (const b of t.blocks) {
+      texts.push(b.text);
+    }
+    for (const x of texts) {
+      if (x.toLowerCase().indexOf('blocked') >= 0) {
+        const i: number = x.indexOf('·');
+        return ' · ' + (i >= 0 ? x.substring(i + 1).trim() : x.trim()).toLowerCase();
+      }
+    }
+    return '';
+  }
+
   private hasDangerAlert(t: TileSpec): boolean {
     return t.blocks.some((b: TileBlock) => b.kind === 'alert' && b.value === 'danger');
   }
@@ -152,7 +167,7 @@ export struct CaregiverView {
         } else {
           r.key = 'a-' + t.id + '-on';
           r.icon = $r('sys.symbol.checkmark_shield_fill');
-          r.text = 'Guardian on' + (t.subtitle.length > 0 ? ' · ' + t.subtitle.toLowerCase() : '');
+          r.text = 'Guardian on' + this.guardianDetail(t);
           r.time = 'this week';
           r.tone = 'ok';
         }
@@ -337,6 +352,7 @@ export struct CaregiverView {
         .align(Alignment.Top)
         .width('100%')
         .height('100%')
+        .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
 
         this.callButton()
       }
@@ -350,8 +366,10 @@ export struct CaregiverView {
       })
       // Prototype caregiver phone uses the page bg gradient (t.bg), not the launcher wallpaper.
       .linearGradient({ angle: this.pal().bgGradient.angle, colors: this.pal().bgGradient.colors })
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
     }
     .hideTitleBar(true)
+    .backgroundColor(this.pal().bg)
   }
 
   @Builder
@@ -630,7 +648,7 @@ export struct CaregiverView {
       .backgroundColor(this.toneBg(r.tone))
 
       Text(r.text)
-        .llText(15, FontWeight.Medium, r.tone === 'danger' ? this.pal().dangerInk : this.pal().ink)
+        .llText(15, FontWeight.Medium, this.pal().ink)
         .fontWeight(600)
         .lineHeight(20)
         .layoutWeight(1)

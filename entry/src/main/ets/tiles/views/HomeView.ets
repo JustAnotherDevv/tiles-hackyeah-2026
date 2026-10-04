@@ -634,9 +634,10 @@ export struct HomeView {
       }
 
       if (this.profile.textScale >= 1.7) {
+        // each button in its own Row: layoutWeight inside a Column stretches height (huge buttons)
         Column({ space: 8 }) {
-          this.sugYes(false)
-          this.sugNo(false)
+          Row() { this.sugYes(true) }.width('100%')
+          Row() { this.sugNo(true) }.width('100%')
         }
         .width('100%')
         .margin({ top: 2 })
