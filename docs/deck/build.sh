@@ -8,6 +8,7 @@
 # Screenshots: put real emulator/device PNG/JPG files in docs/screenshots/ (up to 4 are used, sorted by
 # name; the caption is the file name without number prefix/extension, e.g. 02-risk-card.png -> "risk card").
 # With no screenshots, slide 8 shows a labelled placeholder frame. Never put mock-ups there.
+# RAM-heavy (Chrome): on a shared machine run it under the lock, e.g. scratchpad/heavy.sh docs/deck/build.sh.
 # Needs only Google Chrome (set CHROME=/path/to/chrome to override). Chrome is stopped after each run.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -35,7 +36,7 @@ COVER="$DOCS/cover.png"
 echo "screenshots: $(grep -c '"src"' "$HERE/shots.js" || true) (from $SHOTS_DIR)"
 
 PROFILE="$(mktemp -d "${TMPDIR:-/tmp}/aegis-pocket-chrome.XXXXXX")"
-trap 'rm -rf "$PROFILE"' EXIT
+trap 'rm -rf "$PROFILE" "$PROFILE.pdf" "$PROFILE.png"' EXIT
 # run_chrome OUTFILE ARGS...: headless Chrome may linger after writing, so wait until OUTFILE is
 # written and its size is stable, then stop every process that uses our temporary profile.
 run_chrome() {
@@ -57,14 +58,16 @@ run_chrome() {
 }
 
 # 2) deck PDF (page size from @page 1920x1080 in deck.css)
-rm -f "$PDF"
-run_chrome "$PDF" --no-pdf-header-footer --print-to-pdf="$PDF" "file://$HERE/deck.html"
-[ -s "$PDF" ] || { echo "PDF not written" >&2; exit 1; }
+# write to temp files first so a failed run never deletes the last good output
+TMP_PDF="$PROFILE.pdf"; TMP_PNG="$PROFILE.png"
+run_chrome "$TMP_PDF" --no-pdf-header-footer --print-to-pdf="$TMP_PDF" "file://$HERE/deck.html"
+[ -s "$TMP_PDF" ] || { echo "PDF not written" >&2; exit 1; }
+mv -f "$TMP_PDF" "$PDF"
 
 # 3) cover image
-rm -f "$COVER"
-run_chrome "$COVER" --window-size=1600,900 --force-device-scale-factor=1 --screenshot="$COVER" "file://$HERE/cover.html"
-[ -s "$COVER" ] || { echo "cover not written" >&2; exit 1; }
+run_chrome "$TMP_PNG" --window-size=1600,900 --force-device-scale-factor=1 --screenshot="$TMP_PNG" "file://$HERE/cover.html"
+[ -s "$TMP_PNG" ] || { echo "cover not written" >&2; exit 1; }
+mv -f "$TMP_PNG" "$COVER"
 
 echo "wrote $PDF ($(mdls -raw -name kMDItemNumberOfPages "$PDF" 2>/dev/null || echo '?') pages)"
 echo "wrote $COVER"
