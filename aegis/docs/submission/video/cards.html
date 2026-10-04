@@ -24,7 +24,7 @@
   .logo path.tick{stroke-dasharray:40;stroke-dashoffset:40;animation:draw .6s .6s forwards}
   h1{font-size:148px;font-weight:800;letter-spacing:-.03em;margin-top:22px;animation:rise .7s .2s both}
   .typed{font-size:46px;color:var(--t2);margin-top:14px;font-family:var(--sans);min-height:60px;
-    border-right:3px solid var(--accent);padding-right:6px;white-space:nowrap;overflow:hidden;width:0;
+    border-right:3px solid var(--accent);padding-right:6px;white-space:nowrap;clip-path:inset(0 100% 0 0);
     animation:type 2.2s .9s steps(44) forwards,blink .8s step-end infinite}
   .meta{margin-top:40px;font-size:26px;color:var(--t3);letter-spacing:.14em;text-transform:uppercase}
   .url{margin-top:26px;font-family:var(--mono);font-size:34px;color:var(--accent)}
@@ -33,7 +33,7 @@
   @keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
   @keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
   @keyframes draw{to{stroke-dashoffset:0}}
-  @keyframes type{to{width:22.5em}}
+  @keyframes type{to{clip-path:inset(0 -10px 0 0)}}
   @keyframes blink{50%{border-color:transparent}}
 </style>
 </head>
@@ -81,7 +81,7 @@
 <section class="card" id="end">
   <svg class="logo" viewBox="0 0 48 55" aria-hidden="true" style="width:110px;height:126px"><path d="M24 2 L44 9 V26 C44 39 35 48 24 53 C13 48 4 39 4 26 V9 Z" fill="none" stroke="#6D5DFC" stroke-width="3"/><path d="M15 27 L22 34 L34 20" fill="none" stroke="#3CCB7F" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <h1 style="font-size:96px">Aegis: Local-First AI Guardrails</h1>
-  <div class="url">[PUBLIC REPO URL]</div>
+  <div class="url">github.com/JustAnotherDevv/tiles-hackyeah-2026/tree/main/aegis</div>
   <div class="meta">HackYeah 2026 · Goldman Sachs · AI Control Layer</div>
 </section>
 

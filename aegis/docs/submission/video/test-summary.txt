@@ -1,0 +1,18 @@
+# caption: 1,045 control test cases · 0 fail
+# source: reports/matrix.md, written by make test at 01:51 on 2026-10-04 (CAL run: 2002 passed, 0 failed)
+$ tail -n 15 reports/matrix.md   # matrix written by the last full make test
+|---|---|---|
+| Data-driven cases | 182/182 | PASS |
+| Approvals & RBAC | 69/69 | PASS |
+| Budgets & loops | 9/9 | PASS |
+| Hot reload | 12/12 | PASS |
+| Threat feed | 6/6 | PASS |
+| MCP integrity | 5/5 | PASS |
+| Claude Code hooks | 43/43 | PASS |
+| Audit & privacy | 6/6 | PASS |
+| Errors | 10/10 | PASS |
+| Streaming & egress | 6/6 | PASS |
+| Inline policy/feed tests | 267/267 | PASS |
+| Corpora (rates) | 429/429 | PASS |
+
+TOTAL 1045 cases · 991 pass · 15 pass(other control) · 38 xfail · 0 fail · 1 skip · 0 UNTESTED · 179.49 s
